@@ -21,15 +21,15 @@ from mininet.util import irange
 
 def ensure_node_dirs(host_num):
     for idx in range(host_num):
-        node_dir = f"h{idx}"
-        if os.path.isdir(node_dir):
-            continue
-        if idx == 0:
-            template = "h0"
-        elif idx == host_num - 1:
-            template = "h2"
+        if idx % 2 == 1:
+            node_dir = "h1"
+            template = node_dir
+        elif idx % 2 == 0:
+            node_dir = "h0"
+            template = node_dir
         else:
-            template = "h1"
+            node_dir = f"h{idx}"
+            template = node_dir
         shutil.copytree(template, node_dir)
 
 
@@ -37,22 +37,17 @@ def set_ip_addr(net, host_num):
     # Assign a /24 per switch (link index) in the line.
     for idx in irange(0, host_num - 1):
         node_name = f"h{idx}"
+        right_ip = f"192.168.{idx}.{idx + 1}"
+        left_ip = f"192.168.{idx - 1}.{idx}"
         if idx == 0:
-            ip = "192.168.0.1"
-            command = f"ifconfig {node_name}-eth0 {ip}"
+            command = f"ifconfig {node_name}-eth1 {right_ip}"
             print(node_name, "command:", command)
             net.hosts[idx].cmd(command)
         elif idx == host_num - 1:
-            subnet = host_num - 2
-            ip = f"192.168.{subnet}.2"
-            command = f"ifconfig {node_name}-eth0 {ip}"
+            command = f"ifconfig {node_name}-eth0 {left_ip}"
             print(node_name, "command:", command)
             net.hosts[idx].cmd(command)
         else:
-            left_subnet = idx - 1
-            right_subnet = idx
-            left_ip = f"192.168.{left_subnet}.2"
-            right_ip = f"192.168.{right_subnet}.1"
             command = f"ifconfig {node_name}-eth0 {left_ip}"
             print(node_name, "command:", command)
             net.hosts[idx].cmd(command)
@@ -65,24 +60,39 @@ def set_fib(net, host_num):
     # Forward Interests along the line toward the publisher.
     for idx in irange(0, host_num - 2):
         node_name = f"h{idx}"
-        next_hop_ip = f"192.168.{idx}.2"
+        next_hop_ip = f"192.168.{idx}.{idx + 2}"
         command = f"cefroute add ccnx:/test udp {next_hop_ip} -d ./{node_name}"
         print(node_name, "command:", command)
         info(net.hosts[idx].cmd(command))
 
 
-def start_csmgrd(net, host_num):
-    for idx in range(1, host_num):
+def start_csmgrd(net, idx):
+    node_name = f"h{idx}"
+    command = f"csmgrdstart -d ./{node_name} > {node_name}-csmgrd-log"
+    print(node_name, "command:", command)
+    info(net.hosts[idx].cmd(command))
+    time.sleep(1)
+
+
+def stop_csmgrd(net, host_num):
+    for idx in range(0, host_num - 1):
+        command = f"csmgrdstop -d ./h{idx}"
+        info("hosts[", idx, "]:", command, "\n")
+        net.hosts[idx].cmd(command)
+
+
+def start_cefnetd(net, host_num):
+    for idx in range(0, host_num - 1):
         node_name = f"h{idx}"
-        command = f"csmgrdstart -d ./{node_name} > {node_name}-csmgrd-log"
+        command = f"cefnetdstart -d ./{node_name} > {node_name}-cefnetd-log"
         print(node_name, "command:", command)
         info(net.hosts[idx].cmd(command))
         time.sleep(1)
 
 
-def stop_csmgrd(net, host_num):
-    for idx in range(1, host_num):
-        command = f"csmgrdstop -d ./h{idx}"
+def stop_cefnetd(net, host_num):
+    for idx in range(0, host_num - 1):
+        command = f"cefnetdstop -F -d ./h{idx}"
         info("hosts[", idx, "]:", command, "\n")
         net.hosts[idx].cmd(command)
 
@@ -108,12 +118,7 @@ def run_line_topology(host_num, switch_num):
 
     start_csmgrd(net, host_num)
 
-    for idx in irange(0, host_num - 1):
-        node_name = f"h{idx}"
-        command = f"cefnetdstart -d ./{node_name} > {node_name}-cefnetd-log"
-        print(node_name, "command:", command)
-        info(net.hosts[idx].cmd(command))
-        time.sleep(1)
+    start_cefnetd(net, host_num)
 
     set_fib(net, host_num)
     time.sleep(1)
@@ -140,10 +145,7 @@ def run_line_topology(host_num, switch_num):
 
     CLI(net)
 
-    for idx in irange(0, host_num - 1):
-        command = f"cefnetdstop -d ./h{idx}"
-        info("hosts[", idx, "]:", command, "\n")
-        net.hosts[idx].cmd(command)
+    stop_cefnetd(net, host_num)
 
     stop_csmgrd(net, host_num)
     net.stop()
