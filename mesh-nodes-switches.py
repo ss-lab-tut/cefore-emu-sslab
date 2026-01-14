@@ -3,7 +3,7 @@
 """
 Mesh topology example using Cefore and Mininet.
 
-Each host connects to every switch (>= 2 switches required).
+Each host connects to every switch (switches = hosts - 1).
 """
 
 import argparse
@@ -126,19 +126,18 @@ def cleanup_node_dirs():
             shutil.rmtree(name)
 
 
-def run_mesh_topology(host_num, switch_num):
+def run_mesh_topology(host_num):
     if host_num < 3:
         sys.exit("host count must be at least 3")
-    if switch_num < 2:
-        sys.exit("mesh topology requires at least 2 switches")
 
     rng = random.Random()
     ensure_node_dirs(host_num, rng)
 
-    topo = MeshTopo(hosts=host_num, switches=switch_num)
+    topo = MeshTopo(hosts=host_num)
     net = Mininet(topo=topo, waitConnected=True)
     net.start()
 
+    switch_num = host_num - 1
     set_ip_addr(net, host_num, switch_num)
 
     for idx in range(host_num):
@@ -192,11 +191,12 @@ class MeshTopo(Topo):
     "Mesh topology where each host connects to every switch"
 
     # pylint: disable=arguments-differ
-    def build(self, hosts, switches, **_kwargs):
+    def build(self, hosts, **_kwargs):
+        switches = hosts - 1
         host_nodes = [self.addHost(f"h{idx}") for idx in range(hosts)]
         switch_nodes = [self.addSwitch(f"s{idx}") for idx in range(switches)]
 
-        for host_idx, host in enumerate(host_nodes):
+        for host in host_nodes:
             for switch in switch_nodes:
                 self.addLink(host, switch)
 
@@ -205,12 +205,11 @@ def main():
     parser = argparse.ArgumentParser(
         description="Cefore mesh topology (hosts connect to all switches)"
     )
-    parser.add_argument("--hosts", type=int, default=3, help="number of hosts")
-    parser.add_argument("--switches", type=int, default=2, help="number of switches")
+    parser.add_argument("--hosts", type=int, default=5, help="number of hosts")
     args = parser.parse_args()
 
     setLogLevel("info")
-    run_mesh_topology(args.hosts, args.switches)
+    run_mesh_topology(args.hosts)
 
 
 if __name__ == "__main__":
