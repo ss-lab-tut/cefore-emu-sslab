@@ -137,7 +137,7 @@ def cleanup_node_dirs():
 
 def run_line_topology(host_num):
     if host_num < 2:
-        sys.exit("host count must be at least 2")
+        sys.exit("host count must be at least 3")
 
     rng = random.Random()
     ensure_node_dirs(host_num, rng)
@@ -199,7 +199,8 @@ class LineTopo(Topo):
     "Simple topology with linear links"
 
     # pylint: disable=arguments-differ
-    def build(self, hosts, switches, **_kwargs):
+    def build(self, hosts, **_kwargs):
+        switches = hosts - 1
         host_nodes = [self.addHost(f"h{idx}") for idx in range(hosts)]
         switch_nodes = [self.addSwitch(f"s{idx}") for idx in range(switches)]
 
