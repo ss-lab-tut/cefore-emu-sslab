@@ -17,6 +17,9 @@ CeforeEmu is a network emulator based on Mininet, which can be run on Ubuntu 22.
   
   `mininet> exit`
 
+* Run the other script:
+
+  `sudo python3 five-node-two-switches.py --hosts 7`
 
 Finally, you can check the log files of *cefputfile*, *cefgetfile* and *cefnetd*, which are created in the directory after finishing the processing.
 
