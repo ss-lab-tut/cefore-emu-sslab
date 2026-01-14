@@ -8,6 +8,7 @@ Defaults to 3 hosts and 2 switches: h0-s0-h1-s1-h2.
 
 import argparse
 import os
+import random
 import shutil
 import sys
 import time
@@ -19,39 +20,65 @@ from mininet.topo import Topo
 from mininet.util import irange
 
 
-def ensure_node_dirs(host_num):
+def select_template(idx, host_num, rng):
+    if idx % 2 == 1:
+        return "h1"
+    if idx == 0:
+        return "h0"
+    if idx == host_num - 1:
+        return "h2"
+    return rng.choice(["h0", "h2"])
+
+
+def update_local_sock_id(node_dir, idx):
+    for conf_name in ("cefnetd.conf", "csmgrd.conf"):
+        conf_path = os.path.join(node_dir, conf_name)
+        if not os.path.isfile(conf_path):
+            continue
+        with open(conf_path, "r", encoding="utf-8") as conf_file:
+            lines = conf_file.readlines()
+        updated = False
+        new_lines = []
+        for line in lines:
+            stripped = line.lstrip()
+            if stripped.startswith("LOCAL_SOCK_ID=") or stripped.startswith("#LOCAL_SOCK_ID="):
+                leading = line[: len(line) - len(stripped)]
+                new_lines.append(f"{leading}LOCAL_SOCK_ID={idx}\n")
+                updated = True
+            else:
+                new_lines.append(line)
+        if not updated:
+            new_lines.append(f"LOCAL_SOCK_ID={idx}\n")
+        with open(conf_path, "w", encoding="utf-8") as conf_file:
+            conf_file.writelines(new_lines)
+
+
+def ensure_node_dirs(host_num, rng):
     for idx in range(host_num):
-        if idx % 2 == 1:
-            node_dir = "h1"
-            template = node_dir
-        elif idx % 2 == 0:
-            node_dir = "h0"
-            template = node_dir
-        else:
-            node_dir = f"h{idx}"
-            template = node_dir
-        shutil.copytree(template, node_dir)
+        node_dir = f"h{idx}"
+        template = select_template(idx, host_num, rng)
+        if node_dir != template:
+            if os.path.isdir(node_dir):
+                shutil.rmtree(node_dir)
+            shutil.copytree(template, node_dir)
+        elif not os.path.isdir(node_dir):
+            sys.exit(f"missing template directory: {template}")
+        update_local_sock_id(node_dir, idx)
 
 
 def set_ip_addr(net, host_num):
-    # Assign a /24 per switch (link index) in the line.
+    # eth0 = left link, eth1 = right link
     for idx in irange(0, host_num - 1):
         node_name = f"h{idx}"
-        right_ip = f"192.168.{idx}.{idx + 1}"
-        left_ip = f"192.168.{idx - 1}.{idx}"
-        if idx == 0:
-            command = f"ifconfig {node_name}-eth1 {right_ip}"
-            print(node_name, "command:", command)
-            net.hosts[idx].cmd(command)
-        elif idx == host_num - 1:
+        if idx > 0:
+            left_ip = f"192.168.{idx - 1}.{idx + 1}"
             command = f"ifconfig {node_name}-eth0 {left_ip}"
             print(node_name, "command:", command)
             net.hosts[idx].cmd(command)
-        else:
-            command = f"ifconfig {node_name}-eth0 {left_ip}"
-            print(node_name, "command:", command)
-            net.hosts[idx].cmd(command)
-            command = f"ifconfig {node_name}-eth1 {right_ip}"
+        if idx < host_num - 1:
+            right_ip = f"192.168.{idx}.{idx + 1}"
+            eth_name = "eth1" if idx > 0 else "eth0"
+            command = f"ifconfig {node_name}-{eth_name} {right_ip}"
             print(node_name, "command:", command)
             net.hosts[idx].cmd(command)
 
@@ -74,27 +101,36 @@ def start_csmgrd(net, idx):
     time.sleep(1)
 
 
-def stop_csmgrd(net, host_num):
-    for idx in range(0, host_num - 1):
-        command = f"csmgrdstop -d ./h{idx}"
-        info("hosts[", idx, "]:", command, "\n")
-        net.hosts[idx].cmd(command)
+def stop_csmgrd(net, idx):
+    command = f"csmgrdstop -d ./h{idx}"
+    info("hosts[", idx, "]:", command, "\n")
+    net.hosts[idx].cmd(command)
 
 
-def start_cefnetd(net, host_num):
-    for idx in range(0, host_num - 1):
-        node_name = f"h{idx}"
-        command = f"cefnetdstart -d ./{node_name} > {node_name}-cefnetd-log"
-        print(node_name, "command:", command)
-        info(net.hosts[idx].cmd(command))
-        time.sleep(1)
+def start_cefnetd(net, idx):
+    node_name = f"h{idx}"
+    command = f"cefnetdstart -d ./{node_name} > {node_name}-cefnetd-log"
+    print(node_name, "command:", command)
+    info(net.hosts[idx].cmd(command))
+    time.sleep(1)
 
 
-def stop_cefnetd(net, host_num):
-    for idx in range(0, host_num - 1):
-        command = f"cefnetdstop -F -d ./h{idx}"
-        info("hosts[", idx, "]:", command, "\n")
-        net.hosts[idx].cmd(command)
+def stop_cefnetd(net, idx):
+    command = f"cefnetdstop -F -d ./h{idx}"
+    info("hosts[", idx, "]:", command, "\n")
+    net.hosts[idx].cmd(command)
+
+
+def cleanup_node_dirs():
+    for name in os.listdir("."):
+        if not name.startswith("h"):
+            continue
+        suffix = name[1:]
+        if not suffix.isdigit():
+            continue
+        idx = int(suffix)
+        if idx >= 3 and os.path.isdir(name):
+            shutil.rmtree(name)
 
 
 def run_line_topology(host_num, switch_num):
@@ -103,7 +139,8 @@ def run_line_topology(host_num, switch_num):
     if switch_num != host_num - 1:
         sys.exit("for a line topology, switches must equal hosts - 1")
 
-    ensure_node_dirs(host_num)
+    rng = random.Random()
+    ensure_node_dirs(host_num, rng)
 
     topo = LineTopo(hosts=host_num, switches=switch_num)
     net = Mininet(topo=topo, waitConnected=True)
@@ -116,9 +153,12 @@ def run_line_topology(host_num, switch_num):
         print(node_name, "command:", "ifconfig")
         info(net.hosts[idx].cmd("ifconfig"))
 
-    start_csmgrd(net, host_num)
+    for idx in range(host_num):
+        if idx % 2 == 1:
+            start_csmgrd(net, idx)
 
-    start_cefnetd(net, host_num)
+    for idx in range(host_num):
+        start_cefnetd(net, idx)
 
     set_fib(net, host_num)
     time.sleep(1)
@@ -145,10 +185,14 @@ def run_line_topology(host_num, switch_num):
 
     CLI(net)
 
-    stop_cefnetd(net, host_num)
+    for idx in range(host_num):
+        stop_cefnetd(net, idx)
 
-    stop_csmgrd(net, host_num)
+    for idx in range(host_num):
+        if idx % 2 == 1:
+            stop_csmgrd(net, idx)
     net.stop()
+    cleanup_node_dirs()
 
 
 class LineTopo(Topo):

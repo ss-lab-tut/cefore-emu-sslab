@@ -55,8 +55,8 @@ def setFib( net, hostNum):
         info( net.hosts[id].cmd(command) )
 
 def startCsmgrd( net ):
-    # Start csmgrd on cache-enabled nodes (h1, h2)
-    for id in irange( 1, 2 ):
+    # Start csmgrd on cache-enabled nodes (h1)
+    for id in irange( 1, 1 ):
       nodeName = "h" + str(id)
       command = "csmgrdstart -d ./" + nodeName + " > " + nodeName + "-csmgrd-log"
       print(nodeName, "command:", command)
@@ -64,8 +64,8 @@ def startCsmgrd( net ):
       time.sleep(1)
 
 def stopCsmgrd( net ):
-    # Stop csmgrd on cache-enabled nodes (h1, h2)
-    for id in irange( 1, 2 ):
+    # Stop csmgrd on cache-enabled nodes (h1)
+    for id in irange( 1, 1 ):
      command = "csmgrdstop -d ./h" + str(id)
      info("hosts[", id, "]:", command, "\n")
      net.hosts[id].cmd(command)
