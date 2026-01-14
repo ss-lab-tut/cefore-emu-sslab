@@ -41,7 +41,9 @@ def update_local_sock_id(node_dir, idx):
         new_lines = []
         for line in lines:
             stripped = line.lstrip()
-            if stripped.startswith("LOCAL_SOCK_ID=") or stripped.startswith("#LOCAL_SOCK_ID="):
+            if stripped.startswith("LOCAL_SOCK_ID=") or stripped.startswith(
+                "#LOCAL_SOCK_ID="
+            ):
                 leading = line[: len(line) - len(stripped)]
                 new_lines.append(f"{leading}LOCAL_SOCK_ID={idx}\n")
                 updated = True
@@ -133,16 +135,14 @@ def cleanup_node_dirs():
             shutil.rmtree(name)
 
 
-def run_line_topology(host_num, switch_num):
-    if host_num < 3:
-        sys.exit("host count must be at least 3")
-    if switch_num != host_num - 1:
-        sys.exit("for a line topology, switches must equal hosts - 1")
+def run_line_topology(host_num):
+    if host_num < 2:
+        sys.exit("host count must be at least 2")
 
     rng = random.Random()
     ensure_node_dirs(host_num, rng)
 
-    topo = LineTopo(hosts=host_num, switches=switch_num)
+    topo = LineTopo(hosts=host_num)
     net = Mininet(topo=topo, waitConnected=True)
     net.start()
 
@@ -212,12 +212,11 @@ def main():
     parser = argparse.ArgumentParser(
         description="Cefore line topology (default: 3 hosts, 2 switches)"
     )
-    parser.add_argument("--hosts", type=int, default=3, help="number of hosts")
-    parser.add_argument("--switches", type=int, default=2, help="number of switches")
+    parser.add_argument("--hosts", type=int, default=5, help="number of hosts")
     args = parser.parse_args()
 
     setLogLevel("info")
-    run_line_topology(args.hosts, args.switches)
+    run_line_topology(args.hosts)
 
 
 if __name__ == "__main__":
