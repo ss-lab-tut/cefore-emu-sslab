@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 """
-This is a simple example using 3 nodes running Cefore (Consumer, Router, Publisher). 
+This is a simple example using 3 nodes running Cefore (Consumer, Router, Publisher).
 """
 
 from mininet.cli import CLI
@@ -42,7 +42,7 @@ def setIpAddr( net, hostNum ):
         net.hosts[id].cmd(command)
 
 def setFib( net, hostNum):
-    # Set fib of h0 and h1 
+    # Set fib of h0 and h1
     for id in irange( 0, (hostNum-2) ):
       nodeName = "h" + str(id)
       if nodeName == "h0":
@@ -53,6 +53,22 @@ def setFib( net, hostNum):
         command = "cefroute add ccnx:/test udp 192.168.1.3 -d ./" + nodeName
         print(nodeName, "command:", command)
         info( net.hosts[id].cmd(command) )
+
+def startCsmgrd( net ):
+    # Start csmgrd on cache-enabled nodes (h1, h2)
+    for id in irange( 1, 2 ):
+      nodeName = "h" + str(id)
+      command = "csmgrdstart -d ./" + nodeName + " > " + nodeName + "-csmgrd-log"
+      print(nodeName, "command:", command)
+      info( net.hosts[id].cmd(command) )
+      time.sleep(1)
+
+def stopCsmgrd( net ):
+    # Stop csmgrd on cache-enabled nodes (h1, h2)
+    for id in irange( 1, 2 ):
+     command = "csmgrdstop -d ./h" + str(id)
+     info("hosts[", id, "]:", command, "\n")
+     net.hosts[id].cmd(command)
 
 def runSimpleLink():
     "Create and run simple link network"
@@ -72,6 +88,8 @@ def runSimpleLink():
       print(nodeName, "command:", "ifconfig")
       info( net.hosts[id].cmd("ifconfig") )
 
+    startCsmgrd( net )
+
     # Launch cefnetd at h0, h1 and h2
     for id in irange( 0, (hostNum-1) ):
       nodeName = "h" + str(id)
@@ -89,8 +107,8 @@ def runSimpleLink():
     command = "cefputfile ccnx:/test -f ./sample-putfile -t 3000 -e 3000 -d ./" + nodeName  + " > cefputfile-log"
     print(nodeName, "command:", command)
     net.hosts[2].cmd(command)
-    time.sleep(5) # need to wait for cefputfile to be completed 
-    
+    time.sleep(5) # need to wait for cefputfile to be completed
+
     # Exec cefgetfile at h0
     nodeName = "h0"
     command = "cefgetfile ccnx:/test -f ./recvfile_at_h0 -d ./" + nodeName  + " > cefgetfile-log"
@@ -99,13 +117,14 @@ def runSimpleLink():
 
 
     CLI( net )
-    
+
     # Stop cefnetd at h0 and h1
     for id in irange( 0, (hostNum-1) ):
      command = "cefnetdstop -d ./h" + str(id)
      info("hosts[", id, "]:", command, "\n")
      net.hosts[id].cmd(command)
 
+    stopCsmgrd( net )
     net.stop()
 
 class simpleLinkTopo( Topo ):
@@ -113,7 +132,7 @@ class simpleLinkTopo( Topo ):
 
     # pylint: disable=arguments-differ
     def build( self, n, **_kwargs ):
-        hosts = [ self.addHost( 'h%s' % h ) for h in irange( 0, (n-1) ) ]        
+        hosts = [ self.addHost( 'h%s' % h ) for h in irange( 0, (n-1) ) ]
         s0 = self.addSwitch( 's0' )
         s1 = self.addSwitch( 's1' )
 

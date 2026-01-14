@@ -1,0 +1,11 @@
+[project]
+name = "cefore-emu"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "iranges>=0.7.1",
+    "mininet>=2.3.0.dev6",
+    "topo>=0.1.1",
+]
