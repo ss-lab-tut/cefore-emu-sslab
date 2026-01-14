@@ -21,10 +21,10 @@ from mininet.util import irange
 
 
 def select_template(idx, host_num, rng):
+    if idx < 3:
+        return f"h{idx}"
     if idx % 2 == 1:
         return "h1"
-    if idx == 0:
-        return "h0"
     if idx == host_num - 1:
         return "h2"
     return rng.choice(["h0", "h2"])
