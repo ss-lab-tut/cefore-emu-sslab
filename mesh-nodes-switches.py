@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 
 """
-Mesh topology example using Cefore and Mininet.
+Line topology example using Cefore and Mininet.
 
-Each host connects to every switch (switches = hosts).
+Defaults to 3 hosts and 2 switches: h0-s0-h1-s1-h2.
 """
 
 import argparse
@@ -17,6 +17,7 @@ from mininet.cli import CLI
 from mininet.log import info, setLogLevel
 from mininet.net import Mininet
 from mininet.topo import Topo
+from mininet.util import irange
 
 
 def select_template(idx, host_num, rng):
@@ -40,7 +41,9 @@ def update_local_sock_id(node_dir, idx):
         new_lines = []
         for line in lines:
             stripped = line.lstrip()
-            if stripped.startswith("LOCAL_SOCK_ID=") or stripped.startswith("#LOCAL_SOCK_ID="):
+            if stripped.startswith("LOCAL_SOCK_ID=") or stripped.startswith(
+                "#LOCAL_SOCK_ID="
+            ):
                 leading = line[: len(line) - len(stripped)]
                 new_lines.append(f"{leading}LOCAL_SOCK_ID={idx}\n")
                 updated = True
@@ -65,47 +68,28 @@ def ensure_node_dirs(host_num, rng):
         update_local_sock_id(node_dir, idx)
 
 
-def set_ip_addr(net, host_num, switch_num):
-    # Assign one /24 per Ethernet index across hosts and switches.
-    for host_idx in range(host_num):
-        node_name = f"h{host_idx}"
-        for eth_idx in range(switch_num):
-            ip = f"192.168.{eth_idx}.{host_idx + 1}"
-            command = f"ifconfig {node_name}-eth{eth_idx} {ip}"
-            print(node_name, "command:", command)
-            net.hosts[host_idx].cmd(command)
-
-    for switch_idx in range(switch_num):
-        node_name = f"s{switch_idx}"
-        switch_octet = 127 - switch_idx
-        for eth_idx in range(host_num):
-            ip = f"192.168.{eth_idx}.{switch_octet}"
-            command = f"ifconfig {node_name}-eth{eth_idx} {ip}"
-            print(node_name, "command:", command)
-            net.switches[switch_idx].cmd(command)
-
-
-def build_random_routes(host_num, rng):
-    targets = list(range(host_num))
-    for _ in range(100):
-        rng.shuffle(targets)
-        if all(idx != targets[idx] for idx in range(host_num)):
-            return targets
-    for idx in range(host_num):
-        if targets[idx] == idx:
-            swap_idx = (idx + 1) % host_num
-            targets[idx], targets[swap_idx] = targets[swap_idx], targets[idx]
-    if any(idx == targets[idx] for idx in range(host_num)):
-        sys.exit("failed to build random routes without duplicates")
-    return targets
-
-
-def set_fib(net, host_num, rng):
-    # Random next hops on the 192.168.1.x subnet (no duplicates, no self).
-    targets = build_random_routes(host_num, rng)
-    for idx in range(host_num):
+def set_ip_addr(net, host_num):
+    # eth0 = left link, eth1 = right link
+    for idx in irange(0, host_num - 1):
         node_name = f"h{idx}"
-        next_hop_ip = f"192.168.1.{targets[idx] + 1}"
+        if idx > 0:
+            left_ip = f"192.168.{idx - 1}.{idx + 1}"
+            command = f"ifconfig {node_name}-eth0 {left_ip}"
+            print(node_name, "command:", command)
+            net.hosts[idx].cmd(command)
+        if idx < host_num - 1:
+            right_ip = f"192.168.{idx}.{idx + 1}"
+            eth_name = "eth1" if idx > 0 else "eth0"
+            command = f"ifconfig {node_name}-{eth_name} {right_ip}"
+            print(node_name, "command:", command)
+            net.hosts[idx].cmd(command)
+
+
+def set_fib(net, host_num):
+    # Forward Interests along the line toward the publisher.
+    for idx in irange(0, host_num - 2):
+        node_name = f"h{idx}"
+        next_hop_ip = f"192.168.{idx}.{idx + 2}"
         command = f"cefroute add ccnx:/test udp {next_hop_ip} -d ./{node_name}"
         print(node_name, "command:", command)
         info(net.hosts[idx].cmd(command))
@@ -134,7 +118,7 @@ def start_cefnetd(net, idx):
 
 
 def stop_cefnetd(net, idx):
-    command = f"cefnetdstop -d ./h{idx}"
+    command = f"cefnetdstop -F -d ./h{idx}"
     info("hosts[", idx, "]:", command, "\n")
     net.hosts[idx].cmd(command)
 
@@ -151,21 +135,20 @@ def cleanup_node_dirs():
             shutil.rmtree(name)
 
 
-def run_mesh_topology(host_num):
-    if host_num < 3:
+def run_line_topology(host_num):
+    if host_num < 2:
         sys.exit("host count must be at least 3")
 
     rng = random.Random()
     ensure_node_dirs(host_num, rng)
 
-    topo = MeshTopo(hosts=host_num)
+    topo = LineTopo(hosts=host_num)
     net = Mininet(topo=topo, waitConnected=True)
     net.start()
 
-    switch_num = host_num
-    set_ip_addr(net, host_num, switch_num)
+    set_ip_addr(net, host_num)
 
-    for idx in range(host_num):
+    for idx in irange(0, host_num - 1):
         node_name = f"h{idx}"
         print(node_name, "command:", "ifconfig")
         info(net.hosts[idx].cmd("ifconfig"))
@@ -177,7 +160,7 @@ def run_mesh_topology(host_num):
     for idx in range(host_num):
         start_cefnetd(net, idx)
 
-    set_fib(net, host_num, rng)
+    set_fib(net, host_num)
     time.sleep(1)
 
     publisher = host_num - 1
@@ -212,29 +195,29 @@ def run_mesh_topology(host_num):
     cleanup_node_dirs()
 
 
-class MeshTopo(Topo):
-    "Mesh topology where each host connects to every switch"
+class LineTopo(Topo):
+    "Simple topology with linear links"
 
     # pylint: disable=arguments-differ
     def build(self, hosts, **_kwargs):
-        switches = hosts
+        switches = hosts - 1
         host_nodes = [self.addHost(f"h{idx}") for idx in range(hosts)]
         switch_nodes = [self.addSwitch(f"s{idx}") for idx in range(switches)]
 
-        for host in host_nodes:
-            for switch in switch_nodes:
-                self.addLink(host, switch)
+        for idx in range(switches):
+            self.addLink(switch_nodes[idx], host_nodes[idx])
+            self.addLink(switch_nodes[idx], host_nodes[idx + 1])
 
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Cefore mesh topology (hosts connect to all switches)"
+        description="Cefore line topology (default: 3 hosts, 2 switches)"
     )
     parser.add_argument("--hosts", type=int, default=5, help="number of hosts")
     args = parser.parse_args()
 
     setLogLevel("info")
-    run_mesh_topology(args.hosts)
+    run_line_topology(args.hosts)
 
 
 if __name__ == "__main__":
