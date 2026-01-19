@@ -85,11 +85,27 @@ def set_ip_addr(net, host_num, switch_num):
             net.switches[switch_idx].cmd(command)
 
 
-def set_fib(net, host_num):
-    # Forward Interests along a host chain using the s0 subnet.
-    for idx in range(host_num - 1):
+def build_random_routes(host_num, rng):
+    targets = list(range(host_num))
+    for _ in range(100):
+        rng.shuffle(targets)
+        if all(idx != targets[idx] for idx in range(host_num)):
+            return targets
+    for idx in range(host_num):
+        if targets[idx] == idx:
+            swap_idx = (idx + 1) % host_num
+            targets[idx], targets[swap_idx] = targets[swap_idx], targets[idx]
+    if any(idx == targets[idx] for idx in range(host_num)):
+        sys.exit("failed to build random routes without duplicates")
+    return targets
+
+
+def set_fib(net, host_num, rng):
+    # Random next hops on the 192.168.1.x subnet (no duplicates, no self).
+    targets = build_random_routes(host_num, rng)
+    for idx in range(host_num):
         node_name = f"h{idx}"
-        next_hop_ip = f"192.168.0.{idx + 2}"
+        next_hop_ip = f"192.168.1.{targets[idx] + 1}"
         command = f"cefroute add ccnx:/test udp {next_hop_ip} -d ./{node_name}"
         print(node_name, "command:", command)
         info(net.hosts[idx].cmd(command))
@@ -161,7 +177,7 @@ def run_mesh_topology(host_num):
     for idx in range(host_num):
         start_cefnetd(net, idx)
 
-    set_fib(net, host_num)
+    set_fib(net, host_num, rng)
     time.sleep(1)
 
     publisher = host_num - 1
