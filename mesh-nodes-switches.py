@@ -3,7 +3,7 @@
 """
 Mesh topology example using Cefore and Mininet.
 
-Each host connects to every switch (switches = hosts - 1).
+Each host connects to every switch (switches = hosts).
 """
 
 import argparse
@@ -66,14 +66,23 @@ def ensure_node_dirs(host_num, rng):
 
 
 def set_ip_addr(net, host_num, switch_num):
-    # Assign one /24 per switch; host index selects the last octet.
+    # Assign one /24 per Ethernet index across hosts and switches.
     for host_idx in range(host_num):
         node_name = f"h{host_idx}"
-        for switch_idx in range(switch_num):
-            ip = f"192.168.{switch_idx}.{host_idx + 1}"
-            command = f"ifconfig {node_name}-eth{switch_idx} {ip}"
+        for eth_idx in range(switch_num):
+            ip = f"192.168.{eth_idx}.{host_idx + 1}"
+            command = f"ifconfig {node_name}-eth{eth_idx} {ip}"
             print(node_name, "command:", command)
             net.hosts[host_idx].cmd(command)
+
+    for switch_idx in range(switch_num):
+        node_name = f"s{switch_idx}"
+        switch_octet = 127 - switch_idx
+        for eth_idx in range(host_num):
+            ip = f"192.168.{eth_idx}.{switch_octet}"
+            command = f"ifconfig {node_name}-eth{eth_idx} {ip}"
+            print(node_name, "command:", command)
+            net.switches[switch_idx].cmd(command)
 
 
 def set_fib(net, host_num):
@@ -137,7 +146,7 @@ def run_mesh_topology(host_num):
     net = Mininet(topo=topo, waitConnected=True)
     net.start()
 
-    switch_num = host_num - 1
+    switch_num = host_num
     set_ip_addr(net, host_num, switch_num)
 
     for idx in range(host_num):
@@ -192,7 +201,7 @@ class MeshTopo(Topo):
 
     # pylint: disable=arguments-differ
     def build(self, hosts, **_kwargs):
-        switches = hosts - 1
+        switches = hosts
         host_nodes = [self.addHost(f"h{idx}") for idx in range(hosts)]
         switch_nodes = [self.addSwitch(f"s{idx}") for idx in range(switches)]
 
