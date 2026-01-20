@@ -142,13 +142,27 @@ def cleanup_node_dirs():
             shutil.rmtree(name)
 
 
-def run_mesh_topology(host_num, link_num):
+def min_required_links(host_num):
+    return max(2, (host_num + 1) // 2)
+
+
+def max_possible_links(host_num):
+    return host_num * (host_num - 1) // 2
+
+
+def run_mesh_topology(host_num, link_num, seed):
     if host_num < 3:
         sys.exit("host count must be at least 3")
-    if link_num < 2 or link_num > host_num - 1:
-        sys.exit("link count must be between 2 and host_num - 1")
+    if link_num < 2:
+        sys.exit("link count must be at least 2")
+    max_links = max_possible_links(host_num)
+    if link_num > max_links:
+        sys.exit(f"link count must be at most {max_links}")
+    min_links = min_required_links(host_num)
+    if link_num < min_links:
+        sys.exit(f"link count must be at least {min_links} to cover all hosts")
 
-    rng = random.Random()
+    rng = random.Random(seed)
     ensure_node_dirs(host_num, rng)
 
     topo = MeshTopo(hosts=host_num, link_num=link_num, rng=rng)
@@ -211,13 +225,41 @@ class MeshTopo(Topo):
     def build(self, hosts, link_num=2, rng=None, **_kwargs):
         if rng is None:
             rng = random.Random()
-        if link_num < 2 or link_num > hosts - 1:
-            raise ValueError("link_num must be between 2 and hosts - 1")
+        if link_num < 2:
+            raise ValueError("link_num must be at least 2")
+        max_links = max_possible_links(hosts)
+        if link_num > max_links:
+            raise ValueError(f"link_num must be at most {max_links}")
+        min_links = min_required_links(hosts)
+        if link_num < min_links:
+            raise ValueError(f"link_num must be at least {min_links} to cover all hosts")
 
         host_nodes = [self.addHost(f"h{idx}") for idx in range(hosts)]
-        link_pairs = [(a, b) for a in range(hosts) for b in range(a + 1, hosts)]
-        rng.shuffle(link_pairs)
-        selected_links = link_pairs[:link_num]
+        host_ids = list(range(hosts))
+        rng.shuffle(host_ids)
+        selected_links = []
+        used_links = set()
+        for idx in range(0, hosts - 1, 2):
+            host_a, host_b = sorted((host_ids[idx], host_ids[idx + 1]))
+            selected_links.append((host_a, host_b))
+            used_links.add((host_a, host_b))
+        if hosts % 2 == 1:
+            last_host = host_ids[-1]
+            other_host = rng.choice([host for host in range(hosts) if host != last_host])
+            host_a, host_b = sorted((last_host, other_host))
+            if (host_a, host_b) not in used_links:
+                selected_links.append((host_a, host_b))
+                used_links.add((host_a, host_b))
+
+        if len(selected_links) < link_num:
+            link_pairs = [
+                (a, b)
+                for a in range(hosts)
+                for b in range(a + 1, hosts)
+                if (a, b) not in used_links
+            ]
+            rng.shuffle(link_pairs)
+            selected_links.extend(link_pairs[: link_num - len(selected_links)])
 
         self.mesh_links = []
         host_ports = [0] * hosts
@@ -257,12 +299,18 @@ def main():
         "--links",
         type=int,
         default=2,
-        help="number of random links (2..hosts-1)",
+        help="number of random links (min: 2, max: all pairs)",
+    )
+    parser.add_argument(
+        "--seed",
+        type=int,
+        default=None,
+        help="random seed for deterministic topology",
     )
     args = parser.parse_args()
 
     setLogLevel("info")
-    run_mesh_topology(args.hosts, args.links)
+    run_mesh_topology(args.hosts, args.links, args.seed)
 
 
 if __name__ == "__main__":
