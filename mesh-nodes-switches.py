@@ -90,14 +90,15 @@ def set_fib(net, mesh_links):
         host_b = link["host_b"]
         host_a_name = f"h{host_a}"
         host_b_name = f"h{host_b}"
+        prefix = f"ccnx:/{host_a_name}-{host_b_name}"
         host_b_ip = f"192.168.{subnet}.{host_b + 1}"
         host_a_ip = f"192.168.{subnet}.{host_a + 1}"
 
-        command = f"cefroute add ccnx:/test udp {host_b_ip} -d ./{host_a_name}"
+        command = f"cefroute add {prefix} udp {host_b_ip} -d ./{host_a_name}"
         print(host_a_name, "command:", command)
         info(net.hosts[host_a].cmd(command))
 
-        command = f"cefroute add ccnx:/test udp {host_a_ip} -d ./{host_b_name}"
+        command = f"cefroute add {prefix} udp {host_a_ip} -d ./{host_b_name}"
         print(host_b_name, "command:", command)
         info(net.hosts[host_b].cmd(command))
 
