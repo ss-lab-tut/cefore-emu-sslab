@@ -82,6 +82,12 @@ def set_ip_addr(net, mesh_links):
             net.hosts[host_idx].cmd(command)
 
 
+def link_prefix(host_a, host_b):
+    host_a_name = f"h{host_a}"
+    host_b_name = f"h{host_b}"
+    return f"ccnx:/{host_a_name}-{host_b_name}"
+
+
 def set_fib(net, mesh_links):
     # Add FIB entries for each linked host pair.
     for link in mesh_links:
@@ -90,7 +96,7 @@ def set_fib(net, mesh_links):
         host_b = link["host_b"]
         host_a_name = f"h{host_a}"
         host_b_name = f"h{host_b}"
-        prefix = f"ccnx:/{host_a_name}-{host_b_name}"
+        prefix = link_prefix(host_a, host_b)
         host_b_ip = f"192.168.{subnet}.{host_b + 1}"
         host_a_ip = f"192.168.{subnet}.{host_a + 1}"
 
@@ -101,6 +107,58 @@ def set_fib(net, mesh_links):
         command = f"cefroute add {prefix} udp {host_a_ip} -d ./{host_b_name}"
         print(host_b_name, "command:", command)
         info(net.hosts[host_b].cmd(command))
+
+
+def find_link(mesh_links, host_a, host_b):
+    for link in mesh_links:
+        if {link["host_a"], link["host_b"]} == {host_a, host_b}:
+            return link
+    return None
+
+
+def set_link_state(net, mesh_links, host_a, host_b, state):
+    link = find_link(mesh_links, host_a, host_b)
+    if link is None:
+        sys.exit(f"link not found between h{host_a} and h{host_b}")
+    switch_name = link["switch"]
+    host_a_name = f"h{host_a}"
+    host_b_name = f"h{host_b}"
+    info("link", host_a_name, host_b_name, state, "\n")
+    # Equivalent to Mininet CLI: link hX hY up/down
+    net.configLinkStatus(host_a_name, switch_name, state)
+    net.configLinkStatus(host_b_name, switch_name, state)
+
+
+def link_down(net, mesh_links, host_a, host_b):
+    set_link_state(net, mesh_links, host_a, host_b, "down")
+
+
+def link_up(net, mesh_links, host_a, host_b):
+    set_link_state(net, mesh_links, host_a, host_b, "up")
+
+
+def pick_publish_link(mesh_links, publisher):
+    for link in mesh_links:
+        if publisher in (link["host_a"], link["host_b"]):
+            return link
+    sys.exit(f"publisher h{publisher} has no links")
+
+
+def run_cefputfile(net, host_idx, uri):
+    node_name = f"h{host_idx}"
+    command = (
+        f"cefputfile {uri} -f ./sample-putfile -t 3000 -e 3000 -d ./{node_name} "
+        "> cefputfile-log"
+    )
+    print(node_name, "command:", command)
+    net.hosts[host_idx].cmd(command)
+
+
+def run_cefgetfile(net, host_idx, uri, output_path):
+    node_name = f"h{host_idx}"
+    command = f"cefgetfile {uri} -f {output_path} -d ./{node_name} > cefgetfile-log"
+    print(node_name, "command:", command)
+    net.hosts[host_idx].cmd(command)
 
 
 def start_csmgrd(net, idx):
@@ -188,24 +246,22 @@ def run_mesh_topology(host_num, link_num, seed):
     time.sleep(1)
 
     publisher = host_num - 1
-    node_name = f"h{publisher}"
-    command = (
-        "cefputfile ccnx:/test -f ./sample-putfile -t 3000 -e 3000 -d ./"
-        + node_name
-        + " > cefputfile-log"
+    publish_link = pick_publish_link(topo.mesh_links, publisher)
+    publish_prefix = link_prefix(publish_link["host_a"], publish_link["host_b"])
+    publish_uri = f"{publish_prefix}/test.py"
+    consumer = (
+        publish_link["host_b"]
+        if publish_link["host_a"] == publisher
+        else publish_link["host_a"]
     )
-    print(node_name, "command:", command)
-    net.hosts[publisher].cmd(command)
+
+    run_cefputfile(net, publisher, publish_uri)
     time.sleep(5)
 
-    node_name = "h0"
-    command = (
-        "cefgetfile ccnx:/test -f ./recvfile_at_h0 -d ./"
-        + node_name
-        + " > cefgetfile-log"
-    )
-    print(node_name, "command:", command)
-    net.hosts[0].cmd(command)
+    link_down(net, topo.mesh_links, 0, 7)
+    link_down(net, topo.mesh_links, 1, 5)
+
+    run_cefgetfile(net, consumer, publish_uri, f"./recvfile_at_h{consumer}")
 
     CLI(net)
 
@@ -233,7 +289,9 @@ class MeshTopo(Topo):
             raise ValueError(f"link_num must be at most {max_links}")
         min_links = min_required_links(hosts)
         if link_num < min_links:
-            raise ValueError(f"link_num must be at least {min_links} to cover all hosts")
+            raise ValueError(
+                f"link_num must be at least {min_links} to cover all hosts"
+            )
 
         host_nodes = [self.addHost(f"h{idx}") for idx in range(hosts)]
         host_ids = list(range(hosts))
@@ -246,7 +304,9 @@ class MeshTopo(Topo):
             used_links.add((host_a, host_b))
         if hosts % 2 == 1:
             last_host = host_ids[-1]
-            other_host = rng.choice([host for host in range(hosts) if host != last_host])
+            other_host = rng.choice(
+                [host for host in range(hosts) if host != last_host]
+            )
             host_a, host_b = sorted((last_host, other_host))
             if (host_a, host_b) not in used_links:
                 selected_links.append((host_a, host_b))
@@ -282,6 +342,7 @@ class MeshTopo(Topo):
                     "host_b": host_b,
                     "host_a_eth": host_a_eth,
                     "host_b_eth": host_b_eth,
+                    "switch": switch_name,
                 }
             )
 
