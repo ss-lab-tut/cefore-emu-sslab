@@ -54,6 +54,28 @@ def update_local_sock_id(node_dir, idx):
             conf_file.writelines(new_lines)
 
 
+def update_node_name(node_dir, idx, base_uri="example.com/xxx/router-"):
+    conf_path = os.path.join(node_dir, "cefnetd.conf")
+    if not os.path.isfile(conf_path):
+        return
+    with open(conf_path, "r", encoding="utf-8") as conf_file:
+        lines = conf_file.readlines()
+    updated = False
+    new_lines = []
+    for line in lines:
+        stripped = line.lstrip()
+        if stripped.startswith("NODE_NAME=") or stripped.startswith("#NODE_NAME="):
+            leading = line[: len(line) - len(stripped)]
+            new_lines.append(f'{leading}#NODE_NAME="{base_uri}{idx}"\n')
+            updated = True
+        else:
+            new_lines.append(line)
+    if not updated:
+        new_lines.append(f'#NODE_NAME="{base_uri}{idx}"\n')
+    with open(conf_path, "w", encoding="utf-8") as conf_file:
+        conf_file.writelines(new_lines)
+
+
 def ensure_node_dirs(host_num, rng):
     for idx in range(host_num):
         node_dir = f"h{idx}"
