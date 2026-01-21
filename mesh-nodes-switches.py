@@ -260,6 +260,11 @@ def run_mesh_topology(host_num, link_num, seed):
 
     link_down(net, topo.mesh_links, 0, 7)
     link_down(net, topo.mesh_links, 1, 5)
+    link_down(net, topo.mesh_links, 2, 4)
+    link_down(net, topo.mesh_links, 3, 6)
+    link_down(net, topo.mesh_links, 4, 7)
+    link_down(net, topo.mesh_links, 5, 6)
+    link_down(net, topo.mesh_links, 6, 7)
 
     run_cefgetfile(net, consumer, publish_uri, f"./recvfile_at_h{consumer}")
 
