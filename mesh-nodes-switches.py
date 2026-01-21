@@ -109,6 +109,23 @@ def set_fib(net, mesh_links):
         info(net.hosts[host_b].cmd(command))
 
 
+def print_mesh_links(mesh_links):
+    info("\nMesh links (host-switch-host):\n")
+    for link in sorted(mesh_links, key=lambda item: item["subnet"]):
+        host_a = link["host_a"]
+        host_b = link["host_b"]
+        host_a_name = f"h{host_a}"
+        host_b_name = f"h{host_b}"
+        host_a_eth = link["host_a_eth"]
+        host_b_eth = link["host_b_eth"]
+        switch_name = link["switch"]
+        line = (
+            f"{host_a_name}-eth{host_a_eth} -- {switch_name} -- "
+            f"{host_b_name}-eth{host_b_eth} (subnet {link['subnet']})"
+        )
+        info(line + "\n")
+
+
 def find_link(mesh_links, host_a, host_b):
     for link in mesh_links:
         if {link["host_a"], link["host_b"]} == {host_a, host_b}:
@@ -243,6 +260,7 @@ def run_mesh_topology(host_num, link_num, seed):
         start_cefnetd(net, idx)
 
     set_fib(net, topo.mesh_links)
+    print_mesh_links(topo.mesh_links)
     time.sleep(1)
 
     publisher = host_num - 1
