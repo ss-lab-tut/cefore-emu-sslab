@@ -1,0 +1,1822 @@
+395 yamakawa@HP-Z8-G4-Workstation:~/Development/github/cefore-emu-koh11235813 $ sudo -E python3 mesh-nodes-switches.py --hosts 8 --switches 25 --seed 4                                                                                                              [feature/mesh]
+[sudo] password for yamakawa:
+*** Creating network
+*** Adding controller
+*** Adding hosts:
+h0 h1 h2 h3 h4 h5 h6 h7
+*** Adding switches:
+s0 s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 s11 s12 s13 s14 s15 s16 s17 s18 s19 s20 s21 s22 s23 s24
+*** Adding links:
+(h0, s0) (h0, s5) (h0, s14) (h0, s15) (h0, s17) (h0, s23) (h1, s3) (h1, s6) (h1, s9) (h1, s19) (h1, s22) (h1, s24) (h2, s1) (h2, s8) (h2, s9) (h2, s10) (h2, s20) (h2, s23) (h3, s2) (h3, s11) (h3, s17) (h3, s20) (h3, s21) (h3, s22) (h4, s1) (h4, s4) (h4, s7) (h4, s11) (h4, s14) (h4, s16) (h4, s19) (h5, s3) (h5, s7) (h5, s12) (h5, s15) (h5, s18) (h5, s21) (h6, s2) (h6, s5) (h6, s8) (h6, s12) (h6, s13) (h6, s16) (h6, s24) (h7, s0) (h7, s4) (h7, s6) (h7, s10) (h7, s13) (h7, s18)
+*** Configuring hosts
+h0 h1 h2 h3 h4 h5 h6 h7
+*** Starting controller
+c0
+*** Starting 25 switches
+s0 s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 s11 s12 s13 s14 s15 s16 s17 s18 s19 s20 s21 s22 s23 s24 ...
+*** Waiting for switches to connect
+s14 s15 s16 s17 s18 s19 s20 s21 s22 s23 s24 s0 s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 s11 s12 s13
+h0 command: ifconfig h0-eth0 192.168.1.1
+h7 command: ifconfig h7-eth0 192.168.1.8
+h2 command: ifconfig h2-eth0 192.168.2.3
+h4 command: ifconfig h4-eth0 192.168.2.5
+h3 command: ifconfig h3-eth0 192.168.3.4
+h6 command: ifconfig h6-eth0 192.168.3.7
+h1 command: ifconfig h1-eth0 192.168.4.2
+h5 command: ifconfig h5-eth0 192.168.4.6
+h4 command: ifconfig h4-eth1 192.168.5.5
+h7 command: ifconfig h7-eth1 192.168.5.8
+h0 command: ifconfig h0-eth1 192.168.6.1
+h6 command: ifconfig h6-eth1 192.168.6.7
+h1 command: ifconfig h1-eth1 192.168.7.2
+h7 command: ifconfig h7-eth2 192.168.7.8
+h4 command: ifconfig h4-eth2 192.168.8.5
+h5 command: ifconfig h5-eth1 192.168.8.6
+h2 command: ifconfig h2-eth1 192.168.9.3
+h6 command: ifconfig h6-eth2 192.168.9.7
+h1 command: ifconfig h1-eth2 192.168.10.2
+h2 command: ifconfig h2-eth2 192.168.10.3
+h2 command: ifconfig h2-eth3 192.168.11.3
+h7 command: ifconfig h7-eth3 192.168.11.8
+h3 command: ifconfig h3-eth1 192.168.12.4
+h4 command: ifconfig h4-eth3 192.168.12.5
+h5 command: ifconfig h5-eth2 192.168.13.6
+h6 command: ifconfig h6-eth3 192.168.13.7
+h6 command: ifconfig h6-eth4 192.168.14.7
+h7 command: ifconfig h7-eth4 192.168.14.8
+h0 command: ifconfig h0-eth2 192.168.15.1
+h4 command: ifconfig h4-eth4 192.168.15.5
+h0 command: ifconfig h0-eth3 192.168.16.1
+h5 command: ifconfig h5-eth3 192.168.16.6
+h4 command: ifconfig h4-eth5 192.168.17.5
+h6 command: ifconfig h6-eth5 192.168.17.7
+h0 command: ifconfig h0-eth4 192.168.18.1
+h3 command: ifconfig h3-eth2 192.168.18.4
+h5 command: ifconfig h5-eth4 192.168.19.6
+h7 command: ifconfig h7-eth5 192.168.19.8
+h1 command: ifconfig h1-eth3 192.168.20.2
+h4 command: ifconfig h4-eth6 192.168.20.5
+h2 command: ifconfig h2-eth4 192.168.21.3
+h3 command: ifconfig h3-eth3 192.168.21.4
+h3 command: ifconfig h3-eth4 192.168.22.4
+h5 command: ifconfig h5-eth5 192.168.22.6
+h1 command: ifconfig h1-eth4 192.168.23.2
+h3 command: ifconfig h3-eth5 192.168.23.4
+h0 command: ifconfig h0-eth5 192.168.24.1
+h2 command: ifconfig h2-eth5 192.168.24.3
+h1 command: ifconfig h1-eth5 192.168.25.2
+h6 command: ifconfig h6-eth6 192.168.25.7
+h0 command: ifconfig
+h0-eth0: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.1.1  netmask 255.255.255.0  broadcast 192.168.1.255
+        inet6 fe80::5c1e:4cff:fe64:a352  prefixlen 64  scopeid 0x20<link>
+        ether 5e:1e:4c:64:a3:52  txqueuelen 1000  (Ethernet)
+        RX packets 20  bytes 2607 (2.6 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 7  bytes 586 (586.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+h0-eth1: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.6.1  netmask 255.255.255.0  broadcast 192.168.6.255
+        inet6 fe80::a892:59ff:feb5:4588  prefixlen 64  scopeid 0x20<link>
+        ether aa:92:59:b5:45:88  txqueuelen 1000  (Ethernet)
+        RX packets 21  bytes 2677 (2.6 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 7  bytes 586 (586.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+h0-eth2: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.15.1  netmask 255.255.255.0  broadcast 192.168.15.255
+        inet6 fe80::a802:3dff:fe93:f691  prefixlen 64  scopeid 0x20<link>
+        ether aa:02:3d:93:f6:91  txqueuelen 1000  (Ethernet)
+        RX packets 20  bytes 2607 (2.6 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 7  bytes 586 (586.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+h0-eth3: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.16.1  netmask 255.255.255.0  broadcast 192.168.16.255
+        inet6 fe80::d0c2:baff:fef2:710c  prefixlen 64  scopeid 0x20<link>
+        ether d2:c2:ba:f2:71:0c  txqueuelen 1000  (Ethernet)
+        RX packets 21  bytes 2677 (2.6 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 7  bytes 586 (586.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+h0-eth4: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.18.1  netmask 255.255.255.0  broadcast 192.168.18.255
+        inet6 fe80::885a:53ff:fe81:5afe  prefixlen 64  scopeid 0x20<link>
+        ether 8a:5a:53:81:5a:fe  txqueuelen 1000  (Ethernet)
+        RX packets 16  bytes 2143 (2.1 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 6  bytes 516 (516.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+h0-eth5: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.24.1  netmask 255.255.255.0  broadcast 192.168.24.255
+        inet6 fe80::fc70:5ff:fe4c:86ff  prefixlen 64  scopeid 0x20<link>
+        ether fe:70:05:4c:86:ff  txqueuelen 1000  (Ethernet)
+        RX packets 19  bytes 2373 (2.3 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 6  bytes 516 (516.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+lo: flags=73<UP,LOOPBACK,RUNNING>  mtu 65536
+        inet 127.0.0.1  netmask 255.0.0.0
+        inet6 ::1  prefixlen 128  scopeid 0x10<host>
+        loop  txqueuelen 1000  (Local Loopback)
+        RX packets 0  bytes 0 (0.0 B)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 0  bytes 0 (0.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+h1 command: ifconfig
+h1-eth0: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.4.2  netmask 255.255.255.0  broadcast 192.168.4.255
+        inet6 fe80::40e7:95ff:fe2e:c3e4  prefixlen 64  scopeid 0x20<link>
+        ether 42:e7:95:2e:c3:e4  txqueuelen 1000  (Ethernet)
+        RX packets 17  bytes 2233 (2.2 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 6  bytes 516 (516.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+h1-eth1: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.7.2  netmask 255.255.255.0  broadcast 192.168.7.255
+        inet6 fe80::d015:10ff:fe21:b43c  prefixlen 64  scopeid 0x20<link>
+        ether d2:15:10:21:b4:3c  txqueuelen 1000  (Ethernet)
+        RX packets 19  bytes 2393 (2.3 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 6  bytes 516 (516.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+h1-eth2: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.10.2  netmask 255.255.255.0  broadcast 192.168.10.255
+        inet6 fe80::28f4:3dff:fe5b:e658  prefixlen 64  scopeid 0x20<link>
+        ether 2a:f4:3d:5b:e6:58  txqueuelen 1000  (Ethernet)
+        RX packets 16  bytes 2143 (2.1 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 6  bytes 516 (516.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+h1-eth3: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.20.2  netmask 255.255.255.0  broadcast 192.168.20.255
+        inet6 fe80::e8d6:10ff:fe12:dd21  prefixlen 64  scopeid 0x20<link>
+        ether ea:d6:10:12:dd:21  txqueuelen 1000  (Ethernet)
+        RX packets 19  bytes 2393 (2.3 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 7  bytes 586 (586.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+h1-eth4: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.23.2  netmask 255.255.255.0  broadcast 192.168.23.255
+        inet6 fe80::10fd:d2ff:fe57:def1  prefixlen 64  scopeid 0x20<link>
+        ether 12:fd:d2:57:de:f1  txqueuelen 1000  (Ethernet)
+        RX packets 19  bytes 2393 (2.3 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 6  bytes 516 (516.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+h1-eth5: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.25.2  netmask 255.255.255.0  broadcast 192.168.25.255
+        inet6 fe80::b87b:c7ff:fe03:8102  prefixlen 64  scopeid 0x20<link>
+        ether ba:7b:c7:03:81:02  txqueuelen 1000  (Ethernet)
+        RX packets 20  bytes 2607 (2.6 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 7  bytes 586 (586.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+lo: flags=73<UP,LOOPBACK,RUNNING>  mtu 65536
+        inet 127.0.0.1  netmask 255.0.0.0
+        inet6 ::1  prefixlen 128  scopeid 0x10<host>
+        loop  txqueuelen 1000  (Local Loopback)
+        RX packets 0  bytes 0 (0.0 B)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 0  bytes 0 (0.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+h2 command: ifconfig
+h2-eth0: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.2.3  netmask 255.255.255.0  broadcast 192.168.2.255
+        inet6 fe80::5c4d:4ff:fed9:df03  prefixlen 64  scopeid 0x20<link>
+        ether 5e:4d:04:d9:df:03  txqueuelen 1000  (Ethernet)
+        RX packets 17  bytes 2233 (2.2 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 6  bytes 516 (516.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+h2-eth1: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.9.3  netmask 255.255.255.0  broadcast 192.168.9.255
+        inet6 fe80::547b:4cff:fed1:4c51  prefixlen 64  scopeid 0x20<link>
+        ether 56:7b:4c:d1:4c:51  txqueuelen 1000  (Ethernet)
+        RX packets 19  bytes 2393 (2.3 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 7  bytes 586 (586.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+h2-eth2: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.10.3  netmask 255.255.255.0  broadcast 192.168.10.255
+        inet6 fe80::241a:32ff:feea:f302  prefixlen 64  scopeid 0x20<link>
+        ether 26:1a:32:ea:f3:02  txqueuelen 1000  (Ethernet)
+        RX packets 16  bytes 2143 (2.1 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 6  bytes 516 (516.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+h2-eth3: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.11.3  netmask 255.255.255.0  broadcast 192.168.11.255
+        inet6 fe80::404f:5cff:fe1f:b6ec  prefixlen 64  scopeid 0x20<link>
+        ether 42:4f:5c:1f:b6:ec  txqueuelen 1000  (Ethernet)
+        RX packets 20  bytes 2483 (2.4 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 6  bytes 516 (516.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+h2-eth4: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.21.3  netmask 255.255.255.0  broadcast 192.168.21.255
+        inet6 fe80::a885:e4ff:fe50:3e08  prefixlen 64  scopeid 0x20<link>
+        ether aa:85:e4:50:3e:08  txqueuelen 1000  (Ethernet)
+        RX packets 20  bytes 2463 (2.4 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 6  bytes 516 (516.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+h2-eth5: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.24.3  netmask 255.255.255.0  broadcast 192.168.24.255
+        inet6 fe80::dc5f:54ff:fe27:8770  prefixlen 64  scopeid 0x20<link>
+        ether de:5f:54:27:87:70  txqueuelen 1000  (Ethernet)
+        RX packets 18  bytes 2303 (2.3 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 7  bytes 586 (586.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+lo: flags=73<UP,LOOPBACK,RUNNING>  mtu 65536
+        inet 127.0.0.1  netmask 255.0.0.0
+        inet6 ::1  prefixlen 128  scopeid 0x10<host>
+        loop  txqueuelen 1000  (Local Loopback)
+        RX packets 0  bytes 0 (0.0 B)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 0  bytes 0 (0.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+h3 command: ifconfig
+h3-eth0: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.3.4  netmask 255.255.255.0  broadcast 192.168.3.255
+        inet6 fe80::e4:baff:fe15:4358  prefixlen 64  scopeid 0x20<link>
+        ether 02:e4:ba:15:43:58  txqueuelen 1000  (Ethernet)
+        RX packets 19  bytes 2393 (2.3 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 6  bytes 516 (516.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+h3-eth1: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.12.4  netmask 255.255.255.0  broadcast 192.168.12.255
+        inet6 fe80::e8ce:1dff:fe3d:1098  prefixlen 64  scopeid 0x20<link>
+        ether ea:ce:1d:3d:10:98  txqueuelen 1000  (Ethernet)
+        RX packets 19  bytes 2393 (2.3 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 6  bytes 516 (516.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+h3-eth2: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.18.4  netmask 255.255.255.0  broadcast 192.168.18.255
+        inet6 fe80::83d:6eff:fe7d:3b66  prefixlen 64  scopeid 0x20<link>
+        ether 0a:3d:6e:7d:3b:66  txqueuelen 1000  (Ethernet)
+        RX packets 16  bytes 2143 (2.1 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 6  bytes 516 (516.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+h3-eth3: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.21.4  netmask 255.255.255.0  broadcast 192.168.21.255
+        inet6 fe80::f857:f5ff:fe6c:52b7  prefixlen 64  scopeid 0x20<link>
+        ether fa:57:f5:6c:52:b7  txqueuelen 1000  (Ethernet)
+        RX packets 17  bytes 2233 (2.2 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 6  bytes 516 (516.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+h3-eth4: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.22.4  netmask 255.255.255.0  broadcast 192.168.22.255
+        inet6 fe80::4851:94ff:feeb:5ae  prefixlen 64  scopeid 0x20<link>
+        ether 4a:51:94:eb:05:ae  txqueuelen 1000  (Ethernet)
+        RX packets 19  bytes 2393 (2.3 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 6  bytes 516 (516.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+h3-eth5: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.23.4  netmask 255.255.255.0  broadcast 192.168.23.255
+        inet6 fe80::90a3:faff:fe9c:111f  prefixlen 64  scopeid 0x20<link>
+        ether 92:a3:fa:9c:11:1f  txqueuelen 1000  (Ethernet)
+        RX packets 16  bytes 2143 (2.1 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 6  bytes 516 (516.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+lo: flags=73<UP,LOOPBACK,RUNNING>  mtu 65536
+        inet 127.0.0.1  netmask 255.0.0.0
+        inet6 ::1  prefixlen 128  scopeid 0x10<host>
+        loop  txqueuelen 1000  (Local Loopback)
+        RX packets 0  bytes 0 (0.0 B)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 0  bytes 0 (0.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+h4 command: ifconfig
+h4-eth0: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.2.5  netmask 255.255.255.0  broadcast 192.168.2.255
+        inet6 fe80::1c19:a8ff:fecc:a35e  prefixlen 64  scopeid 0x20<link>
+        ether 1e:19:a8:cc:a3:5e  txqueuelen 1000  (Ethernet)
+        RX packets 19  bytes 2393 (2.3 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 6  bytes 516 (516.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+h4-eth1: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.5.5  netmask 255.255.255.0  broadcast 192.168.5.255
+        inet6 fe80::a098:beff:fe57:baec  prefixlen 64  scopeid 0x20<link>
+        ether a2:98:be:57:ba:ec  txqueuelen 1000  (Ethernet)
+        RX packets 20  bytes 2479 (2.4 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 6  bytes 516 (516.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+h4-eth2: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.8.5  netmask 255.255.255.0  broadcast 192.168.8.255
+        inet6 fe80::201c:b3ff:fe80:2866  prefixlen 64  scopeid 0x20<link>
+        ether 22:1c:b3:80:28:66  txqueuelen 1000  (Ethernet)
+        RX packets 19  bytes 2393 (2.3 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 6  bytes 516 (516.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+h4-eth3: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.12.5  netmask 255.255.255.0  broadcast 192.168.12.255
+        inet6 fe80::b45c:19ff:fe09:cae  prefixlen 64  scopeid 0x20<link>
+        ether b6:5c:19:09:0c:ae  txqueuelen 1000  (Ethernet)
+        RX packets 16  bytes 2143 (2.1 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 6  bytes 516 (516.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+h4-eth4: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.15.5  netmask 255.255.255.0  broadcast 192.168.15.255
+        inet6 fe80::53:bff:fe82:36d6  prefixlen 64  scopeid 0x20<link>
+        ether 02:53:0b:82:36:d6  txqueuelen 1000  (Ethernet)
+        RX packets 17  bytes 2213 (2.2 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 6  bytes 516 (516.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+h4-eth5: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.17.5  netmask 255.255.255.0  broadcast 192.168.17.255
+        inet6 fe80::c84:afff:fe42:1094  prefixlen 64  scopeid 0x20<link>
+        ether 0e:84:af:42:10:94  txqueuelen 1000  (Ethernet)
+        RX packets 20  bytes 2463 (2.4 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 6  bytes 516 (516.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+h4-eth6: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.20.5  netmask 255.255.255.0  broadcast 192.168.20.255
+        inet6 fe80::6c25:a2ff:fe36:75e1  prefixlen 64  scopeid 0x20<link>
+        ether 6e:25:a2:36:75:e1  txqueuelen 1000  (Ethernet)
+        RX packets 17  bytes 2196 (2.1 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 6  bytes 516 (516.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+lo: flags=73<UP,LOOPBACK,RUNNING>  mtu 65536
+        inet 127.0.0.1  netmask 255.0.0.0
+        inet6 ::1  prefixlen 128  scopeid 0x10<host>
+        loop  txqueuelen 1000  (Local Loopback)
+        RX packets 0  bytes 0 (0.0 B)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 0  bytes 0 (0.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+h5 command: ifconfig
+h5-eth0: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.4.6  netmask 255.255.255.0  broadcast 192.168.4.255
+        inet6 fe80::d880:33ff:fe52:f3b2  prefixlen 64  scopeid 0x20<link>
+        ether da:80:33:52:f3:b2  txqueuelen 1000  (Ethernet)
+        RX packets 15  bytes 2036 (2.0 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 6  bytes 516 (516.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+h5-eth1: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.8.6  netmask 255.255.255.0  broadcast 192.168.8.255
+        inet6 fe80::d8f9:a1ff:feb5:5fe3  prefixlen 64  scopeid 0x20<link>
+        ether da:f9:a1:b5:5f:e3  txqueuelen 1000  (Ethernet)
+        RX packets 19  bytes 2393 (2.3 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 6  bytes 516 (516.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+h5-eth2: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.13.6  netmask 255.255.255.0  broadcast 192.168.13.255
+        inet6 fe80::ec36:bff:fe4a:bb32  prefixlen 64  scopeid 0x20<link>
+        ether ee:36:0b:4a:bb:32  txqueuelen 1000  (Ethernet)
+        RX packets 18  bytes 2286 (2.2 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 6  bytes 516 (516.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+h5-eth3: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.16.6  netmask 255.255.255.0  broadcast 192.168.16.255
+        inet6 fe80::9499:ecff:fe10:c4bb  prefixlen 64  scopeid 0x20<link>
+        ether 96:99:ec:10:c4:bb  txqueuelen 1000  (Ethernet)
+        RX packets 18  bytes 2283 (2.2 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 6  bytes 516 (516.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+h5-eth4: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.19.6  netmask 255.255.255.0  broadcast 192.168.19.255
+        inet6 fe80::30fa:7aff:fe68:e880  prefixlen 64  scopeid 0x20<link>
+        ether 32:fa:7a:68:e8:80  txqueuelen 1000  (Ethernet)
+        RX packets 18  bytes 2286 (2.2 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 6  bytes 516 (516.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+h5-eth5: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.22.6  netmask 255.255.255.0  broadcast 192.168.22.255
+        inet6 fe80::48f0:38ff:fe9e:61d0  prefixlen 64  scopeid 0x20<link>
+        ether 4a:f0:38:9e:61:d0  txqueuelen 1000  (Ethernet)
+        RX packets 17  bytes 2233 (2.2 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 6  bytes 516 (516.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+lo: flags=73<UP,LOOPBACK,RUNNING>  mtu 65536
+        inet 127.0.0.1  netmask 255.0.0.0
+        inet6 ::1  prefixlen 128  scopeid 0x10<host>
+        loop  txqueuelen 1000  (Local Loopback)
+        RX packets 0  bytes 0 (0.0 B)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 0  bytes 0 (0.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+h6 command: ifconfig
+h6-eth0: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.3.7  netmask 255.255.255.0  broadcast 192.168.3.255
+        inet6 fe80::c8d3:f6ff:feb9:821  prefixlen 64  scopeid 0x20<link>
+        ether ca:d3:f6:b9:08:21  txqueuelen 1000  (Ethernet)
+        RX packets 18  bytes 2286 (2.2 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 6  bytes 516 (516.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+h6-eth1: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.6.7  netmask 255.255.255.0  broadcast 192.168.6.255
+        inet6 fe80::48dd:c4ff:fed0:9d99  prefixlen 64  scopeid 0x20<link>
+        ether 4a:dd:c4:d0:9d:99  txqueuelen 1000  (Ethernet)
+        RX packets 16  bytes 2106 (2.1 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 6  bytes 516 (516.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+h6-eth2: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.9.7  netmask 255.255.255.0  broadcast 192.168.9.255
+        inet6 fe80::4491:aaff:fe76:56b0  prefixlen 64  scopeid 0x20<link>
+        ether 46:91:aa:76:56:b0  txqueuelen 1000  (Ethernet)
+        RX packets 17  bytes 2196 (2.1 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 6  bytes 516 (516.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+h6-eth3: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.13.7  netmask 255.255.255.0  broadcast 192.168.13.255
+        inet6 fe80::a09e:83ff:fe12:bfbd  prefixlen 64  scopeid 0x20<link>
+        ether a2:9e:83:12:bf:bd  txqueuelen 1000  (Ethernet)
+        RX packets 18  bytes 2286 (2.2 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 6  bytes 516 (516.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+h6-eth4: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.14.7  netmask 255.255.255.0  broadcast 192.168.14.255
+        inet6 fe80::ac91:3aff:fe8f:dad2  prefixlen 64  scopeid 0x20<link>
+        ether ae:91:3a:8f:da:d2  txqueuelen 1000  (Ethernet)
+        RX packets 18  bytes 2286 (2.2 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 6  bytes 516 (516.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+h6-eth5: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.17.7  netmask 255.255.255.0  broadcast 192.168.17.255
+        inet6 fe80::b439:e2ff:fe1f:6987  prefixlen 64  scopeid 0x20<link>
+        ether b6:39:e2:1f:69:87  txqueuelen 1000  (Ethernet)
+        RX packets 15  bytes 2036 (2.0 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 6  bytes 516 (516.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+h6-eth6: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.25.7  netmask 255.255.255.0  broadcast 192.168.25.255
+        inet6 fe80::2074:98ff:fef1:6210  prefixlen 64  scopeid 0x20<link>
+        ether 22:74:98:f1:62:10  txqueuelen 1000  (Ethernet)
+        RX packets 17  bytes 2213 (2.2 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 6  bytes 516 (516.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+lo: flags=73<UP,LOOPBACK,RUNNING>  mtu 65536
+        inet 127.0.0.1  netmask 255.0.0.0
+        inet6 ::1  prefixlen 128  scopeid 0x10<host>
+        loop  txqueuelen 1000  (Local Loopback)
+        RX packets 0  bytes 0 (0.0 B)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 0  bytes 0 (0.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+h7 command: ifconfig
+h7-eth0: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.1.8  netmask 255.255.255.0  broadcast 192.168.1.255
+        inet6 fe80::584c:deff:fe31:7a9b  prefixlen 64  scopeid 0x20<link>
+        ether 5a:4c:de:31:7a:9b  txqueuelen 1000  (Ethernet)
+        RX packets 16  bytes 2106 (2.1 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 6  bytes 516 (516.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+h7-eth1: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.5.8  netmask 255.255.255.0  broadcast 192.168.5.255
+        inet6 fe80::e0b3:59ff:fef4:7a63  prefixlen 64  scopeid 0x20<link>
+        ether e2:b3:59:f4:7a:63  txqueuelen 1000  (Ethernet)
+        RX packets 16  bytes 2126 (2.1 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 6  bytes 516 (516.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+h7-eth2: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.7.8  netmask 255.255.255.0  broadcast 192.168.7.255
+        inet6 fe80::4059:3ff:fea9:b551  prefixlen 64  scopeid 0x20<link>
+        ether 42:59:03:a9:b5:51  txqueuelen 1000  (Ethernet)
+        RX packets 16  bytes 2126 (2.1 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 6  bytes 516 (516.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+h7-eth3: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.11.8  netmask 255.255.255.0  broadcast 192.168.11.255
+        inet6 fe80::a486:3cff:fe70:341  prefixlen 64  scopeid 0x20<link>
+        ether a6:86:3c:70:03:41  txqueuelen 1000  (Ethernet)
+        RX packets 16  bytes 2126 (2.1 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 6  bytes 516 (516.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+h7-eth4: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.14.8  netmask 255.255.255.0  broadcast 192.168.14.255
+        inet6 fe80::7cb6:9bff:fe43:4a6f  prefixlen 64  scopeid 0x20<link>
+        ether 7e:b6:9b:43:4a:6f  txqueuelen 1000  (Ethernet)
+        RX packets 18  bytes 2286 (2.2 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 6  bytes 516 (516.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+h7-eth5: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.19.8  netmask 255.255.255.0  broadcast 192.168.19.255
+        inet6 fe80::e418:82ff:fead:5b24  prefixlen 64  scopeid 0x20<link>
+        ether e6:18:82:ad:5b:24  txqueuelen 1000  (Ethernet)
+        RX packets 18  bytes 2286 (2.2 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 6  bytes 516 (516.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+lo: flags=73<UP,LOOPBACK,RUNNING>  mtu 65536
+        inet 127.0.0.1  netmask 255.0.0.0
+        inet6 ::1  prefixlen 128  scopeid 0x10<host>
+        loop  txqueuelen 1000  (Local Loopback)
+        RX packets 0  bytes 0 (0.0 B)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 0  bytes 0 (0.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+h1 command: csmgrdstart -d ./h1 > h1-csmgrd-log
+h3 command: csmgrdstart -d ./h3 > h3-csmgrd-log
+h5 command: csmgrdstart -d ./h5 > h5-csmgrd-log
+h7 command: csmgrdstart -d ./h7 > h7-csmgrd-log
+h0 command: cefnetdstart -d ./h0 > h0-cefnetd-log
+h1 command: cefnetdstart -d ./h1 > h1-cefnetd-log
+h2 command: cefnetdstart -d ./h2 > h2-cefnetd-log
+h3 command: cefnetdstart -d ./h3 > h3-cefnetd-log
+h4 command: cefnetdstart -d ./h4 > h4-cefnetd-log
+h5 command: cefnetdstart -d ./h5 > h5-cefnetd-log
+h6 command: cefnetdstart -d ./h6 > h6-cefnetd-log
+h7 command: cefnetdstart -d ./h7 > h7-cefnetd-log
+h0 command: cefroute add ccnx:/test/example1/ udp 192.168.1.8 -d ./h0
+2026-01-22 14:26:52.365 [cefctrl] INFO: [client] Config directory is ./h0
+2026-01-22 14:26:52.365 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.0
+2026-01-22 14:26:52.365 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+h7 command: cefroute add ccnx:/test/example1/ udp 192.168.1.1 -d ./h7
+2026-01-22 14:26:52.373 [cefctrl] INFO: [client] Config directory is ./h7
+2026-01-22 14:26:52.374 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.7
+2026-01-22 14:26:52.374 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+h2 command: cefroute add ccnx:/test/example2/ udp 192.168.2.5 -d ./h2
+2026-01-22 14:26:52.381 [cefctrl] INFO: [client] Config directory is ./h2
+2026-01-22 14:26:52.381 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.2
+2026-01-22 14:26:52.381 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+h4 command: cefroute add ccnx:/test/example2/ udp 192.168.2.3 -d ./h4
+2026-01-22 14:26:52.388 [cefctrl] INFO: [client] Config directory is ./h4
+2026-01-22 14:26:52.388 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.4
+2026-01-22 14:26:52.388 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+h3 command: cefroute add ccnx:/test/example3/ udp 192.168.3.7 -d ./h3
+2026-01-22 14:26:52.395 [cefctrl] INFO: [client] Config directory is ./h3
+2026-01-22 14:26:52.395 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.3
+2026-01-22 14:26:52.395 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+h6 command: cefroute add ccnx:/test/example3/ udp 192.168.3.4 -d ./h6
+2026-01-22 14:26:52.402 [cefctrl] INFO: [client] Config directory is ./h6
+2026-01-22 14:26:52.402 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.6
+2026-01-22 14:26:52.402 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+h1 command: cefroute add ccnx:/test/example4/ udp 192.168.4.6 -d ./h1
+2026-01-22 14:26:52.409 [cefctrl] INFO: [client] Config directory is ./h1
+2026-01-22 14:26:52.409 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.1
+2026-01-22 14:26:52.409 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+h5 command: cefroute add ccnx:/test/example4/ udp 192.168.4.2 -d ./h5
+2026-01-22 14:26:52.416 [cefctrl] INFO: [client] Config directory is ./h5
+2026-01-22 14:26:52.416 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.5
+2026-01-22 14:26:52.416 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+h4 command: cefroute add ccnx:/test/example5/ udp 192.168.5.8 -d ./h4
+2026-01-22 14:26:52.423 [cefctrl] INFO: [client] Config directory is ./h4
+2026-01-22 14:26:52.423 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.4
+2026-01-22 14:26:52.423 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+h7 command: cefroute add ccnx:/test/example5/ udp 192.168.5.5 -d ./h7
+2026-01-22 14:26:52.429 [cefctrl] INFO: [client] Config directory is ./h7
+2026-01-22 14:26:52.429 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.7
+2026-01-22 14:26:52.429 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+h0 command: cefroute add ccnx:/test/example6/ udp 192.168.6.7 -d ./h0
+2026-01-22 14:26:52.436 [cefctrl] INFO: [client] Config directory is ./h0
+2026-01-22 14:26:52.436 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.0
+2026-01-22 14:26:52.436 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+h6 command: cefroute add ccnx:/test/example6/ udp 192.168.6.1 -d ./h6
+2026-01-22 14:26:52.443 [cefctrl] INFO: [client] Config directory is ./h6
+2026-01-22 14:26:52.443 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.6
+2026-01-22 14:26:52.443 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+h1 command: cefroute add ccnx:/test/example7/ udp 192.168.7.8 -d ./h1
+2026-01-22 14:26:52.449 [cefctrl] INFO: [client] Config directory is ./h1
+2026-01-22 14:26:52.449 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.1
+2026-01-22 14:26:52.449 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+h7 command: cefroute add ccnx:/test/example7/ udp 192.168.7.2 -d ./h7
+2026-01-22 14:26:52.456 [cefctrl] INFO: [client] Config directory is ./h7
+2026-01-22 14:26:52.456 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.7
+2026-01-22 14:26:52.456 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+h4 command: cefroute add ccnx:/test/example8/ udp 192.168.8.6 -d ./h4
+2026-01-22 14:26:52.463 [cefctrl] INFO: [client] Config directory is ./h4
+2026-01-22 14:26:52.463 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.4
+2026-01-22 14:26:52.463 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+h5 command: cefroute add ccnx:/test/example8/ udp 192.168.8.5 -d ./h5
+2026-01-22 14:26:52.469 [cefctrl] INFO: [client] Config directory is ./h5
+2026-01-22 14:26:52.469 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.5
+2026-01-22 14:26:52.469 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+h2 command: cefroute add ccnx:/test/example9/ udp 192.168.9.7 -d ./h2
+2026-01-22 14:26:52.476 [cefctrl] INFO: [client] Config directory is ./h2
+2026-01-22 14:26:52.476 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.2
+2026-01-22 14:26:52.476 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+h6 command: cefroute add ccnx:/test/example9/ udp 192.168.9.3 -d ./h6
+2026-01-22 14:26:52.482 [cefctrl] INFO: [client] Config directory is ./h6
+2026-01-22 14:26:52.482 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.6
+2026-01-22 14:26:52.482 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+h1 command: cefroute add ccnx:/test/example10/ udp 192.168.10.3 -d ./h1
+2026-01-22 14:26:52.488 [cefctrl] INFO: [client] Config directory is ./h1
+2026-01-22 14:26:52.488 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.1
+2026-01-22 14:26:52.488 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+h2 command: cefroute add ccnx:/test/example10/ udp 192.168.10.2 -d ./h2
+2026-01-22 14:26:52.495 [cefctrl] INFO: [client] Config directory is ./h2
+2026-01-22 14:26:52.495 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.2
+2026-01-22 14:26:52.495 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+h2 command: cefroute add ccnx:/test/example11/ udp 192.168.11.8 -d ./h2
+2026-01-22 14:26:52.501 [cefctrl] INFO: [client] Config directory is ./h2
+2026-01-22 14:26:52.501 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.2
+2026-01-22 14:26:52.501 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+h7 command: cefroute add ccnx:/test/example11/ udp 192.168.11.3 -d ./h7
+2026-01-22 14:26:52.508 [cefctrl] INFO: [client] Config directory is ./h7
+2026-01-22 14:26:52.508 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.7
+2026-01-22 14:26:52.508 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+h3 command: cefroute add ccnx:/test/example12/ udp 192.168.12.5 -d ./h3
+2026-01-22 14:26:52.515 [cefctrl] INFO: [client] Config directory is ./h3
+2026-01-22 14:26:52.515 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.3
+2026-01-22 14:26:52.515 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+h4 command: cefroute add ccnx:/test/example12/ udp 192.168.12.4 -d ./h4
+2026-01-22 14:26:52.521 [cefctrl] INFO: [client] Config directory is ./h4
+2026-01-22 14:26:52.522 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.4
+2026-01-22 14:26:52.522 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+h5 command: cefroute add ccnx:/test/example13/ udp 192.168.13.7 -d ./h5
+2026-01-22 14:26:52.528 [cefctrl] INFO: [client] Config directory is ./h5
+2026-01-22 14:26:52.528 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.5
+2026-01-22 14:26:52.528 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+h6 command: cefroute add ccnx:/test/example13/ udp 192.168.13.6 -d ./h6
+2026-01-22 14:26:52.535 [cefctrl] INFO: [client] Config directory is ./h6
+2026-01-22 14:26:52.535 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.6
+2026-01-22 14:26:52.535 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+h6 command: cefroute add ccnx:/test/example14/ udp 192.168.14.8 -d ./h6
+2026-01-22 14:26:52.541 [cefctrl] INFO: [client] Config directory is ./h6
+2026-01-22 14:26:52.541 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.6
+2026-01-22 14:26:52.541 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+h7 command: cefroute add ccnx:/test/example14/ udp 192.168.14.7 -d ./h7
+2026-01-22 14:26:52.548 [cefctrl] INFO: [client] Config directory is ./h7
+2026-01-22 14:26:52.548 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.7
+2026-01-22 14:26:52.548 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+h0 command: cefroute add ccnx:/test/example15/ udp 192.168.15.5 -d ./h0
+2026-01-22 14:26:52.555 [cefctrl] INFO: [client] Config directory is ./h0
+2026-01-22 14:26:52.555 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.0
+2026-01-22 14:26:52.555 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+h4 command: cefroute add ccnx:/test/example15/ udp 192.168.15.1 -d ./h4
+2026-01-22 14:26:52.561 [cefctrl] INFO: [client] Config directory is ./h4
+2026-01-22 14:26:52.561 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.4
+2026-01-22 14:26:52.561 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+h0 command: cefroute add ccnx:/test/example16/ udp 192.168.16.6 -d ./h0
+2026-01-22 14:26:52.568 [cefctrl] INFO: [client] Config directory is ./h0
+2026-01-22 14:26:52.568 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.0
+2026-01-22 14:26:52.568 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+h5 command: cefroute add ccnx:/test/example16/ udp 192.168.16.1 -d ./h5
+2026-01-22 14:26:52.574 [cefctrl] INFO: [client] Config directory is ./h5
+2026-01-22 14:26:52.574 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.5
+2026-01-22 14:26:52.574 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+h4 command: cefroute add ccnx:/test/example17/ udp 192.168.17.7 -d ./h4
+2026-01-22 14:26:52.581 [cefctrl] INFO: [client] Config directory is ./h4
+2026-01-22 14:26:52.581 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.4
+2026-01-22 14:26:52.581 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+h6 command: cefroute add ccnx:/test/example17/ udp 192.168.17.5 -d ./h6
+2026-01-22 14:26:52.587 [cefctrl] INFO: [client] Config directory is ./h6
+2026-01-22 14:26:52.587 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.6
+2026-01-22 14:26:52.587 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+h0 command: cefroute add ccnx:/test/example18/ udp 192.168.18.4 -d ./h0
+2026-01-22 14:26:52.593 [cefctrl] INFO: [client] Config directory is ./h0
+2026-01-22 14:26:52.593 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.0
+2026-01-22 14:26:52.593 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+h3 command: cefroute add ccnx:/test/example18/ udp 192.168.18.1 -d ./h3
+2026-01-22 14:26:52.599 [cefctrl] INFO: [client] Config directory is ./h3
+2026-01-22 14:26:52.599 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.3
+2026-01-22 14:26:52.599 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+h5 command: cefroute add ccnx:/test/example19/ udp 192.168.19.8 -d ./h5
+2026-01-22 14:26:52.606 [cefctrl] INFO: [client] Config directory is ./h5
+2026-01-22 14:26:52.606 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.5
+2026-01-22 14:26:52.606 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+h7 command: cefroute add ccnx:/test/example19/ udp 192.168.19.6 -d ./h7
+2026-01-22 14:26:52.612 [cefctrl] INFO: [client] Config directory is ./h7
+2026-01-22 14:26:52.612 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.7
+2026-01-22 14:26:52.612 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+h1 command: cefroute add ccnx:/test/example20/ udp 192.168.20.5 -d ./h1
+2026-01-22 14:26:52.618 [cefctrl] INFO: [client] Config directory is ./h1
+2026-01-22 14:26:52.618 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.1
+2026-01-22 14:26:52.618 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+h4 command: cefroute add ccnx:/test/example20/ udp 192.168.20.2 -d ./h4
+2026-01-22 14:26:52.624 [cefctrl] INFO: [client] Config directory is ./h4
+2026-01-22 14:26:52.624 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.4
+2026-01-22 14:26:52.624 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+h2 command: cefroute add ccnx:/test/example21/ udp 192.168.21.4 -d ./h2
+2026-01-22 14:26:52.631 [cefctrl] INFO: [client] Config directory is ./h2
+2026-01-22 14:26:52.631 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.2
+2026-01-22 14:26:52.631 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+h3 command: cefroute add ccnx:/test/example21/ udp 192.168.21.3 -d ./h3
+2026-01-22 14:26:52.637 [cefctrl] INFO: [client] Config directory is ./h3
+2026-01-22 14:26:52.637 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.3
+2026-01-22 14:26:52.638 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+h3 command: cefroute add ccnx:/test/example22/ udp 192.168.22.6 -d ./h3
+2026-01-22 14:26:52.644 [cefctrl] INFO: [client] Config directory is ./h3
+2026-01-22 14:26:52.644 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.3
+2026-01-22 14:26:52.644 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+h5 command: cefroute add ccnx:/test/example22/ udp 192.168.22.4 -d ./h5
+2026-01-22 14:26:52.650 [cefctrl] INFO: [client] Config directory is ./h5
+2026-01-22 14:26:52.650 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.5
+2026-01-22 14:26:52.650 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+h1 command: cefroute add ccnx:/test/example23/ udp 192.168.23.4 -d ./h1
+2026-01-22 14:26:52.656 [cefctrl] INFO: [client] Config directory is ./h1
+2026-01-22 14:26:52.656 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.1
+2026-01-22 14:26:52.656 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+h3 command: cefroute add ccnx:/test/example23/ udp 192.168.23.2 -d ./h3
+2026-01-22 14:26:52.662 [cefctrl] INFO: [client] Config directory is ./h3
+2026-01-22 14:26:52.662 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.3
+2026-01-22 14:26:52.662 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+h0 command: cefroute add ccnx:/test/example24/ udp 192.168.24.3 -d ./h0
+2026-01-22 14:26:52.668 [cefctrl] INFO: [client] Config directory is ./h0
+2026-01-22 14:26:52.668 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.0
+2026-01-22 14:26:52.668 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+h2 command: cefroute add ccnx:/test/example24/ udp 192.168.24.1 -d ./h2
+2026-01-22 14:26:52.675 [cefctrl] INFO: [client] Config directory is ./h2
+2026-01-22 14:26:52.675 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.2
+2026-01-22 14:26:52.675 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+h1 command: cefroute add ccnx:/test/example25/ udp 192.168.25.7 -d ./h1
+2026-01-22 14:26:52.681 [cefctrl] INFO: [client] Config directory is ./h1
+2026-01-22 14:26:52.682 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.1
+2026-01-22 14:26:52.682 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+h6 command: cefroute add ccnx:/test/example25/ udp 192.168.25.2 -d ./h6
+2026-01-22 14:26:52.688 [cefctrl] INFO: [client] Config directory is ./h6
+2026-01-22 14:26:52.688 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.6
+2026-01-22 14:26:52.688 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+
+FIB status per host:
+h0 command: cefstatus -d ./h0
+2026-01-22 14:26:52.695 [cefctrl] INFO: [client] Config directory is ./h0
+2026-01-22 14:26:52.695 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.0
+2026-01-22 14:26:52.695 [cefctrl] INFO: [client] Listen Port is 9695
+CCNx Version     : 1
+Port             : 9695
+Rx Interest      : 0 (RGL[0], SYM[0], SEL[0])
+Tx Interest      : 0 (RGL[0], SYM[0], SEL[0])
+Rx ContentObject : 0
+Tx ContentObject : 0
+Cache Mode       : None
+FWD Strategy     : flooding
+Interest Return  : Disabled
+Faces : 12
+  faceid =  39 : address = 192.168.16.6:9695 (udp)
+  faceid =  37 : address = 192.168.15.5:9695 (udp)
+  faceid =  43 : address = 192.168.24.3:9695 (udp)
+  faceid =   4 : IPv4 Listen face (udp)
+  faceid =  35 : address = 192.168.6.7:9695 (udp)
+  faceid =   5 : IPv6 Listen face (udp)
+  faceid =  41 : address = 192.168.18.4:9695 (udp)
+  faceid =   6 : IPv4 Listen face (tcp)
+  faceid =  33 : address = 192.168.1.8:9695 (udp)
+  faceid =   7 : IPv6 Listen face (tcp)
+  faceid =   0 : Local face
+  faceid =  44 : Local face
+FIB(App) :
+  Entry is empty
+FIB : 6
+  ccnx:/test/example24/
+    Faces : 43 (-s-) RtCost=0
+  ccnx:/test/example18/
+    Faces : 41 (-s-) RtCost=0
+  ccnx:/test/example16/
+    Faces : 39 (-s-) RtCost=0
+  ccnx:/test/example6/
+    Faces : 35 (-s-) RtCost=0
+  ccnx:/test/example15/
+    Faces : 37 (-s-) RtCost=0
+  ccnx:/test/example1/
+    Faces : 33 (-s-) RtCost=0
+PIT(App) :
+  Entry is empty
+PIT :
+  Entry is empty
+h1 command: cefstatus -d ./h1
+2026-01-22 14:26:52.912 [cefctrl] INFO: [client] Config directory is ./h1
+2026-01-22 14:26:52.912 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.1
+2026-01-22 14:26:52.912 [cefctrl] INFO: [client] Listen Port is 9695
+CCNx Version     : 1
+Port             : 9695
+Rx Interest      : 0 (RGL[0], SYM[0], SEL[0])
+Tx Interest      : 0 (RGL[0], SYM[0], SEL[0])
+Rx ContentObject : 0
+Tx ContentObject : 0
+Cache Mode       : Excache
+FWD Strategy     : flooding
+Interest Return  : Disabled
+Faces : 12
+  faceid =   4 : IPv4 Listen face (udp)
+  faceid =  39 : address = 192.168.20.5:9695 (udp)
+  faceid =  33 : address = 192.168.4.6:9695 (udp)
+  faceid =  44 : Local face
+  faceid =   5 : IPv6 Listen face (udp)
+  faceid =  35 : address = 192.168.7.8:9695 (udp)
+  faceid =   0 : Local face
+  faceid =  37 : address = 192.168.10.3:9695 (udp)
+  faceid =   6 : IPv4 Listen face (tcp)
+  faceid =  41 : address = 192.168.23.4:9695 (udp)
+  faceid =   7 : IPv6 Listen face (tcp)
+  faceid =  43 : address = 192.168.25.7:9695 (udp)
+FIB(App) :
+  Entry is empty
+FIB : 6
+  ccnx:/test/example4/
+    Faces : 33 (-s-) RtCost=0
+  ccnx:/test/example10/
+    Faces : 37 (-s-) RtCost=0
+  ccnx:/test/example23/
+    Faces : 41 (-s-) RtCost=0
+  ccnx:/test/example20/
+    Faces : 39 (-s-) RtCost=0
+  ccnx:/test/example25/
+    Faces : 43 (-s-) RtCost=0
+  ccnx:/test/example7/
+    Faces : 35 (-s-) RtCost=0
+PIT(App) :
+  Entry is empty
+PIT :
+  Entry is empty
+h2 command: cefstatus -d ./h2
+2026-01-22 14:26:53.129 [cefctrl] INFO: [client] Config directory is ./h2
+2026-01-22 14:26:53.129 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.2
+2026-01-22 14:26:53.129 [cefctrl] INFO: [client] Listen Port is 9695
+CCNx Version     : 1
+Port             : 9695
+Rx Interest      : 0 (RGL[0], SYM[0], SEL[0])
+Tx Interest      : 0 (RGL[0], SYM[0], SEL[0])
+Rx ContentObject : 0
+Tx ContentObject : 0
+Cache Mode       : Localcache
+FWD Strategy     : flooding
+Interest Return  : Disabled
+Faces : 12
+  faceid =  37 : address = 192.168.10.2:9695 (udp)
+  faceid =  43 : address = 192.168.24.1:9695 (udp)
+  faceid =   4 : IPv4 Listen face (udp)
+  faceid =  35 : address = 192.168.9.7:9695 (udp)
+  faceid =   0 : Local face
+  faceid =  44 : Local face
+  faceid =   5 : IPv6 Listen face (udp)
+  faceid =  33 : address = 192.168.2.5:9695 (udp)
+  faceid =  39 : address = 192.168.11.8:9695 (udp)
+  faceid =  41 : address = 192.168.21.4:9695 (udp)
+  faceid =   6 : IPv4 Listen face (tcp)
+  faceid =   7 : IPv6 Listen face (tcp)
+FIB(App) :
+  Entry is empty
+FIB : 6
+  ccnx:/test/example9/
+    Faces : 35 (-s-) RtCost=0
+  ccnx:/test/example24/
+    Faces : 43 (-s-) RtCost=0
+  ccnx:/test/example10/
+    Faces : 37 (-s-) RtCost=0
+  ccnx:/test/example2/
+    Faces : 33 (-s-) RtCost=0
+  ccnx:/test/example11/
+    Faces : 39 (-s-) RtCost=0
+  ccnx:/test/example21/
+    Faces : 41 (-s-) RtCost=0
+PIT(App) :
+  Entry is empty
+PIT :
+  Entry is empty
+h3 command: cefstatus -d ./h3
+2026-01-22 14:26:53.346 [cefctrl] INFO: [client] Config directory is ./h3
+2026-01-22 14:26:53.346 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.3
+2026-01-22 14:26:53.346 [cefctrl] INFO: [client] Listen Port is 9695
+CCNx Version     : 1
+Port             : 9695
+Rx Interest      : 0 (RGL[0], SYM[0], SEL[0])
+Tx Interest      : 0 (RGL[0], SYM[0], SEL[0])
+Rx ContentObject : 0
+Tx ContentObject : 0
+Cache Mode       : Excache
+FWD Strategy     : flooding
+Interest Return  : Disabled
+Faces : 12
+  faceid =   4 : IPv4 Listen face (udp)
+  faceid =  44 : Local face
+  faceid =   5 : IPv6 Listen face (udp)
+  faceid =  41 : address = 192.168.22.6:9695 (udp)
+  faceid =  35 : address = 192.168.12.5:9695 (udp)
+  faceid =   0 : Local face
+  faceid =   6 : IPv4 Listen face (tcp)
+  faceid =  33 : address = 192.168.3.7:9695 (udp)
+  faceid =   7 : IPv6 Listen face (tcp)
+  faceid =  37 : address = 192.168.18.1:9695 (udp)
+  faceid =  43 : address = 192.168.23.2:9695 (udp)
+  faceid =  39 : address = 192.168.21.3:9695 (udp)
+FIB(App) :
+  Entry is empty
+FIB : 6
+  ccnx:/test/example23/
+    Faces : 43 (-s-) RtCost=0
+  ccnx:/test/example3/
+    Faces : 33 (-s-) RtCost=0
+  ccnx:/test/example22/
+    Faces : 41 (-s-) RtCost=0
+  ccnx:/test/example18/
+    Faces : 37 (-s-) RtCost=0
+  ccnx:/test/example21/
+    Faces : 39 (-s-) RtCost=0
+  ccnx:/test/example12/
+    Faces : 35 (-s-) RtCost=0
+PIT(App) :
+  Entry is empty
+PIT :
+  Entry is empty
+h4 command: cefstatus -d ./h4
+2026-01-22 14:26:53.562 [cefctrl] INFO: [client] Config directory is ./h4
+2026-01-22 14:26:53.562 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.4
+2026-01-22 14:26:53.562 [cefctrl] INFO: [client] Listen Port is 9695
+CCNx Version     : 1
+Port             : 9695
+Rx Interest      : 0 (RGL[0], SYM[0], SEL[0])
+Tx Interest      : 0 (RGL[0], SYM[0], SEL[0])
+Rx ContentObject : 0
+Tx ContentObject : 0
+Cache Mode       : None
+FWD Strategy     : flooding
+Interest Return  : Disabled
+Faces : 13
+  faceid =  39 : address = 192.168.12.4:9695 (udp)
+  faceid =   0 : Local face
+  faceid =   4 : IPv4 Listen face (udp)
+  faceid =  41 : address = 192.168.15.1:9695 (udp)
+  faceid =   5 : IPv6 Listen face (udp)
+  faceid =  37 : address = 192.168.8.6:9695 (udp)
+  faceid =  33 : address = 192.168.2.3:9695 (udp)
+  faceid =  43 : address = 192.168.17.7:9695 (udp)
+  faceid =   6 : IPv4 Listen face (tcp)
+  faceid =  45 : address = 192.168.20.2:9695 (udp)
+  faceid =  35 : address = 192.168.5.8:9695 (udp)
+  faceid =   7 : IPv6 Listen face (tcp)
+  faceid =  46 : Local face
+FIB(App) :
+  Entry is empty
+FIB : 7
+  ccnx:/test/example17/
+    Faces : 43 (-s-) RtCost=0
+  ccnx:/test/example8/
+    Faces : 37 (-s-) RtCost=0
+  ccnx:/test/example2/
+    Faces : 33 (-s-) RtCost=0
+  ccnx:/test/example20/
+    Faces : 45 (-s-) RtCost=0
+  ccnx:/test/example12/
+    Faces : 39 (-s-) RtCost=0
+  ccnx:/test/example5/
+    Faces : 35 (-s-) RtCost=0
+  ccnx:/test/example15/
+    Faces : 41 (-s-) RtCost=0
+PIT(App) :
+  Entry is empty
+PIT :
+  Entry is empty
+h5 command: cefstatus -d ./h5
+2026-01-22 14:26:53.779 [cefctrl] INFO: [client] Config directory is ./h5
+2026-01-22 14:26:53.779 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.5
+2026-01-22 14:26:53.779 [cefctrl] INFO: [client] Listen Port is 9695
+CCNx Version     : 1
+Port             : 9695
+Rx Interest      : 0 (RGL[0], SYM[0], SEL[0])
+Tx Interest      : 0 (RGL[0], SYM[0], SEL[0])
+Rx ContentObject : 0
+Tx ContentObject : 0
+Cache Mode       : Excache
+FWD Strategy     : flooding
+Interest Return  : Disabled
+Faces : 12
+  faceid =  39 : address = 192.168.16.1:9695 (udp)
+  faceid =   4 : IPv4 Listen face (udp)
+  faceid =  37 : address = 192.168.13.7:9695 (udp)
+  faceid =  41 : address = 192.168.19.8:9695 (udp)
+  faceid =   0 : Local face
+  faceid =  44 : Local face
+  faceid =   5 : IPv6 Listen face (udp)
+  faceid =  33 : address = 192.168.4.2:9695 (udp)
+  faceid =  35 : address = 192.168.8.5:9695 (udp)
+  faceid =   6 : IPv4 Listen face (tcp)
+  faceid =  43 : address = 192.168.22.4:9695 (udp)
+  faceid =   7 : IPv6 Listen face (tcp)
+FIB(App) :
+  Entry is empty
+FIB : 6
+  ccnx:/test/example4/
+    Faces : 33 (-s-) RtCost=0
+  ccnx:/test/example13/
+    Faces : 37 (-s-) RtCost=0
+  ccnx:/test/example8/
+    Faces : 35 (-s-) RtCost=0
+  ccnx:/test/example19/
+    Faces : 41 (-s-) RtCost=0
+  ccnx:/test/example22/
+    Faces : 43 (-s-) RtCost=0
+  ccnx:/test/example16/
+    Faces : 39 (-s-) RtCost=0
+PIT(App) :
+  Entry is empty
+PIT :
+  Entry is empty
+h6 command: cefstatus -d ./h6
+2026-01-22 14:26:53.996 [cefctrl] INFO: [client] Config directory is ./h6
+2026-01-22 14:26:53.996 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.6
+2026-01-22 14:26:53.996 [cefctrl] INFO: [client] Listen Port is 9695
+CCNx Version     : 1
+Port             : 9695
+Rx Interest      : 0 (RGL[0], SYM[0], SEL[0])
+Tx Interest      : 0 (RGL[0], SYM[0], SEL[0])
+Rx ContentObject : 0
+Tx ContentObject : 0
+Cache Mode       : Localcache
+FWD Strategy     : flooding
+Interest Return  : Disabled
+Faces : 13
+  faceid =  45 : address = 192.168.25.2:9695 (udp)
+  faceid =  37 : address = 192.168.9.3:9695 (udp)
+  faceid =  35 : address = 192.168.6.1:9695 (udp)
+  faceid =   4 : IPv4 Listen face (udp)
+  faceid =  41 : address = 192.168.14.8:9695 (udp)
+  faceid =   0 : Local face
+  faceid =  46 : Local face
+  faceid =   5 : IPv6 Listen face (udp)
+  faceid =  39 : address = 192.168.13.6:9695 (udp)
+  faceid =   6 : IPv4 Listen face (tcp)
+  faceid =  33 : address = 192.168.3.4:9695 (udp)
+  faceid =   7 : IPv6 Listen face (tcp)
+  faceid =  43 : address = 192.168.17.5:9695 (udp)
+FIB(App) :
+  Entry is empty
+FIB : 7
+  ccnx:/test/example9/
+    Faces : 37 (-s-) RtCost=0
+  ccnx:/test/example17/
+    Faces : 43 (-s-) RtCost=0
+  ccnx:/test/example13/
+    Faces : 39 (-s-) RtCost=0
+  ccnx:/test/example3/
+    Faces : 33 (-s-) RtCost=0
+  ccnx:/test/example6/
+    Faces : 35 (-s-) RtCost=0
+  ccnx:/test/example25/
+    Faces : 45 (-s-) RtCost=0
+  ccnx:/test/example14/
+    Faces : 41 (-s-) RtCost=0
+PIT(App) :
+  Entry is empty
+PIT :
+  Entry is empty
+h7 command: cefstatus -d ./h7
+2026-01-22 14:26:54.213 [cefctrl] INFO: [client] Config directory is ./h7
+2026-01-22 14:26:54.213 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.7
+2026-01-22 14:26:54.213 [cefctrl] INFO: [client] Listen Port is 9695
+CCNx Version     : 1
+Port             : 9695
+Rx Interest      : 0 (RGL[0], SYM[0], SEL[0])
+Tx Interest      : 0 (RGL[0], SYM[0], SEL[0])
+Rx ContentObject : 0
+Tx ContentObject : 0
+Cache Mode       : Excache
+FWD Strategy     : flooding
+Interest Return  : Disabled
+Faces : 12
+  faceid =  37 : address = 192.168.7.2:9695 (udp)
+  faceid =   4 : IPv4 Listen face (udp)
+  faceid =  44 : Local face
+  faceid =   0 : Local face
+  faceid =   5 : IPv6 Listen face (udp)
+  faceid =  43 : address = 192.168.19.6:9695 (udp)
+  faceid =  35 : address = 192.168.5.5:9695 (udp)
+  faceid =  33 : address = 192.168.1.1:9695 (udp)
+  faceid =  39 : address = 192.168.11.3:9695 (udp)
+  faceid =  41 : address = 192.168.14.7:9695 (udp)
+  faceid =   6 : IPv4 Listen face (tcp)
+  faceid =   7 : IPv6 Listen face (tcp)
+FIB(App) :
+  Entry is empty
+FIB : 6
+  ccnx:/test/example19/
+    Faces : 43 (-s-) RtCost=0
+  ccnx:/test/example11/
+    Faces : 39 (-s-) RtCost=0
+  ccnx:/test/example7/
+    Faces : 37 (-s-) RtCost=0
+  ccnx:/test/example5/
+    Faces : 35 (-s-) RtCost=0
+  ccnx:/test/example1/
+    Faces : 33 (-s-) RtCost=0
+  ccnx:/test/example14/
+    Faces : 41 (-s-) RtCost=0
+PIT(App) :
+  Entry is empty
+PIT :
+  Entry is empty
+
+Mesh links (host-switch-host):
+h0-eth0 -- s0 -- h7-eth0 (subnet 1)
+h2-eth0 -- s1 -- h4-eth0 (subnet 2)
+h3-eth0 -- s2 -- h6-eth0 (subnet 3)
+h1-eth0 -- s3 -- h5-eth0 (subnet 4)
+h4-eth1 -- s4 -- h7-eth1 (subnet 5)
+h0-eth1 -- s5 -- h6-eth1 (subnet 6)
+h1-eth1 -- s6 -- h7-eth2 (subnet 7)
+h4-eth2 -- s7 -- h5-eth1 (subnet 8)
+h2-eth1 -- s8 -- h6-eth2 (subnet 9)
+h1-eth2 -- s9 -- h2-eth2 (subnet 10)
+h2-eth3 -- s10 -- h7-eth3 (subnet 11)
+h3-eth1 -- s11 -- h4-eth3 (subnet 12)
+h5-eth2 -- s12 -- h6-eth3 (subnet 13)
+h6-eth4 -- s13 -- h7-eth4 (subnet 14)
+h0-eth2 -- s14 -- h4-eth4 (subnet 15)
+h0-eth3 -- s15 -- h5-eth3 (subnet 16)
+h4-eth5 -- s16 -- h6-eth5 (subnet 17)
+h0-eth4 -- s17 -- h3-eth2 (subnet 18)
+h5-eth4 -- s18 -- h7-eth5 (subnet 19)
+h1-eth3 -- s19 -- h4-eth6 (subnet 20)
+h2-eth4 -- s20 -- h3-eth3 (subnet 21)
+h3-eth4 -- s21 -- h5-eth5 (subnet 22)
+h1-eth4 -- s22 -- h3-eth5 (subnet 23)
+h0-eth5 -- s23 -- h2-eth5 (subnet 24)
+h1-eth5 -- s24 -- h6-eth6 (subnet 25)
+h7 command: cefputfile ccnx:/test/example1 -f ./sample-putfile -t 3000 -e 3000 -d ./h7 > cefputfile-log
+h0 command: cefgetfile ccnx:/test/example1 -f ./recvfile_at_h0 -d ./h0 > cefgetfile-log
+*** Starting CLI:
+mininet> h0 cat cefgetfile-log
+[cefgetfile] Start
+[cefgetfile] Parsing parameters ...OK
+2026-01-22 14:27:02.137 [cefgetfile] INFO: [client] Config directory is ./h0
+2026-01-22 14:27:02.138 [cefgetfile] INFO: [client] Local Socket Name is /tmp/cef_9695.0
+2026-01-22 14:27:02.138 [cefgetfile] INFO: [client] Listen Port is 9695
+[cefgetfile] Init Cefore Client package ... OK
+[cefgetfile] Conversion from URI into Name ... OK
+[cefgetfile] Checking the output file ... OK
+[cefgetfile] Connect to cefnetd ... OK
+[cefgetfile] URI=ccnx:/test/example1
+[cefgetfile] Start sending Interests
+[cefgetfile] Unconnect to cefnetd ... OK
+[cefgetfile] Terminate
+[cefgetfile] Rx Frames (All)           = 0
+[cefgetfile] Rx Frames (ContentObject) = 0
+[cefgetfile] Received frame ... NG
+[cefgetfile] Could not receive anything
+mininet> h0 cat cefputfile-log
+[cefputfile] Start
+[cefputfile] Parsing parameters ... OK
+2026-01-22 14:26:55.431 [cefputfile] INFO: [client] Config directory is ./h7
+2026-01-22 14:26:55.431 [cefputfile] INFO: [client] Local Socket Name is /tmp/cef_9695.7
+2026-01-22 14:26:55.431 [cefputfile] INFO: [client] Listen Port is 9695
+[cefputfile] Init Cefore Client package ... OK
+[cefputfile] Conversion from URI into Name ... OK
+[cefputfile] Checking the input file ... OK
+[cefputfile] Connect to cefnetd ... OK
+[cefputfile] URI         = ccnx:/test/example1
+[cefputfile] File        = ./sample-putfile
+[cefputfile] Rate        = 5.000 Mbps
+[cefputfile] Block Size  = 1024 Bytes
+[cefputfile] Cache Time  = 3000 sec
+[cefputfile] Expiration  = 3000 sec
+[cefputfile] Start creating Content Objects
+[cefputfile] Unconnect to cefnetd ... OK
+[cefputfile] Terminate
+[cefputfile] Tx Frames  = 424
+[cefputfile] Tx Bytes   = 433390
+[cefputfile] Duration   = 0.701 sec
+[cefputfile] Throughput = 4954578 bps
+mininet> run_cefstatus_all(net, host_num)
+*** Unknown command: run_cefstatus_all(net, host_num)
+mininet> help
+
+Documented commands (type help <topic>):
+========================================
+EOF    gterm  iperfudp  nodes        pingpair      py      switch  xterm
+dpctl  help   link      noecho       pingpairfull  quit    time
+dump   intfs  links     pingall      ports         sh      wait
+exit   iperf  net       pingallfull  px            source  x
+
+You may also send a command to a node using:
+  <node> command {args}
+For example:
+  mininet> h1 ifconfig
+
+The interpreter automatically substitutes IP addresses
+for node names when a node is the first arg, so commands
+like
+  mininet> h2 ping h3
+should work.
+
+Some character-oriented interactive commands require
+noecho:
+  mininet> noecho h2 vi foo.py
+However, starting up an xterm/gterm is generally better:
+  mininet> xterm h2
+
+mininet> help py
+Evaluate a Python expression.
+           Node names may be used, e.g.: py h1.cmd('ls')
+mininet> py run_cefstatus_all(net, host_num)
+name 'run_cefstatus_all' is not defined
+mininet> pingall h1
+*** Ping: testing ping reachability
+h0 -> X X X X X X X
+h1 -> X X X X X X X
+h2 -> X X X X X X X
+h3 -> X X X X X X X
+h4 -> X X X X X X X
+h5 -> X X X X X X X
+h6 -> X X X X X X X
+h7 -> X X X X X X X
+*** Results: 100% dropped (0/56 received)
+mininet> pingall h8
+*** Ping: testing ping reachability
+h0 -> X X X X X X X
+h1 -> X X X X X X X
+h2 -> X X X X X X X
+h3 -> X X X X X X X
+h4 -> X X X X X X X
+h5 -> X X X X X X X
+h6 -> X X X X X X X
+h7 -> X X X X X X X
+*** Results: 100% dropped (0/56 received)
+mininet> pingall h2
+*** Ping: testing ping reachability
+h0 -> X X X X X X X
+h1 -> X X X X X X X
+h2 -> X X X X X X X
+h3 -> X X X X X X X
+h4 -> X X X X X X X
+h5 -> X X X X X X X
+h6 -> X X X X X X X
+h7 -> X X X X X X X
+*** Results: 100% dropped (0/56 received)
+mininet> h1pingall h2
+*** Unknown command: h1pingall h2
+mininet> h1 pingall h2
+bash: pingall: command not found
+mininet> h1pingall s1
+*** Unknown command: h1pingall s1
+mininet> pingall h2
+*** Ping: testing ping reachability
+h0 -> X X X X X X X
+h1 -> X X X X X X X
+h2 -> X X X X X X X
+h3 -> X X X X X X X
+h4 -> X X h2 X X X X
+h5 -> X X X X X X X
+h6 -> X X X X X X X
+h7 -> X X X X X X X
+*** Results: 98% dropped (1/56 received)
+mininet> pingall h4
+*** Ping: testing ping reachability
+h0 -> X X X X X X X
+h1 -> X X X X X X X
+h2 -> X X X X X X X
+h3 -> X X X X X X X
+h4 -> X X h2 X X X X
+h5 -> X X X X X X X
+h6 -> X X X X X X X
+h7 -> X X X X X X X
+*** Results: 98% dropped (1/56 received)
+mininet> net
+h0 h0-eth0:s0-eth1 h0-eth1:s5-eth1 h0-eth2:s14-eth1 h0-eth3:s15-eth1 h0-eth4:s17-eth1 h0-eth5:s23-eth1
+h1 h1-eth0:s3-eth1 h1-eth1:s6-eth1 h1-eth2:s9-eth1 h1-eth3:s19-eth1 h1-eth4:s22-eth1 h1-eth5:s24-eth1
+h2 h2-eth0:s1-eth1 h2-eth1:s8-eth1 h2-eth2:s9-eth2 h2-eth3:s10-eth1 h2-eth4:s20-eth1 h2-eth5:s23-eth2
+h3 h3-eth0:s2-eth1 h3-eth1:s11-eth1 h3-eth2:s17-eth2 h3-eth3:s20-eth2 h3-eth4:s21-eth1 h3-eth5:s22-eth2
+h4 h4-eth0:s1-eth2 h4-eth1:s4-eth1 h4-eth2:s7-eth1 h4-eth3:s11-eth2 h4-eth4:s14-eth2 h4-eth5:s16-eth1 h4-eth6:s19-eth2
+h5 h5-eth0:s3-eth2 h5-eth1:s7-eth2 h5-eth2:s12-eth1 h5-eth3:s15-eth2 h5-eth4:s18-eth1 h5-eth5:s21-eth2
+h6 h6-eth0:s2-eth2 h6-eth1:s5-eth2 h6-eth2:s8-eth2 h6-eth3:s12-eth2 h6-eth4:s13-eth1 h6-eth5:s16-eth2 h6-eth6:s24-eth2
+h7 h7-eth0:s0-eth2 h7-eth1:s4-eth2 h7-eth2:s6-eth2 h7-eth3:s10-eth2 h7-eth4:s13-eth2 h7-eth5:s18-eth2
+s0 lo:  s0-eth1:h0-eth0 s0-eth2:h7-eth0
+s1 lo:  s1-eth1:h2-eth0 s1-eth2:h4-eth0
+s2 lo:  s2-eth1:h3-eth0 s2-eth2:h6-eth0
+s3 lo:  s3-eth1:h1-eth0 s3-eth2:h5-eth0
+s4 lo:  s4-eth1:h4-eth1 s4-eth2:h7-eth1
+s5 lo:  s5-eth1:h0-eth1 s5-eth2:h6-eth1
+s6 lo:  s6-eth1:h1-eth1 s6-eth2:h7-eth2
+s7 lo:  s7-eth1:h4-eth2 s7-eth2:h5-eth1
+s8 lo:  s8-eth1:h2-eth1 s8-eth2:h6-eth2
+s9 lo:  s9-eth1:h1-eth2 s9-eth2:h2-eth2
+s10 lo:  s10-eth1:h2-eth3 s10-eth2:h7-eth3
+s11 lo:  s11-eth1:h3-eth1 s11-eth2:h4-eth3
+s12 lo:  s12-eth1:h5-eth2 s12-eth2:h6-eth3
+s13 lo:  s13-eth1:h6-eth4 s13-eth2:h7-eth4
+s14 lo:  s14-eth1:h0-eth2 s14-eth2:h4-eth4
+s15 lo:  s15-eth1:h0-eth3 s15-eth2:h5-eth3
+s16 lo:  s16-eth1:h4-eth5 s16-eth2:h6-eth5
+s17 lo:  s17-eth1:h0-eth4 s17-eth2:h3-eth2
+s18 lo:  s18-eth1:h5-eth4 s18-eth2:h7-eth5
+s19 lo:  s19-eth1:h1-eth3 s19-eth2:h4-eth6
+s20 lo:  s20-eth1:h2-eth4 s20-eth2:h3-eth3
+s21 lo:  s21-eth1:h3-eth4 s21-eth2:h5-eth5
+s22 lo:  s22-eth1:h1-eth4 s22-eth2:h3-eth5
+s23 lo:  s23-eth1:h0-eth5 s23-eth2:h2-eth5
+s24 lo:  s24-eth1:h1-eth5 s24-eth2:h6-eth6
+c0
+mininet> quit
+hosts[ 0 ]: cefnetdstop -F -d ./h0
+hosts[ 1 ]: cefnetdstop -F -d ./h1
+hosts[ 2 ]: cefnetdstop -F -d ./h2
+hosts[ 3 ]: cefnetdstop -F -d ./h3
+hosts[ 4 ]: cefnetdstop -F -d ./h4
+hosts[ 5 ]: cefnetdstop -F -d ./h5
+hosts[ 6 ]: cefnetdstop -F -d ./h6
+hosts[ 7 ]: cefnetdstop -F -d ./h7
+hosts[ 1 ]: csmgrdstop -d ./h1
+hosts[ 3 ]: csmgrdstop -d ./h3
+hosts[ 5 ]: csmgrdstop -d ./h5
+hosts[ 7 ]: csmgrdstop -d ./h7
+*** Stopping 1 controllers
+c0
+*** Stopping 50 links
+..................................................
+*** Stopping 25 switches
+s0 s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 s11 s12 s13 s14 s15 s16 s17 s18 s19 s20 s21 s22 s23 s24
+*** Stopping 8 hosts
+h0 h1 h2 h3 h4 h5 h6 h7
+*** Done
+396 yamakawa@HP-Z8-G4-Workstation:~/Development/github/cefore-emu-koh11235813 $ sudo -E python3 five-node-two-switch.py --help                                                                                                                                       [feature/mesh]
+usage: five-node-two-switch.py [-h] [--hosts HOSTS]
+
+Cefore line topology (default: 3 hosts, 2 switches)
+
+options:
+  -h, --help     show this help message and exit
+  --hosts HOSTS  number of hosts
+397 yamakawa@HP-Z8-G4-Workstation:~/Development/github/cefore-emu-koh11235813 $ sudo -E python3 five-node-two-switch.py --hosts 6                                                                                                                                    [feature/mesh]
+*** Creating network
+*** Adding controller
+*** Adding hosts:
+h0 h1 h2 h3 h4 h5
+*** Adding switches:
+s0 s1 s2 s3 s4
+*** Adding links:
+(s0, h0) (s0, h1) (s1, h1) (s1, h2) (s2, h2) (s2, h3) (s3, h3) (s3, h4) (s4, h4) (s4, h5)
+*** Configuring hosts
+h0 h1 h2 h3 h4 h5
+*** Starting controller
+c0
+*** Starting 5 switches
+s0 s1 s2 s3 s4 ...
+*** Waiting for switches to connect
+s0 s1 s2 s3 s4
+h0 command: ifconfig h0-eth0 192.168.0.1
+h1 command: ifconfig h1-eth0 192.168.0.2
+h1 command: ifconfig h1-eth1 192.168.1.2
+h2 command: ifconfig h2-eth0 192.168.1.3
+h2 command: ifconfig h2-eth1 192.168.2.3
+h3 command: ifconfig h3-eth0 192.168.2.4
+h3 command: ifconfig h3-eth1 192.168.3.4
+h4 command: ifconfig h4-eth0 192.168.3.5
+h4 command: ifconfig h4-eth1 192.168.4.5
+h5 command: ifconfig h5-eth0 192.168.4.6
+h0 command: ifconfig
+h0-eth0: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.0.1  netmask 255.255.255.0  broadcast 192.168.0.255
+        inet6 fe80::5cbb:20ff:fefb:3c1e  prefixlen 64  scopeid 0x20<link>
+        ether 5e:bb:20:fb:3c:1e  txqueuelen 1000  (Ethernet)
+        RX packets 19  bytes 2393 (2.3 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 6  bytes 516 (516.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+lo: flags=73<UP,LOOPBACK,RUNNING>  mtu 65536
+        inet 127.0.0.1  netmask 255.0.0.0
+        inet6 ::1  prefixlen 128  scopeid 0x10<host>
+        loop  txqueuelen 1000  (Local Loopback)
+        RX packets 0  bytes 0 (0.0 B)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 0  bytes 0 (0.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+h1 command: ifconfig
+h1-eth0: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.0.2  netmask 255.255.255.0  broadcast 192.168.0.255
+        inet6 fe80::5c5f:dfff:fe4f:7922  prefixlen 64  scopeid 0x20<link>
+        ether 5e:5f:df:4f:79:22  txqueuelen 1000  (Ethernet)
+        RX packets 19  bytes 2393 (2.3 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 6  bytes 516 (516.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+h1-eth1: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.1.2  netmask 255.255.255.0  broadcast 192.168.1.255
+        inet6 fe80::2078:2aff:fe65:8c9a  prefixlen 64  scopeid 0x20<link>
+        ether 22:78:2a:65:8c:9a  txqueuelen 1000  (Ethernet)
+        RX packets 20  bytes 2479 (2.4 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 6  bytes 516 (516.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+lo: flags=73<UP,LOOPBACK,RUNNING>  mtu 65536
+        inet 127.0.0.1  netmask 255.0.0.0
+        inet6 ::1  prefixlen 128  scopeid 0x10<host>
+        loop  txqueuelen 1000  (Local Loopback)
+        RX packets 0  bytes 0 (0.0 B)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 0  bytes 0 (0.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+h2 command: ifconfig
+h2-eth0: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.1.3  netmask 255.255.255.0  broadcast 192.168.1.255
+        inet6 fe80::707f:f4ff:fe4c:1c9c  prefixlen 64  scopeid 0x20<link>
+        ether 72:7f:f4:4c:1c:9c  txqueuelen 1000  (Ethernet)
+        RX packets 20  bytes 2463 (2.4 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 6  bytes 516 (516.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+h2-eth1: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.2.3  netmask 255.255.255.0  broadcast 192.168.2.255
+        inet6 fe80::7452:7bff:fe22:3dfd  prefixlen 64  scopeid 0x20<link>
+        ether 76:52:7b:22:3d:fd  txqueuelen 1000  (Ethernet)
+        RX packets 20  bytes 2479 (2.4 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 7  bytes 586 (586.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+lo: flags=73<UP,LOOPBACK,RUNNING>  mtu 65536
+        inet 127.0.0.1  netmask 255.0.0.0
+        inet6 ::1  prefixlen 128  scopeid 0x10<host>
+        loop  txqueuelen 1000  (Local Loopback)
+        RX packets 0  bytes 0 (0.0 B)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 0  bytes 0 (0.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+h3 command: ifconfig
+h3-eth0: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.2.4  netmask 255.255.255.0  broadcast 192.168.2.255
+        inet6 fe80::f0f4:70ff:fe32:6479  prefixlen 64  scopeid 0x20<link>
+        ether f2:f4:70:32:64:79  txqueuelen 1000  (Ethernet)
+        RX packets 21  bytes 2553 (2.5 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 6  bytes 516 (516.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+h3-eth1: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.3.4  netmask 255.255.255.0  broadcast 192.168.3.255
+        inet6 fe80::74c4:66ff:fe2d:a890  prefixlen 64  scopeid 0x20<link>
+        ether 76:c4:66:2d:a8:90  txqueuelen 1000  (Ethernet)
+        RX packets 21  bytes 2569 (2.5 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 6  bytes 516 (516.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+lo: flags=73<UP,LOOPBACK,RUNNING>  mtu 65536
+        inet 127.0.0.1  netmask 255.0.0.0
+        inet6 ::1  prefixlen 128  scopeid 0x10<host>
+        loop  txqueuelen 1000  (Local Loopback)
+        RX packets 0  bytes 0 (0.0 B)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 0  bytes 0 (0.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+h4 command: ifconfig
+h4-eth0: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.3.5  netmask 255.255.255.0  broadcast 192.168.3.255
+        inet6 fe80::649b:27ff:fe7b:8c48  prefixlen 64  scopeid 0x20<link>
+        ether 66:9b:27:7b:8c:48  txqueuelen 1000  (Ethernet)
+        RX packets 20  bytes 2479 (2.4 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 6  bytes 516 (516.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+h4-eth1: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.4.5  netmask 255.255.255.0  broadcast 192.168.4.255
+        inet6 fe80::685c:e4ff:fec5:64c5  prefixlen 64  scopeid 0x20<link>
+        ether 6a:5c:e4:c5:64:c5  txqueuelen 1000  (Ethernet)
+        RX packets 19  bytes 2393 (2.3 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 6  bytes 516 (516.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+lo: flags=73<UP,LOOPBACK,RUNNING>  mtu 65536
+        inet 127.0.0.1  netmask 255.0.0.0
+        inet6 ::1  prefixlen 128  scopeid 0x10<host>
+        loop  txqueuelen 1000  (Local Loopback)
+        RX packets 0  bytes 0 (0.0 B)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 0  bytes 0 (0.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+h5 command: ifconfig
+h5-eth0: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.4.6  netmask 255.255.255.0  broadcast 192.168.4.255
+        inet6 fe80::54d5:7dff:fecf:e45e  prefixlen 64  scopeid 0x20<link>
+        ether 56:d5:7d:cf:e4:5e  txqueuelen 1000  (Ethernet)
+        RX packets 19  bytes 2393 (2.3 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 6  bytes 516 (516.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+lo: flags=73<UP,LOOPBACK,RUNNING>  mtu 65536
+        inet 127.0.0.1  netmask 255.0.0.0
+        inet6 ::1  prefixlen 128  scopeid 0x10<host>
+        loop  txqueuelen 1000  (Local Loopback)
+        RX packets 0  bytes 0 (0.0 B)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 0  bytes 0 (0.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+h1 command: csmgrdstart -d ./h1 > h1-csmgrd-log
+h3 command: csmgrdstart -d ./h3 > h3-csmgrd-log
+h5 command: csmgrdstart -d ./h5 > h5-csmgrd-log
+h0 command: cefnetdstart -d ./h0 > h0-cefnetd-log
+h1 command: cefnetdstart -d ./h1 > h1-cefnetd-log
+h2 command: cefnetdstart -d ./h2 > h2-cefnetd-log
+h3 command: cefnetdstart -d ./h3 > h3-cefnetd-log
+h4 command: cefnetdstart -d ./h4 > h4-cefnetd-log
+^[[A^[[A^[[A^[[A^[[A^[[A^[[A^[[A^[[A^[[A^[[A^[[A^[[Ah5 command: cefnetdstart -d ./h5 > h5-cefnetd-log
+^[[A^[[A^[[A^[[A^[[A^[[A^[[A^[[A^[[A^[[A^[[Ah0 command: cefroute add ccnx:/test udp 192.168.0.2 -d ./h0
+2026-01-22 14:33:08.900 [cefctrl] INFO: [client] Config directory is ./h0
+2026-01-22 14:33:08.900 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.0
+2026-01-22 14:33:08.900 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+h1 command: cefroute add ccnx:/test udp 192.168.1.3 -d ./h1
+2026-01-22 14:33:08.907 [cefctrl] INFO: [client] Config directory is ./h1
+2026-01-22 14:33:08.907 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.1
+2026-01-22 14:33:08.907 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+h2 command: cefroute add ccnx:/test udp 192.168.2.4 -d ./h2
+2026-01-22 14:33:08.914 [cefctrl] INFO: [client] Config directory is ./h2
+2026-01-22 14:33:08.915 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.2
+2026-01-22 14:33:08.915 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+h3 command: cefroute add ccnx:/test udp 192.168.3.5 -d ./h3
+2026-01-22 14:33:08.921 [cefctrl] INFO: [client] Config directory is ./h3
+2026-01-22 14:33:08.922 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.3
+2026-01-22 14:33:08.922 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+h4 command: cefroute add ccnx:/test udp 192.168.4.6 -d ./h4
+2026-01-22 14:33:08.930 [cefctrl] INFO: [client] Config directory is ./h4
+2026-01-22 14:33:08.930 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.4
+2026-01-22 14:33:08.930 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+h5 command: cefputfile ccnx:/test -f ./sample-putfile -t 3000 -e 3000 -d ./h5 > cefputfile-log
+h0 command: cefgetfile ccnx:/test -f ./recvfile_at_h0 -d ./h0 > cefgetfile-log
+*** Starting CLI:
+mininet> pingall h2
+*** Ping: testing ping reachability
+h0 -> X X X X X
+h1 -> X X X X X
+h2 -> X X X X X
+h3 -> X X X X X
+h4 -> X X X X X
+h5 -> X X X X X
+*** Results: 100% dropped (0/30 received)
+mininet> pingall h4
+*** Ping: testing ping reachability
+h0 -> X X X X X
+h1 -> X X X X X
+h2 -> X X X X X
+h3 -> X X X X X
+h4 -> X X X X X
+h5 -> X X X X X
+*** Results: 100% dropped (0/30 received)
+mininet> h2 ip a
+1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN group default qlen 1000
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+    inet 127.0.0.1/8 scope host lo
+       valid_lft forever preferred_lft forever
+    inet6 ::1/128 scope host
+       valid_lft forever preferred_lft forever
+2: h2-eth0@if520: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP group default qlen 1000
+    link/ether 72:7f:f4:4c:1c:9c brd ff:ff:ff:ff:ff:ff link-netnsid 0
+    inet 192.168.1.3/24 brd 192.168.1.255 scope global h2-eth0
+       valid_lft forever preferred_lft forever
+    inet6 fe80::707f:f4ff:fe4c:1c9c/64 scope link
+       valid_lft forever preferred_lft forever
+3: h2-eth1@if521: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP group default qlen 1000
+    link/ether 76:52:7b:22:3d:fd brd ff:ff:ff:ff:ff:ff link-netnsid 0
+    inet 192.168.2.3/24 brd 192.168.2.255 scope global h2-eth1
+       valid_lft forever preferred_lft forever
+    inet6 fe80::7452:7bff:fe22:3dfd/64 scope link
+       valid_lft forever preferred_lft forever
+mininet> h2 ping h6
+ping: h6: Temporary failure in name resolution
+mininet> h2 ping h1
+ping: connect: Network is unreachable
+mininet> h2 ping s1
+PING 127.0.0.1 (127.0.0.1) 56(84) bytes of data.
+64 bytes from 127.0.0.1: icmp_seq=1 ttl=64 time=0.035 ms
+64 bytes from 127.0.0.1: icmp_seq=2 ttl=64 time=0.039 ms
+64 bytes from 127.0.0.1: icmp_seq=3 ttl=64 time=0.034 ms
+64 bytes from 127.0.0.1: icmp_seq=4 ttl=64 time=0.030 ms
+^C
+--- 127.0.0.1 ping statistics ---
+4 packets transmitted, 4 received, 0% packet loss, time 3105ms
+rtt min/avg/max/mdev = 0.030/0.034/0.039/0.003 ms
+mininet> h2 ping s2
+PING 127.0.0.1 (127.0.0.1) 56(84) bytes of data.
+64 bytes from 127.0.0.1: icmp_seq=1 ttl=64 time=0.033 ms
+64 bytes from 127.0.0.1: icmp_seq=2 ttl=64 time=0.042 ms
+^C
+--- 127.0.0.1 ping statistics ---
+2 packets transmitted, 2 received, 0% packet loss, time 1026ms
+rtt min/avg/max/mdev = 0.033/0.037/0.042/0.004 ms
+mininet> h2 ping s3
+PING 127.0.0.1 (127.0.0.1) 56(84) bytes of data.
+64 bytes from 127.0.0.1: icmp_seq=1 ttl=64 time=0.035 ms
+64 bytes from 127.0.0.1: icmp_seq=2 ttl=64 time=0.038 ms
+64 bytes from 127.0.0.1: icmp_seq=3 ttl=64 time=0.037 ms
+^C
+--- 127.0.0.1 ping statistics ---
+3 packets transmitted, 3 received, 0% packet loss, time 2064ms
+rtt min/avg/max/mdev = 0.035/0.036/0.038/0.001 ms
+mininet> h2 ping h4
+ping: connect: Network is unreachable
+mininet> net
+h0 h0-eth0:s0-eth1
+h1 h1-eth0:s0-eth2 h1-eth1:s1-eth1
+h2 h2-eth0:s1-eth2 h2-eth1:s2-eth1
+h3 h3-eth0:s2-eth2 h3-eth1:s3-eth1
+h4 h4-eth0:s3-eth2 h4-eth1:s4-eth1
+h5 h5-eth0:s4-eth2
+s0 lo:  s0-eth1:h0-eth0 s0-eth2:h1-eth0
+s1 lo:  s1-eth1:h1-eth1 s1-eth2:h2-eth0
+s2 lo:  s2-eth1:h2-eth1 s2-eth2:h3-eth0
+s3 lo:  s3-eth1:h3-eth1 s3-eth2:h4-eth0
+s4 lo:  s4-eth1:h4-eth1 s4-eth2:h5-eth0
+c0
+mininet> quit
+hosts[ 0 ]: cefnetdstop -F -d ./h0
+hosts[ 1 ]: cefnetdstop -F -d ./h1
+hosts[ 2 ]: cefnetdstop -F -d ./h2
+hosts[ 3 ]: cefnetdstop -F -d ./h3
+hosts[ 4 ]: cefnetdstop -F -d ./h4
+hosts[ 5 ]: cefnetdstop -F -d ./h5
+hosts[ 1 ]: csmgrdstop -d ./h1
+hosts[ 3 ]: csmgrdstop -d ./h3
+hosts[ 5 ]: csmgrdstop -d ./h5
+*** Stopping 1 controllers
+c0
+*** Stopping 10 links
+..........
+*** Stopping 5 switches
+s0 s1 s2 s3 s4
+*** Stopping 6 hosts
+h0 h1 h2 h3 h4 h5
+*** Done
+398 yamakawa@HP-Z8-G4-Workstation:~/Development/github/cefore-emu-koh11235813 $ cat cefgetfile-log                                                                                                                                                                   [feature/mesh]
+[cefgetfile] Start
+[cefgetfile] Parsing parameters ...OK
+2026-01-22 14:33:16.644 [cefgetfile] INFO: [client] Config directory is ./h0
+2026-01-22 14:33:16.644 [cefgetfile] INFO: [client] Local Socket Name is /tmp/cef_9695.0
+2026-01-22 14:33:16.644 [cefgetfile] INFO: [client] Listen Port is 9695
+[cefgetfile] Init Cefore Client package ... OK
+[cefgetfile] Conversion from URI into Name ... OK
+[cefgetfile] Checking the output file ... OK
+[cefgetfile] Connect to cefnetd ... OK
+[cefgetfile] URI=ccnx:/test
+[cefgetfile] Start sending Interests
+[cefgetfile] Completed to get all the chunks.
+[cefgetfile] Unconnect to cefnetd ... OK
+[cefgetfile] Terminate
+[cefgetfile] Rx Frames (All)           = 424
+[cefgetfile] Rx Frames (ContentObject) = 424
+[cefgetfile] Rx Bytes (All)            = 440174
+[cefgetfile] Rx Bytes (ContentObject)  = 433390
+[cefgetfile] Duration                  = 0.287 sec
+[cefgetfile] Throughput                = 12306105 bps
+[cefgetfile] Goodput                   = 12116442 bps
+[cefgetfile] Jitter (Ave)              = 674 us
+[cefgetfile] Jitter (Max)              = 9762 us
+[cefgetfile] Jitter (Var)              = 528166 us
+399 yamakawa@HP-Z8-G4-Workstation:~/Development/github/cefore-emu-koh11235813 $ cat cefputfile-log                                                                                                                                                                   [feature/mesh]
+[cefputfile] Start
+[cefputfile] Parsing parameters ... OK
+2026-01-22 14:33:09.936 [cefputfile] INFO: [client] Config directory is ./h5
+2026-01-22 14:33:09.936 [cefputfile] INFO: [client] Local Socket Name is /tmp/cef_9695.5
+2026-01-22 14:33:09.936 [cefputfile] INFO: [client] Listen Port is 9695
+[cefputfile] Init Cefore Client package ... OK
+[cefputfile] Conversion from URI into Name ... OK
+[cefputfile] Checking the input file ... OK
+[cefputfile] Connect to cefnetd ... OK
+[cefputfile] URI         = ccnx:/test
+[cefputfile] File        = ./sample-putfile
+[cefputfile] Rate        = 5.000 Mbps
+[cefputfile] Block Size  = 1024 Bytes
+[cefputfile] Cache Time  = 3000 sec
+[cefputfile] Expiration  = 3000 sec
+[cefputfile] Start creating Content Objects
+[cefputfile] Unconnect to cefnetd ... OK
+[cefputfile] Terminate
+[cefputfile] Tx Frames  = 424
+[cefputfile] Tx Bytes   = 433390
+[cefputfile] Duration   = 0.701 sec
+[cefputfile] Throughput = 4949775 bps
