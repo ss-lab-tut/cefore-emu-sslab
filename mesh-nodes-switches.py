@@ -194,6 +194,19 @@ def run_cefgetfile(net, host_idx, uri, output_path):
     net.hosts[host_idx].cmd(command)
 
 
+def run_cefstatus(net, host_idx):
+    node_name = f"h{host_idx}"
+    command = f"cefstatus -d ./{node_name}"
+    print(node_name, "command:", command)
+    info(net.hosts[host_idx].cmd(command))
+
+
+def run_cefstatus_all(net, host_num):
+    info("\nFIB status per host:\n")
+    for host_idx in range(host_num):
+        run_cefstatus(net, host_idx)
+
+
 def start_csmgrd(net, idx):
     node_name = f"h{idx}"
     command = f"csmgrdstart -d ./{node_name} > {node_name}-csmgrd-log"
@@ -276,6 +289,7 @@ def run_mesh_topology(host_num, swhich_num, seed):
         start_cefnetd(net, idx)
 
     set_fib(net, topo.mesh_links)
+    run_cefstatus_all(net, host_num)
     print_mesh_links(topo.mesh_links)
     time.sleep(1)
 
