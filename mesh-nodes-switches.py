@@ -105,24 +105,49 @@ def set_ip_addr(net, mesh_links):
 
 
 def set_fib(net, mesh_links):
-    # Add FIB entries for each linked host pair.
-    for link in sorted(mesh_links, key=lambda item: item["subnet"]):
-        subnet = link["subnet"]
+    # Add FIB entries toward the last host using next-hop routing.
+    host_num = max(
+        max(link["host_a"], link["host_b"]) for link in mesh_links
+    ) + 1
+    target = host_num - 1
+    graph = {idx: set() for idx in range(host_num)}
+    link_subnets = {}
+    for link in mesh_links:
         host_a = link["host_a"]
         host_b = link["host_b"]
-        host_a_name = f"h{host_a}"
-        host_b_name = f"h{host_b}"
-        prefix = f"ccnx:/test/example{subnet}/"
-        host_b_ip = f"192.168.{subnet}.{host_b + 1}"
-        host_a_ip = f"192.168.{subnet}.{host_a + 1}"
+        graph[host_a].add(host_b)
+        graph[host_b].add(host_a)
+        key = tuple(sorted((host_a, host_b)))
+        link_subnets[key] = link["subnet"]
 
-        command = f"cefroute add {prefix} udp {host_b_ip} -d ./{host_a_name}"
-        print(host_a_name, "command:", command)
-        info(net.hosts[host_a].cmd(command))
+    parents = {target: None}
+    queue = [target]
+    for node in queue:
+        for neighbor in graph[node]:
+            if neighbor not in parents:
+                parents[neighbor] = node
+                queue.append(neighbor)
 
-        command = f"cefroute add {prefix} udp {host_a_ip} -d ./{host_b_name}"
-        print(host_b_name, "command:", command)
-        info(net.hosts[host_b].cmd(command))
+    prefixes = [
+        f"ccnx:/test/example{subnet}"
+        for subnet in sorted({link["subnet"] for link in mesh_links})
+    ]
+
+    for host_idx in range(host_num):
+        if host_idx == target:
+            continue
+        next_hop = parents.get(host_idx)
+        if next_hop is None:
+            info(f"host h{host_idx} has no path to h{target}\n")
+            continue
+        link_key = tuple(sorted((host_idx, next_hop)))
+        subnet = link_subnets[link_key]
+        next_hop_ip = f"192.168.{subnet}.{next_hop + 1}"
+        node_name = f"h{host_idx}"
+        for prefix in prefixes:
+            command = f"cefroute add {prefix} udp {next_hop_ip} -d ./{node_name}"
+            print(node_name, "command:", command)
+            info(net.hosts[host_idx].cmd(command))
 
 
 def print_mesh_links(mesh_links):
@@ -295,7 +320,7 @@ def run_mesh_topology(host_num, swhich_num, seed):
 
     publisher = host_num - 1
     publish_link = pick_publish_link(topo.mesh_links, publisher)
-    publish_uri = "ccnx:/test/example1"
+    publish_uri = "ccnx:/test/example1/test.py"
     consumer = (
         publish_link["host_b"]
         if publish_link["host_a"] == publisher
