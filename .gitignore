@@ -3,3 +3,5 @@
 recv*
 csmgr_fsc_*
 .venv
+
+.DS_Store

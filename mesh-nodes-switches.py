@@ -104,12 +104,73 @@ def set_ip_addr(net, mesh_links):
             net.hosts[host_idx].cmd(command)
 
 
-def set_fib(net, mesh_links):
-    # Add FIB entries toward the last host using next-hop routing.
+def shortest_path(graph, source, target, banned_edges=None, banned_nodes=None):
+    if source == target:
+        return [source]
+    banned_edges = banned_edges or set()
+    banned_nodes = banned_nodes or set()
+    queue = [source]
+    parents = {source: None}
+    for node in queue:
+        for neighbor in sorted(graph[node]):
+            edge = frozenset((node, neighbor))
+            if edge in banned_edges:
+                continue
+            if neighbor in banned_nodes and neighbor != target:
+                continue
+            if neighbor not in parents:
+                parents[neighbor] = node
+                if neighbor == target:
+                    queue = []
+                    break
+                queue.append(neighbor)
+    if target not in parents:
+        return None
+    path = []
+    node = target
+    while node is not None:
+        path.append(node)
+        node = parents[node]
+    return list(reversed(path))
+
+
+def k_shortest_paths(graph, source, target, k_paths):
+    first = shortest_path(graph, source, target)
+    if not first:
+        return []
+    paths = [first]
+    candidates = []
+    for _ in range(1, k_paths):
+        previous = paths[-1]
+        for i in range(len(previous) - 1):
+            spur_node = previous[i]
+            root_path = previous[: i + 1]
+            banned_edges = set()
+            banned_nodes = set(root_path[:-1])
+            for path in paths:
+                if len(path) > i and path[: i + 1] == root_path:
+                    banned_edges.add(frozenset((path[i], path[i + 1])))
+            spur_path = shortest_path(
+                graph, spur_node, target, banned_edges, banned_nodes
+            )
+            if not spur_path:
+                continue
+            total_path = root_path[:-1] + spur_path
+            candidates.append(total_path)
+        if not candidates:
+            break
+        candidates.sort(key=lambda p: (len(p), p))
+        next_path = candidates.pop(0)
+        if next_path not in paths:
+            paths.append(next_path)
+    return paths[:k_paths]
+
+
+def set_fib(net, mesh_links, k_paths):
+    # Add FIB entries for all destinations with multiple next hops.
     host_num = max(
         max(link["host_a"], link["host_b"]) for link in mesh_links
     ) + 1
-    target = host_num - 1
     graph = {idx: set() for idx in range(host_num)}
     link_subnets = {}
     for link in mesh_links:
@@ -120,34 +181,30 @@ def set_fib(net, mesh_links):
         key = tuple(sorted((host_a, host_b)))
         link_subnets[key] = link["subnet"]
 
-    parents = {target: None}
-    queue = [target]
-    for node in queue:
-        for neighbor in graph[node]:
-            if neighbor not in parents:
-                parents[neighbor] = node
-                queue.append(neighbor)
-
-    prefixes = [
-        f"ccnx:/test/example{subnet}"
-        for subnet in sorted({link["subnet"] for link in mesh_links})
-    ]
-
-    for host_idx in range(host_num):
-        if host_idx == target:
-            continue
-        next_hop = parents.get(host_idx)
-        if next_hop is None:
-            info(f"host h{host_idx} has no path to h{target}\n")
-            continue
-        link_key = tuple(sorted((host_idx, next_hop)))
-        subnet = link_subnets[link_key]
-        next_hop_ip = f"192.168.{subnet}.{next_hop + 1}"
-        node_name = f"h{host_idx}"
-        for prefix in prefixes:
-            command = f"cefroute add {prefix} udp {next_hop_ip} -d ./{node_name}"
-            print(node_name, "command:", command)
-            info(net.hosts[host_idx].cmd(command))
+    for dest in range(host_num):
+        prefix = f"ccnx:/test/example{dest + 1}"
+        for src in range(host_num):
+            if src == dest:
+                continue
+            paths = k_shortest_paths(graph, src, dest, k_paths)
+            if not paths:
+                info(f"host h{src} has no path to h{dest}\n")
+                continue
+            next_hops = []
+            for path in paths:
+                if len(path) < 2:
+                    continue
+                next_hops.append(path[1])
+            if not next_hops:
+                continue
+            node_name = f"h{src}"
+            for next_hop in sorted(set(next_hops)):
+                link_key = tuple(sorted((src, next_hop)))
+                subnet = link_subnets[link_key]
+                next_hop_ip = f"192.168.{subnet}.{next_hop + 1}"
+                command = f"cefroute add {prefix} udp {next_hop_ip} -d ./{node_name}"
+                print(node_name, "command:", command)
+                info(net.hosts[src].cmd(command))
 
 
 def print_mesh_links(mesh_links):
@@ -280,9 +337,11 @@ def max_possible_links(host_num):
     return host_num * (host_num - 1) // 2
 
 
-def run_mesh_topology(host_num, swhich_num, seed):
+def run_mesh_topology(host_num, swhich_num, seed, k_paths):
     if host_num < 3:
         sys.exit("host count must be at least 3")
+    if k_paths < 1:
+        sys.exit("k must be at least 1")
     if swhich_num < 2:
         sys.exit("link count must be at least 2")
     max_links = max_possible_links(host_num)
@@ -313,14 +372,14 @@ def run_mesh_topology(host_num, swhich_num, seed):
     for idx in range(host_num):
         start_cefnetd(net, idx)
 
-    set_fib(net, topo.mesh_links)
+    set_fib(net, topo.mesh_links, k_paths)
     run_cefstatus_all(net, host_num)
     print_mesh_links(topo.mesh_links)
     time.sleep(1)
 
     publisher = host_num - 1
     publish_link = pick_publish_link(topo.mesh_links, publisher)
-    publish_uri = "ccnx:/test/example1/test.py"
+    publish_uri = f"ccnx:/test/example{publisher + 1}/test.py"
     consumer = (
         publish_link["host_b"]
         if publish_link["host_a"] == publisher
@@ -456,10 +515,16 @@ def main():
         default=None,
         help="random seed for deterministic topology",
     )
+    parser.add_argument(
+        "--k",
+        type=int,
+        default=2,
+        help="number of shortest paths per destination",
+    )
     args = parser.parse_args()
 
     setLogLevel("info")
-    run_mesh_topology(args.hosts, args.switches, args.seed)
+    run_mesh_topology(args.hosts, args.switches, args.seed, args.k)
 
 
 if __name__ == "__main__":
