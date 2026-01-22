@@ -281,7 +281,7 @@ def run_mesh_topology(host_num, swhich_num, seed):
 
     publisher = host_num - 1
     publish_link = pick_publish_link(topo.mesh_links, publisher)
-    publish_uri = "ccnx:/test/example1/test.py"
+    publish_uri = "ccnx:/test/example1"
     consumer = (
         publish_link["host_b"]
         if publish_link["host_a"] == publisher
@@ -291,13 +291,13 @@ def run_mesh_topology(host_num, swhich_num, seed):
     run_cefputfile(net, publisher, publish_uri)
     time.sleep(5)
 
-    link_down(net, topo.mesh_links, 0, 7)
-    link_down(net, topo.mesh_links, 1, 5)
-    link_down(net, topo.mesh_links, 2, 4)
-    link_down(net, topo.mesh_links, 3, 6)
-    link_down(net, topo.mesh_links, 4, 7)
-    link_down(net, topo.mesh_links, 5, 6)
-    link_down(net, topo.mesh_links, 6, 7)
+#    link_down(net, topo.mesh_links, 0, 7)
+#    link_down(net, topo.mesh_links, 1, 5)
+#    link_down(net, topo.mesh_links, 2, 4)
+#    link_down(net, topo.mesh_links, 3, 6)
+#    link_down(net, topo.mesh_links, 4, 7)
+#    link_down(net, topo.mesh_links, 5, 6)
+#    link_down(net, topo.mesh_links, 6, 7)
 
     run_cefgetfile(net, consumer, publish_uri, f"./recvfile_at_h{consumer}")
 
@@ -420,7 +420,7 @@ def main():
     args = parser.parse_args()
 
     setLogLevel("info")
-    run_mesh_topology(args.hosts, args.switches args.seed)
+    run_mesh_topology(args.hosts, args.switches, args.seed)
 
 
 if __name__ == "__main__":
