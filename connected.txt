@@ -1,0 +1,1369 @@
+Mesh links (host-switch-host):
+h11-eth0 -- s0 -- h24-eth0 (subnet 1)
+h12-eth0 -- s1 -- h23-eth0 (subnet 2)
+h6-eth0 -- s2 -- h20-eth0 (subnet 3)
+h2-eth0 -- s3 -- h21-eth0 (subnet 4)
+h13-eth0 -- s4 -- h18-eth0 (subnet 5)
+h10-eth0 -- s5 -- h14-eth0 (subnet 6)
+h0-eth0 -- s6 -- h15-eth0 (subnet 7)
+h3-eth0 -- s7 -- h4-eth0 (subnet 8)
+h5-eth0 -- s8 -- h8-eth0 (subnet 9)
+h19-eth0 -- s9 -- h22-eth0 (subnet 10)
+h7-eth0 -- s10 -- h16-eth0 (subnet 11)
+h1-eth0 -- s11 -- h9-eth0 (subnet 12)
+h17-eth0 -- s12 -- h22-eth1 (subnet 13)
+h14-eth1 -- s13 -- h18-eth1 (subnet 14)
+h11-eth1 -- s14 -- h17-eth1 (subnet 15)
+h11-eth2 -- s15 -- h21-eth1 (subnet 16)
+h0-eth1 -- s16 -- h20-eth1 (subnet 17)
+h4-eth1 -- s17 -- h5-eth1 (subnet 18)
+h9-eth1 -- s18 -- h10-eth1 (subnet 19)
+h10-eth2 -- s19 -- h16-eth1 (subnet 20)
+h17-eth2 -- s20 -- h19-eth1 (subnet 21)
+h6-eth1 -- s21 -- h24-eth1 (subnet 22)
+h17-eth3 -- s22 -- h20-eth2 (subnet 23)
+h4-eth2 -- s23 -- h22-eth2 (subnet 24)
+h4-eth3 -- s24 -- h13-eth1 (subnet 25)
+h14-eth2 -- s25 -- h16-eth2 (subnet 26)
+h16-eth3 -- s26 -- h21-eth2 (subnet 27)
+h15-eth1 -- s27 -- h18-eth2 (subnet 28)
+h13-eth2 -- s28 -- h17-eth4 (subnet 29)
+h7-eth1 -- s29 -- h19-eth2 (subnet 30)
+h3-eth1 -- s30 -- h8-eth1 (subnet 31)
+h8-eth2 -- s31 -- h23-eth1 (subnet 32)
+h2-eth1 -- s32 -- h15-eth2 (subnet 33)
+h19-eth3 -- s33 -- h20-eth3 (subnet 34)
+h4-eth4 -- s34 -- h8-eth3 (subnet 35)
+h12-eth1 -- s35 -- h19-eth4 (subnet 36)
+h3-eth2 -- s36 -- h16-eth4 (subnet 37)
+h6-eth2 -- s37 -- h13-eth3 (subnet 38)
+h16-eth5 -- s38 -- h18-eth3 (subnet 39)
+h15-eth3 -- s39 -- h19-eth5 (subnet 40)
+h6-eth3 -- s40 -- h12-eth2 (subnet 41)
+h17-eth5 -- s41 -- h23-eth2 (subnet 42)
+h14-eth3 -- s42 -- h20-eth4 (subnet 43)
+h7-eth2 -- s43 -- h12-eth3 (subnet 44)
+h10-eth3 -- s44 -- h24-eth2 (subnet 45)
+h13-eth4 -- s45 -- h21-eth3 (subnet 46)
+h2-eth2 -- s46 -- h12-eth4 (subnet 47)
+h2-eth3 -- s47 -- h4-eth5 (subnet 48)
+h17-eth6 -- s48 -- h18-eth4 (subnet 49)
+h12-eth5 -- s49 -- h22-eth3 (subnet 50)
+h6-eth4 -- s50 -- h22-eth4 (subnet 51)
+h13-eth5 -- s51 -- h23-eth3 (subnet 52)
+h3-eth3 -- s52 -- h20-eth5 (subnet 53)
+h4-eth6 -- s53 -- h17-eth7 (subnet 54)
+h11-eth3 -- s54 -- h16-eth6 (subnet 55)
+h16-eth7 -- s55 -- h19-eth6 (subnet 56)
+h10-eth4 -- s56 -- h23-eth4 (subnet 57)
+h1-eth1 -- s57 -- h24-eth3 (subnet 58)
+h9-eth2 -- s58 -- h24-eth4 (subnet 59)
+h4-eth7 -- s59 -- h21-eth4 (subnet 60)
+h3-eth4 -- s60 -- h7-eth3 (subnet 61)
+h4-eth8 -- s61 -- h9-eth3 (subnet 62)
+h1-eth2 -- s62 -- h13-eth6 (subnet 63)
+h1-eth3 -- s63 -- h10-eth5 (subnet 64)
+h6-eth5 -- s64 -- h19-eth7 (subnet 65)
+h6-eth6 -- s65 -- h14-eth4 (subnet 66)
+h6-eth7 -- s66 -- h17-eth8 (subnet 67)
+h2-eth4 -- s67 -- h10-eth6 (subnet 68)
+h3-eth5 -- s68 -- h17-eth9 (subnet 69)
+h8-eth4 -- s69 -- h19-eth8 (subnet 70)
+h1-eth4 -- s70 -- h22-eth5 (subnet 71)
+h8-eth5 -- s71 -- h17-eth10 (subnet 72)
+h0-eth2 -- s72 -- h13-eth7 (subnet 73)
+h9-eth4 -- s73 -- h16-eth8 (subnet 74)
+h20-eth6 -- s74 -- h21-eth5 (subnet 75)
+h4-eth9 -- s75 -- h7-eth4 (subnet 76)
+h1-eth5 -- s76 -- h7-eth5 (subnet 77)
+h8-eth6 -- s77 -- h16-eth9 (subnet 78)
+h7-eth6 -- s78 -- h11-eth4 (subnet 79)
+h14-eth5 -- s79 -- h24-eth5 (subnet 80)
+h1-eth6 -- s80 -- h12-eth6 (subnet 81)
+h0-eth3 -- s81 -- h2-eth5 (subnet 82)
+h0-eth4 -- s82 -- h22-eth6 (subnet 83)
+h3-eth6 -- s83 -- h15-eth4 (subnet 84)
+h0-eth5 -- s84 -- h1-eth7 (subnet 85)
+h4-eth10 -- s85 -- h15-eth5 (subnet 86)
+h5-eth2 -- s86 -- h11-eth5 (subnet 87)
+h5-eth3 -- s87 -- h21-eth6 (subnet 88)
+h17-eth11 -- s88 -- h24-eth6 (subnet 89)
+h5-eth4 -- s89 -- h22-eth7 (subnet 90)
+h17-eth12 -- s90 -- h21-eth7 (subnet 91)
+h14-eth6 -- s91 -- h21-eth8 (subnet 92)
+h0-eth6 -- s92 -- h8-eth7 (subnet 93)
+h9-eth5 -- s93 -- h19-eth9 (subnet 94)
+h0-eth7 -- s94 -- h18-eth5 (subnet 95)
+h3-eth7 -- s95 -- h18-eth6 (subnet 96)
+h21-eth9 -- s96 -- h23-eth5 (subnet 97)
+h21-eth10 -- s97 -- h22-eth8 (subnet 98)
+h18-eth7 -- s98 -- h23-eth6 (subnet 99)
+h3-eth8 -- s99 -- h24-eth7 (subnet 100)
+h24 command: cefputfile ccnx:/test/example25/test.py -f ./sample-putfile -t 3000 -e 3000 -d ./h24 > cefputfile-log
+h11 command: cefgetfile ccnx:/test/example25/test.py -f ./recvfile_at_h11 -d ./h11 > cefgetfile-log
+*** Starting CLI:
+mininet> h2 cefgetfile ccnx:/test/example25/test.py -f ./recvfile_at_h2 -d ./h2
+[cefgetfile] Start
+[cefgetfile] Parsing parameters ...OK
+2026-01-22 16:25:34.602 [cefgetfile] INFO: [client] Config directory is ./h2
+2026-01-22 16:25:34.602 [cefgetfile] INFO: [client] Local Socket Name is /tmp/cef_9695.2
+2026-01-22 16:25:34.602 [cefgetfile] INFO: [client] Listen Port is 9695
+[cefgetfile] Init Cefore Client package ... OK
+[cefgetfile] Conversion from URI into Name ... OK
+[cefgetfile] Checking the output file ... OK
+[cefgetfile] Connect to cefnetd ... OK
+[cefgetfile] URI=ccnx:/test/example25/test.py
+[cefgetfile] Start sending Interests
+[cefgetfile] Completed to get all the chunks.
+[cefgetfile] Unconnect to cefnetd ... OK
+[cefgetfile] Terminate
+[cefgetfile] Rx Frames (All)           = 424
+[cefgetfile] Rx Frames (ContentObject) = 424
+[cefgetfile] Rx Bytes (All)            = 450350
+[cefgetfile] Rx Bytes (ContentObject)  = 433390
+[cefgetfile] Duration                  = 0.303 sec
+[cefgetfile] Throughput                = 11943326 bps
+[cefgetfile] Goodput                   = 11493545 bps
+[cefgetfile] Jitter (Ave)              = 711 us
+[cefgetfile] Jitter (Max)              = 46601 us
+[cefgetfile] Jitter (Var)              = 5683466 us
+mininet> h0 cefgetfile ccnx:/test/example25/test.py -f ./recvfile_at_h0 -d ./h0
+[cefgetfile] Start
+[cefgetfile] Parsing parameters ...OK
+2026-01-22 16:26:01.187 [cefgetfile] INFO: [client] Config directory is ./h0
+2026-01-22 16:26:01.187 [cefgetfile] INFO: [client] Local Socket Name is /tmp/cef_9695.0
+2026-01-22 16:26:01.187 [cefgetfile] INFO: [client] Listen Port is 9695
+[cefgetfile] Init Cefore Client package ... OK
+[cefgetfile] Conversion from URI into Name ... OK
+[cefgetfile] Checking the output file ... OK
+[cefgetfile] Connect to cefnetd ... OK
+[cefgetfile] URI=ccnx:/test/example25/test.py
+[cefgetfile] Start sending Interests
+[cefgetfile] Completed to get all the chunks.
+[cefgetfile] Unconnect to cefnetd ... OK
+[cefgetfile] Terminate
+[cefgetfile] Rx Frames (All)           = 424
+[cefgetfile] Rx Frames (ContentObject) = 424
+[cefgetfile] Rx Bytes (All)            = 450350
+[cefgetfile] Rx Bytes (ContentObject)  = 433390
+[cefgetfile] Duration                  = 0.362 sec
+[cefgetfile] Throughput                = 9987608 bps
+[cefgetfile] Goodput                   = 9611479 bps
+[cefgetfile] Jitter (Ave)              = 850 us
+[cefgetfile] Jitter (Max)              = 16388 us
+[cefgetfile] Jitter (Var)              = 1117973 us
+mininet> net
+h0 h0-eth0:s6-eth1 h0-eth1:s16-eth1 h0-eth2:s72-eth1 h0-eth3:s81-eth1 h0-eth4:s82-eth1 h0-eth5:s84-eth1 h0-eth6:s92-eth1 h0-eth7:s94-eth1
+h1 h1-eth0:s11-eth1 h1-eth1:s57-eth1 h1-eth2:s62-eth1 h1-eth3:s63-eth1 h1-eth4:s70-eth1 h1-eth5:s76-eth1 h1-eth6:s80-eth1 h1-eth7:s84-eth2
+h2 h2-eth0:s3-eth1 h2-eth1:s32-eth1 h2-eth2:s46-eth1 h2-eth3:s47-eth1 h2-eth4:s67-eth1 h2-eth5:s81-eth2
+h3 h3-eth0:s7-eth1 h3-eth1:s30-eth1 h3-eth2:s36-eth1 h3-eth3:s52-eth1 h3-eth4:s60-eth1 h3-eth5:s68-eth1 h3-eth6:s83-eth1 h3-eth7:s95-eth1 h3-eth8:s99-eth1
+h4 h4-eth0:s7-eth2 h4-eth1:s17-eth1 h4-eth2:s23-eth1 h4-eth3:s24-eth1 h4-eth4:s34-eth1 h4-eth5:s47-eth2 h4-eth6:s53-eth1 h4-eth7:s59-eth1 h4-eth8:s61-eth1 h4-eth9:s75-eth1 h4-eth10:s85-eth1
+h5 h5-eth0:s8-eth1 h5-eth1:s17-eth2 h5-eth2:s86-eth1 h5-eth3:s87-eth1 h5-eth4:s89-eth1
+h6 h6-eth0:s2-eth1 h6-eth1:s21-eth1 h6-eth2:s37-eth1 h6-eth3:s40-eth1 h6-eth4:s50-eth1 h6-eth5:s64-eth1 h6-eth6:s65-eth1 h6-eth7:s66-eth1
+h7 h7-eth0:s10-eth1 h7-eth1:s29-eth1 h7-eth2:s43-eth1 h7-eth3:s60-eth2 h7-eth4:s75-eth2 h7-eth5:s76-eth2 h7-eth6:s78-eth1
+h8 h8-eth0:s8-eth2 h8-eth1:s30-eth2 h8-eth2:s31-eth1 h8-eth3:s34-eth2 h8-eth4:s69-eth1 h8-eth5:s71-eth1 h8-eth6:s77-eth1 h8-eth7:s92-eth2
+h9 h9-eth0:s11-eth2 h9-eth1:s18-eth1 h9-eth2:s58-eth1 h9-eth3:s61-eth2 h9-eth4:s73-eth1 h9-eth5:s93-eth1
+h10 h10-eth0:s5-eth1 h10-eth1:s18-eth2 h10-eth2:s19-eth1 h10-eth3:s44-eth1 h10-eth4:s56-eth1 h10-eth5:s63-eth2 h10-eth6:s67-eth2
+h11 h11-eth0:s0-eth1 h11-eth1:s14-eth1 h11-eth2:s15-eth1 h11-eth3:s54-eth1 h11-eth4:s78-eth2 h11-eth5:s86-eth2
+h12 h12-eth0:s1-eth1 h12-eth1:s35-eth1 h12-eth2:s40-eth2 h12-eth3:s43-eth2 h12-eth4:s46-eth2 h12-eth5:s49-eth1 h12-eth6:s80-eth2
+h13 h13-eth0:s4-eth1 h13-eth1:s24-eth2 h13-eth2:s28-eth1 h13-eth3:s37-eth2 h13-eth4:s45-eth1 h13-eth5:s51-eth1 h13-eth6:s62-eth2 h13-eth7:s72-eth2
+h14 h14-eth0:s5-eth2 h14-eth1:s13-eth1 h14-eth2:s25-eth1 h14-eth3:s42-eth1 h14-eth4:s65-eth2 h14-eth5:s79-eth1 h14-eth6:s91-eth1
+h15 h15-eth0:s6-eth2 h15-eth1:s27-eth1 h15-eth2:s32-eth2 h15-eth3:s39-eth1 h15-eth4:s83-eth2 h15-eth5:s85-eth2
+h16 h16-eth0:s10-eth2 h16-eth1:s19-eth2 h16-eth2:s25-eth2 h16-eth3:s26-eth1 h16-eth4:s36-eth2 h16-eth5:s38-eth1 h16-eth6:s54-eth2 h16-eth7:s55-eth1 h16-eth8:s73-eth2 h16-eth9:s77-eth2
+h17 h17-eth0:s12-eth1 h17-eth1:s14-eth2 h17-eth2:s20-eth1 h17-eth3:s22-eth1 h17-eth4:s28-eth2 h17-eth5:s41-eth1 h17-eth6:s48-eth1 h17-eth7:s53-eth2 h17-eth8:s66-eth2 h17-eth9:s68-eth2 h17-eth10:s71-eth2 h17-eth11:s88-eth1 h17-eth12:s90-eth1
+h18 h18-eth0:s4-eth2 h18-eth1:s13-eth2 h18-eth2:s27-eth2 h18-eth3:s38-eth2 h18-eth4:s48-eth2 h18-eth5:s94-eth2 h18-eth6:s95-eth2 h18-eth7:s98-eth1
+h19 h19-eth0:s9-eth1 h19-eth1:s20-eth2 h19-eth2:s29-eth2 h19-eth3:s33-eth1 h19-eth4:s35-eth2 h19-eth5:s39-eth2 h19-eth6:s55-eth2 h19-eth7:s64-eth2 h19-eth8:s69-eth2 h19-eth9:s93-eth2
+h20 h20-eth0:s2-eth2 h20-eth1:s16-eth2 h20-eth2:s22-eth2 h20-eth3:s33-eth2 h20-eth4:s42-eth2 h20-eth5:s52-eth2 h20-eth6:s74-eth1
+h21 h21-eth0:s3-eth2 h21-eth1:s15-eth2 h21-eth2:s26-eth2 h21-eth3:s45-eth2 h21-eth4:s59-eth2 h21-eth5:s74-eth2 h21-eth6:s87-eth2 h21-eth7:s90-eth2 h21-eth8:s91-eth2 h21-eth9:s96-eth1 h21-eth10:s97-eth1
+h22 h22-eth0:s9-eth2 h22-eth1:s12-eth2 h22-eth2:s23-eth2 h22-eth3:s49-eth2 h22-eth4:s50-eth2 h22-eth5:s70-eth2 h22-eth6:s82-eth2 h22-eth7:s89-eth2 h22-eth8:s97-eth2
+h23 h23-eth0:s1-eth2 h23-eth1:s31-eth2 h23-eth2:s41-eth2 h23-eth3:s51-eth2 h23-eth4:s56-eth2 h23-eth5:s96-eth2 h23-eth6:s98-eth2
+h24 h24-eth0:s0-eth2 h24-eth1:s21-eth2 h24-eth2:s44-eth2 h24-eth3:s57-eth2 h24-eth4:s58-eth2 h24-eth5:s79-eth2 h24-eth6:s88-eth2 h24-eth7:s99-eth2
+s0 lo:  s0-eth1:h11-eth0 s0-eth2:h24-eth0
+s1 lo:  s1-eth1:h12-eth0 s1-eth2:h23-eth0
+s2 lo:  s2-eth1:h6-eth0 s2-eth2:h20-eth0
+s3 lo:  s3-eth1:h2-eth0 s3-eth2:h21-eth0
+s4 lo:  s4-eth1:h13-eth0 s4-eth2:h18-eth0
+s5 lo:  s5-eth1:h10-eth0 s5-eth2:h14-eth0
+s6 lo:  s6-eth1:h0-eth0 s6-eth2:h15-eth0
+s7 lo:  s7-eth1:h3-eth0 s7-eth2:h4-eth0
+s8 lo:  s8-eth1:h5-eth0 s8-eth2:h8-eth0
+s9 lo:  s9-eth1:h19-eth0 s9-eth2:h22-eth0
+s10 lo:  s10-eth1:h7-eth0 s10-eth2:h16-eth0
+s11 lo:  s11-eth1:h1-eth0 s11-eth2:h9-eth0
+s12 lo:  s12-eth1:h17-eth0 s12-eth2:h22-eth1
+s13 lo:  s13-eth1:h14-eth1 s13-eth2:h18-eth1
+s14 lo:  s14-eth1:h11-eth1 s14-eth2:h17-eth1
+s15 lo:  s15-eth1:h11-eth2 s15-eth2:h21-eth1
+s16 lo:  s16-eth1:h0-eth1 s16-eth2:h20-eth1
+s17 lo:  s17-eth1:h4-eth1 s17-eth2:h5-eth1
+s18 lo:  s18-eth1:h9-eth1 s18-eth2:h10-eth1
+s19 lo:  s19-eth1:h10-eth2 s19-eth2:h16-eth1
+s20 lo:  s20-eth1:h17-eth2 s20-eth2:h19-eth1
+s21 lo:  s21-eth1:h6-eth1 s21-eth2:h24-eth1
+s22 lo:  s22-eth1:h17-eth3 s22-eth2:h20-eth2
+s23 lo:  s23-eth1:h4-eth2 s23-eth2:h22-eth2
+s24 lo:  s24-eth1:h4-eth3 s24-eth2:h13-eth1
+s25 lo:  s25-eth1:h14-eth2 s25-eth2:h16-eth2
+s26 lo:  s26-eth1:h16-eth3 s26-eth2:h21-eth2
+s27 lo:  s27-eth1:h15-eth1 s27-eth2:h18-eth2
+s28 lo:  s28-eth1:h13-eth2 s28-eth2:h17-eth4
+s29 lo:  s29-eth1:h7-eth1 s29-eth2:h19-eth2
+s30 lo:  s30-eth1:h3-eth1 s30-eth2:h8-eth1
+s31 lo:  s31-eth1:h8-eth2 s31-eth2:h23-eth1
+s32 lo:  s32-eth1:h2-eth1 s32-eth2:h15-eth2
+s33 lo:  s33-eth1:h19-eth3 s33-eth2:h20-eth3
+s34 lo:  s34-eth1:h4-eth4 s34-eth2:h8-eth3
+s35 lo:  s35-eth1:h12-eth1 s35-eth2:h19-eth4
+s36 lo:  s36-eth1:h3-eth2 s36-eth2:h16-eth4
+s37 lo:  s37-eth1:h6-eth2 s37-eth2:h13-eth3
+s38 lo:  s38-eth1:h16-eth5 s38-eth2:h18-eth3
+s39 lo:  s39-eth1:h15-eth3 s39-eth2:h19-eth5
+s40 lo:  s40-eth1:h6-eth3 s40-eth2:h12-eth2
+s41 lo:  s41-eth1:h17-eth5 s41-eth2:h23-eth2
+s42 lo:  s42-eth1:h14-eth3 s42-eth2:h20-eth4
+s43 lo:  s43-eth1:h7-eth2 s43-eth2:h12-eth3
+s44 lo:  s44-eth1:h10-eth3 s44-eth2:h24-eth2
+s45 lo:  s45-eth1:h13-eth4 s45-eth2:h21-eth3
+s46 lo:  s46-eth1:h2-eth2 s46-eth2:h12-eth4
+s47 lo:  s47-eth1:h2-eth3 s47-eth2:h4-eth5
+s48 lo:  s48-eth1:h17-eth6 s48-eth2:h18-eth4
+s49 lo:  s49-eth1:h12-eth5 s49-eth2:h22-eth3
+s50 lo:  s50-eth1:h6-eth4 s50-eth2:h22-eth4
+s51 lo:  s51-eth1:h13-eth5 s51-eth2:h23-eth3
+s52 lo:  s52-eth1:h3-eth3 s52-eth2:h20-eth5
+s53 lo:  s53-eth1:h4-eth6 s53-eth2:h17-eth7
+s54 lo:  s54-eth1:h11-eth3 s54-eth2:h16-eth6
+s55 lo:  s55-eth1:h16-eth7 s55-eth2:h19-eth6
+s56 lo:  s56-eth1:h10-eth4 s56-eth2:h23-eth4
+s57 lo:  s57-eth1:h1-eth1 s57-eth2:h24-eth3
+s58 lo:  s58-eth1:h9-eth2 s58-eth2:h24-eth4
+s59 lo:  s59-eth1:h4-eth7 s59-eth2:h21-eth4
+s60 lo:  s60-eth1:h3-eth4 s60-eth2:h7-eth3
+s61 lo:  s61-eth1:h4-eth8 s61-eth2:h9-eth3
+s62 lo:  s62-eth1:h1-eth2 s62-eth2:h13-eth6
+s63 lo:  s63-eth1:h1-eth3 s63-eth2:h10-eth5
+s64 lo:  s64-eth1:h6-eth5 s64-eth2:h19-eth7
+s65 lo:  s65-eth1:h6-eth6 s65-eth2:h14-eth4
+s66 lo:  s66-eth1:h6-eth7 s66-eth2:h17-eth8
+s67 lo:  s67-eth1:h2-eth4 s67-eth2:h10-eth6
+s68 lo:  s68-eth1:h3-eth5 s68-eth2:h17-eth9
+s69 lo:  s69-eth1:h8-eth4 s69-eth2:h19-eth8
+s70 lo:  s70-eth1:h1-eth4 s70-eth2:h22-eth5
+s71 lo:  s71-eth1:h8-eth5 s71-eth2:h17-eth10
+s72 lo:  s72-eth1:h0-eth2 s72-eth2:h13-eth7
+s73 lo:  s73-eth1:h9-eth4 s73-eth2:h16-eth8
+s74 lo:  s74-eth1:h20-eth6 s74-eth2:h21-eth5
+s75 lo:  s75-eth1:h4-eth9 s75-eth2:h7-eth4
+s76 lo:  s76-eth1:h1-eth5 s76-eth2:h7-eth5
+s77 lo:  s77-eth1:h8-eth6 s77-eth2:h16-eth9
+s78 lo:  s78-eth1:h7-eth6 s78-eth2:h11-eth4
+s79 lo:  s79-eth1:h14-eth5 s79-eth2:h24-eth5
+s80 lo:  s80-eth1:h1-eth6 s80-eth2:h12-eth6
+s81 lo:  s81-eth1:h0-eth3 s81-eth2:h2-eth5
+s82 lo:  s82-eth1:h0-eth4 s82-eth2:h22-eth6
+s83 lo:  s83-eth1:h3-eth6 s83-eth2:h15-eth4
+s84 lo:  s84-eth1:h0-eth5 s84-eth2:h1-eth7
+s85 lo:  s85-eth1:h4-eth10 s85-eth2:h15-eth5
+s86 lo:  s86-eth1:h5-eth2 s86-eth2:h11-eth5
+s87 lo:  s87-eth1:h5-eth3 s87-eth2:h21-eth6
+s88 lo:  s88-eth1:h17-eth11 s88-eth2:h24-eth6
+s89 lo:  s89-eth1:h5-eth4 s89-eth2:h22-eth7
+s90 lo:  s90-eth1:h17-eth12 s90-eth2:h21-eth7
+s91 lo:  s91-eth1:h14-eth6 s91-eth2:h21-eth8
+s92 lo:  s92-eth1:h0-eth6 s92-eth2:h8-eth7
+s93 lo:  s93-eth1:h9-eth5 s93-eth2:h19-eth9
+s94 lo:  s94-eth1:h0-eth7 s94-eth2:h18-eth5
+s95 lo:  s95-eth1:h3-eth7 s95-eth2:h18-eth6
+s96 lo:  s96-eth1:h21-eth9 s96-eth2:h23-eth5
+s97 lo:  s97-eth1:h21-eth10 s97-eth2:h22-eth8
+s98 lo:  s98-eth1:h18-eth7 s98-eth2:h23-eth6
+s99 lo:  s99-eth1:h3-eth8 s99-eth2:h24-eth7
+c0
+mininet> help
+
+Documented commands (type help <topic>):
+========================================
+EOF    gterm  iperfudp  nodes        pingpair      py      switch  xterm
+dpctl  help   link      noecho       pingpairfull  quit    time
+dump   intfs  links     pingall      ports         sh      wait
+exit   iperf  net       pingallfull  px            source  x
+
+You may also send a command to a node using:
+  <node> command {args}
+For example:
+  mininet> h1 ifconfig
+
+The interpreter automatically substitutes IP addresses
+for node names when a node is the first arg, so commands
+like
+  mininet> h2 ping h3
+should work.
+
+Some character-oriented interactive commands require
+noecho:
+  mininet> noecho h2 vi foo.py
+However, starting up an xterm/gterm is generally better:
+  mininet> xterm h2
+
+mininet> pingall h4
+*** Ping: testing ping reachability
+h0 -> X X X X X X X X X X X X X X X X X X X X X X X X
+h1 -> X X X X X X X X X X X X X X X X X X X X X X X X
+h2 -> X X X X X X X X X X X X X X X X X X X X X X X X
+h3 -> X X X X X X X X X X X X X X X X X X X X X X X X
+h4 -> X X X X X X X X X X X X X X X X X X X X X X X X
+h5 -> X X X X X X X X X X X X X X X X X X X X X X X X
+h6 -> X X X X X X X X X X X X X X X X X X X X X X X X
+h7 -> X X X X X X X X X X X X X X X X X X X X X X X X
+h8 -> X X X X X X X X X X X X X X X X X X X X X X X X
+h9 -> X X X X X X X X X X X X X X X X X X X X X X X X
+h10 -> X X X X X X X X X X X X X X X X X X X X X X X X
+h11 -> X X X X X X X X X X X X X X X X X X X X X X X X
+h12 -> X X X X X X X X X X X X X X X X X X X X X X X X
+h13 -> X X X X X X X X X X X X X X X X X X X X X X X X
+h14 -> X X X X X X X X X X X X X X X X X X X X X X X X
+h15 -> X X X X X X X X X X X X X X X X X X X X X X X X
+h16 -> X X X X X X X X X X X X X X X X X X X X X X X X
+h17 -> X X X X X X X X X X X X X X X X X X X X X X X X
+h18 -> X X X X X X X X X X X X X X X X X X X X X X X X
+h19 -> X X X X X X X X X X X X X X X X X X X X X X X X
+h20 -> X X X X X X X X X X X X X X X X X X X X X X X X
+h21 -> X X X X X X X X X X X X X X X X X X X X X X X X
+h22 -> X X X X X X X X X X X X X X X X X X X X X X X X
+h23 -> X X X X X X X X X X X X X X X X X X X X X X X X
+h24 -> X X X X X X X X X X X X X X X X X X X X X X X X
+*** Results: 100% dropped (0/600 received)
+mininet> pingallfull
+*** Ping: testing ping reachability
+h0 -> X X X X X X X X X X X X X X X X X X X X X X X X
+h1 -> X X X X X X X X X X X X X X X X X X X X X X X X
+h2 -> X X X X X X X X X X X X X X X X X X X X X X X X
+h3 -> X X X X X X X X X X X X X X X X X X X X X X X X
+h4 -> X X X X X X X X X X X X X X X X X X X X X X X X
+h5 -> X X X X X X X X X X X X X X X X X X X X X X X X
+h6 -> X X X X X X X X X X X X X X X X X X X X X X X X
+h7 -> X X X X X X X X X X X X X X X X X X X X X X X X
+h8 -> X X X X X X X X X X X X X X X X X X X X X X X X
+h9 -> X X X X X X X X X X X X X X X X X X X X X X X X
+h10 -> X X X X X X X X X X X X X X X X X X X X X X X X
+h11 -> X X X X X X X X X X X X X X X X X X X X X X X X
+h12 -> X X X X X X X X X X X X X X X X X X X X X X X X
+h13 -> X X X X X X X X X X X X X X X X X X X X X X X X
+h14 -> X X X X X X X X X X X X X X X X X X X X X X X X
+h15 -> X X X X X X X X X X X X X X X X X X X X X X X X
+h16 -> X X X X X X X X X X X X X X X X X X X X X X X X
+h17 -> X X X X X X X X X X X X X X X X X X X X X X X X
+h18 -> X X X X X X X X X X X X X X X X X X X X X X X X
+h19 -> X X X X X X X X X X X X X X X X X X X X X X X X
+h20 -> X X X X X X X X X X X X X X X X X X X X X X X X
+h21 -> X X X X X X X X X X X X X X X X X X X X X X X X
+h22 -> X X X X X X X X X X X X X X X X X X X X X X X X
+h23 -> X X X X X X X X X X X X X X X X X X X X X X X X
+h24 -> X X X X X X X X X X X X X X X X X X X X X X X X
+*** Results:
+ h0->h1: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h0->h2: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h0->h3: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h0->h4: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h0->h5: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h0->h6: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h0->h7: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h0->h8: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h0->h9: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h0->h10: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h0->h11: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h0->h12: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h0->h13: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h0->h14: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h0->h15: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h0->h16: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h0->h17: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h0->h18: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h0->h19: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h0->h20: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h0->h21: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h0->h22: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h0->h23: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h0->h24: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h1->h0: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h1->h2: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h1->h3: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h1->h4: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h1->h5: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h1->h6: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h1->h7: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h1->h8: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h1->h9: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h1->h10: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h1->h11: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h1->h12: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h1->h13: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h1->h14: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h1->h15: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h1->h16: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h1->h17: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h1->h18: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h1->h19: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h1->h20: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h1->h21: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h1->h22: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h1->h23: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h1->h24: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h2->h0: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h2->h1: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h2->h3: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h2->h4: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h2->h5: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h2->h6: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h2->h7: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h2->h8: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h2->h9: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h2->h10: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h2->h11: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h2->h12: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h2->h13: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h2->h14: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h2->h15: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h2->h16: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h2->h17: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h2->h18: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h2->h19: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h2->h20: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h2->h21: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h2->h22: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h2->h23: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h2->h24: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h3->h0: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h3->h1: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h3->h2: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h3->h4: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h3->h5: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h3->h6: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h3->h7: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h3->h8: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h3->h9: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h3->h10: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h3->h11: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h3->h12: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h3->h13: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h3->h14: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h3->h15: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h3->h16: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h3->h17: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h3->h18: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h3->h19: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h3->h20: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h3->h21: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h3->h22: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h3->h23: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h3->h24: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h4->h0: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h4->h1: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h4->h2: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h4->h3: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h4->h5: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h4->h6: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h4->h7: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h4->h8: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h4->h9: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h4->h10: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h4->h11: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h4->h12: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h4->h13: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h4->h14: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h4->h15: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h4->h16: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h4->h17: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h4->h18: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h4->h19: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h4->h20: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h4->h21: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h4->h22: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h4->h23: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h4->h24: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h5->h0: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h5->h1: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h5->h2: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h5->h3: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h5->h4: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h5->h6: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h5->h7: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h5->h8: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h5->h9: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h5->h10: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h5->h11: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h5->h12: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h5->h13: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h5->h14: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h5->h15: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h5->h16: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h5->h17: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h5->h18: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h5->h19: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h5->h20: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h5->h21: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h5->h22: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h5->h23: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h5->h24: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h6->h0: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h6->h1: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h6->h2: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h6->h3: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h6->h4: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h6->h5: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h6->h7: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h6->h8: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h6->h9: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h6->h10: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h6->h11: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h6->h12: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h6->h13: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h6->h14: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h6->h15: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h6->h16: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h6->h17: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h6->h18: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h6->h19: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h6->h20: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h6->h21: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h6->h22: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h6->h23: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h6->h24: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h7->h0: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h7->h1: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h7->h2: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h7->h3: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h7->h4: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h7->h5: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h7->h6: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h7->h8: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h7->h9: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h7->h10: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h7->h11: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h7->h12: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h7->h13: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h7->h14: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h7->h15: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h7->h16: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h7->h17: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h7->h18: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h7->h19: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h7->h20: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h7->h21: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h7->h22: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h7->h23: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h7->h24: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h8->h0: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h8->h1: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h8->h2: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h8->h3: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h8->h4: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h8->h5: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h8->h6: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h8->h7: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h8->h9: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h8->h10: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h8->h11: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h8->h12: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h8->h13: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h8->h14: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h8->h15: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h8->h16: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h8->h17: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h8->h18: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h8->h19: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h8->h20: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h8->h21: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h8->h22: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h8->h23: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h8->h24: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h9->h0: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h9->h1: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h9->h2: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h9->h3: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h9->h4: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h9->h5: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h9->h6: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h9->h7: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h9->h8: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h9->h10: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h9->h11: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h9->h12: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h9->h13: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h9->h14: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h9->h15: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h9->h16: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h9->h17: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h9->h18: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h9->h19: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h9->h20: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h9->h21: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h9->h22: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h9->h23: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h9->h24: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h10->h0: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h10->h1: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h10->h2: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h10->h3: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h10->h4: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h10->h5: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h10->h6: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h10->h7: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h10->h8: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h10->h9: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h10->h11: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h10->h12: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h10->h13: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h10->h14: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h10->h15: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h10->h16: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h10->h17: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h10->h18: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h10->h19: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h10->h20: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h10->h21: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h10->h22: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h10->h23: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h10->h24: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h11->h0: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h11->h1: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h11->h2: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h11->h3: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h11->h4: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h11->h5: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h11->h6: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h11->h7: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h11->h8: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h11->h9: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h11->h10: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h11->h12: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h11->h13: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h11->h14: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h11->h15: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h11->h16: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h11->h17: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h11->h18: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h11->h19: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h11->h20: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h11->h21: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h11->h22: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h11->h23: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h11->h24: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h12->h0: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h12->h1: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h12->h2: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h12->h3: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h12->h4: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h12->h5: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h12->h6: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h12->h7: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h12->h8: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h12->h9: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h12->h10: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h12->h11: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h12->h13: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h12->h14: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h12->h15: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h12->h16: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h12->h17: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h12->h18: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h12->h19: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h12->h20: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h12->h21: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h12->h22: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h12->h23: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h12->h24: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h13->h0: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h13->h1: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h13->h2: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h13->h3: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h13->h4: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h13->h5: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h13->h6: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h13->h7: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h13->h8: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h13->h9: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h13->h10: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h13->h11: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h13->h12: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h13->h14: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h13->h15: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h13->h16: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h13->h17: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h13->h18: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h13->h19: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h13->h20: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h13->h21: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h13->h22: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h13->h23: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h13->h24: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h14->h0: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h14->h1: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h14->h2: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h14->h3: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h14->h4: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h14->h5: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h14->h6: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h14->h7: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h14->h8: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h14->h9: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h14->h10: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h14->h11: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h14->h12: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h14->h13: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h14->h15: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h14->h16: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h14->h17: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h14->h18: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h14->h19: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h14->h20: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h14->h21: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h14->h22: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h14->h23: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h14->h24: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h15->h0: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h15->h1: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h15->h2: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h15->h3: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h15->h4: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h15->h5: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h15->h6: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h15->h7: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h15->h8: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h15->h9: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h15->h10: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h15->h11: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h15->h12: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h15->h13: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h15->h14: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h15->h16: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h15->h17: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h15->h18: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h15->h19: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h15->h20: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h15->h21: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h15->h22: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h15->h23: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h15->h24: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h16->h0: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h16->h1: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h16->h2: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h16->h3: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h16->h4: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h16->h5: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h16->h6: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h16->h7: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h16->h8: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h16->h9: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h16->h10: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h16->h11: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h16->h12: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h16->h13: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h16->h14: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h16->h15: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h16->h17: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h16->h18: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h16->h19: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h16->h20: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h16->h21: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h16->h22: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h16->h23: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h16->h24: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h17->h0: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h17->h1: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h17->h2: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h17->h3: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h17->h4: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h17->h5: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h17->h6: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h17->h7: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h17->h8: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h17->h9: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h17->h10: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h17->h11: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h17->h12: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h17->h13: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h17->h14: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h17->h15: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h17->h16: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h17->h18: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h17->h19: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h17->h20: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h17->h21: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h17->h22: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h17->h23: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h17->h24: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h18->h0: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h18->h1: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h18->h2: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h18->h3: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h18->h4: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h18->h5: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h18->h6: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h18->h7: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h18->h8: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h18->h9: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h18->h10: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h18->h11: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h18->h12: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h18->h13: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h18->h14: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h18->h15: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h18->h16: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h18->h17: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h18->h19: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h18->h20: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h18->h21: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h18->h22: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h18->h23: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h18->h24: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h19->h0: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h19->h1: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h19->h2: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h19->h3: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h19->h4: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h19->h5: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h19->h6: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h19->h7: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h19->h8: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h19->h9: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h19->h10: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h19->h11: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h19->h12: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h19->h13: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h19->h14: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h19->h15: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h19->h16: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h19->h17: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h19->h18: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h19->h20: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h19->h21: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h19->h22: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h19->h23: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h19->h24: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h20->h0: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h20->h1: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h20->h2: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h20->h3: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h20->h4: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h20->h5: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h20->h6: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h20->h7: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h20->h8: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h20->h9: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h20->h10: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h20->h11: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h20->h12: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h20->h13: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h20->h14: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h20->h15: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h20->h16: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h20->h17: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h20->h18: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h20->h19: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h20->h21: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h20->h22: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h20->h23: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h20->h24: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h21->h0: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h21->h1: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h21->h2: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h21->h3: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h21->h4: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h21->h5: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h21->h6: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h21->h7: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h21->h8: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h21->h9: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h21->h10: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h21->h11: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h21->h12: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h21->h13: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h21->h14: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h21->h15: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h21->h16: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h21->h17: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h21->h18: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h21->h19: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h21->h20: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h21->h22: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h21->h23: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h21->h24: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h22->h0: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h22->h1: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h22->h2: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h22->h3: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h22->h4: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h22->h5: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h22->h6: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h22->h7: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h22->h8: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h22->h9: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h22->h10: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h22->h11: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h22->h12: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h22->h13: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h22->h14: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h22->h15: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h22->h16: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h22->h17: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h22->h18: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h22->h19: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h22->h20: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h22->h21: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h22->h23: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h22->h24: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h23->h0: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h23->h1: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h23->h2: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h23->h3: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h23->h4: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h23->h5: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h23->h6: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h23->h7: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h23->h8: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h23->h9: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h23->h10: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h23->h11: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h23->h12: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h23->h13: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h23->h14: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h23->h15: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h23->h16: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h23->h17: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h23->h18: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h23->h19: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h23->h20: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h23->h21: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h23->h22: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h23->h24: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h24->h0: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h24->h1: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h24->h2: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h24->h3: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h24->h4: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h24->h5: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h24->h6: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h24->h7: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h24->h8: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h24->h9: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h24->h10: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h24->h11: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h24->h12: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h24->h13: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h24->h14: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h24->h15: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h24->h16: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h24->h17: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h24->h18: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h24->h19: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h24->h20: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h24->h21: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h24->h22: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+ h24->h23: 1/0, rtt min/avg/max/mdev 0.000/0.000/0.000/0.000 ms
+mininet> help
+
+Documented commands (type help <topic>):
+========================================
+EOF    gterm  iperfudp  nodes        pingpair      py      switch  xterm
+dpctl  help   link      noecho       pingpairfull  quit    time
+dump   intfs  links     pingall      ports         sh      wait
+exit   iperf  net       pingallfull  px            source  x
+
+You may also send a command to a node using:
+  <node> command {args}
+For example:
+  mininet> h1 ifconfig
+
+The interpreter automatically substitutes IP addresses
+for node names when a node is the first arg, so commands
+like
+  mininet> h2 ping h3
+should work.
+
+Some character-oriented interactive commands require
+noecho:
+  mininet> noecho h2 vi foo.py
+However, starting up an xterm/gterm is generally better:
+  mininet> xterm h2
+
+mininet> ping h4 s28
+*** Unknown command: ping h4 s28
+mininet> h4 ping s28
+PING 127.0.0.1 (127.0.0.1) 56(84) bytes of data.
+64 bytes from 127.0.0.1: icmp_seq=1 ttl=64 time=0.049 ms
+64 bytes from 127.0.0.1: icmp_seq=2 ttl=64 time=0.043 ms
+^C
+--- 127.0.0.1 ping statistics ---
+2 packets transmitted, 2 received, 0% packet loss, time 1057ms
+rtt min/avg/max/mdev = 0.043/0.046/0.049/0.003 ms
+mininet> h4 ip a
+1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN group default qlen 1000
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+    inet 127.0.0.1/8 scope host lo
+       valid_lft forever preferred_lft forever
+    inet6 ::1/128 scope host
+       valid_lft forever preferred_lft forever
+2: h4-eth0@if1842: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP group default qlen 1000
+    link/ether 6a:5c:bb:66:86:4e brd ff:ff:ff:ff:ff:ff link-netnsid 0
+    inet 192.168.8.5/24 brd 192.168.8.255 scope global h4-eth0
+       valid_lft forever preferred_lft forever
+    inet6 fe80::685c:bbff:fe66:864e/64 scope link
+       valid_lft forever preferred_lft forever
+3: h4-eth1@if1843: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP group default qlen 1000
+    link/ether 76:80:a5:79:4a:78 brd ff:ff:ff:ff:ff:ff link-netnsid 0
+    inet 192.168.18.5/24 brd 192.168.18.255 scope global h4-eth1
+       valid_lft forever preferred_lft forever
+    inet6 fe80::7480:a5ff:fe79:4a78/64 scope link
+       valid_lft forever preferred_lft forever
+4: h4-eth2@if1844: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP group default qlen 1000
+    link/ether 6a:61:2c:8c:03:1b brd ff:ff:ff:ff:ff:ff link-netnsid 0
+    inet 192.168.24.5/24 brd 192.168.24.255 scope global h4-eth2
+       valid_lft forever preferred_lft forever
+    inet6 fe80::6861:2cff:fe8c:31b/64 scope link
+       valid_lft forever preferred_lft forever
+5: h4-eth3@if1845: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP group default qlen 1000
+    link/ether ae:a5:eb:82:53:26 brd ff:ff:ff:ff:ff:ff link-netnsid 0
+    inet 192.168.25.5/24 brd 192.168.25.255 scope global h4-eth3
+       valid_lft forever preferred_lft forever
+    inet6 fe80::aca5:ebff:fe82:5326/64 scope link
+       valid_lft forever preferred_lft forever
+6: h4-eth4@if1846: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP group default qlen 1000
+    link/ether 7a:07:22:29:c6:7f brd ff:ff:ff:ff:ff:ff link-netnsid 0
+    inet 192.168.35.5/24 brd 192.168.35.255 scope global h4-eth4
+       valid_lft forever preferred_lft forever
+    inet6 fe80::7807:22ff:fe29:c67f/64 scope link
+       valid_lft forever preferred_lft forever
+7: h4-eth5@if1847: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP group default qlen 1000
+    link/ether 4e:dc:50:8e:3e:ea brd ff:ff:ff:ff:ff:ff link-netnsid 0
+    inet 192.168.48.5/24 brd 192.168.48.255 scope global h4-eth5
+       valid_lft forever preferred_lft forever
+    inet6 fe80::4cdc:50ff:fe8e:3eea/64 scope link
+       valid_lft forever preferred_lft forever
+8: h4-eth6@if1848: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP group default qlen 1000
+    link/ether 46:02:34:45:fb:5e brd ff:ff:ff:ff:ff:ff link-netnsid 0
+    inet 192.168.54.5/24 brd 192.168.54.255 scope global h4-eth6
+       valid_lft forever preferred_lft forever
+    inet6 fe80::4402:34ff:fe45:fb5e/64 scope link
+       valid_lft forever preferred_lft forever
+9: h4-eth7@if1849: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP group default qlen 1000
+    link/ether c2:19:ef:ff:2b:33 brd ff:ff:ff:ff:ff:ff link-netnsid 0
+    inet 192.168.60.5/24 brd 192.168.60.255 scope global h4-eth7
+       valid_lft forever preferred_lft forever
+    inet6 fe80::c019:efff:feff:2b33/64 scope link
+       valid_lft forever preferred_lft forever
+10: h4-eth8@if1850: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP group default qlen 1000
+    link/ether b2:df:5b:fd:fa:f9 brd ff:ff:ff:ff:ff:ff link-netnsid 0
+    inet 192.168.62.5/24 brd 192.168.62.255 scope global h4-eth8
+       valid_lft forever preferred_lft forever
+    inet6 fe80::b0df:5bff:fefd:faf9/64 scope link
+       valid_lft forever preferred_lft forever
+11: h4-eth9@if1851: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP group default qlen 1000
+    link/ether 4a:47:6d:7c:8c:38 brd ff:ff:ff:ff:ff:ff link-netnsid 0
+    inet 192.168.76.5/24 brd 192.168.76.255 scope global h4-eth9
+       valid_lft forever preferred_lft forever
+    inet6 fe80::4847:6dff:fe7c:8c38/64 scope link
+       valid_lft forever preferred_lft forever
+12: h4-eth10@if1852: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP group default qlen 1000
+    link/ether fe:4a:f5:d4:5f:18 brd ff:ff:ff:ff:ff:ff link-netnsid 0
+    inet 192.168.86.5/24 brd 192.168.86.255 scope global h4-eth10
+       valid_lft forever preferred_lft forever
+    inet6 fe80::fc4a:f5ff:fed4:5f18/64 scope link
+       valid_lft forever preferred_lft forever
+mininet> h7 cefstatus -d ./h7
+2026-01-22 16:51:23.240 [cefctrl] INFO: [client] Config directory is ./h7
+2026-01-22 16:51:23.240 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.7
+2026-01-22 16:51:23.240 [cefctrl] INFO: [client] Listen Port is 9695
+CCNx Version     : 1
+Port             : 9695
+Rx Interest      : 431 (RGL[431], SYM[0], SEL[0])
+Tx Interest      : 862 (RGL[862], SYM[0], SEL[0])
+Rx ContentObject : 848
+Tx ContentObject : 424
+Cache Mode       : Excache
+FWD Strategy     : flooding
+Interest Return  : Disabled
+Faces : 13
+  faceid =  38 : address = 192.168.44.13:9695 (udp)
+  faceid =   4 : IPv4 Listen face (udp)
+  faceid =  36 : address = 192.168.61.4:9695 (udp)
+  faceid =  46 : address = 192.168.11.17:9695 (udp)
+  faceid = 106 : Local face
+  faceid =   0 : Local face
+  faceid =   5 : IPv6 Listen face (udp)
+  faceid =  57 : address = 192.168.30.20:9695 (udp)
+  faceid =  53 : address = 192.168.79.12:9695 (udp)
+  faceid =   6 : IPv4 Listen face (tcp)
+  faceid =  33 : address = 192.168.77.2:9695 (udp)
+  faceid =  41 : address = 192.168.76.5:9695 (udp)
+  faceid =   7 : IPv6 Listen face (tcp)
+FIB(App) :
+  Entry is empty
+FIB : 24
+  ccnx:/test/example1
+    Faces : 33 (-s-) RtCost=0
+  ccnx:/test/example7
+    Faces : 33 (-s-) RtCost=0
+            38 (-s-) RtCost=0
+            57 (-s-) RtCost=0
+  ccnx:/test/example23
+    Faces : 33 (-s-) RtCost=0
+            41 (-s-) RtCost=0
+            38 (-s-) RtCost=0
+  ccnx:/test/example12
+    Faces : 33 (-s-) RtCost=0
+            53 (-s-) RtCost=0
+            46 (-s-) RtCost=0
+  ccnx:/test/example2
+    Faces : 33 (-s-) RtCost=0
+            36 (-s-) RtCost=0
+            38 (-s-) RtCost=0
+  ccnx:/test/example13
+    Faces : 33 (-s-) RtCost=0
+            38 (-s-) RtCost=0
+            57 (-s-) RtCost=0
+  ccnx:/test/example22
+    Faces : 41 (-s-) RtCost=0
+            53 (-s-) RtCost=0
+            46 (-s-) RtCost=0
+  ccnx:/test/example24
+    Faces : 33 (-s-) RtCost=0
+            38 (-s-) RtCost=0
+  ccnx:/test/example5
+    Faces : 33 (-s-) RtCost=0
+            36 (-s-) RtCost=0
+            41 (-s-) RtCost=0
+  ccnx:/test/example9
+    Faces : 36 (-s-) RtCost=0
+            41 (-s-) RtCost=0
+            46 (-s-) RtCost=0
+  ccnx:/test/example4
+    Faces : 36 (-s-) RtCost=0
+            41 (-s-) RtCost=0
+            46 (-s-) RtCost=0
+  ccnx:/test/example10
+    Faces : 33 (-s-) RtCost=0
+            41 (-s-) RtCost=0
+            46 (-s-) RtCost=0
+  ccnx:/test/example16
+    Faces : 36 (-s-) RtCost=0
+            41 (-s-) RtCost=0
+            57 (-s-) RtCost=0
+  ccnx:/test/example6
+    Faces : 33 (-s-) RtCost=0
+            41 (-s-) RtCost=0
+            53 (-s-) RtCost=0
+  ccnx:/test/example3
+    Faces : 33 (-s-) RtCost=0
+            41 (-s-) RtCost=0
+            38 (-s-) RtCost=0
+  ccnx:/test/example20
+    Faces : 38 (-s-) RtCost=0
+            46 (-s-) RtCost=0
+            57 (-s-) RtCost=0
+  ccnx:/test/example14
+    Faces : 33 (-s-) RtCost=0
+            41 (-s-) RtCost=0
+  ccnx:/test/example15
+    Faces : 33 (-s-) RtCost=0
+            46 (-s-) RtCost=0
+  ccnx:/test/example18
+    Faces : 36 (-s-) RtCost=0
+            41 (-s-) RtCost=0
+            53 (-s-) RtCost=0
+  ccnx:/test/example21
+    Faces : 33 (-s-) RtCost=0
+            36 (-s-) RtCost=0
+            57 (-s-) RtCost=0
+  ccnx:/test/example25
+    Faces : 33 (-s-) RtCost=0
+            36 (-s-) RtCost=0
+            53 (-s-) RtCost=0
+  ccnx:/test/example11
+    Faces : 33 (-s-) RtCost=0
+            46 (-s-) RtCost=0
+  ccnx:/test/example19
+    Faces : 33 (-s-) RtCost=0
+            36 (-s-) RtCost=0
+            46 (-s-) RtCost=0
+  ccnx:/test/example17
+    Faces : 36 (-s-) RtCost=0
+            53 (-s-) RtCost=0
+            46 (-s-) RtCost=0
+PIT(App) :
+  Entry is empty
+PIT :
+  Entry is empty
+mininet> h24 cefstatus -d ./h24
+2026-01-22 16:52:08.100 [cefctrl] INFO: [client] Config directory is ./h24
+2026-01-22 16:52:08.100 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.24
+2026-01-22 16:52:08.100 [cefctrl] INFO: [client] Listen Port is 9695
+CCNx Version     : 1
+Port             : 9695
+Rx Interest      : 7453 (RGL[7453], SYM[0], SEL[0])
+Tx Interest      : 0 (RGL[0], SYM[0], SEL[0])
+Rx ContentObject : 424
+Tx ContentObject : 7019
+Cache Mode       : Localcache
+FWD Strategy     : flooding
+Interest Return  : Disabled
+Faces : 14
+  faceid =  33 : address = 192.168.58.2:9695 (udp)
+  faceid =  36 : address = 192.168.59.10:9695 (udp)
+  faceid =  38 : address = 192.168.45.11:9695 (udp)
+  faceid =   4 : IPv4 Listen face (udp)
+  faceid =  43 : address = 192.168.100.4:9695 (udp)
+  faceid =   5 : IPv6 Listen face (udp)
+  faceid =  45 : address = 192.168.89.18:9695 (udp)
+  faceid = 109 : Local face
+  faceid =   0 : Local face
+  faceid =  56 : address = 192.168.80.15:9695 (udp)
+  faceid =  54 : address = 192.168.22.7:9695 (udp)
+  faceid =   6 : IPv4 Listen face (tcp)
+  faceid =  52 : address = 192.168.1.12:9695 (udp)
+  faceid =   7 : IPv6 Listen face (tcp)
+FIB(App) :
+  Entry is empty
+FIB : 24
+  ccnx:/test/example1
+    Faces : 33 (-s-) RtCost=0
+  ccnx:/test/example7
+    Faces : 54 (-s-) RtCost=0
+            56 (-s-) RtCost=0
+            45 (-s-) RtCost=0
+  ccnx:/test/example23
+    Faces : 33 (-s-) RtCost=0
+            54 (-s-) RtCost=0
+            45 (-s-) RtCost=0
+  ccnx:/test/example12
+    Faces : 33 (-s-) RtCost=0
+            52 (-s-) RtCost=0
+            45 (-s-) RtCost=0
+  ccnx:/test/example2
+    Faces : 33 (-s-) RtCost=0
+            36 (-s-) RtCost=0
+            38 (-s-) RtCost=0
+  ccnx:/test/example13
+    Faces : 33 (-s-) RtCost=0
+            54 (-s-) RtCost=0
+  ccnx:/test/example22
+    Faces : 52 (-s-) RtCost=0
+            56 (-s-) RtCost=0
+            45 (-s-) RtCost=0
+  ccnx:/test/example24
+    Faces : 33 (-s-) RtCost=0
+            38 (-s-) RtCost=0
+            45 (-s-) RtCost=0
+  ccnx:/test/example5
+    Faces : 43 (-s-) RtCost=0
+            36 (-s-) RtCost=0
+            45 (-s-) RtCost=0
+  ccnx:/test/example9
+    Faces : 33 (-s-) RtCost=0
+            43 (-s-) RtCost=0
+            45 (-s-) RtCost=0
+  ccnx:/test/example4
+    Faces : 33 (-s-) RtCost=0
+            43 (-s-) RtCost=0
+            45 (-s-) RtCost=0
+  ccnx:/test/example8
+    Faces : 33 (-s-) RtCost=0
+            43 (-s-) RtCost=0
+            52 (-s-) RtCost=0
+  ccnx:/test/example10
+    Faces : 33 (-s-) RtCost=0
+            36 (-s-) RtCost=0
+            38 (-s-) RtCost=0
+  ccnx:/test/example16
+    Faces : 33 (-s-) RtCost=0
+            43 (-s-) RtCost=0
+  ccnx:/test/example6
+    Faces : 33 (-s-) RtCost=0
+            43 (-s-) RtCost=0
+            52 (-s-) RtCost=0
+  ccnx:/test/example3
+    Faces : 33 (-s-) RtCost=0
+            38 (-s-) RtCost=0
+  ccnx:/test/example20
+    Faces : 54 (-s-) RtCost=0
+            36 (-s-) RtCost=0
+            45 (-s-) RtCost=0
+  ccnx:/test/example14
+    Faces : 33 (-s-) RtCost=0
+            54 (-s-) RtCost=0
+            45 (-s-) RtCost=0
+  ccnx:/test/example15
+    Faces : 54 (-s-) RtCost=0
+            38 (-s-) RtCost=0
+            56 (-s-) RtCost=0
+  ccnx:/test/example18
+    Faces : 43 (-s-) RtCost=0
+            54 (-s-) RtCost=0
+            45 (-s-) RtCost=0
+  ccnx:/test/example21
+    Faces : 43 (-s-) RtCost=0
+            54 (-s-) RtCost=0
+            56 (-s-) RtCost=0
+  ccnx:/test/example11
+    Faces : 33 (-s-) RtCost=0
+            36 (-s-) RtCost=0
+            38 (-s-) RtCost=0
+  ccnx:/test/example19
+    Faces : 43 (-s-) RtCost=0
+            56 (-s-) RtCost=0
+            45 (-s-) RtCost=0
+  ccnx:/test/example17
+    Faces : 43 (-s-) RtCost=0
+            36 (-s-) RtCost=0
+            38 (-s-) RtCost=0
+PIT(App) :
+  Entry is empty
+PIT :
+  Entry is empty
+mininet> quit
+hosts[ 0 ]: cefnetdstop -F -d ./h0
+hosts[ 1 ]: cefnetdstop -F -d ./h1
+hosts[ 2 ]: cefnetdstop -F -d ./h2
+hosts[ 3 ]: cefnetdstop -F -d ./h3
+hosts[ 4 ]: cefnetdstop -F -d ./h4
+hosts[ 5 ]: cefnetdstop -F -d ./h5
+hosts[ 6 ]: cefnetdstop -F -d ./h6
+hosts[ 7 ]: cefnetdstop -F -d ./h7
+hosts[ 8 ]: cefnetdstop -F -d ./h8
+hosts[ 9 ]: cefnetdstop -F -d ./h9
+hosts[ 10 ]: cefnetdstop -F -d ./h10
+hosts[ 11 ]: cefnetdstop -F -d ./h11
+hosts[ 12 ]: cefnetdstop -F -d ./h12
+hosts[ 13 ]: cefnetdstop -F -d ./h13
+hosts[ 14 ]: cefnetdstop -F -d ./h14
+hosts[ 15 ]: cefnetdstop -F -d ./h15
+hosts[ 16 ]: cefnetdstop -F -d ./h16
+hosts[ 17 ]: cefnetdstop -F -d ./h17
+hosts[ 18 ]: cefnetdstop -F -d ./h18
+hosts[ 19 ]: cefnetdstop -F -d ./h19
+hosts[ 20 ]: cefnetdstop -F -d ./h20
+hosts[ 21 ]: cefnetdstop -F -d ./h21
+hosts[ 22 ]: cefnetdstop -F -d ./h22
+hosts[ 23 ]: cefnetdstop -F -d ./h23
+hosts[ 24 ]: cefnetdstop -F -d ./h24
+hosts[ 1 ]: csmgrdstop -d ./h1
+hosts[ 3 ]: csmgrdstop -d ./h3
+hosts[ 5 ]: csmgrdstop -d ./h5
+hosts[ 7 ]: csmgrdstop -d ./h7
+hosts[ 9 ]: csmgrdstop -d ./h9
+hosts[ 11 ]: csmgrdstop -d ./h11
+hosts[ 13 ]: csmgrdstop -d ./h13
+hosts[ 15 ]: csmgrdstop -d ./h15
+hosts[ 17 ]: csmgrdstop -d ./h17
+hosts[ 19 ]: csmgrdstop -d ./h19
+hosts[ 21 ]: csmgrdstop -d ./h21
+hosts[ 23 ]: csmgrdstop -d ./h23
+*** Stopping 1 controllers
+c0
+*** Stopping 200 links
+........................................................................................................................................................................................................
+*** Stopping 100 switches
+s0 s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 s11 s12 s13 s14 s15 s16 s17 s18 s19 s20 s21 s22 s23 s24 s25 s26 s27 s28 s29 s30 s31 s32 s33 s34 s35 s36 s37 s38 s39 s40 s41 s42 s43 s44 s45 s46 s47 s48 s49 s50 s51 s52 s53 s54 s55 s56 s57 s58 s59 s60 s61 s62 s63 s64 s65 s66 s67 s68 s69 s70 s71 s72 s73 s74 s75 s76 s77 s78 s79 s80 s81 s82 s83 s84 s85 s86 s87 s88 s89 s90 s91 s92 s93 s94 s95 s96 s97 s98 s99
+*** Stopping 25 hosts
+h0 h1 h2 h3 h4 h5 h6 h7 h8 h9 h10 h11 h12 h13 h14 h15 h16 h17 h18 h19 h20 h21 h22 h23 h24
+*** Done
