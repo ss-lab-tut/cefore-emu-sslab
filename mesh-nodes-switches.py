@@ -104,29 +104,27 @@ def set_ip_addr(net, mesh_links):
             net.hosts[host_idx].cmd(command)
 
 
-def link_prefix(host_a, host_b):
-    host_a_name = f"h{host_a}"
-    host_b_name = f"h{host_b}"
-    return f"ccnx:/{host_a_name}-{host_b_name}"
-
-
 def set_fib(net, mesh_links):
     # Add FIB entries for each linked host pair.
-    for link in mesh_links:
+    host_counters = {}
+    for link in sorted(mesh_links, key=lambda item: item["subnet"]):
         subnet = link["subnet"]
         host_a = link["host_a"]
         host_b = link["host_b"]
         host_a_name = f"h{host_a}"
         host_b_name = f"h{host_b}"
-        prefix = link_prefix(host_a, host_b)
+        host_counters[host_a] = host_counters.get(host_a, 0) + 1
+        host_counters[host_b] = host_counters.get(host_b, 0) + 1
+        prefix_a = f"ccnx:/test/example{host_counters[host_a]}/"
+        prefix_b = f"ccnx:/test/example{host_counters[host_b]}/"
         host_b_ip = f"192.168.{subnet}.{host_b + 1}"
         host_a_ip = f"192.168.{subnet}.{host_a + 1}"
 
-        command = f"cefroute add {prefix} udp {host_b_ip} -d ./{host_a_name}"
+        command = f"cefroute add {prefix_a} udp {host_b_ip} -d ./{host_a_name}"
         print(host_a_name, "command:", command)
         info(net.hosts[host_a].cmd(command))
 
-        command = f"cefroute add {prefix} udp {host_a_ip} -d ./{host_b_name}"
+        command = f"cefroute add {prefix_b} udp {host_a_ip} -d ./{host_b_name}"
         print(host_b_name, "command:", command)
         info(net.hosts[host_b].cmd(command))
 
@@ -287,8 +285,7 @@ def run_mesh_topology(host_num, link_num, seed):
 
     publisher = host_num - 1
     publish_link = pick_publish_link(topo.mesh_links, publisher)
-    publish_prefix = link_prefix(publish_link["host_a"], publish_link["host_b"])
-    publish_uri = f"{publish_prefix}/test.py"
+    publish_uri = "ccnx:/test/example1/test.py"
     consumer = (
         publish_link["host_b"]
         if publish_link["host_a"] == publisher
