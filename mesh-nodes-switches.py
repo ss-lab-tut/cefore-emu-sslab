@@ -106,25 +106,21 @@ def set_ip_addr(net, mesh_links):
 
 def set_fib(net, mesh_links):
     # Add FIB entries for each linked host pair.
-    host_counters = {}
     for link in sorted(mesh_links, key=lambda item: item["subnet"]):
         subnet = link["subnet"]
         host_a = link["host_a"]
         host_b = link["host_b"]
         host_a_name = f"h{host_a}"
         host_b_name = f"h{host_b}"
-        host_counters[host_a] = host_counters.get(host_a, 0) + 1
-        host_counters[host_b] = host_counters.get(host_b, 0) + 1
-        prefix_a = f"ccnx:/test/example{host_counters[host_a]}/"
-        prefix_b = f"ccnx:/test/example{host_counters[host_b]}/"
+        prefix = f"ccnx:/test/example{subnet}/"
         host_b_ip = f"192.168.{subnet}.{host_b + 1}"
         host_a_ip = f"192.168.{subnet}.{host_a + 1}"
 
-        command = f"cefroute add {prefix_a} udp {host_b_ip} -d ./{host_a_name}"
+        command = f"cefroute add {prefix} udp {host_b_ip} -d ./{host_a_name}"
         print(host_a_name, "command:", command)
         info(net.hosts[host_a].cmd(command))
 
-        command = f"cefroute add {prefix_b} udp {host_a_ip} -d ./{host_b_name}"
+        command = f"cefroute add {prefix} udp {host_a_ip} -d ./{host_b_name}"
         print(host_b_name, "command:", command)
         info(net.hosts[host_b].cmd(command))
 
@@ -246,22 +242,22 @@ def max_possible_links(host_num):
     return host_num * (host_num - 1) // 2
 
 
-def run_mesh_topology(host_num, link_num, seed):
+def run_mesh_topology(host_num, swhich_num, seed):
     if host_num < 3:
         sys.exit("host count must be at least 3")
-    if link_num < 2:
+    if swhich_num < 2:
         sys.exit("link count must be at least 2")
     max_links = max_possible_links(host_num)
-    if link_num > max_links:
+    if swhich_num > max_links:
         sys.exit(f"link count must be at most {max_links}")
     min_links = min_required_links(host_num)
-    if link_num < min_links:
+    if swhich_num < min_links:
         sys.exit(f"link count must be at least {min_links} to cover all hosts")
 
     rng = random.Random(seed)
     ensure_node_dirs(host_num, rng)
 
-    topo = MeshTopo(hosts=host_num, link_num=link_num, rng=rng)
+    topo = MeshTopo(hosts=host_num, swhich_num=swhich_num, rng=rng)
     net = Mininet(topo=topo, waitConnected=True)
     net.start()
 
@@ -321,18 +317,18 @@ class MeshTopo(Topo):
     "Simple topology with mesh links"
 
     # pylint: disable=arguments-differ
-    def build(self, hosts, link_num=2, rng=None, **_kwargs):
+    def build(self, hosts, swhich_num=2, rng=None, **_kwargs):
         if rng is None:
             rng = random.Random()
-        if link_num < 2:
-            raise ValueError("link_num must be at least 2")
+        if swhich_num < 2:
+            raise ValueError("swhich_num must be at least 2")
         max_links = max_possible_links(hosts)
-        if link_num > max_links:
-            raise ValueError(f"link_num must be at most {max_links}")
+        if swhich_num > max_links:
+            raise ValueError(f"swhich_num must be at most {max_links}")
         min_links = min_required_links(hosts)
-        if link_num < min_links:
+        if swhich_num < min_links:
             raise ValueError(
-                f"link_num must be at least {min_links} to cover all hosts"
+                f"swhich_num must be at least {min_links} to cover all hosts"
             )
 
         host_nodes = [self.addHost(f"h{idx}") for idx in range(hosts)]
@@ -354,7 +350,7 @@ class MeshTopo(Topo):
                 selected_links.append((host_a, host_b))
                 used_links.add((host_a, host_b))
 
-        if len(selected_links) < link_num:
+        if len(selected_links) < swhich_num:
             link_pairs = [
                 (a, b)
                 for a in range(hosts)
@@ -362,10 +358,20 @@ class MeshTopo(Topo):
                 if (a, b) not in used_links
             ]
             rng.shuffle(link_pairs)
-            selected_links.extend(link_pairs[: link_num - len(selected_links)])
+            selected_links.extend(link_pairs[: swhich_num - len(selected_links)])
 
         self.mesh_links = []
         host_ports = [0] * hosts
+        publisher = hosts - 1
+        if selected_links:
+            for idx, link in enumerate(selected_links):
+                if publisher in link:
+                    selected_links[0], selected_links[idx] = (
+                        selected_links[idx],
+                        selected_links[0],
+                    )
+                    break
+
         for idx, (host_a, host_b) in enumerate(selected_links):
             switch_name = f"s{idx}"
             switch_node = self.addSwitch(switch_name)
@@ -379,7 +385,7 @@ class MeshTopo(Topo):
             self.addLink(host_nodes[host_b], switch_node)
             self.mesh_links.append(
                 {
-                    "subnet": idx,
+                    "subnet": idx + 1,
                     "host_a": host_a,
                     "host_b": host_b,
                     "host_a_eth": host_a_eth,
@@ -400,9 +406,9 @@ def main():
         help="number of hosts",
     )
     parser.add_argument(
-        "--links",
+        "--switches",
         type=int,
-        default=2,
+        default=10,
         help="number of random links (min: 2, max: all pairs)",
     )
     parser.add_argument(
@@ -414,7 +420,7 @@ def main():
     args = parser.parse_args()
 
     setLogLevel("info")
-    run_mesh_topology(args.hosts, args.links, args.seed)
+    run_mesh_topology(args.hosts, args.switches args.seed)
 
 
 if __name__ == "__main__":
