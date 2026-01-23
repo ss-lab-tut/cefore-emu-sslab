@@ -151,7 +151,18 @@ def run_disaster_topology(args):
         else publish_link["host_a"]
     )
 
-    mesh.run_cefputfile(net, publisher, publish_uri)
+    seed_label = "none" if args.seed is None else str(args.seed)
+    down_host_label = "none"
+    log_name = (
+        f"cefputfile_{args.hosts}_{args.switches}_{seed_label}_"
+        f"{args.down_interval}_{args.down_duration}_{down_host_label}.log"
+    )
+    command = (
+        f"cefputfile {publish_uri} -f ./sample-putfile -t 3000 -e 3000 "
+        f"-d ./h{publisher} > {log_name}"
+    )
+    print(f"h{publisher}", "command:", command)
+    net.hosts[publisher].cmd(command)
     time.sleep(5)
 
     stop_event = None
