@@ -5,3 +5,4 @@ csmgr_fsc_*
 .venv
 
 .DS_Store
+__pycache__
