@@ -39,7 +39,9 @@ def set_node_links_state(net, node_name, state):
             net.configLinkStatus(node.name, link.intf1.node.name, state)
 
 
-def periodic_host_flap(net, host_num, interval, down_time, rng, exclude, state):
+def periodic_host_flap(
+    net, host_num, interval, down_time, rng, exclude, state, down_count, stagger
+):
     host_ids = [idx for idx in range(host_num) if idx not in exclude]
     if not host_ids:
         info("no hosts available for flapping\n")
@@ -48,18 +50,46 @@ def periodic_host_flap(net, host_num, interval, down_time, rng, exclude, state):
 
     def worker():
         position = 0
+        active_down = set()
+
+        def schedule_up(host_idx):
+            def do_up():
+                if stop_event.is_set():
+                    return
+                host_name = f"h{host_idx}"
+                info(f"\n[flap] up {host_name}\n")
+                set_node_links_state(net, host_name, "up")
+                active_down.discard(host_idx)
+
+            timer = threading.Timer(down_time, do_up)
+            timer.daemon = True
+            timer.start()
+
         while not stop_event.is_set():
-            host_idx = host_ids[position % len(host_ids)]
-            position += 1
+            available = [idx for idx in host_ids if idx not in active_down]
+            if not available:
+                stop_event.wait(interval)
+                continue
+            count = min(down_count, len(available))
             if rng is not None:
-                host_idx = rng.choice(host_ids)
-            host_name = f"h{host_idx}"
-            state["last_down_host"] = host_idx
-            info(f"\n[flap] down {host_name}\n")
-            set_node_links_state(net, host_name, "down")
-            stop_event.wait(down_time)
-            info(f"\n[flap] up {host_name}\n")
-            set_node_links_state(net, host_name, "up")
+                chosen = rng.sample(available, count)
+            else:
+                chosen = [
+                    available[(position + offset) % len(available)]
+                    for offset in range(count)
+                ]
+                position += count
+
+            for offset, host_idx in enumerate(chosen):
+                if stop_event.wait(stagger if offset > 0 else 0):
+                    return
+                host_name = f"h{host_idx}"
+                state["last_down_host"] = host_idx
+                active_down.add(host_idx)
+                info(f"\n[flap] down {host_name}\n")
+                set_node_links_state(net, host_name, "down")
+                schedule_up(host_idx)
+
             stop_event.wait(interval)
 
     thread = threading.Thread(target=worker, daemon=True)
@@ -176,6 +206,8 @@ def run_disaster_topology(args):
             rng,
             parse_int_list(args.down_exclude),
             flap_state,
+            args.down_count,
+            args.down_stagger,
         )
 
     rng = rng or random.Random()
@@ -244,6 +276,18 @@ def main():
         type=str,
         default="",
         help="comma-separated host ids to exclude from flapping",
+    )
+    parser.add_argument(
+        "--down-count",
+        type=int,
+        default=3,
+        help="number of hosts to keep down per cycle",
+    )
+    parser.add_argument(
+        "--down-stagger",
+        type=int,
+        default=2,
+        help="seconds to stagger down events within a cycle",
     )
     parser.add_argument(
         "--bw",
