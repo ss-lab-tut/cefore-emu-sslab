@@ -7,6 +7,7 @@ Randomly creates a user-selected number of host-to-host links via switches.
 """
 
 import argparse
+import heapq
 import os
 import random
 import shutil
@@ -104,26 +105,34 @@ def set_ip_addr(net, mesh_links):
             net.hosts[host_idx].cmd(command)
 
 
-def shortest_path(graph, source, target, banned_edges=None, banned_nodes=None):
+def shortest_path(
+    graph, source, target, banned_edges=None, banned_nodes=None, weight_fn=None
+):
     if source == target:
         return [source]
     banned_edges = banned_edges or set()
     banned_nodes = banned_nodes or set()
-    queue = [source]
+    weight_fn = weight_fn or (lambda _a, _b: 1)
+    distances = {source: 0}
     parents = {source: None}
-    for node in queue:
+    heap = [(0, source)]
+    while heap:
+        dist, node = heapq.heappop(heap)
+        if node == target:
+            break
+        if dist != distances.get(node):
+            continue
         for neighbor in sorted(graph[node]):
             edge = frozenset((node, neighbor))
             if edge in banned_edges:
                 continue
             if neighbor in banned_nodes and neighbor != target:
                 continue
-            if neighbor not in parents:
+            new_dist = dist + weight_fn(node, neighbor)
+            if new_dist < distances.get(neighbor, float("inf")):
+                distances[neighbor] = new_dist
                 parents[neighbor] = node
-                if neighbor == target:
-                    queue = []
-                    break
-                queue.append(neighbor)
+                heapq.heappush(heap, (new_dist, neighbor))
     if target not in parents:
         return None
     path = []
@@ -134,8 +143,15 @@ def shortest_path(graph, source, target, banned_edges=None, banned_nodes=None):
     return list(reversed(path))
 
 
-def k_shortest_paths(graph, source, target, k_paths):
-    first = shortest_path(graph, source, target)
+def path_cost(path, weight_fn):
+    if len(path) < 2:
+        return 0
+    return sum(weight_fn(path[idx], path[idx + 1]) for idx in range(len(path) - 1))
+
+
+def k_shortest_paths(graph, source, target, k_paths, weight_fn=None):
+    weight_fn = weight_fn or (lambda _a, _b: 1)
+    first = shortest_path(graph, source, target, weight_fn=weight_fn)
     if not first:
         return []
     paths = [first]
@@ -151,7 +167,12 @@ def k_shortest_paths(graph, source, target, k_paths):
                 if len(path) > i and path[: i + 1] == root_path:
                     banned_edges.add(frozenset((path[i], path[i + 1])))
             spur_path = shortest_path(
-                graph, spur_node, target, banned_edges, banned_nodes
+                graph,
+                spur_node,
+                target,
+                banned_edges,
+                banned_nodes,
+                weight_fn=weight_fn,
             )
             if not spur_path:
                 continue
@@ -159,7 +180,7 @@ def k_shortest_paths(graph, source, target, k_paths):
             candidates.append(total_path)
         if not candidates:
             break
-        candidates.sort(key=lambda p: (len(p), p))
+        candidates.sort(key=lambda p: (path_cost(p, weight_fn), p))
         next_path = candidates.pop(0)
         if next_path not in paths:
             paths.append(next_path)
