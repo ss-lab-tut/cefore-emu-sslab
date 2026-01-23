@@ -11,7 +11,6 @@ import random
 import threading
 import time
 
-from mininet.cli import CLI
 from mininet.link import Intf, TCLink
 from mininet.log import info, setLogLevel
 from mininet.net import Mininet
@@ -40,7 +39,7 @@ def set_node_links_state(net, node_name, state):
             net.configLinkStatus(node.name, link.intf1.node.name, state)
 
 
-def periodic_host_flap(net, host_num, interval, down_time, rng, exclude):
+def periodic_host_flap(net, host_num, interval, down_time, rng, exclude, state):
     host_ids = [idx for idx in range(host_num) if idx not in exclude]
     if not host_ids:
         info("no hosts available for flapping\n")
@@ -55,6 +54,7 @@ def periodic_host_flap(net, host_num, interval, down_time, rng, exclude):
             if rng is not None:
                 host_idx = rng.choice(host_ids)
             host_name = f"h{host_idx}"
+            state["last_down_host"] = host_idx
             info(f"\n[flap] down {host_name}\n")
             set_node_links_state(net, host_name, "down")
             stop_event.wait(down_time)
@@ -155,6 +155,7 @@ def run_disaster_topology(args):
     time.sleep(5)
 
     stop_event = None
+    flap_state = {"last_down_host": None}
     if args.down_interval > 0 and args.down_duration > 0:
         stop_event = periodic_host_flap(
             net,
@@ -163,11 +164,31 @@ def run_disaster_topology(args):
             args.down_duration,
             rng,
             parse_int_list(args.down_exclude),
+            flap_state,
         )
 
-    mesh.run_cefgetfile(net, consumer, publish_uri, f"./recvfile_at_h{consumer}")
+    rng = rng or random.Random()
+    for idx in range(1, 6):
+        candidates = [h for h in range(args.hosts) if h != publisher]
+        consumer = rng.choice(candidates)
+        down_host = flap_state["last_down_host"]
+        down_host_label = "none" if down_host is None else str(down_host)
+        seed_label = "none" if args.seed is None else str(args.seed)
+        log_name = (
+            f"cefgetfile_{args.hosts}_{args.switches}_{seed_label}_"
+            f"{args.down_interval}_{args.down_duration}_{down_host_label}_"
+            f"h{consumer}.log"
+        )
+        command = (
+            f"cefgetfile {publish_uri} -f ./recvfile_at_h{consumer} "
+            f"-d ./h{consumer} > {log_name}"
+        )
+        print(f"h{consumer}", "command:", command)
+        net.hosts[consumer].cmd(command)
+        if idx < 5 and args.get_interval > 0:
+            time.sleep(args.get_interval)
 
-    CLI(net)
+    # CLI(net)
 
     if stop_event is not None:
         stop_event.set()
@@ -224,6 +245,12 @@ def main():
         action="append",
         default=[],
         help="attach external intf: host,ifname[,ip][,mtu] (repeatable)",
+    )
+    parser.add_argument(
+        "--get-interval",
+        type=int,
+        default=10,
+        help="seconds between cefgetfile runs",
     )
     args = parser.parse_args()
 
