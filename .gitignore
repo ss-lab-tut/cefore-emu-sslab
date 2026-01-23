@@ -1,5 +1,4 @@
 *-log
-*.log
 recv*
 csmgr_fsc_*
 .venv
