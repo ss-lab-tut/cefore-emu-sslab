@@ -5,11 +5,13 @@ Periodic host failure emulator based on mesh-nodes-switches.py.
 """
 
 import argparse
+import heapq
 import importlib.util
 import os
 import random
 import threading
 import time
+from collections import deque
 
 from mininet.link import Intf, TCLink
 from mininet.log import info, setLogLevel
@@ -138,6 +140,50 @@ def parse_ext_args(values):
     return entries
 
 
+def compute_distances(graph, source, weight_fn=None):
+    if weight_fn is None:
+        distances = {source: 0}
+        queue = deque([source])
+        for node in queue:
+            for neighbor in sorted(graph.get(node, [])):
+                if neighbor not in distances:
+                    distances[neighbor] = distances[node] + 1
+                    queue.append(neighbor)
+        return distances
+    distances = {source: 0}
+    heap = [(0, source)]
+    while heap:
+        dist, node = heapq.heappop(heap)
+        if dist != distances.get(node):
+            continue
+        for neighbor in sorted(graph.get(node, [])):
+            new_dist = dist + weight_fn(node, neighbor)
+            if new_dist < distances.get(neighbor, float("inf")):
+                distances[neighbor] = new_dist
+                heapq.heappush(heap, (new_dist, neighbor))
+    return distances
+
+
+def select_k_centers(graph, k, weight_fn=None):
+    nodes = sorted(graph.keys())
+    if not nodes or k <= 0:
+        return []
+    centers = [nodes[0]]
+    min_dist = compute_distances(graph, centers[0], weight_fn)
+    while len(centers) < k:
+        farthest = max(
+            nodes,
+            key=lambda node: (min_dist.get(node, float("inf")), -node),
+        )
+        if farthest in centers:
+            break
+        centers.append(farthest)
+        dist_map = compute_distances(graph, farthest, weight_fn)
+        for node in nodes:
+            min_dist[node] = min(min_dist.get(node, float("inf")), dist_map.get(node, float("inf")))
+    return centers
+
+
 def run_disaster_topology(args):
     mesh = load_mesh_module()
 
@@ -164,6 +210,11 @@ def run_disaster_topology(args):
     mesh.set_fib(net, topo.mesh_links, args.k)
     mesh.run_cefstatus_all(net, args.hosts)
     mesh.print_mesh_links(topo.mesh_links)
+    host_graph, _ = mesh.build_host_graph(topo.mesh_links)
+    cache_count = args.cache_count if args.cache_count > 0 else args.down_count + 1
+    cache_nodes = select_k_centers(host_graph, cache_count)
+    if cache_nodes:
+        info("cache nodes: " + ", ".join(f"h{idx}" for idx in cache_nodes) + "\n")
     time.sleep(1)
 
     for node_a, node_b, bandwidth in parse_bw_args(args.bw):
@@ -288,6 +339,12 @@ def main():
         type=int,
         default=2,
         help="seconds to stagger down events within a cycle",
+    )
+    parser.add_argument(
+        "--cache-count",
+        type=int,
+        default=0,
+        help="number of cache nodes (0 = down-count + 1)",
     )
     parser.add_argument(
         "--bw",
