@@ -228,21 +228,56 @@ def set_fib(net, mesh_links, k_paths):
                 info(net.hosts[src].cmd(command))
 
 
-def print_mesh_links(mesh_links):
-    info("\nMesh links (host-switch-host):\n")
-    for link in sorted(mesh_links, key=lambda item: item["subnet"]):
+def build_host_graph(mesh_links):
+    graph = {}
+    link_switch = {}
+    for link in mesh_links:
         host_a = link["host_a"]
         host_b = link["host_b"]
-        host_a_name = f"h{host_a}"
-        host_b_name = f"h{host_b}"
-        host_a_eth = link["host_a_eth"]
-        host_b_eth = link["host_b_eth"]
-        switch_name = link["switch"]
-        line = (
-            f"{host_a_name}-eth{host_a_eth} -- {switch_name} -- "
-            f"{host_b_name}-eth{host_b_eth} (subnet {link['subnet']})"
-        )
-        info(line + "\n")
+        graph.setdefault(host_a, set()).add(host_b)
+        graph.setdefault(host_b, set()).add(host_a)
+        key = tuple(sorted((host_a, host_b)))
+        link_switch[key] = link["switch"]
+    return graph, link_switch
+
+
+def build_tree(graph, root):
+    parent = {root: None}
+    queue = [root]
+    for node in queue:
+        for neighbor in sorted(graph.get(node, [])):
+            if neighbor not in parent:
+                parent[neighbor] = node
+                queue.append(neighbor)
+    children = {node: [] for node in parent}
+    for node, ancestor in parent.items():
+        if ancestor is not None:
+            children[ancestor].append(node)
+    for node in children:
+        children[node].sort()
+    return children
+
+
+def print_mesh_links(mesh_links):
+    graph, link_switch = build_host_graph(mesh_links)
+    info("\nMesh topology (per-host tree view):\n")
+    for root in sorted(graph.keys()):
+        info(f"h{root}\n")
+        children = build_tree(graph, root)
+
+        def walk(node, prefix):
+            kids = children.get(node, [])
+            for idx, child in enumerate(kids):
+                last = idx == len(kids) - 1
+                branch = "`-- " if last else "|-- "
+                link_key = tuple(sorted((node, child)))
+                switch_name = link_switch.get(link_key, "?")
+                label = f"h{child} (via {switch_name})"
+                info(f"{prefix}{branch}{label}\n")
+                walk(child, prefix + ("    " if last else "|   "))
+
+        walk(root, "")
+        info("\n")
 
 
 def find_link(mesh_links, host_a, host_b):
