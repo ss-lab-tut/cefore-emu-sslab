@@ -1,0 +1,1681 @@
+*** Creating network
+*** Adding controller
+*** Adding hosts:
+h0 h1 h2 h3 h4 h5 h6 h7 
+*** Adding switches:
+s0 s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 s11 
+*** Adding links:
+(h0, s2) (h0, s5) (h0, s10) (h1, s3) (h1, s4) (h1, s11) (h2, s3) (h2, s7) (h3, s1) (h3, s5) (h3, s6) (h3, s11) (h4, s1) (h4, s10) (h5, s2) (h5, s8) (h5, s9) (h6, s0) (h6, s4) (h6, s6) (h6, s8) (h7, s0) (h7, s7) (h7, s9) 
+*** Configuring hosts
+h0 h1 h2 h3 h4 h5 h6 h7 
+*** Starting controller
+c0 
+*** Starting 12 switches
+s0 s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 s11 ...
+*** Waiting for switches to connect
+s10 s11 s0 s1 s2 s3 s4 s5 s6 s7 s8 s9 
+h0-eth0: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.3.1  netmask 255.255.255.0  broadcast 192.168.3.255
+        inet6 fe80::c035:8cff:fedc:e9ec  prefixlen 64  scopeid 0x20<link>
+        ether c2:35:8c:dc:e9:ec  txqueuelen 1000  (Ethernet)
+        RX packets 20  bytes 2607 (2.6 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 7  bytes 586 (586.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+h0-eth1: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.6.1  netmask 255.255.255.0  broadcast 192.168.6.255
+        inet6 fe80::20da:1eff:fe0c:cc15  prefixlen 64  scopeid 0x20<link>
+        ether 22:da:1e:0c:cc:15  txqueuelen 1000  (Ethernet)
+        RX packets 21  bytes 2677 (2.6 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 6  bytes 516 (516.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+h0-eth2: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.11.1  netmask 255.255.255.0  broadcast 192.168.11.255
+        inet6 fe80::1873:f9ff:fe4d:a303  prefixlen 64  scopeid 0x20<link>
+        ether 1a:73:f9:4d:a3:03  txqueuelen 1000  (Ethernet)
+        RX packets 21  bytes 2677 (2.6 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 6  bytes 516 (516.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+lo: flags=73<UP,LOOPBACK,RUNNING>  mtu 65536
+        inet 127.0.0.1  netmask 255.0.0.0
+        inet6 ::1  prefixlen 128  scopeid 0x10<host>
+        loop  txqueuelen 1000  (Local Loopback)
+        RX packets 0  bytes 0 (0.0 B)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 0  bytes 0 (0.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+h1-eth0: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.4.2  netmask 255.255.255.0  broadcast 192.168.4.255
+        inet6 fe80::58:7fff:feb4:5c72  prefixlen 64  scopeid 0x20<link>
+        ether 02:58:7f:b4:5c:72  txqueuelen 1000  (Ethernet)
+        RX packets 20  bytes 2607 (2.6 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 6  bytes 516 (516.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+h1-eth1: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.5.2  netmask 255.255.255.0  broadcast 192.168.5.255
+        inet6 fe80::b84b:6cff:fe44:f901  prefixlen 64  scopeid 0x20<link>
+        ether ba:4b:6c:44:f9:01  txqueuelen 1000  (Ethernet)
+        RX packets 21  bytes 2697 (2.6 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 6  bytes 516 (516.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+h1-eth2: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.12.2  netmask 255.255.255.0  broadcast 192.168.12.255
+        inet6 fe80::c16:b2ff:fe54:b671  prefixlen 64  scopeid 0x20<link>
+        ether 0e:16:b2:54:b6:71  txqueuelen 1000  (Ethernet)
+        RX packets 19  bytes 2393 (2.3 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 7  bytes 586 (586.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+lo: flags=73<UP,LOOPBACK,RUNNING>  mtu 65536
+        inet 127.0.0.1  netmask 255.0.0.0
+        inet6 ::1  prefixlen 128  scopeid 0x10<host>
+        loop  txqueuelen 1000  (Local Loopback)
+        RX packets 0  bytes 0 (0.0 B)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 0  bytes 0 (0.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+h2-eth0: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.4.3  netmask 255.255.255.0  broadcast 192.168.4.255
+        inet6 fe80::c70:b3ff:fee5:649e  prefixlen 64  scopeid 0x20<link>
+        ether 0e:70:b3:e5:64:9e  txqueuelen 1000  (Ethernet)
+        RX packets 19  bytes 2393 (2.3 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 6  bytes 516 (516.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+h2-eth1: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.8.3  netmask 255.255.255.0  broadcast 192.168.8.255
+        inet6 fe80::9084:77ff:fe5a:10f0  prefixlen 64  scopeid 0x20<link>
+        ether 92:84:77:5a:10:f0  txqueuelen 1000  (Ethernet)
+        RX packets 22  bytes 2763 (2.7 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 6  bytes 516 (516.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+lo: flags=73<UP,LOOPBACK,RUNNING>  mtu 65536
+        inet 127.0.0.1  netmask 255.0.0.0
+        inet6 ::1  prefixlen 128  scopeid 0x10<host>
+        loop  txqueuelen 1000  (Local Loopback)
+        RX packets 0  bytes 0 (0.0 B)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 0  bytes 0 (0.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+h3-eth0: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.2.4  netmask 255.255.255.0  broadcast 192.168.2.255
+        inet6 fe80::88c3:77ff:fe3b:6a88  prefixlen 64  scopeid 0x20<link>
+        ether 8a:c3:77:3b:6a:88  txqueuelen 1000  (Ethernet)
+        RX packets 19  bytes 2393 (2.3 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 6  bytes 516 (516.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+h3-eth1: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.6.4  netmask 255.255.255.0  broadcast 192.168.6.255
+        inet6 fe80::1004:e2ff:fe28:c83b  prefixlen 64  scopeid 0x20<link>
+        ether 12:04:e2:28:c8:3b  txqueuelen 1000  (Ethernet)
+        RX packets 21  bytes 2677 (2.6 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 6  bytes 516 (516.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+h3-eth2: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.7.4  netmask 255.255.255.0  broadcast 192.168.7.255
+        inet6 fe80::8f7:61ff:fe2d:4828  prefixlen 64  scopeid 0x20<link>
+        ether 0a:f7:61:2d:48:28  txqueuelen 1000  (Ethernet)
+        RX packets 21  bytes 2697 (2.6 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 6  bytes 516 (516.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+h3-eth3: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.12.4  netmask 255.255.255.0  broadcast 192.168.12.255
+        inet6 fe80::1c9a:dff:fe1d:b93e  prefixlen 64  scopeid 0x20<link>
+        ether 1e:9a:0d:1d:b9:3e  txqueuelen 1000  (Ethernet)
+        RX packets 19  bytes 2517 (2.5 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 6  bytes 516 (516.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+lo: flags=73<UP,LOOPBACK,RUNNING>  mtu 65536
+        inet 127.0.0.1  netmask 255.0.0.0
+        inet6 ::1  prefixlen 128  scopeid 0x10<host>
+        loop  txqueuelen 1000  (Local Loopback)
+        RX packets 0  bytes 0 (0.0 B)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 0  bytes 0 (0.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+h4-eth0: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.2.5  netmask 255.255.255.0  broadcast 192.168.2.255
+        inet6 fe80::a861:1cff:feaa:e420  prefixlen 64  scopeid 0x20<link>
+        ether aa:61:1c:aa:e4:20  txqueuelen 1000  (Ethernet)
+        RX packets 21  bytes 2677 (2.6 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 6  bytes 516 (516.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+h4-eth1: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.11.5  netmask 255.255.255.0  broadcast 192.168.11.255
+        inet6 fe80::fca9:e6ff:fe54:7ca1  prefixlen 64  scopeid 0x20<link>
+        ether fe:a9:e6:54:7c:a1  txqueuelen 1000  (Ethernet)
+        RX packets 20  bytes 2607 (2.6 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 6  bytes 516 (516.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+lo: flags=73<UP,LOOPBACK,RUNNING>  mtu 65536
+        inet 127.0.0.1  netmask 255.0.0.0
+        inet6 ::1  prefixlen 128  scopeid 0x10<host>
+        loop  txqueuelen 1000  (Local Loopback)
+        RX packets 0  bytes 0 (0.0 B)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 0  bytes 0 (0.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+h5-eth0: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.3.6  netmask 255.255.255.0  broadcast 192.168.3.255
+        inet6 fe80::b018:7eff:fe45:54f9  prefixlen 64  scopeid 0x20<link>
+        ether b2:18:7e:45:54:f9  txqueuelen 1000  (Ethernet)
+        RX packets 16  bytes 2106 (2.1 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 6  bytes 516 (516.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+h5-eth1: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.9.6  netmask 255.255.255.0  broadcast 192.168.9.255
+        inet6 fe80::8432:d8ff:fe50:9bb1  prefixlen 64  scopeid 0x20<link>
+        ether 86:32:d8:50:9b:b1  txqueuelen 1000  (Ethernet)
+        RX packets 20  bytes 2483 (2.4 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 6  bytes 516 (516.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+h5-eth2: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.10.6  netmask 255.255.255.0  broadcast 192.168.10.255
+        inet6 fe80::784c:1eff:fed6:39a7  prefixlen 64  scopeid 0x20<link>
+        ether 7a:4c:1e:d6:39:a7  txqueuelen 1000  (Ethernet)
+        RX packets 19  bytes 2372 (2.3 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 7  bytes 586 (586.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+lo: flags=73<UP,LOOPBACK,RUNNING>  mtu 65536
+        inet 127.0.0.1  netmask 255.0.0.0
+        inet6 ::1  prefixlen 128  scopeid 0x10<host>
+        loop  txqueuelen 1000  (Local Loopback)
+        RX packets 0  bytes 0 (0.0 B)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 0  bytes 0 (0.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+h6-eth0: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.1.7  netmask 255.255.255.0  broadcast 192.168.1.255
+        inet6 fe80::d0b4:c0ff:fef6:191f  prefixlen 64  scopeid 0x20<link>
+        ether d2:b4:c0:f6:19:1f  txqueuelen 1000  (Ethernet)
+        RX packets 20  bytes 2479 (2.4 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 6  bytes 516 (516.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+h6-eth1: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.5.7  netmask 255.255.255.0  broadcast 192.168.5.255
+        inet6 fe80::c425:1ff:fe12:cbfe  prefixlen 64  scopeid 0x20<link>
+        ether c6:25:01:12:cb:fe  txqueuelen 1000  (Ethernet)
+        RX packets 19  bytes 2393 (2.3 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 6  bytes 516 (516.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+h6-eth2: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.7.7  netmask 255.255.255.0  broadcast 192.168.7.255
+        inet6 fe80::34d0:72ff:fee9:31c  prefixlen 64  scopeid 0x20<link>
+        ether 36:d0:72:e9:03:1c  txqueuelen 1000  (Ethernet)
+        RX packets 18  bytes 2286 (2.2 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 6  bytes 516 (516.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+h6-eth3: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.9.7  netmask 255.255.255.0  broadcast 192.168.9.255
+        inet6 fe80::2c78:94ff:fed3:39bc  prefixlen 64  scopeid 0x20<link>
+        ether 2e:78:94:d3:39:bc  txqueuelen 1000  (Ethernet)
+        RX packets 19  bytes 2393 (2.3 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 6  bytes 516 (516.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+lo: flags=73<UP,LOOPBACK,RUNNING>  mtu 65536
+        inet 127.0.0.1  netmask 255.0.0.0
+        inet6 ::1  prefixlen 128  scopeid 0x10<host>
+        loop  txqueuelen 1000  (Local Loopback)
+        RX packets 0  bytes 0 (0.0 B)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 0  bytes 0 (0.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+h7-eth0: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.1.8  netmask 255.255.255.0  broadcast 192.168.1.255
+        inet6 fe80::2429:95ff:fed4:413f  prefixlen 64  scopeid 0x20<link>
+        ether 26:29:95:d4:41:3f  txqueuelen 1000  (Ethernet)
+        RX packets 20  bytes 2483 (2.4 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 6  bytes 516 (516.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+h7-eth1: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.8.8  netmask 255.255.255.0  broadcast 192.168.8.255
+        inet6 fe80::2498:c4ff:fe4a:33f8  prefixlen 64  scopeid 0x20<link>
+        ether 26:98:c4:4a:33:f8  txqueuelen 1000  (Ethernet)
+        RX packets 19  bytes 2393 (2.3 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 6  bytes 516 (516.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+h7-eth2: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.10.8  netmask 255.255.255.0  broadcast 192.168.10.255
+        inet6 fe80::7c2a:1dff:fe9d:9154  prefixlen 64  scopeid 0x20<link>
+        ether 7e:2a:1d:9d:91:54  txqueuelen 1000  (Ethernet)
+        RX packets 19  bytes 2356 (2.3 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 6  bytes 516 (516.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+lo: flags=73<UP,LOOPBACK,RUNNING>  mtu 65536
+        inet 127.0.0.1  netmask 255.0.0.0
+        inet6 ::1  prefixlen 128  scopeid 0x10<host>
+        loop  txqueuelen 1000  (Local Loopback)
+        RX packets 0  bytes 0 (0.0 B)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 0  bytes 0 (0.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+2026-01-26 17:05:45.092 [cefctrl] INFO: [client] Config directory is ./h0
+2026-01-26 17:05:45.092 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.0
+2026-01-26 17:05:45.092 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.100 [cefctrl] INFO: [client] Config directory is ./h0
+2026-01-26 17:05:45.100 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.0
+2026-01-26 17:05:45.100 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.107 [cefctrl] INFO: [client] Config directory is ./h0
+2026-01-26 17:05:45.107 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.0
+2026-01-26 17:05:45.107 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.114 [cefctrl] INFO: [client] Config directory is ./h0
+2026-01-26 17:05:45.114 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.0
+2026-01-26 17:05:45.114 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.121 [cefctrl] INFO: [client] Config directory is ./h0
+2026-01-26 17:05:45.121 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.0
+2026-01-26 17:05:45.121 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.129 [cefctrl] INFO: [client] Config directory is ./h0
+2026-01-26 17:05:45.129 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.0
+2026-01-26 17:05:45.129 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.135 [cefctrl] INFO: [client] Config directory is ./h0
+2026-01-26 17:05:45.135 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.0
+2026-01-26 17:05:45.135 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.142 [cefctrl] INFO: [client] Config directory is ./h0
+2026-01-26 17:05:45.142 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.0
+2026-01-26 17:05:45.142 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.149 [cefctrl] INFO: [client] Config directory is ./h0
+2026-01-26 17:05:45.149 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.0
+2026-01-26 17:05:45.149 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.156 [cefctrl] INFO: [client] Config directory is ./h0
+2026-01-26 17:05:45.156 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.0
+2026-01-26 17:05:45.156 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.163 [cefctrl] INFO: [client] Config directory is ./h0
+2026-01-26 17:05:45.163 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.0
+2026-01-26 17:05:45.163 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.169 [cefctrl] INFO: [client] Config directory is ./h0
+2026-01-26 17:05:45.169 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.0
+2026-01-26 17:05:45.169 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.176 [cefctrl] INFO: [client] Config directory is ./h0
+2026-01-26 17:05:45.176 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.0
+2026-01-26 17:05:45.176 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.183 [cefctrl] INFO: [client] Config directory is ./h0
+2026-01-26 17:05:45.183 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.0
+2026-01-26 17:05:45.183 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.189 [cefctrl] INFO: [client] Config directory is ./h0
+2026-01-26 17:05:45.189 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.0
+2026-01-26 17:05:45.189 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.196 [cefctrl] INFO: [client] Config directory is ./h0
+2026-01-26 17:05:45.196 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.0
+2026-01-26 17:05:45.196 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.203 [cefctrl] INFO: [client] Config directory is ./h0
+2026-01-26 17:05:45.203 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.0
+2026-01-26 17:05:45.203 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.209 [cefctrl] INFO: [client] Config directory is ./h0
+2026-01-26 17:05:45.209 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.0
+2026-01-26 17:05:45.209 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.216 [cefctrl] INFO: [client] Config directory is ./h0
+2026-01-26 17:05:45.216 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.0
+2026-01-26 17:05:45.216 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.223 [cefctrl] INFO: [client] Config directory is ./h0
+2026-01-26 17:05:45.223 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.0
+2026-01-26 17:05:45.223 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.230 [cefctrl] INFO: [client] Config directory is ./h0
+2026-01-26 17:05:45.230 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.0
+2026-01-26 17:05:45.230 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.237 [cefctrl] INFO: [client] Config directory is ./h1
+2026-01-26 17:05:45.237 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.1
+2026-01-26 17:05:45.237 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.243 [cefctrl] INFO: [client] Config directory is ./h1
+2026-01-26 17:05:45.244 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.1
+2026-01-26 17:05:45.244 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.249 [cefctrl] INFO: [client] Config directory is ./h1
+2026-01-26 17:05:45.249 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.1
+2026-01-26 17:05:45.249 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.254 [cefctrl] INFO: [client] Config directory is ./h1
+2026-01-26 17:05:45.254 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.1
+2026-01-26 17:05:45.254 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.260 [cefctrl] INFO: [client] Config directory is ./h1
+2026-01-26 17:05:45.260 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.1
+2026-01-26 17:05:45.260 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.267 [cefctrl] INFO: [client] Config directory is ./h1
+2026-01-26 17:05:45.267 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.1
+2026-01-26 17:05:45.267 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.274 [cefctrl] INFO: [client] Config directory is ./h1
+2026-01-26 17:05:45.274 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.1
+2026-01-26 17:05:45.274 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.281 [cefctrl] INFO: [client] Config directory is ./h1
+2026-01-26 17:05:45.281 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.1
+2026-01-26 17:05:45.281 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.287 [cefctrl] INFO: [client] Config directory is ./h1
+2026-01-26 17:05:45.287 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.1
+2026-01-26 17:05:45.287 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.294 [cefctrl] INFO: [client] Config directory is ./h1
+2026-01-26 17:05:45.294 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.1
+2026-01-26 17:05:45.294 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.301 [cefctrl] INFO: [client] Config directory is ./h1
+2026-01-26 17:05:45.301 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.1
+2026-01-26 17:05:45.301 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.307 [cefctrl] INFO: [client] Config directory is ./h1
+2026-01-26 17:05:45.308 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.1
+2026-01-26 17:05:45.308 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.314 [cefctrl] INFO: [client] Config directory is ./h1
+2026-01-26 17:05:45.314 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.1
+2026-01-26 17:05:45.314 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.321 [cefctrl] INFO: [client] Config directory is ./h1
+2026-01-26 17:05:45.321 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.1
+2026-01-26 17:05:45.321 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.328 [cefctrl] INFO: [client] Config directory is ./h1
+2026-01-26 17:05:45.328 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.1
+2026-01-26 17:05:45.328 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.334 [cefctrl] INFO: [client] Config directory is ./h1
+2026-01-26 17:05:45.334 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.1
+2026-01-26 17:05:45.334 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.341 [cefctrl] INFO: [client] Config directory is ./h1
+2026-01-26 17:05:45.341 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.1
+2026-01-26 17:05:45.341 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.348 [cefctrl] INFO: [client] Config directory is ./h1
+2026-01-26 17:05:45.348 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.1
+2026-01-26 17:05:45.348 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.354 [cefctrl] INFO: [client] Config directory is ./h1
+2026-01-26 17:05:45.354 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.1
+2026-01-26 17:05:45.354 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.360 [cefctrl] INFO: [client] Config directory is ./h1
+2026-01-26 17:05:45.360 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.1
+2026-01-26 17:05:45.360 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.366 [cefctrl] INFO: [client] Config directory is ./h1
+2026-01-26 17:05:45.366 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.1
+2026-01-26 17:05:45.366 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.373 [cefctrl] INFO: [client] Config directory is ./h2
+2026-01-26 17:05:45.373 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.2
+2026-01-26 17:05:45.373 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.379 [cefctrl] INFO: [client] Config directory is ./h2
+2026-01-26 17:05:45.379 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.2
+2026-01-26 17:05:45.379 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.386 [cefctrl] INFO: [client] Config directory is ./h2
+2026-01-26 17:05:45.386 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.2
+2026-01-26 17:05:45.386 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.393 [cefctrl] INFO: [client] Config directory is ./h2
+2026-01-26 17:05:45.393 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.2
+2026-01-26 17:05:45.393 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.399 [cefctrl] INFO: [client] Config directory is ./h2
+2026-01-26 17:05:45.400 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.2
+2026-01-26 17:05:45.400 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.406 [cefctrl] INFO: [client] Config directory is ./h2
+2026-01-26 17:05:45.406 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.2
+2026-01-26 17:05:45.406 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.413 [cefctrl] INFO: [client] Config directory is ./h2
+2026-01-26 17:05:45.413 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.2
+2026-01-26 17:05:45.413 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.418 [cefctrl] INFO: [client] Config directory is ./h2
+2026-01-26 17:05:45.418 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.2
+2026-01-26 17:05:45.419 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.424 [cefctrl] INFO: [client] Config directory is ./h2
+2026-01-26 17:05:45.424 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.2
+2026-01-26 17:05:45.424 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.431 [cefctrl] INFO: [client] Config directory is ./h2
+2026-01-26 17:05:45.431 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.2
+2026-01-26 17:05:45.431 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.437 [cefctrl] INFO: [client] Config directory is ./h2
+2026-01-26 17:05:45.437 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.2
+2026-01-26 17:05:45.437 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.443 [cefctrl] INFO: [client] Config directory is ./h2
+2026-01-26 17:05:45.443 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.2
+2026-01-26 17:05:45.443 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.450 [cefctrl] INFO: [client] Config directory is ./h2
+2026-01-26 17:05:45.450 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.2
+2026-01-26 17:05:45.450 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.456 [cefctrl] INFO: [client] Config directory is ./h2
+2026-01-26 17:05:45.457 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.2
+2026-01-26 17:05:45.457 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.463 [cefctrl] INFO: [client] Config directory is ./h3
+2026-01-26 17:05:45.463 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.3
+2026-01-26 17:05:45.463 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.469 [cefctrl] INFO: [client] Config directory is ./h3
+2026-01-26 17:05:45.469 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.3
+2026-01-26 17:05:45.469 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.475 [cefctrl] INFO: [client] Config directory is ./h3
+2026-01-26 17:05:45.475 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.3
+2026-01-26 17:05:45.475 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.481 [cefctrl] INFO: [client] Config directory is ./h3
+2026-01-26 17:05:45.481 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.3
+2026-01-26 17:05:45.481 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.487 [cefctrl] INFO: [client] Config directory is ./h3
+2026-01-26 17:05:45.488 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.3
+2026-01-26 17:05:45.488 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.493 [cefctrl] INFO: [client] Config directory is ./h3
+2026-01-26 17:05:45.494 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.3
+2026-01-26 17:05:45.494 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.500 [cefctrl] INFO: [client] Config directory is ./h3
+2026-01-26 17:05:45.500 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.3
+2026-01-26 17:05:45.500 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.506 [cefctrl] INFO: [client] Config directory is ./h3
+2026-01-26 17:05:45.506 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.3
+2026-01-26 17:05:45.506 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.511 [cefctrl] INFO: [client] Config directory is ./h3
+2026-01-26 17:05:45.512 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.3
+2026-01-26 17:05:45.512 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.517 [cefctrl] INFO: [client] Config directory is ./h3
+2026-01-26 17:05:45.517 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.3
+2026-01-26 17:05:45.517 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.523 [cefctrl] INFO: [client] Config directory is ./h3
+2026-01-26 17:05:45.523 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.3
+2026-01-26 17:05:45.523 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.530 [cefctrl] INFO: [client] Config directory is ./h3
+2026-01-26 17:05:45.530 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.3
+2026-01-26 17:05:45.530 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.535 [cefctrl] INFO: [client] Config directory is ./h3
+2026-01-26 17:05:45.536 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.3
+2026-01-26 17:05:45.536 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.541 [cefctrl] INFO: [client] Config directory is ./h3
+2026-01-26 17:05:45.541 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.3
+2026-01-26 17:05:45.541 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.547 [cefctrl] INFO: [client] Config directory is ./h3
+2026-01-26 17:05:45.547 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.3
+2026-01-26 17:05:45.547 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.554 [cefctrl] INFO: [client] Config directory is ./h3
+2026-01-26 17:05:45.554 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.3
+2026-01-26 17:05:45.554 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.560 [cefctrl] INFO: [client] Config directory is ./h3
+2026-01-26 17:05:45.560 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.3
+2026-01-26 17:05:45.560 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.566 [cefctrl] INFO: [client] Config directory is ./h3
+2026-01-26 17:05:45.566 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.3
+2026-01-26 17:05:45.566 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.571 [cefctrl] INFO: [client] Config directory is ./h3
+2026-01-26 17:05:45.572 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.3
+2026-01-26 17:05:45.572 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.577 [cefctrl] INFO: [client] Config directory is ./h3
+2026-01-26 17:05:45.577 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.3
+2026-01-26 17:05:45.577 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.583 [cefctrl] INFO: [client] Config directory is ./h3
+2026-01-26 17:05:45.583 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.3
+2026-01-26 17:05:45.583 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.590 [cefctrl] INFO: [client] Config directory is ./h4
+2026-01-26 17:05:45.590 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.4
+2026-01-26 17:05:45.591 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.597 [cefctrl] INFO: [client] Config directory is ./h4
+2026-01-26 17:05:45.597 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.4
+2026-01-26 17:05:45.597 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.602 [cefctrl] INFO: [client] Config directory is ./h4
+2026-01-26 17:05:45.603 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.4
+2026-01-26 17:05:45.603 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.608 [cefctrl] INFO: [client] Config directory is ./h4
+2026-01-26 17:05:45.608 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.4
+2026-01-26 17:05:45.608 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.614 [cefctrl] INFO: [client] Config directory is ./h4
+2026-01-26 17:05:45.614 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.4
+2026-01-26 17:05:45.614 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.620 [cefctrl] INFO: [client] Config directory is ./h4
+2026-01-26 17:05:45.620 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.4
+2026-01-26 17:05:45.620 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.626 [cefctrl] INFO: [client] Config directory is ./h4
+2026-01-26 17:05:45.626 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.4
+2026-01-26 17:05:45.626 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.633 [cefctrl] INFO: [client] Config directory is ./h4
+2026-01-26 17:05:45.633 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.4
+2026-01-26 17:05:45.633 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.640 [cefctrl] INFO: [client] Config directory is ./h4
+2026-01-26 17:05:45.640 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.4
+2026-01-26 17:05:45.640 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.646 [cefctrl] INFO: [client] Config directory is ./h4
+2026-01-26 17:05:45.647 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.4
+2026-01-26 17:05:45.647 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.653 [cefctrl] INFO: [client] Config directory is ./h4
+2026-01-26 17:05:45.654 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.4
+2026-01-26 17:05:45.654 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.660 [cefctrl] INFO: [client] Config directory is ./h4
+2026-01-26 17:05:45.660 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.4
+2026-01-26 17:05:45.660 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.665 [cefctrl] INFO: [client] Config directory is ./h4
+2026-01-26 17:05:45.666 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.4
+2026-01-26 17:05:45.666 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.671 [cefctrl] INFO: [client] Config directory is ./h4
+2026-01-26 17:05:45.671 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.4
+2026-01-26 17:05:45.671 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.677 [cefctrl] INFO: [client] Config directory is ./h5
+2026-01-26 17:05:45.677 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.5
+2026-01-26 17:05:45.677 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.683 [cefctrl] INFO: [client] Config directory is ./h5
+2026-01-26 17:05:45.683 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.5
+2026-01-26 17:05:45.683 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.689 [cefctrl] INFO: [client] Config directory is ./h5
+2026-01-26 17:05:45.689 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.5
+2026-01-26 17:05:45.689 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.695 [cefctrl] INFO: [client] Config directory is ./h5
+2026-01-26 17:05:45.695 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.5
+2026-01-26 17:05:45.695 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+h6 command: ifconfig h6-eth0 192.168.1.7
+h7 command: ifconfig h7-eth0 192.168.1.8
+h3 command: ifconfig h3-eth0 192.168.2.4
+h4 command: ifconfig h4-eth0 192.168.2.5
+h0 command: ifconfig h0-eth0 192.168.3.1
+h5 command: ifconfig h5-eth0 192.168.3.6
+h1 command: ifconfig h1-eth0 192.168.4.2
+h2 command: ifconfig h2-eth0 192.168.4.3
+h1 command: ifconfig h1-eth1 192.168.5.2
+h6 command: ifconfig h6-eth1 192.168.5.7
+h0 command: ifconfig h0-eth1 192.168.6.1
+h3 command: ifconfig h3-eth1 192.168.6.4
+h3 command: ifconfig h3-eth2 192.168.7.4
+h6 command: ifconfig h6-eth2 192.168.7.7
+h2 command: ifconfig h2-eth1 192.168.8.3
+h7 command: ifconfig h7-eth1 192.168.8.8
+h5 command: ifconfig h5-eth1 192.168.9.6
+h6 command: ifconfig h6-eth3 192.168.9.7
+h5 command: ifconfig h5-eth2 192.168.10.6
+h7 command: ifconfig h7-eth2 192.168.10.8
+h0 command: ifconfig h0-eth2 192.168.11.1
+h4 command: ifconfig h4-eth1 192.168.11.5
+h1 command: ifconfig h1-eth2 192.168.12.2
+h3 command: ifconfig h3-eth3 192.168.12.4
+h1 command: csmgrdstart -d ./h1 > h1-csmgrd-log
+h3 command: csmgrdstart -d ./h3 > h3-csmgrd-log
+h5 command: csmgrdstart -d ./h5 > h5-csmgrd-log
+h7 command: csmgrdstart -d ./h7 > h7-csmgrd-log
+h0 command: cefnetdstart -d ./h0 > h0-cefnetd-log
+h1 command: cefnetdstart -d ./h1 > h1-cefnetd-log
+h2 command: cefnetdstart -d ./h2 > h2-cefnetd-log
+h3 command: cefnetdstart -d ./h3 > h3-cefnetd-log
+h4 command: cefnetdstart -d ./h4 > h4-cefnetd-log
+h5 command: cefnetdstart -d ./h5 > h5-cefnetd-log
+h6 command: cefnetdstart -d ./h6 > h6-cefnetd-log
+h7 command: cefnetdstart -d ./h7 > h7-cefnetd-log
+h0 command: cefroute add ccnx:/test/example2 udp 192.168.6.4 -d ./h0
+h0 command: cefroute add ccnx:/test/example2 udp 192.168.11.5 -d ./h0
+h0 command: cefroute add ccnx:/test/example2 udp 192.168.3.6 -d ./h0
+h0 command: cefroute add ccnx:/test/example3 udp 192.168.6.4 -d ./h0
+h0 command: cefroute add ccnx:/test/example3 udp 192.168.3.6 -d ./h0
+h0 command: cefroute add ccnx:/test/example3 udp 192.168.11.5 -d ./h0
+h0 command: cefroute add ccnx:/test/example4 udp 192.168.6.4 -d ./h0
+h0 command: cefroute add ccnx:/test/example4 udp 192.168.11.5 -d ./h0
+h0 command: cefroute add ccnx:/test/example4 udp 192.168.3.6 -d ./h0
+h0 command: cefroute add ccnx:/test/example5 udp 192.168.11.5 -d ./h0
+h0 command: cefroute add ccnx:/test/example5 udp 192.168.6.4 -d ./h0
+h0 command: cefroute add ccnx:/test/example5 udp 192.168.3.6 -d ./h0
+h0 command: cefroute add ccnx:/test/example6 udp 192.168.3.6 -d ./h0
+h0 command: cefroute add ccnx:/test/example6 udp 192.168.6.4 -d ./h0
+h0 command: cefroute add ccnx:/test/example6 udp 192.168.11.5 -d ./h0
+h0 command: cefroute add ccnx:/test/example7 udp 192.168.6.4 -d ./h0
+h0 command: cefroute add ccnx:/test/example7 udp 192.168.3.6 -d ./h0
+h0 command: cefroute add ccnx:/test/example7 udp 192.168.11.5 -d ./h0
+h0 command: cefroute add ccnx:/test/example8 udp 192.168.3.6 -d ./h0
+h0 command: cefroute add ccnx:/test/example8 udp 192.168.6.4 -d ./h0
+h0 command: cefroute add ccnx:/test/example8 udp 192.168.11.5 -d ./h0
+h1 command: cefroute add ccnx:/test/example1 udp 192.168.12.4 -d ./h1
+h1 command: cefroute add ccnx:/test/example1 udp 192.168.5.7 -d ./h1
+h1 command: cefroute add ccnx:/test/example1 udp 192.168.4.3 -d ./h1
+h1 command: cefroute add ccnx:/test/example3 udp 192.168.4.3 -d ./h1
+h1 command: cefroute add ccnx:/test/example3 udp 192.168.12.4 -d ./h1
+h1 command: cefroute add ccnx:/test/example3 udp 192.168.5.7 -d ./h1
+h1 command: cefroute add ccnx:/test/example4 udp 192.168.12.4 -d ./h1
+h1 command: cefroute add ccnx:/test/example4 udp 192.168.5.7 -d ./h1
+h1 command: cefroute add ccnx:/test/example4 udp 192.168.4.3 -d ./h1
+h1 command: cefroute add ccnx:/test/example5 udp 192.168.12.4 -d ./h1
+h1 command: cefroute add ccnx:/test/example5 udp 192.168.5.7 -d ./h1
+h1 command: cefroute add ccnx:/test/example5 udp 192.168.4.3 -d ./h1
+h1 command: cefroute add ccnx:/test/example6 udp 192.168.5.7 -d ./h1
+h1 command: cefroute add ccnx:/test/example6 udp 192.168.4.3 -d ./h1
+h1 command: cefroute add ccnx:/test/example6 udp 192.168.12.4 -d ./h1
+h1 command: cefroute add ccnx:/test/example7 udp 192.168.5.7 -d ./h1
+h1 command: cefroute add ccnx:/test/example7 udp 192.168.12.4 -d ./h1
+h1 command: cefroute add ccnx:/test/example7 udp 192.168.4.3 -d ./h1
+h1 command: cefroute add ccnx:/test/example8 udp 192.168.4.3 -d ./h1
+h1 command: cefroute add ccnx:/test/example8 udp 192.168.5.7 -d ./h1
+h1 command: cefroute add ccnx:/test/example8 udp 192.168.12.4 -d ./h1
+h2 command: cefroute add ccnx:/test/example1 udp 192.168.4.2 -d ./h2
+h2 command: cefroute add ccnx:/test/example1 udp 192.168.8.8 -d ./h2
+h2 command: cefroute add ccnx:/test/example2 udp 192.168.4.2 -d ./h2
+h2 command: cefroute add ccnx:/test/example2 udp 192.168.8.8 -d ./h2
+h2 command: cefroute add ccnx:/test/example4 udp 192.168.4.2 -d ./h2
+h2 command: cefroute add ccnx:/test/example4 udp 192.168.8.8 -d ./h2
+h2 command: cefroute add ccnx:/test/example5 udp 192.168.4.2 -d ./h2
+h2 command: cefroute add ccnx:/test/example5 udp 192.168.8.8 -d ./h2
+h2 command: cefroute add ccnx:/test/example6 udp 192.168.8.8 -d ./h2
+h2 command: cefroute add ccnx:/test/example6 udp 192.168.4.2 -d ./h2
+h2 command: cefroute add ccnx:/test/example7 udp 192.168.4.2 -d ./h2
+h2 command: cefroute add ccnx:/test/example7 udp 192.168.8.8 -d ./h2
+h2 command: cefroute add ccnx:/test/example8 udp 192.168.8.8 -d ./h2
+h2 command: cefroute add ccnx:/test/example8 udp 192.168.4.2 -d ./h2
+h3 command: cefroute add ccnx:/test/example1 udp 192.168.6.1 -d ./h3
+h3 command: cefroute add ccnx:/test/example1 udp 192.168.2.5 -d ./h3
+h3 command: cefroute add ccnx:/test/example1 udp 192.168.12.2 -d ./h3
+h3 command: cefroute add ccnx:/test/example2 udp 192.168.12.2 -d ./h3
+h3 command: cefroute add ccnx:/test/example2 udp 192.168.7.7 -d ./h3
+h3 command: cefroute add ccnx:/test/example2 udp 192.168.6.1 -d ./h3
+h3 command: cefroute add ccnx:/test/example3 udp 192.168.12.2 -d ./h3
+h3 command: cefroute add ccnx:/test/example3 udp 192.168.7.7 -d ./h3
+h3 command: cefroute add ccnx:/test/example3 udp 192.168.6.1 -d ./h3
+h3 command: cefroute add ccnx:/test/example5 udp 192.168.2.5 -d ./h3
+h3 command: cefroute add ccnx:/test/example5 udp 192.168.6.1 -d ./h3
+h3 command: cefroute add ccnx:/test/example5 udp 192.168.12.2 -d ./h3
+h3 command: cefroute add ccnx:/test/example6 udp 192.168.6.1 -d ./h3
+h3 command: cefroute add ccnx:/test/example6 udp 192.168.7.7 -d ./h3
+h3 command: cefroute add ccnx:/test/example6 udp 192.168.12.2 -d ./h3
+h3 command: cefroute add ccnx:/test/example7 udp 192.168.7.7 -d ./h3
+h3 command: cefroute add ccnx:/test/example7 udp 192.168.12.2 -d ./h3
+h3 command: cefroute add ccnx:/test/example7 udp 192.168.6.1 -d ./h3
+h3 command: cefroute add ccnx:/test/example8 udp 192.168.7.7 -d ./h3
+h3 command: cefroute add ccnx:/test/example8 udp 192.168.6.1 -d ./h3
+h3 command: cefroute add ccnx:/test/example8 udp 192.168.12.2 -d ./h3
+h4 command: cefroute add ccnx:/test/example1 udp 192.168.11.1 -d ./h4
+h4 command: cefroute add ccnx:/test/example1 udp 192.168.2.4 -d ./h4
+h4 command: cefroute add ccnx:/test/example2 udp 192.168.2.4 -d ./h4
+h4 command: cefroute add ccnx:/test/example2 udp 192.168.11.1 -d ./h4
+h4 command: cefroute add ccnx:/test/example3 udp 192.168.2.4 -d ./h4
+h4 command: cefroute add ccnx:/test/example3 udp 192.168.11.1 -d ./h4
+h4 command: cefroute add ccnx:/test/example4 udp 192.168.2.4 -d ./h4
+h4 command: cefroute add ccnx:/test/example4 udp 192.168.11.1 -d ./h4
+h4 command: cefroute add ccnx:/test/example6 udp 192.168.11.1 -d ./h4
+h4 command: cefroute add ccnx:/test/example6 udp 192.168.2.4 -d ./h4
+h4 command: cefroute add ccnx:/test/example7 udp 192.168.2.4 -d ./h4
+h4 command: cefroute add ccnx:/test/example7 udp 192.168.11.1 -d ./h4
+h4 command: cefroute add ccnx:/test/example8 udp 192.168.11.1 -d ./h4
+h4 command: cefroute add ccnx:/test/example8 udp 192.168.2.4 -d ./h4
+h5 command: cefroute add ccnx:/test/example1 udp 192.168.3.1 -d ./h5
+h5 command: cefroute add ccnx:/test/example1 udp 192.168.9.7 -d ./h5
+h5 command: cefroute add ccnx:/test/example1 udp 192.168.10.8 -d ./h5
+h5 command: cefroute add ccnx:/test/example2 udp 192.168.9.7 -d ./h5
+h5 command: 2026-01-26 17:05:45.701 [cefctrl] INFO: [client] Config directory is ./h5
+2026-01-26 17:05:45.701 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.5
+2026-01-26 17:05:45.701 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.708 [cefctrl] INFO: [client] Config directory is ./h5
+2026-01-26 17:05:45.708 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.5
+2026-01-26 17:05:45.708 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.714 [cefctrl] INFO: [client] Config directory is ./h5
+2026-01-26 17:05:45.714 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.5
+2026-01-26 17:05:45.714 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.720 [cefctrl] INFO: [client] Config directory is ./h5
+2026-01-26 17:05:45.720 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.5
+2026-01-26 17:05:45.720 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.726 [cefctrl] INFO: [client] Config directory is ./h5
+2026-01-26 17:05:45.726 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.5
+2026-01-26 17:05:45.726 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.732 [cefctrl] INFO: [client] Config directory is ./h5
+2026-01-26 17:05:45.732 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.5
+2026-01-26 17:05:45.732 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.739 [cefctrl] INFO: [client] Config directory is ./h5
+2026-01-26 17:05:45.739 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.5
+2026-01-26 17:05:45.739 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.744 [cefctrl] INFO: [client] Config directory is ./h5
+2026-01-26 17:05:45.744 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.5
+2026-01-26 17:05:45.744 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.750 [cefctrl] INFO: [client] Config directory is ./h5
+2026-01-26 17:05:45.750 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.5
+2026-01-26 17:05:45.750 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.756 [cefctrl] INFO: [client] Config directory is ./h5
+2026-01-26 17:05:45.756 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.5
+2026-01-26 17:05:45.756 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.762 [cefctrl] INFO: [client] Config directory is ./h5
+2026-01-26 17:05:45.762 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.5
+2026-01-26 17:05:45.762 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.767 [cefctrl] INFO: [client] Config directory is ./h5
+2026-01-26 17:05:45.767 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.5
+2026-01-26 17:05:45.767 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.773 [cefctrl] INFO: [client] Config directory is ./h5
+2026-01-26 17:05:45.773 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.5
+2026-01-26 17:05:45.773 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.779 [cefctrl] INFO: [client] Config directory is ./h5
+2026-01-26 17:05:45.779 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.5
+2026-01-26 17:05:45.779 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.786 [cefctrl] INFO: [client] Config directory is ./h5
+2026-01-26 17:05:45.786 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.5
+2026-01-26 17:05:45.786 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.791 [cefctrl] INFO: [client] Config directory is ./h5
+2026-01-26 17:05:45.792 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.5
+2026-01-26 17:05:45.792 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.797 [cefctrl] INFO: [client] Config directory is ./h5
+2026-01-26 17:05:45.797 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.5
+2026-01-26 17:05:45.797 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.804 [cefctrl] INFO: [client] Config directory is ./h6
+2026-01-26 17:05:45.804 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.6
+2026-01-26 17:05:45.804 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.809 [cefctrl] INFO: [client] Config directory is ./h6
+2026-01-26 17:05:45.809 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.6
+2026-01-26 17:05:45.809 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.816 [cefctrl] INFO: [client] Config directory is ./h6
+2026-01-26 17:05:45.816 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.6
+2026-01-26 17:05:45.816 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.823 [cefctrl] INFO: [client] Config directory is ./h6
+2026-01-26 17:05:45.823 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.6
+2026-01-26 17:05:45.823 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.829 [cefctrl] INFO: [client] Config directory is ./h6
+2026-01-26 17:05:45.830 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.6
+2026-01-26 17:05:45.830 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.836 [cefctrl] INFO: [client] Config directory is ./h6
+2026-01-26 17:05:45.836 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.6
+2026-01-26 17:05:45.836 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.843 [cefctrl] INFO: [client] Config directory is ./h6
+2026-01-26 17:05:45.843 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.6
+2026-01-26 17:05:45.843 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.850 [cefctrl] INFO: [client] Config directory is ./h6
+2026-01-26 17:05:45.850 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.6
+2026-01-26 17:05:45.850 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.856 [cefctrl] INFO: [client] Config directory is ./h6
+2026-01-26 17:05:45.856 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.6
+2026-01-26 17:05:45.856 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.863 [cefctrl] INFO: [client] Config directory is ./h6
+2026-01-26 17:05:45.863 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.6
+2026-01-26 17:05:45.863 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.869 [cefctrl] INFO: [client] Config directory is ./h6
+2026-01-26 17:05:45.869 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.6
+2026-01-26 17:05:45.869 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.875 [cefctrl] INFO: [client] Config directory is ./h6
+2026-01-26 17:05:45.875 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.6
+2026-01-26 17:05:45.875 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.882 [cefctrl] INFO: [client] Config directory is ./h6
+2026-01-26 17:05:45.882 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.6
+2026-01-26 17:05:45.882 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.889 [cefctrl] INFO: [client] Config directory is ./h6
+2026-01-26 17:05:45.889 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.6
+2026-01-26 17:05:45.889 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.896 [cefctrl] INFO: [client] Config directory is ./h6
+2026-01-26 17:05:45.896 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.6
+2026-01-26 17:05:45.896 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.903 [cefctrl] INFO: [client] Config directory is ./h6
+2026-01-26 17:05:45.903 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.6
+2026-01-26 17:05:45.903 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.909 [cefctrl] INFO: [client] Config directory is ./h6
+2026-01-26 17:05:45.910 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.6
+2026-01-26 17:05:45.910 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.916 [cefctrl] INFO: [client] Config directory is ./h6
+2026-01-26 17:05:45.916 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.6
+2026-01-26 17:05:45.916 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.921 [cefctrl] INFO: [client] Config directory is ./h6
+2026-01-26 17:05:45.921 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.6
+2026-01-26 17:05:45.921 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.927 [cefctrl] INFO: [client] Config directory is ./h6
+2026-01-26 17:05:45.927 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.6
+2026-01-26 17:05:45.927 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.932 [cefctrl] INFO: [client] Config directory is ./h6
+2026-01-26 17:05:45.932 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.6
+2026-01-26 17:05:45.932 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.938 [cefctrl] INFO: [client] Config directory is ./h7
+2026-01-26 17:05:45.938 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.7
+2026-01-26 17:05:45.938 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.943 [cefctrl] INFO: [client] Config directory is ./h7
+2026-01-26 17:05:45.943 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.7
+2026-01-26 17:05:45.943 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.948 [cefctrl] INFO: [client] Config directory is ./h7
+2026-01-26 17:05:45.948 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.7
+2026-01-26 17:05:45.948 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.953 [cefctrl] INFO: [client] Config directory is ./h7
+2026-01-26 17:05:45.953 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.7
+2026-01-26 17:05:45.953 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.960 [cefctrl] INFO: [client] Config directory is ./h7
+2026-01-26 17:05:45.960 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.7
+2026-01-26 17:05:45.960 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.966 [cefctrl] INFO: [client] Config directory is ./h7
+2026-01-26 17:05:45.966 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.7
+2026-01-26 17:05:45.966 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.972 [cefctrl] INFO: [client] Config directory is ./h7
+2026-01-26 17:05:45.972 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.7
+2026-01-26 17:05:45.972 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.978 [cefctrl] INFO: [client] Config directory is ./h7
+2026-01-26 17:05:45.978 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.7
+2026-01-26 17:05:45.978 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.984 [cefctrl] INFO: [client] Config directory is ./h7
+2026-01-26 17:05:45.984 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.7
+2026-01-26 17:05:45.984 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.991 [cefctrl] INFO: [client] Config directory is ./h7
+2026-01-26 17:05:45.991 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.7
+2026-01-26 17:05:45.991 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:45.997 [cefctrl] INFO: [client] Config directory is ./h7
+2026-01-26 17:05:45.998 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.7
+2026-01-26 17:05:45.998 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:46.004 [cefctrl] INFO: [client] Config directory is ./h7
+2026-01-26 17:05:46.004 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.7
+2026-01-26 17:05:46.004 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:46.009 [cefctrl] INFO: [client] Config directory is ./h7
+2026-01-26 17:05:46.009 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.7
+2026-01-26 17:05:46.009 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:46.016 [cefctrl] INFO: [client] Config directory is ./h7
+2026-01-26 17:05:46.016 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.7
+2026-01-26 17:05:46.016 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:46.023 [cefctrl] INFO: [client] Config directory is ./h7
+2026-01-26 17:05:46.023 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.7
+2026-01-26 17:05:46.023 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:46.029 [cefctrl] INFO: [client] Config directory is ./h7
+2026-01-26 17:05:46.029 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.7
+2026-01-26 17:05:46.029 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:46.034 [cefctrl] INFO: [client] Config directory is ./h7
+2026-01-26 17:05:46.034 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.7
+2026-01-26 17:05:46.034 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:46.041 [cefctrl] INFO: [client] Config directory is ./h7
+2026-01-26 17:05:46.041 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.7
+2026-01-26 17:05:46.041 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:46.048 [cefctrl] INFO: [client] Config directory is ./h7
+2026-01-26 17:05:46.048 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.7
+2026-01-26 17:05:46.048 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:46.055 [cefctrl] INFO: [client] Config directory is ./h7
+2026-01-26 17:05:46.055 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.7
+2026-01-26 17:05:46.055 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+2026-01-26 17:05:46.062 [cefctrl] INFO: [client] Config directory is ./h7
+2026-01-26 17:05:46.062 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.7
+2026-01-26 17:05:46.062 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+
+FIB status per host:
+2026-01-26 17:05:46.069 [cefctrl] INFO: [client] Config directory is ./h0
+2026-01-26 17:05:46.069 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.0
+2026-01-26 17:05:46.069 [cefctrl] INFO: [client] Listen Port is 9695
+CCNx Version     : 1
+Port             : 9695
+Rx Interest      : 0 (RGL[0], SYM[0], SEL[0])
+Tx Interest      : 0 (RGL[0], SYM[0], SEL[0])
+Rx ContentObject : 0
+Tx ContentObject : 0
+Cache Mode       : None
+FWD Strategy     : flooding
+Interest Return  : Disabled
+Faces : 9
+  faceid =   4 : IPv4 Listen face (udp)
+  faceid =   5 : IPv6 Listen face (udp)
+  faceid =  37 : address = 192.168.3.6:9695 (udp)
+  faceid =  35 : address = 192.168.11.5:9695 (udp)
+  faceid =   6 : IPv4 Listen face (tcp)
+  faceid =  33 : address = 192.168.6.4:9695 (udp)
+  faceid =   7 : IPv6 Listen face (tcp)
+  faceid =   0 : Local face
+  faceid =  56 : Local face
+FIB(App) :
+  Entry is empty
+FIB : 7
+  ccnx:/test/example7
+    Faces : 33 (-s-) RtCost=0 
+            37 (-s-) RtCost=0 
+            35 (-s-) RtCost=0 
+  ccnx:/test/example2
+    Faces : 33 (-s-) RtCost=0 
+            35 (-s-) RtCost=0 
+            37 (-s-) RtCost=0 
+  ccnx:/test/example5
+    Faces : 35 (-s-) RtCost=0 
+            33 (-s-) RtCost=0 
+            37 (-s-) RtCost=0 
+  ccnx:/test/example4
+    Faces : 33 (-s-) RtCost=0 
+            35 (-s-) RtCost=0 
+            37 (-s-) RtCost=0 
+  ccnx:/test/example8
+    Faces : 37 (-s-) RtCost=0 
+            33 (-s-) RtCost=0 
+            35 (-s-) RtCost=0 
+  ccnx:/test/example6
+    Faces : 37 (-s-) RtCost=0 
+            33 (-s-) RtCost=0 
+            35 (-s-) RtCost=0 
+  ccnx:/test/example3
+    Faces : 33 (-s-) RtCost=0 
+            37 (-s-) RtCost=0 
+            35 (-s-) RtCost=0 
+PIT(App) :
+  Entry is empty
+PIT :
+  Entry is empty
+2026-01-26 17:05:46.285 [cefctrl] INFO: [client] Config directory is ./h1
+2026-01-26 17:05:46.285 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.1
+2026-01-26 17:05:46.285 [cefctrl] INFO: [client] Listen Port is 9695
+CCNx Version     : 1
+Port             : 9695
+Rx Interest      : 0 (RGL[0], SYM[0], SEL[0])
+Tx Interest      : 0 (RGL[0], SYM[0], SEL[0])
+Rx ContentObject : 0
+Tx ContentObject : 0
+Cache Mode       : Excache
+FWD Strategy     : flooding
+Interest Return  : Disabled
+Faces : 9
+  faceid =  33 : address = 192.168.12.4:9695 (udp)
+  faceid =   4 : IPv4 Listen face (udp)
+  faceid =  37 : address = 192.168.4.3:9695 (udp)
+  faceid =  56 : Local face
+  faceid =   5 : IPv6 Listen face (udp)
+  faceid =   0 : Local face
+  faceid =   6 : IPv4 Listen face (tcp)
+  faceid =   7 : IPv6 Listen face (tcp)
+  faceid =  35 : address = 192.168.5.7:9695 (udp)
+FIB(App) :
+  Entry is empty
+FIB : 7
+  ccnx:/test/example1
+    Faces : 33 (-s-) RtCost=0 
+            35 (-s-) RtCost=0 
+            37 (-s-) RtCost=0 
+  ccnx:/test/example7
+    Faces : 35 (-s-) RtCost=0 
+            33 (-s-) RtCost=0 
+            37 (-s-) RtCost=0 
+  ccnx:/test/example5
+    Faces : 33 (-s-) RtCost=0 
+            35 (-s-) RtCost=0 
+            37 (-s-) RtCost=0 
+  ccnx:/test/example4
+    Faces : 33 (-s-) RtCost=0 
+            35 (-s-) RtCost=0 
+            37 (-s-) RtCost=0 
+  ccnx:/test/example8
+    Faces : 37 (-s-) RtCost=0 
+            35 (-s-) RtCost=0 
+            33 (-s-) RtCost=0 
+  ccnx:/test/example6
+    Faces : 35 (-s-) RtCost=0 
+            37 (-s-) RtCost=0 
+            33 (-s-) RtCost=0 
+  ccnx:/test/example3
+    Faces : 37 (-s-) RtCost=0 
+            33 (-s-) RtCost=0 
+            35 (-s-) RtCost=0 
+PIT(App) :
+  Entry is empty
+PIT :
+  Entry is empty
+2026-01-26 17:05:46.502 [cefctrl] INFO: [client] Config directory is ./h2
+2026-01-26 17:05:46.502 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.2
+2026-01-26 17:05:46.502 [cefctrl] INFO: [client] Listen Port is 9695
+CCNx Version     : 1
+Port             : 9695
+Rx Interest      : 0 (RGL[0], SYM[0], SEL[0])
+Tx Interest      : 0 (RGL[0], SYM[0], SEL[0])
+Rx ContentObject : 0
+Tx ContentObject : 0
+Cache Mode       : Localcache
+FWD Strategy     : flooding
+Interest Return  : Disabled
+Faces : 8
+  faceid =  35 : address = 192.168.8.8:9695 (udp)
+  faceid =   4 : IPv4 Listen face (udp)
+  faceid =   0 : Local face
+  faceid =  48 : Local face
+  faceid =   5 : IPv6 Listen face (udp)
+  faceid =  33 : address = 192.168.4.2:9695 (udp)
+  faceid =   6 : IPv4 Listen face (tcp)
+  faceid =   7 : IPv6 Listen face (tcp)
+FIB(App) :
+  Entry is empty
+FIB : 7
+  ccnx:/test/example1
+    Faces : 33 (-s-) RtCost=0 
+            35 (-s-) RtCost=0 
+  ccnx:/test/example7
+    Faces : 33 (-s-) RtCost=0 
+            35 (-s-) RtCost=0 
+  ccnx:/test/example2
+    Faces : 33 (-s-) RtCost=0 
+            35 (-s-) RtCost=0 
+  ccnx:/test/example5
+    Faces : 33 (-s-) RtCost=0 
+            35 (-s-) RtCost=0 
+  ccnx:/test/example4
+    Faces : 33 (-s-) RtCost=0 
+            35 (-s-) RtCost=0 
+  ccnx:/test/example8
+    Faces : 35 (-s-) RtCost=0 
+            33 (-s-) RtCost=0 
+  ccnx:/test/example6
+    Faces : 35 (-s-) RtCost=0 
+            33 (-s-) RtCost=0 
+PIT(App) :
+  Entry is empty
+PIT :
+  Entry is empty
+2026-01-26 17:05:46.719 [cefctrl] INFO: [client] Config directory is ./h3
+2026-01-26 17:05:46.719 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.3
+2026-01-26 17:05:46.719 [cefctrl] INFO: [client] Listen Port is 9695
+CCNx Version     : 1
+Port             : 9695
+Rx Interest      : 0 (RGL[0], SYM[0], SEL[0])
+Tx Interest      : 0 (RGL[0], SYM[0], SEL[0])
+Rx ContentObject : 0
+Tx ContentObject : 0
+Cache Mode       : Excache
+FWD Strategy     : flooding
+Interest Return  : Disabled
+Faces : 10
+  faceid =  33 : address = 192.168.6.1:9695 (udp)
+  faceid =   4 : IPv4 Listen face (udp)
+  faceid =  57 : Local face
+  faceid =   5 : IPv6 Listen face (udp)
+  faceid =  37 : address = 192.168.12.2:9695 (udp)
+  faceid =  35 : address = 192.168.2.5:9695 (udp)
+  faceid =   0 : Local face
+  faceid =   6 : IPv4 Listen face (tcp)
+  faceid =  40 : address = 192.168.7.7:9695 (udp)
+  faceid =   7 : IPv6 Listen face (tcp)
+FIB(App) :
+  Entry is empty
+FIB : 7
+  ccnx:/test/example1
+    Faces : 33 (-s-) RtCost=0 
+            35 (-s-) RtCost=0 
+            37 (-s-) RtCost=0 
+  ccnx:/test/example7
+    Faces : 40 (-s-) RtCost=0 
+            37 (-s-) RtCost=0 
+            33 (-s-) RtCost=0 
+  ccnx:/test/example2
+    Faces : 37 (-s-) RtCost=0 
+            40 (-s-) RtCost=0 
+            33 (-s-) RtCost=0 
+  ccnx:/test/example5
+    Faces : 35 (-s-) RtCost=0 
+            33 (-s-) RtCost=0 
+            37 (-s-) RtCost=0 
+  ccnx:/test/example8
+    Faces : 40 (-s-) RtCost=0 
+            33 (-s-) RtCost=0 
+            37 (-s-) RtCost=0 
+  ccnx:/test/example6
+    Faces : 33 (-s-) RtCost=0 
+            40 (-s-) RtCost=0 
+            37 (-s-) RtCost=0 
+  ccnx:/test/example3
+    Faces : 37 (-s-) RtCost=0 
+            40 (-s-) RtCost=0 
+            33 (-s-) RtCost=0 
+PIT(App) :
+  Entry is empty
+PIT :
+  Entry is empty
+2026-01-26 17:05:46.936 [cefctrl] INFO: [client] Config directory is ./h4
+2026-01-26 17:05:46.936 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.4
+2026-01-26 17:05:46.936 [cefctrl] INFO: [client] Listen Port is 9695
+CCNx Version     : 1
+Port             : 9695
+Rx Interest      : 0 (RGL[0], SYM[0], SEL[0])
+Tx Interest      : 0 (RGL[0], SYM[0], SEL[0])
+Rx ContentObject : 0
+Tx ContentObject : 0
+Cache Mode       : None
+FWD Strategy     : flooding
+Interest Return  : Disabled
+Faces : 8
+  faceid =   0 : Local face
+  faceid =   4 : IPv4 Listen face (udp)
+  faceid =   5 : IPv6 Listen face (udp)
+  faceid =  33 : address = 192.168.11.1:9695 (udp)
+  faceid =  35 : address = 192.168.2.4:9695 (udp)
+  faceid =   6 : IPv4 Listen face (tcp)
+  faceid =   7 : IPv6 Listen face (tcp)
+  faceid =  48 : Local face
+FIB(App) :
+  Entry is empty
+FIB : 7
+  ccnx:/test/example1
+    Faces : 33 (-s-) RtCost=0 
+            35 (-s-) RtCost=0 
+  ccnx:/test/example7
+    Faces : 35 (-s-) RtCost=0 
+            33 (-s-) RtCost=0 
+  ccnx:/test/example2
+    Faces : 35 (-s-) RtCost=0 
+            33 (-s-) RtCost=0 
+  ccnx:/test/example4
+    Faces : 35 (-s-) RtCost=0 
+            33 (-s-) RtCost=0 
+  ccnx:/test/example8
+    Faces : 33 (-s-) RtCost=0 
+            35 (-s-) RtCost=0 
+  ccnx:/test/example6
+    Faces : 33 (-s-) RtCost=0 
+            35 (-s-) RtCost=0 
+  ccnx:/test/example3
+    Faces : 35 (-s-) RtCost=0 
+            33 (-s-) RtCost=0 
+PIT(App) :
+  Entry is empty
+PIT :
+  Entry is empty
+2026-01-26 17:05:47.153 [cefctrl] INFO: [client] Config directory is ./h5
+2026-01-26 17:05:47.153 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.5
+2026-01-26 17:05:47.153 [cefctrl] INFO: [client] Listen Port is 9695
+CCNx Version     : 1
+Port             : 9695
+Rx Interest      : 0 (RGL[0], SYM[0], SEL[0])
+Tx Interest      : 0 (RGL[0], SYM[0], SEL[0])
+Rx ContentObject : 0
+Tx ContentObject : 0
+Cache Mode       : Excache
+FWD Strategy     : flooding
+Interest Return  : Disabled
+Faces : 9
+  faceid =   4 : IPv4 Listen face (udp)
+  faceid =  37 : address = 192.168.10.8:9695 (udp)
+  faceid =  35 : address = 192.168.9.7:9695 (udp)
+  faceid =   0 : Local face
+  faceid =  56 : Local face
+  faceid =   5 : IPv6 Listen face (udp)
+  faceid =   6 : IPv4 Listen face (tcp)
+  faceid =  33 : address = 192.168.3.1:9695 (udp)
+  faceid =   7 : IPv6 Listen face (tcp)
+FIB(App) :
+  Entry is empty
+FIB : 7
+  ccnx:/test/example1
+    Faces : 33 (-s-) RtCost=0 
+            35 (-s-) RtCost=0 
+            37 (-s-) RtCost=0 
+  ccnx:/test/example7
+    Faces : 35 (-s-) RtCost=0 
+            37 (-s-) RtCost=0 
+            33 (-s-) RtCost=0 
+  ccnx:/test/example2
+    Faces : 35 (-s-) RtCost=0 
+            33 (-s-) RtCost=0 
+            37 (-s-) RtCost=0 
+  ccnx:/test/example5
+    Faces : 33 (-s-) RtCost=0 
+            35 (-s-) RtCost=0 
+            37 (-s-) RtCost=0 
+  ccnx:/test/example4
+    Faces : 33 (-s-) RtCost=0 
+            35 (-s-) RtCost=0 
+            37 (-s-) RtCost=0 
+  ccnx:/test/example8
+    Faces : 37 (-s-) RtCost=0 
+            35 (-s-) RtCost=0 
+            33 (-s-) RtCost=0 
+  ccnx:/test/example3
+    Faces : 37 (-s-) RtCost=0 
+            35 (-s-) RtCost=0 
+            33 (-s-) RtCost=0 
+PIT(App) :
+  Entry is empty
+PIT :
+  Entry is empty
+2026-01-26 17:05:47.369 [cefctrl] INFO: [client] Config directory is ./h6
+2026-01-26 17:05:47.370 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.6
+2026-01-26 17:05:47.370 [cefctrl] INFO: [client] Listen Port is 9695
+CCNx Version     : 1
+Port             : 9695
+Rx Interest      : 0 (RGL[0], SYM[0], SEL[0])
+Tx Interest      : 0 (RGL[0], SYM[0], SEL[0])
+Rx ContentObject : 0
+Tx ContentObject : 0
+Cache Mode       : None
+FWD Strategy     : flooding
+Interest Return  : Disabled
+Faces : 10
+  faceid =   4 : IPv4 Listen face (udp)
+  faceid =   0 : Local face
+  faceid =  35 : address = 192.168.9.6:9695 (udp)
+  faceid =   5 : IPv6 Listen face (udp)
+  faceid =  37 : address = 192.168.5.2:9695 (udp)
+  faceid =   6 : IPv4 Listen face (tcp)
+  faceid =  33 : address = 192.168.7.4:9695 (udp)
+  faceid =  43 : address = 192.168.1.8:9695 (udp)
+  faceid =   7 : IPv6 Listen face (tcp)
+  faceid =  57 : Local face
+FIB(App) :
+  Entry is empty
+FIB : 7
+  ccnx:/test/example1
+    Faces : 33 (-s-) RtCost=0 
+            35 (-s-) RtCost=0 
+            37 (-s-) RtCost=0 
+  ccnx:/test/example2
+    Faces : 37 (-s-) RtCost=0 
+            33 (-s-) RtCost=0 
+            35 (-s-) RtCost=0 
+  ccnx:/test/example5
+    Faces : 33 (-s-) RtCost=0 
+            37 (-s-) RtCost=0 
+            35 (-s-) RtCost=0 
+  ccnx:/test/example4
+    Faces : 33 (-s-) RtCost=0 
+            37 (-s-) RtCost=0 
+            35 (-s-) RtCost=0 
+  ccnx:/test/example8
+    Faces : 43 (-s-) RtCost=0 
+            35 (-s-) RtCost=0 
+            37 (-s-) RtCost=0 
+  ccnx:/test/example6
+    Faces : 35 (-s-) RtCost=0 
+            43 (-s-) RtCost=0 
+            37 (-s-) RtCost=0 
+  ccnx:/test/example3
+    Faces : 37 (-s-) RtCost=0 
+            43 (-s-) RtCost=0 
+            33 (-s-) RtCost=0 
+PIT(App) :
+  Entry is empty
+PIT :
+  Entry is empty
+2026-01-26 17:05:47.586 [cefctrl] INFO: [client] Config directory is ./h7
+2026-01-26 17:05:47.586 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.7
+2026-01-26 17:05:47.586 [cefctrl] INFO: [client] Listen Port is 9695
+CCNx Version     : 1
+Port             : 9695
+Rx Interest      : 0 (RGL[0], SYM[0], SEL[0])
+Tx Interest      : 0 (RGL[0], SYM[0], SEL[0])
+Rx ContentObject : 0
+Tx ContentObject : 0
+Cache Mode       : Excache
+FWD Strategy     : flooding
+Interest Return  : Disabled
+Faces : 9
+  faceid =  35 : address = 192.168.1.7:9695 (udp)
+  faceid =   4 : IPv4 Listen face (udp)
+  faceid =  56 : Local face
+  faceid =   0 : Local face
+  faceid =   5 : IPv6 Listen face (udp)
+  faceid =  33 : address = 192.168.10.6:9695 (udp)
+  faceid =  37 : address = 192.168.8.3:9695 (udp)
+  faceid =   6 : IPv4 Listen face (tcp)
+  faceid =   7 : IPv6 Listen face (tcp)
+FIB(App) :
+  Entry is empty
+FIB : 7
+  ccnx:/test/example1
+    Faces : 33 (-s-) RtCost=0 
+            35 (-s-) RtCost=0 
+            37 (-s-) RtCost=0 
+  ccnx:/test/example7
+    Faces : 35 (-s-) RtCost=0 
+            33 (-s-) RtCost=0 
+            37 (-s-) RtCost=0 
+  ccnx:/test/example2
+    Faces : 37 (-s-) RtCost=0 
+            35 (-s-) RtCost=0 
+            33 (-s-) RtCost=0 
+  ccnx:/test/example5
+    Faces : 33 (-s-) RtCost=0 
+            35 (-s-) RtCost=0 
+            37 (-s-) RtCost=0 
+  ccnx:/test/example4
+    Faces : 35 (-s-) RtCost=0 
+            37 (-s-) RtCost=0 
+            33 (-s-) RtCost=0 
+  ccnx:/test/example6
+    Faces : 33 (-s-) RtCost=0 
+            35 (-s-) RtCost=0 
+            37 (-s-) RtCost=0 
+  ccnx:/test/example3
+    Faces : 37 (-s-) RtCost=0 
+            33 (-s-) RtCost=0 
+            35 (-s-) RtCost=0 
+PIT(App) :
+  Entry is empty
+PIT :
+  Entry is empty
+
+Mesh topology (per-host tree view):
+h0
+|-- h3 (via s5)
+|   |-- h1 (via s11)
+|   |   `-- h2 (via s3)
+|   `-- h6 (via s6)
+|-- h4 (via s10)
+`-- h5 (via s2)
+    `-- h7 (via s9)
+
+h1
+|-- h2 (via s3)
+|   `-- h7 (via s7)
+|-- h3 (via s11)
+|   |-- h0 (via s5)
+|   `-- h4 (via s1)
+`-- h6 (via s4)
+    `-- h5 (via s8)
+
+h2
+|-- h1 (via s3)
+|   |-- h3 (via s11)
+|   |   |-- h0 (via s5)
+|   |   `-- h4 (via s1)
+|   `-- h6 (via s4)
+`-- h7 (via s7)
+    `-- h5 (via s9)
+
+h3
+|-- h0 (via s5)
+|   `-- h5 (via s2)
+|-- h1 (via s11)
+|   `-- h2 (via s3)
+|-- h4 (via s1)
+`-- h6 (via s6)
+    `-- h7 (via s0)
+
+h4
+|-- h0 (via s10)
+|   `-- h5 (via s2)
+|       `-- h7 (via s9)
+`-- h3 (via s1)
+    |-- h1 (via s11)
+    |   `-- h2 (via s3)
+    `-- h6 (via s6)
+
+h5
+|-- h0 (via s2)
+|   |-- h3 (via s5)
+|   `-- h4 (via s10)
+|-- h6 (via s8)
+|   `-- h1 (via s4)
+`-- h7 (via s9)
+    `-- h2 (via s7)
+
+h6
+|-- h1 (via s4)
+|   `-- h2 (via s3)
+|-- h3 (via s6)
+|   |-- h0 (via s5)
+|   `-- h4 (via s1)
+|-- h5 (via s8)
+`-- h7 (via s0)
+
+h7
+|-- h2 (via s7)
+|   `-- h1 (via s3)
+|-- h5 (via s9)
+|   `-- h0 (via s2)
+|       `-- h4 (via s10)
+`-- h6 (via s0)
+    `-- h3 (via s6)
+
+
+[flap] down h0
+
+[flap] down h1
+
+[flap] up h0
+
+[flap] down h2
+
+[flap] up h1
+
+[flap] up h2
+
+[flap] down h5
+
+[flap] down h4
+
+[flap] up h5
+hosts[ 0 ]: cefnetdstop -F -d ./h0 
+hosts[ 1 ]: cefnetdstop -F -d ./h1 
+hosts[ 2 ]: cefnetdstop -F -d ./h2 
+hosts[ 3 ]: cefnetdstop -F -d ./h3 
+hosts[ 4 ]: cefnetdstop -F -d ./h4 
+hosts[ 5 ]: cefnetdstop -F -d ./h5 
+hosts[ 6 ]: cefnetdstop -F -d ./h6 
+hosts[ 7 ]: cefnetdstop -F -d ./h7 
+hosts[ 1 ]: csmgrdstop -d ./h1 
+hosts[ 3 ]: csmgrdstop -d ./h3 
+hosts[ 5 ]: csmgrdstop -d ./h5 
+hosts[ 7 ]: csmgrdstop -d ./h7 
+*** Stopping 1 controllers
+c0 
+*** Stopping 24 links
+........................
+*** Stopping 12 switches
+s0 s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 s11 
+*** Stopping 8 hosts
+h0 h1 h2 h3 h4 h5 h6 h7 
+*** Done
+cefroute add ccnx:/test/example2 udp 192.168.3.1 -d ./h5
+h5 command: cefroute add ccnx:/test/example2 udp 192.168.10.8 -d ./h5
+h5 command: cefroute add ccnx:/test/example3 udp 192.168.10.8 -d ./h5
+h5 command: cefroute add ccnx:/test/example3 udp 192.168.9.7 -d ./h5
+h5 command: cefroute add ccnx:/test/example3 udp 192.168.3.1 -d ./h5
+h5 command: cefroute add ccnx:/test/example4 udp 192.168.3.1 -d ./h5
+h5 command: cefroute add ccnx:/test/example4 udp 192.168.9.7 -d ./h5
+h5 command: cefroute add ccnx:/test/example4 udp 192.168.10.8 -d ./h5
+h5 command: cefroute add ccnx:/test/example5 udp 192.168.3.1 -d ./h5
+h5 command: cefroute add ccnx:/test/example5 udp 192.168.9.7 -d ./h5
+h5 command: cefroute add ccnx:/test/example5 udp 192.168.10.8 -d ./h5
+h5 command: cefroute add ccnx:/test/example7 udp 192.168.9.7 -d ./h5
+h5 command: cefroute add ccnx:/test/example7 udp 192.168.10.8 -d ./h5
+h5 command: cefroute add ccnx:/test/example7 udp 192.168.3.1 -d ./h5
+h5 command: cefroute add ccnx:/test/example8 udp 192.168.10.8 -d ./h5
+h5 command: cefroute add ccnx:/test/example8 udp 192.168.9.7 -d ./h5
+h5 command: cefroute add ccnx:/test/example8 udp 192.168.3.1 -d ./h5
+h6 command: cefroute add ccnx:/test/example1 udp 192.168.7.4 -d ./h6
+h6 command: cefroute add ccnx:/test/example1 udp 192.168.9.6 -d ./h6
+h6 command: cefroute add ccnx:/test/example1 udp 192.168.5.2 -d ./h6
+h6 command: cefroute add ccnx:/test/example2 udp 192.168.5.2 -d ./h6
+h6 command: cefroute add ccnx:/test/example2 udp 192.168.7.4 -d ./h6
+h6 command: cefroute add ccnx:/test/example2 udp 192.168.9.6 -d ./h6
+h6 command: cefroute add ccnx:/test/example3 udp 192.168.5.2 -d ./h6
+h6 command: cefroute add ccnx:/test/example3 udp 192.168.1.8 -d ./h6
+h6 command: cefroute add ccnx:/test/example3 udp 192.168.7.4 -d ./h6
+h6 command: cefroute add ccnx:/test/example4 udp 192.168.7.4 -d ./h6
+h6 command: cefroute add ccnx:/test/example4 udp 192.168.5.2 -d ./h6
+h6 command: cefroute add ccnx:/test/example4 udp 192.168.9.6 -d ./h6
+h6 command: cefroute add ccnx:/test/example5 udp 192.168.7.4 -d ./h6
+h6 command: cefroute add ccnx:/test/example5 udp 192.168.5.2 -d ./h6
+h6 command: cefroute add ccnx:/test/example5 udp 192.168.9.6 -d ./h6
+h6 command: cefroute add ccnx:/test/example6 udp 192.168.9.6 -d ./h6
+h6 command: cefroute add ccnx:/test/example6 udp 192.168.1.8 -d ./h6
+h6 command: cefroute add ccnx:/test/example6 udp 192.168.5.2 -d ./h6
+h6 command: cefroute add ccnx:/test/example8 udp 192.168.1.8 -d ./h6
+h6 command: cefroute add ccnx:/test/example8 udp 192.168.9.6 -d ./h6
+h6 command: cefroute add ccnx:/test/example8 udp 192.168.5.2 -d ./h6
+h7 command: cefroute add ccnx:/test/example1 udp 192.168.10.6 -d ./h7
+h7 command: cefroute add ccnx:/test/example1 udp 192.168.1.7 -d ./h7
+h7 command: cefroute add ccnx:/test/example1 udp 192.168.8.3 -d ./h7
+h7 command: cefroute add ccnx:/test/example2 udp 192.168.8.3 -d ./h7
+h7 command: cefroute add ccnx:/test/example2 udp 192.168.1.7 -d ./h7
+h7 command: cefroute add ccnx:/test/example2 udp 192.168.10.6 -d ./h7
+h7 command: cefroute add ccnx:/test/example3 udp 192.168.8.3 -d ./h7
+h7 command: cefroute add ccnx:/test/example3 udp 192.168.10.6 -d ./h7
+h7 command: cefroute add ccnx:/test/example3 udp 192.168.1.7 -d ./h7
+h7 command: cefroute add ccnx:/test/example4 udp 192.168.1.7 -d ./h7
+h7 command: cefroute add ccnx:/test/example4 udp 192.168.8.3 -d ./h7
+h7 command: cefroute add ccnx:/test/example4 udp 192.168.10.6 -d ./h7
+h7 command: cefroute add ccnx:/test/example5 udp 192.168.10.6 -d ./h7
+h7 command: cefroute add ccnx:/test/example5 udp 192.168.1.7 -d ./h7
+h7 command: cefroute add ccnx:/test/example5 udp 192.168.8.3 -d ./h7
+h7 command: cefroute add ccnx:/test/example6 udp 192.168.10.6 -d ./h7
+h7 command: cefroute add ccnx:/test/example6 udp 192.168.1.7 -d ./h7
+h7 command: cefroute add ccnx:/test/example6 udp 192.168.8.3 -d ./h7
+h7 command: cefroute add ccnx:/test/example7 udp 192.168.1.7 -d ./h7
+h7 command: cefroute add ccnx:/test/example7 udp 192.168.10.6 -d ./h7
+h7 command: cefroute add ccnx:/test/example7 udp 192.168.8.3 -d ./h7
+h0 command: cefstatus -d ./h0
+h1 command: cefstatus -d ./h1
+h2 command: cefstatus -d ./h2
+h3 command: cefstatus -d ./h3
+h4 command: cefstatus -d ./h4
+h5 command: cefstatus -d ./h5
+h6 command: cefstatus -d ./h6
+h7 command: cefstatus -d ./h7
+h7 command: cefputfile ccnx:/test/example8/test.py -f ./sample-putfile -t 3000 -e 3000 -d ./h7 > cefputfile_8_12_2_20_15_none.log
+h1 command: cefgetfile ccnx:/test/example8/test.py -f ./recvfile_at_h1 -d ./h1 > cefgetfile_8_12_2_20_15_0_h1.log
+h1 command: cefgetfile ccnx:/test/example8/test.py -f ./recvfile_at_h1 -d ./h1 > cefgetfile_8_12_2_20_15_1_h1.log
+h4 command: cefgetfile ccnx:/test/example8/test.py -f ./recvfile_at_h4 -d ./h4 > cefgetfile_8_12_2_20_15_2_h4.log
+h4 command: cefgetfile ccnx:/test/example8/test.py -f ./recvfile_at_h4 -d ./h4 > cefgetfile_8_12_2_20_15_5_h4.log
+h1 command: cefgetfile ccnx:/test/example8/test.py -f ./recvfile_at_h1 -d ./h1 > cefgetfile_8_12_2_20_15_4_h1.log
