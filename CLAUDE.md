@@ -84,8 +84,8 @@ All topology scripts follow a common pattern:
 **FIB Configuration:**
 - Linear: Forward all interests toward publisher (next hop in line)
 - Mesh: Uses k-shortest paths algorithm to add multiple next hops per destination
-  - `shortest_path()`: BFS-based shortest path with edge/node banning
-  - `k_shortest_paths()`: Yen's algorithm for k-shortest paths
+  - `shortest_path()`: Dijkstra's algorithm with edge/node banning support for constrained path finding
+  - `k_shortest_paths()`: Yen's algorithm calling Dijkstra-based shortest_path for finding k alternate paths
   - Each destination gets a unique URI prefix: `ccnx:/test/exampleN`
 
 **Dynamic Configuration:**
@@ -98,6 +98,8 @@ The mesh topology (`mesh-nodes-switches.py`) implements advanced features:
 
 - **Multipath routing**: k-shortest paths per destination for redundancy
 - **Link control**: `link_up()` and `link_down()` functions to simulate failures
+- **Staggered multi-host outages**: Support for simulating multiple simultaneous link failures
+- **Topology visualization**: `print_mesh_links()` renders ASCII tree view showing each host's connectivity
 - **Status inspection**: `run_cefstatus()` to view FIB state
 - **Deterministic generation**: `--seed` parameter for reproducible topologies
 - **Publisher-aware linking**: First link always connects to publisher for guaranteed connectivity
@@ -124,7 +126,7 @@ Update the `ccnx:/test` prefix in `setFib()` or `set_fib()` and corresponding `c
 Edit `h1/csmgrd.conf` template (applies to all router nodes).
 
 **Testing link failures:**
-In mesh topology, uncomment the `link_down()` calls or add custom failure scenarios before `run_cefgetfile()`.
+In mesh topology, uncomment the `link_down()` calls (lines 448-454) or add custom failure scenarios before `run_cefgetfile()`. Multiple simultaneous link failures can be used to test staggered multi-host outages and multipath routing resilience.
 
 ## Security Notes
 
