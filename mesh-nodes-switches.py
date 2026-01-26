@@ -143,6 +143,24 @@ def shortest_path(
     return list(reversed(path))
 
 
+def dijkstra_all(graph, source, weight_fn=None):
+    weight_fn = weight_fn or (lambda _a, _b: 1)
+    distances = {source: 0}
+    parents = {source: None}
+    heap = [(0, source)]
+    while heap:
+        dist, node = heapq.heappop(heap)
+        if dist != distances.get(node):
+            continue
+        for neighbor in sorted(graph[node]):
+            new_dist = dist + weight_fn(node, neighbor)
+            if new_dist < distances.get(neighbor, float("inf")):
+                distances[neighbor] = new_dist
+                parents[neighbor] = node
+                heapq.heappush(heap, (new_dist, neighbor))
+    return distances, parents
+
+
 def path_cost(path, weight_fn):
     if len(path) < 2:
         return 0
@@ -202,24 +220,30 @@ def set_fib(net, mesh_links, k_paths):
         key = tuple(sorted((host_a, host_b)))
         link_subnets[key] = link["subnet"]
 
-    for dest in range(host_num):
-        prefix = f"ccnx:/test/example{dest + 1}"
-        for src in range(host_num):
+    all_dist = []
+    for src in range(host_num):
+        distances, _parents = dijkstra_all(graph, src)
+        all_dist.append(distances)
+
+    for src in range(host_num):
+        node_name = f"h{src}"
+        for dest in range(host_num):
             if src == dest:
                 continue
-            paths = k_shortest_paths(graph, src, dest, k_paths)
-            if not paths:
+            prefix = f"ccnx:/test/example{dest + 1}"
+            candidates = []
+            for neighbor in graph[src]:
+                dist_to_dest = all_dist[neighbor].get(dest)
+                if dist_to_dest is None:
+                    continue
+                cost = 1 + dist_to_dest
+                candidates.append((cost, neighbor))
+            if not candidates:
                 info(f"host h{src} has no path to h{dest}\n")
                 continue
-            next_hops = []
-            for path in paths:
-                if len(path) < 2:
-                    continue
-                next_hops.append(path[1])
-            if not next_hops:
-                continue
-            node_name = f"h{src}"
-            for next_hop in sorted(set(next_hops)):
+            candidates.sort()
+            next_hops = [neighbor for _cost, neighbor in candidates[:k_paths]]
+            for next_hop in next_hops:
                 link_key = tuple(sorted((src, next_hop)))
                 subnet = link_subnets[link_key]
                 next_hop_ip = f"192.168.{subnet}.{next_hop + 1}"
