@@ -7,5 +7,6 @@ requires-python = ">=3.12"
 dependencies = [
     "iranges>=0.7.1",
     "mininet>=2.3.0.dev6",
+    "networkx>=3.6.1",
     "topo>=0.1.1",
 ]
