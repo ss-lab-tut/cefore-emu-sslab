@@ -1,9 +1,24 @@
 [cefgetfile] Start
 [cefgetfile] Parsing parameters ...OK
-2026-01-27 15:22:44.454 [cefgetfile] INFO: [client] Config directory is ./h6
-2026-01-27 15:22:44.454 [cefgetfile] INFO: [client] Local Socket Name is /tmp/cef_9695.6
-2026-01-27 15:22:44.454 [cefgetfile] INFO: [client] Listen Port is 9695
+2026-01-27 15:48:10.669 [cefgetfile] INFO: [client] Config directory is ./h6
+2026-01-27 15:48:10.669 [cefgetfile] INFO: [client] Local Socket Name is /tmp/cef_9695.6
+2026-01-27 15:48:10.669 [cefgetfile] INFO: [client] Listen Port is 9695
 [cefgetfile] Init Cefore Client package ... OK
 [cefgetfile] Conversion from URI into Name ... OK
 [cefgetfile] Checking the output file ... OK
-2026-01-27 15:22:44.511 [cefgetfile] ERROR: cef_client_connect (connect:Connection refused)
+[cefgetfile] Connect to cefnetd ... OK
+[cefgetfile] URI=ccnx:/test/example8/test.py
+[cefgetfile] Start sending Interests
+[cefgetfile] Completed to get all the chunks.
+[cefgetfile] Unconnect to cefnetd ... OK
+[cefgetfile] Terminate
+[cefgetfile] Rx Frames (All)           = 424
+[cefgetfile] Rx Frames (ContentObject) = 424
+[cefgetfile] Rx Bytes (All)            = 449926
+[cefgetfile] Rx Bytes (ContentObject)  = 433390
+[cefgetfile] Duration                  = 0.583 sec
+[cefgetfile] Throughput                = 6186994 bps
+[cefgetfile] Goodput                   = 5959606 bps
+[cefgetfile] Jitter (Ave)              = 1372 us
+[cefgetfile] Jitter (Max)              = 278860 us
+[cefgetfile] Jitter (Var)              = 183228772 us
