@@ -83,9 +83,11 @@ All topology scripts follow a common pattern:
 
 **FIB Configuration:**
 - Linear: Forward all interests toward publisher (next hop in line)
-- Mesh: Uses k-shortest paths algorithm to add multiple next hops per destination
-  - `shortest_path()`: Dijkstra's algorithm with edge/node banning support for constrained path finding
-  - `k_shortest_paths()`: Yen's algorithm calling Dijkstra-based shortest_path for finding k alternate paths
+- Mesh: Uses per-source Dijkstra for efficient multipath routing
+  - `dijkstra_all()`: Computes shortest distances from a source to all destinations
+  - For each source-destination pair, selects k best neighbors based on their precomputed distance to destination
+  - `shortest_path()`: Dijkstra's algorithm with edge/node banning support (used for constrained pathfinding)
+  - `k_shortest_paths()`: Yen's algorithm for finding k alternate paths (available but not used in main FIB setup)
   - Each destination gets a unique URI prefix: `ccnx:/test/exampleN`
 
 **Dynamic Configuration:**

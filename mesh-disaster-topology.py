@@ -144,7 +144,8 @@ def compute_distances(graph, source, weight_fn=None):
     if weight_fn is None:
         distances = {source: 0}
         queue = deque([source])
-        for node in queue:
+        while queue:
+            node = queue.popleft()
             for neighbor in sorted(graph.get(node, [])):
                 if neighbor not in distances:
                     distances[neighbor] = distances[node] + 1
