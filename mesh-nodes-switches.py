@@ -346,6 +346,34 @@ def print_mesh_links(mesh_links):
         walk(root, "")
         info("\n")
 
+    info("> - Topology view as a single figure (adjacency matrix)\n")
+    nodes = sorted(graph.keys())
+    host_labels = [f"h{node}" for node in nodes]
+    switch_labels = list(link_switch.values())
+    cell_width = max(
+        2,
+        max((len(label) for label in host_labels), default=2),
+        max((len(label) for label in switch_labels), default=2),
+    )
+
+    info("Mesh topology (adjacency matrix; cell = switch):\n")
+    header = " " * (cell_width + 1) + " ".join(
+        label.ljust(cell_width) for label in host_labels
+    )
+    info(f"{header}\n")
+
+    for row_idx, node in enumerate(nodes):
+        row = [host_labels[row_idx].ljust(cell_width)]
+        for col_idx, other in enumerate(nodes):
+            if row_idx == col_idx:
+                row.append(".".ljust(cell_width))
+                continue
+            link_key = tuple(sorted((node, other)))
+            switch_name = link_switch.get(link_key, ".")
+            row.append(str(switch_name).ljust(cell_width))
+        info(" ".join(row) + "\n")
+    info("\n")
+
 
 def find_link(mesh_links, host_a, host_b):
     for link in mesh_links:
@@ -414,7 +442,7 @@ def run_cefstatus_all(net, host_num):
 
 def start_csmgrd(net, idx):
     node_name = f"h{idx}"
-    command = f"csmgrdstart -d ./{node_name} > {node_name}-csmgrd-log 2>&1"
+    command = f"csmgrdstart -d ./{node_name} > /dev/null 2>&1"
     print(node_name, "command:", command)
     info(net.hosts[idx].cmd(command))
     time.sleep(1)
@@ -429,7 +457,7 @@ def stop_csmgrd(net, idx):
 def start_cefnetd(net, idx):
     node_name = f"h{idx}"
     cleanup_cefnetd_socket(node_name, idx)
-    command = f"cefnetdstart -d ./{node_name} > {node_name}-cefnetd-log 2>&1"
+    command = f"cefnetdstart -d ./{node_name} > /dev/null 2>&1"
     print(node_name, "command:", command)
     info(net.hosts[idx].cmd(command))
     time.sleep(1)

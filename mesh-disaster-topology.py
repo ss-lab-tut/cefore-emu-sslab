@@ -54,6 +54,9 @@ def periodic_host_flap(
         position = 0
         active_down = set()
 
+        def update_state():
+            state["down_hosts"] = sorted(active_down)
+
         def schedule_up(host_idx):
             def do_up():
                 if stop_event.is_set():
@@ -62,6 +65,7 @@ def periodic_host_flap(
                 info(f"\n[flap] up {host_name}\n")
                 set_node_links_state(net, host_name, "up")
                 active_down.discard(host_idx)
+                update_state()
 
             timer = threading.Timer(down_time, do_up)
             timer.daemon = True
@@ -88,6 +92,7 @@ def periodic_host_flap(
                 host_name = f"h{host_idx}"
                 state["last_down_host"] = host_idx
                 active_down.add(host_idx)
+                update_state()
                 info(f"\n[flap] down {host_name}\n")
                 set_node_links_state(net, host_name, "down")
                 schedule_up(host_idx)
@@ -251,7 +256,7 @@ def run_disaster_topology(args):
     time.sleep(5)
 
     stop_event = None
-    flap_state = {"last_down_host": None}
+    flap_state = {"last_down_host": None, "down_hosts": []}
     if args.down_interval > 0 and args.down_duration > 0:
         stop_event = periodic_host_flap(
             net,
@@ -269,12 +274,13 @@ def run_disaster_topology(args):
     for idx in range(1, 6):
         candidates = [h for h in range(args.hosts) if h != publisher]
         consumer = rng.choice(candidates)
-        down_host = flap_state["last_down_host"]
-        down_host_label = "none" if down_host is None else str(down_host)
+        down_hosts = flap_state.get("down_hosts") or []
+        down_host_label = "none" if not down_hosts else ",".join(
+            str(host_id) for host_id in down_hosts
+        )
         seed_label = "none" if args.seed is None else str(args.seed)
         log_name = (
-            f"cefgetfile_{args.hosts}_{args.switches}_{seed_label}_"
-            f"{args.down_interval}_{args.down_duration}_{down_host_label}_"
+            f"cefgetfile_seed{seed_label}_downhosts{down_host_label}_"
             f"h{consumer}.log"
         )
         command = (
