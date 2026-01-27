@@ -375,6 +375,72 @@ def print_mesh_links(mesh_links):
     info("\n")
 
 
+def render_topology_png(mesh_links, output_path, seed=None, layout="spring"):
+    if not output_path:
+        return
+    try:
+        import matplotlib
+
+        matplotlib.use("Agg")
+        import matplotlib.pyplot as plt
+        import networkx as nx
+    except Exception as exc:
+        info(f"topology PNG skipped (missing deps): {exc}\n")
+        return
+    if not mesh_links:
+        info("topology PNG skipped (no links)\n")
+        return
+
+    host_num = max(max(link["host_a"], link["host_b"]) for link in mesh_links) + 1
+    graph = nx.Graph()
+    host_nodes = {f"h{idx}" for idx in range(host_num)}
+    switch_nodes = set()
+
+    for link in mesh_links:
+        host_a = f"h{link['host_a']}"
+        host_b = f"h{link['host_b']}"
+        switch = str(link["switch"])
+        switch_nodes.add(switch)
+        graph.add_edge(host_a, switch)
+        graph.add_edge(host_b, switch)
+
+    graph.add_nodes_from(host_nodes)
+    graph.add_nodes_from(switch_nodes)
+
+    if layout == "kamada_kawai":
+        pos = nx.kamada_kawai_layout(graph)
+    elif layout == "circular":
+        pos = nx.circular_layout(graph)
+    else:
+        pos = nx.spring_layout(graph, seed=seed)
+
+    fig, ax = plt.subplots(figsize=(10, 8))
+    nx.draw_networkx_edges(graph, pos, ax=ax, width=1.2, alpha=0.6)
+    nx.draw_networkx_nodes(
+        graph,
+        pos,
+        nodelist=sorted(host_nodes),
+        node_color="#8ecae6",
+        node_size=800,
+        ax=ax,
+    )
+    nx.draw_networkx_nodes(
+        graph,
+        pos,
+        nodelist=sorted(switch_nodes),
+        node_color="#b0bec5",
+        node_shape="s",
+        node_size=700,
+        ax=ax,
+    )
+    nx.draw_networkx_labels(graph, pos, font_size=9, ax=ax)
+    ax.set_axis_off()
+    fig.tight_layout()
+    fig.savefig(output_path, dpi=200, bbox_inches="tight")
+    plt.close(fig)
+    info(f"topology PNG saved to {output_path}\n")
+
+
 def find_link(mesh_links, host_a, host_b):
     for link in mesh_links:
         if {link["host_a"], link["host_b"]} == {host_a, host_b}:
@@ -489,7 +555,7 @@ def max_possible_links(host_num):
     return host_num * (host_num - 1) // 2
 
 
-def run_mesh_topology(host_num, swhich_num, seed, k_paths):
+def run_mesh_topology(host_num, swhich_num, seed, k_paths, topo_png=None, topo_layout="spring"):
     if host_num < 3:
         sys.exit("host count must be at least 3")
     if k_paths < 1:
@@ -530,6 +596,7 @@ def run_mesh_topology(host_num, swhich_num, seed, k_paths):
     set_fib(net, topo.mesh_links, k_paths)
     run_cefstatus_all(net, host_num)
     print_mesh_links(topo.mesh_links)
+    render_topology_png(topo.mesh_links, topo_png, seed=seed, layout=topo_layout)
     time.sleep(1)
 
     publisher = host_num - 1
@@ -676,10 +743,29 @@ def main():
         default=2,
         help="number of shortest paths per destination",
     )
+    parser.add_argument(
+        "--topo-png",
+        type=str,
+        default="",
+        help="write topology PNG to this path (requires networkx/matplotlib)",
+    )
+    parser.add_argument(
+        "--topo-layout",
+        type=str,
+        default="spring",
+        help="topology layout: spring, kamada_kawai, or circular",
+    )
     args = parser.parse_args()
 
     setLogLevel("info")
-    run_mesh_topology(args.hosts, args.switches, args.seed, args.k)
+    run_mesh_topology(
+        args.hosts,
+        args.switches,
+        args.seed,
+        args.k,
+        topo_png=args.topo_png,
+        topo_layout=args.topo_layout,
+    )
 
 
 if __name__ == "__main__":

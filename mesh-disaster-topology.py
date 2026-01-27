@@ -219,6 +219,12 @@ def run_disaster_topology(args):
     mesh.set_fib(net, topo.mesh_links, args.k)
     mesh.run_cefstatus_all(net, args.hosts)
     mesh.print_mesh_links(topo.mesh_links)
+    mesh.render_topology_png(
+        topo.mesh_links,
+        args.topo_png,
+        seed=args.seed,
+        layout=args.topo_layout,
+    )
     host_graph, _ = mesh.build_host_graph(topo.mesh_links)
     cache_count = args.cache_count if args.cache_count > 0 else args.down_count + 1
     cache_nodes = select_k_centers(host_graph, cache_count)
@@ -373,6 +379,18 @@ def main():
         type=int,
         default=10,
         help="seconds between cefgetfile runs",
+    )
+    parser.add_argument(
+        "--topo-png",
+        type=str,
+        default="",
+        help="write topology PNG to this path (requires networkx/matplotlib)",
+    )
+    parser.add_argument(
+        "--topo-layout",
+        type=str,
+        default="spring",
+        help="topology layout: spring, kamada_kawai, or circular",
     )
     args = parser.parse_args()
 
