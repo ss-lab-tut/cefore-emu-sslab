@@ -19,6 +19,18 @@ from mininet.log import info, setLogLevel
 from mininet.net import Mininet
 from mininet.topo import Topo
 
+HAVE_TOPO_DEPS = True
+TOPO_DEPS_ERROR = None
+try:
+    import matplotlib
+
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    import networkx as nx
+except Exception as exc:
+    HAVE_TOPO_DEPS = False
+    TOPO_DEPS_ERROR = exc
+
 
 def select_template(idx, host_num, rng):
     if idx < 3:
@@ -378,14 +390,8 @@ def print_mesh_links(mesh_links):
 def render_topology_png(mesh_links, output_path, seed=None, layout="spring"):
     if not output_path:
         return
-    try:
-        import matplotlib
-
-        matplotlib.use("Agg")
-        import matplotlib.pyplot as plt
-        import networkx as nx
-    except Exception as exc:
-        info(f"topology PNG skipped (missing deps): {exc}\n")
+    if not HAVE_TOPO_DEPS:
+        info(f"topology PNG skipped (missing deps): {TOPO_DEPS_ERROR}\n")
         return
     if not mesh_links:
         info("topology PNG skipped (no links)\n")
