@@ -77,6 +77,49 @@ def update_node_name(node_dir, idx, base_uri="example.com/xxx/router-"):
         conf_file.writelines(new_lines)
 
 
+def read_port_num(node_dir, default=9695):
+    conf_path = os.path.join(node_dir, "cefnetd.conf")
+    if not os.path.isfile(conf_path):
+        return default
+    with open(conf_path, "r", encoding="utf-8") as conf_file:
+        for line in conf_file:
+            stripped = line.strip()
+            if not stripped or stripped.startswith("#"):
+                continue
+            if stripped.startswith("PORT_NUM="):
+                value = stripped.split("=", 1)[1].strip().split()[0]
+                try:
+                    return int(value)
+                except ValueError:
+                    break
+    return default
+
+
+def cleanup_cefnetd_socket(node_dir, idx):
+    port = read_port_num(node_dir)
+    sock_path = f"/tmp/cef_{port}.{idx}"
+    if os.path.exists(sock_path):
+        try:
+            os.remove(sock_path)
+            info(f"removed stale socket {sock_path}\n")
+        except OSError:
+            info(f"failed to remove stale socket {sock_path}\n")
+
+
+def wait_for_cefnetd(net, idx, timeout=5, interval=0.25):
+    node_name = f"h{idx}"
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        result = net.hosts[idx].cmd(
+            f"sh -c 'cefstatus -d ./{node_name} >/dev/null 2>&1; echo $?'"
+        )
+        if result.strip().endswith("0"):
+            return True
+        time.sleep(interval)
+    info(f"{node_name} cefnetd not ready; check {node_name}-cefnetd-log\n")
+    return False
+
+
 def ensure_node_dirs(host_num, rng):
     for idx in range(host_num):
         node_dir = f"h{idx}"
@@ -371,7 +414,7 @@ def run_cefstatus_all(net, host_num):
 
 def start_csmgrd(net, idx):
     node_name = f"h{idx}"
-    command = f"csmgrdstart -d ./{node_name} > {node_name}-csmgrd-log"
+    command = f"csmgrdstart -d ./{node_name} > {node_name}-csmgrd-log 2>&1"
     print(node_name, "command:", command)
     info(net.hosts[idx].cmd(command))
     time.sleep(1)
@@ -385,7 +428,8 @@ def stop_csmgrd(net, idx):
 
 def start_cefnetd(net, idx):
     node_name = f"h{idx}"
-    command = f"cefnetdstart -d ./{node_name} > {node_name}-cefnetd-log"
+    cleanup_cefnetd_socket(node_name, idx)
+    command = f"cefnetdstart -d ./{node_name} > {node_name}-cefnetd-log 2>&1"
     print(node_name, "command:", command)
     info(net.hosts[idx].cmd(command))
     time.sleep(1)
@@ -451,6 +495,9 @@ def run_mesh_topology(host_num, swhich_num, seed, k_paths):
 
     for idx in range(host_num):
         start_cefnetd(net, idx)
+
+    for idx in range(host_num):
+        wait_for_cefnetd(net, idx)
 
     set_fib(net, topo.mesh_links, k_paths)
     run_cefstatus_all(net, host_num)

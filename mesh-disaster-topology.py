@@ -208,6 +208,9 @@ def run_disaster_topology(args):
     for idx in range(args.hosts):
         mesh.start_cefnetd(net, idx)
 
+    for idx in range(args.hosts):
+        mesh.wait_for_cefnetd(net, idx)
+
     mesh.set_fib(net, topo.mesh_links, args.k)
     mesh.run_cefstatus_all(net, args.hosts)
     mesh.print_mesh_links(topo.mesh_links)
