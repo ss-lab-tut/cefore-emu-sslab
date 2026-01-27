@@ -1,0 +1,1982 @@
+*** Creating network
+*** Adding controller
+*** Adding hosts:
+h0 h1 h2 h3 h4 h5 h6 h7 
+*** Adding switches:
+s0 s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 s11 s12 s13 s14 s15 s16 s17 s18 s19 
+*** Adding links:
+(h0, s2) (h0, s10) (h0, s13) (h0, s14) (h1, s3) (h1, s4) (h1, s6) (h1, s8) (h1, s13) (h1, s17) (h2, s1) (h2, s9) (h2, s17) (h2, s18) (h2, s19) (h3, s1) (h3, s5) (h3, s6) (h3, s11) (h3, s12) (h4, s3) (h4, s7) (h4, s11) (h4, s14) (h4, s15) (h4, s18) (h5, s0) (h5, s4) (h5, s5) (h5, s10) (h5, s16) (h6, s2) (h6, s8) (h6, s9) (h6, s15) (h6, s16) (h7, s0) (h7, s7) (h7, s12) (h7, s19) 
+*** Configuring hosts
+h0 h1 h2 h3 h4 h5 h6 h7 
+*** Starting controller
+c0 
+*** Starting 20 switches
+s0 s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 s11 s12 s13 s14 s15 s16 s17 s18 s19 ...
+*** Waiting for switches to connect
+s0 s2 s3 s4 s5 s7 s9 s10 s11 s12 s16 s18 s19 s1 s6 s8 s13 s14 s15 s17 
+h0-eth0: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.3.1  netmask 255.255.255.0  broadcast 192.168.3.255
+        inet6 fe80::5c10:ccff:fe3d:1003  prefixlen 64  scopeid 0x20<link>
+        ether 5e:10:cc:3d:10:03  txqueuelen 1000  (Ethernet)
+        RX packets 20  bytes 2604 (2.6 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 7  bytes 586 (586.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+h0-eth1: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.11.1  netmask 255.255.255.0  broadcast 192.168.11.255
+        inet6 fe80::4420:b2ff:fe0b:c9d3  prefixlen 64  scopeid 0x20<link>
+        ether 46:20:b2:0b:c9:d3  txqueuelen 1000  (Ethernet)
+        RX packets 21  bytes 2694 (2.6 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 7  bytes 586 (586.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+h0-eth2: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.14.1  netmask 255.255.255.0  broadcast 192.168.14.255
+        inet6 fe80::30dd:f1ff:fe3d:959b  prefixlen 64  scopeid 0x20<link>
+        ether 32:dd:f1:3d:95:9b  txqueuelen 1000  (Ethernet)
+        RX packets 19  bytes 2534 (2.5 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 7  bytes 586 (586.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+h0-eth3: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.15.1  netmask 255.255.255.0  broadcast 192.168.15.255
+        inet6 fe80::5ca9:96ff:fef8:f94b  prefixlen 64  scopeid 0x20<link>
+        ether 5e:a9:96:f8:f9:4b  txqueuelen 1000  (Ethernet)
+        RX packets 20  bytes 2604 (2.6 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 7  bytes 586 (586.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+lo: flags=73<UP,LOOPBACK,RUNNING>  mtu 65536
+        inet 127.0.0.1  netmask 255.0.0.0
+        inet6 ::1  prefixlen 128  scopeid 0x10<host>
+        loop  txqueuelen 1000  (Local Loopback)
+        RX packets 0  bytes 0 (0.0 B)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 0  bytes 0 (0.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+h1-eth0: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.4.2  netmask 255.255.255.0  broadcast 192.168.4.255
+        inet6 fe80::c475:d6ff:fec4:1280  prefixlen 64  scopeid 0x20<link>
+        ether c6:75:d6:c4:12:80  txqueuelen 1000  (Ethernet)
+        RX packets 21  bytes 2694 (2.6 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 7  bytes 586 (586.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+h1-eth1: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.5.2  netmask 255.255.255.0  broadcast 192.168.5.255
+        inet6 fe80::4cba:25ff:fe49:7ff9  prefixlen 64  scopeid 0x20<link>
+        ether 4e:ba:25:49:7f:f9  txqueuelen 1000  (Ethernet)
+        RX packets 20  bytes 2604 (2.6 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 7  bytes 586 (586.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+h1-eth2: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.7.2  netmask 255.255.255.0  broadcast 192.168.7.255
+        inet6 fe80::785d:cdff:fea2:1502  prefixlen 64  scopeid 0x20<link>
+        ether 7a:5d:cd:a2:15:02  txqueuelen 1000  (Ethernet)
+        RX packets 19  bytes 2534 (2.5 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 7  bytes 586 (586.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+h1-eth3: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.9.2  netmask 255.255.255.0  broadcast 192.168.9.255
+        inet6 fe80::841a:ceff:feb1:49dd  prefixlen 64  scopeid 0x20<link>
+        ether 86:1a:ce:b1:49:dd  txqueuelen 1000  (Ethernet)
+        RX packets 20  bytes 2604 (2.6 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 7  bytes 586 (586.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+h1-eth4: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.14.2  netmask 255.255.255.0  broadcast 192.168.14.255
+        inet6 fe80::f8b6:92ff:fe31:e577  prefixlen 64  scopeid 0x20<link>
+        ether fa:b6:92:31:e5:77  txqueuelen 1000  (Ethernet)
+        RX packets 19  bytes 2534 (2.5 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 7  bytes 586 (586.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+h1-eth5: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.18.2  netmask 255.255.255.0  broadcast 192.168.18.255
+        inet6 fe80::989f:79ff:fe7c:bd6e  prefixlen 64  scopeid 0x20<link>
+        ether 9a:9f:79:7c:bd:6e  txqueuelen 1000  (Ethernet)
+        RX packets 20  bytes 2604 (2.6 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 7  bytes 586 (586.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+lo: flags=73<UP,LOOPBACK,RUNNING>  mtu 65536
+        inet 127.0.0.1  netmask 255.0.0.0
+        inet6 ::1  prefixlen 128  scopeid 0x10<host>
+        loop  txqueuelen 1000  (Local Loopback)
+        RX packets 0  bytes 0 (0.0 B)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 0  bytes 0 (0.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+h2-eth0: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.2.3  netmask 255.255.255.0  broadcast 192.168.2.255
+        inet6 fe80::1896:e4ff:fe5b:e9d0  prefixlen 64  scopeid 0x20<link>
+        ether 1a:96:e4:5b:e9:d0  txqueuelen 1000  (Ethernet)
+        RX packets 19  bytes 2534 (2.5 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 7  bytes 586 (586.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+h2-eth1: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.10.3  netmask 255.255.255.0  broadcast 192.168.10.255
+        inet6 fe80::c049:a1ff:fe9f:5ed  prefixlen 64  scopeid 0x20<link>
+        ether c2:49:a1:9f:05:ed  txqueuelen 1000  (Ethernet)
+        RX packets 20  bytes 2604 (2.6 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 7  bytes 586 (586.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+h2-eth2: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.18.3  netmask 255.255.255.0  broadcast 192.168.18.255
+        inet6 fe80::549f:3dff:fe57:f589  prefixlen 64  scopeid 0x20<link>
+        ether 56:9f:3d:57:f5:89  txqueuelen 1000  (Ethernet)
+        RX packets 20  bytes 2604 (2.6 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 7  bytes 586 (586.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+h2-eth3: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.19.3  netmask 255.255.255.0  broadcast 192.168.19.255
+        inet6 fe80::e4e0:14ff:fe08:513a  prefixlen 64  scopeid 0x20<link>
+        ether e6:e0:14:08:51:3a  txqueuelen 1000  (Ethernet)
+        RX packets 20  bytes 2604 (2.6 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 7  bytes 586 (586.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+h2-eth4: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.20.3  netmask 255.255.255.0  broadcast 192.168.20.255
+        inet6 fe80::6c66:4dff:fec0:3924  prefixlen 64  scopeid 0x20<link>
+        ether 6e:66:4d:c0:39:24  txqueuelen 1000  (Ethernet)
+        RX packets 21  bytes 2694 (2.6 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 7  bytes 586 (586.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+lo: flags=73<UP,LOOPBACK,RUNNING>  mtu 65536
+        inet 127.0.0.1  netmask 255.0.0.0
+        inet6 ::1  prefixlen 128  scopeid 0x10<host>
+        loop  txqueuelen 1000  (Local Loopback)
+        RX packets 0  bytes 0 (0.0 B)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 0  bytes 0 (0.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+h3-eth0: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.2.4  netmask 255.255.255.0  broadcast 192.168.2.255
+        inet6 fe80::904f:40ff:fed3:75cb  prefixlen 64  scopeid 0x20<link>
+        ether 92:4f:40:d3:75:cb  txqueuelen 1000  (Ethernet)
+        RX packets 19  bytes 2534 (2.5 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 7  bytes 586 (586.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+h3-eth1: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.6.4  netmask 255.255.255.0  broadcast 192.168.6.255
+        inet6 fe80::f02d:7dff:fe03:b63a  prefixlen 64  scopeid 0x20<link>
+        ether f2:2d:7d:03:b6:3a  txqueuelen 1000  (Ethernet)
+        RX packets 20  bytes 2604 (2.6 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 7  bytes 586 (586.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+h3-eth2: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.7.4  netmask 255.255.255.0  broadcast 192.168.7.255
+        inet6 fe80::9022:d4ff:fe18:cea9  prefixlen 64  scopeid 0x20<link>
+        ether 92:22:d4:18:ce:a9  txqueuelen 1000  (Ethernet)
+        RX packets 19  bytes 2534 (2.5 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 7  bytes 586 (586.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+h3-eth3: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.12.4  netmask 255.255.255.0  broadcast 192.168.12.255
+        inet6 fe80::705b:faff:fe2a:550f  prefixlen 64  scopeid 0x20<link>
+        ether 72:5b:fa:2a:55:0f  txqueuelen 1000  (Ethernet)
+        RX packets 21  bytes 2694 (2.6 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 7  bytes 586 (586.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+h3-eth4: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.13.4  netmask 255.255.255.0  broadcast 192.168.13.255
+        inet6 fe80::e45b:42ff:fe35:65da  prefixlen 64  scopeid 0x20<link>
+        ether e6:5b:42:35:65:da  txqueuelen 1000  (Ethernet)
+        RX packets 23  bytes 2854 (2.8 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 7  bytes 586 (586.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+lo: flags=73<UP,LOOPBACK,RUNNING>  mtu 65536
+        inet 127.0.0.1  netmask 255.0.0.0
+        inet6 ::1  prefixlen 128  scopeid 0x10<host>
+        loop  txqueuelen 1000  (Local Loopback)
+        RX packets 0  bytes 0 (0.0 B)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 0  bytes 0 (0.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+h4-eth0: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.4.5  netmask 255.255.255.0  broadcast 192.168.4.255
+        inet6 fe80::10d9:96ff:fed5:b2e7  prefixlen 64  scopeid 0x20<link>
+        ether 12:d9:96:d5:b2:e7  txqueuelen 1000  (Ethernet)
+        RX packets 20  bytes 2604 (2.6 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 7  bytes 586 (586.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+h4-eth1: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.8.5  netmask 255.255.255.0  broadcast 192.168.8.255
+        inet6 fe80::9c20:ddff:fe81:c333  prefixlen 64  scopeid 0x20<link>
+        ether 9e:20:dd:81:c3:33  txqueuelen 1000  (Ethernet)
+        RX packets 21  bytes 2694 (2.6 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 7  bytes 586 (586.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+h4-eth2: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.12.5  netmask 255.255.255.0  broadcast 192.168.12.255
+        inet6 fe80::3c75:4ff:fe7d:8c7a  prefixlen 64  scopeid 0x20<link>
+        ether 3e:75:04:7d:8c:7a  txqueuelen 1000  (Ethernet)
+        RX packets 20  bytes 2604 (2.6 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 7  bytes 586 (586.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+h4-eth3: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.15.5  netmask 255.255.255.0  broadcast 192.168.15.255
+        inet6 fe80::b0f3:71ff:fed1:5146  prefixlen 64  scopeid 0x20<link>
+        ether b2:f3:71:d1:51:46  txqueuelen 1000  (Ethernet)
+        RX packets 20  bytes 2604 (2.6 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 7  bytes 586 (586.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+h4-eth4: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.16.5  netmask 255.255.255.0  broadcast 192.168.16.255
+        inet6 fe80::d00c:e6ff:fe6d:6bba  prefixlen 64  scopeid 0x20<link>
+        ether d2:0c:e6:6d:6b:ba  txqueuelen 1000  (Ethernet)
+        RX packets 20  bytes 2604 (2.6 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 7  bytes 586 (586.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+h4-eth5: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.19.5  netmask 255.255.255.0  broadcast 192.168.19.255
+        inet6 fe80::d06e:b3ff:fe69:6605  prefixlen 64  scopeid 0x20<link>
+        ether d2:6e:b3:69:66:05  txqueuelen 1000  (Ethernet)
+        RX packets 20  bytes 2604 (2.6 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 7  bytes 586 (586.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+lo: flags=73<UP,LOOPBACK,RUNNING>  mtu 65536
+        inet 127.0.0.1  netmask 255.0.0.0
+        inet6 ::1  prefixlen 128  scopeid 0x10<host>
+        loop  txqueuelen 1000  (Local Loopback)
+        RX packets 0  bytes 0 (0.0 B)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 0  bytes 0 (0.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+h5-eth0: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.1.6  netmask 255.255.255.0  broadcast 192.168.1.255
+        inet6 fe80::4c4f:79ff:fe42:f26a  prefixlen 64  scopeid 0x20<link>
+        ether 4e:4f:79:42:f2:6a  txqueuelen 1000  (Ethernet)
+        RX packets 20  bytes 2604 (2.6 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 7  bytes 586 (586.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+h5-eth1: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.5.6  netmask 255.255.255.0  broadcast 192.168.5.255
+        inet6 fe80::14b6:74ff:fe99:529b  prefixlen 64  scopeid 0x20<link>
+        ether 16:b6:74:99:52:9b  txqueuelen 1000  (Ethernet)
+        RX packets 20  bytes 2604 (2.6 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 7  bytes 586 (586.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+h5-eth2: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.6.6  netmask 255.255.255.0  broadcast 192.168.6.255
+        inet6 fe80::20f1:17ff:fe4a:9d59  prefixlen 64  scopeid 0x20<link>
+        ether 22:f1:17:4a:9d:59  txqueuelen 1000  (Ethernet)
+        RX packets 20  bytes 2604 (2.6 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 7  bytes 586 (586.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+h5-eth3: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.11.6  netmask 255.255.255.0  broadcast 192.168.11.255
+        inet6 fe80::8cbe:9eff:fee1:c17  prefixlen 64  scopeid 0x20<link>
+        ether 8e:be:9e:e1:0c:17  txqueuelen 1000  (Ethernet)
+        RX packets 20  bytes 2604 (2.6 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 7  bytes 586 (586.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+h5-eth4: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.17.6  netmask 255.255.255.0  broadcast 192.168.17.255
+        inet6 fe80::4490:dcff:fecf:625c  prefixlen 64  scopeid 0x20<link>
+        ether 46:90:dc:cf:62:5c  txqueuelen 1000  (Ethernet)
+        RX packets 21  bytes 2694 (2.6 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 7  bytes 586 (586.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+lo: flags=73<UP,LOOPBACK,RUNNING>  mtu 65536
+        inet 127.0.0.1  netmask 255.0.0.0
+        inet6 ::1  prefixlen 128  scopeid 0x10<host>
+        loop  txqueuelen 1000  (Local Loopback)
+        RX packets 0  bytes 0 (0.0 B)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 0  bytes 0 (0.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+h6-eth0: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.3.7  netmask 255.255.255.0  broadcast 192.168.3.255
+        inet6 fe80::6c75:3cff:fe7d:82b8  prefixlen 64  scopeid 0x20<link>
+        ether 6e:75:3c:7d:82:b8  txqueuelen 1000  (Ethernet)
+        RX packets 20  bytes 2604 (2.6 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 7  bytes 586 (586.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+h6-eth1: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.9.7  netmask 255.255.255.0  broadcast 192.168.9.255
+        inet6 fe80::d0e8:1dff:fef9:ad88  prefixlen 64  scopeid 0x20<link>
+        ether d2:e8:1d:f9:ad:88  txqueuelen 1000  (Ethernet)
+        RX packets 20  bytes 2604 (2.6 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 7  bytes 586 (586.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+h6-eth2: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.10.7  netmask 255.255.255.0  broadcast 192.168.10.255
+        inet6 fe80::782b:abff:fe26:2998  prefixlen 64  scopeid 0x20<link>
+        ether 7a:2b:ab:26:29:98  txqueuelen 1000  (Ethernet)
+        RX packets 21  bytes 2694 (2.6 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 7  bytes 586 (586.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+h6-eth3: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.16.7  netmask 255.255.255.0  broadcast 192.168.16.255
+        inet6 fe80::c80d:beff:fe42:7d6e  prefixlen 64  scopeid 0x20<link>
+        ether ca:0d:be:42:7d:6e  txqueuelen 1000  (Ethernet)
+        RX packets 20  bytes 2604 (2.6 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 7  bytes 586 (586.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+h6-eth4: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.17.7  netmask 255.255.255.0  broadcast 192.168.17.255
+        inet6 fe80::3401:29ff:fe86:ada6  prefixlen 64  scopeid 0x20<link>
+        ether 36:01:29:86:ad:a6  txqueuelen 1000  (Ethernet)
+        RX packets 21  bytes 2694 (2.6 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 7  bytes 586 (586.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+lo: flags=73<UP,LOOPBACK,RUNNING>  mtu 65536
+        inet 127.0.0.1  netmask 255.0.0.0
+        inet6 ::1  prefixlen 128  scopeid 0x10<host>
+        loop  txqueuelen 1000  (Local Loopback)
+        RX packets 0  bytes 0 (0.0 B)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 0  bytes 0 (0.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+h7-eth0: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.1.8  netmask 255.255.255.0  broadcast 192.168.1.255
+        inet6 fe80::a48e:b2ff:fe92:99ca  prefixlen 64  scopeid 0x20<link>
+        ether a6:8e:b2:92:99:ca  txqueuelen 1000  (Ethernet)
+        RX packets 20  bytes 2604 (2.6 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 7  bytes 586 (586.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+h7-eth1: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.8.8  netmask 255.255.255.0  broadcast 192.168.8.255
+        inet6 fe80::400a:d4ff:fecc:3398  prefixlen 64  scopeid 0x20<link>
+        ether 42:0a:d4:cc:33:98  txqueuelen 1000  (Ethernet)
+        RX packets 20  bytes 2604 (2.6 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 7  bytes 586 (586.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+h7-eth2: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.13.8  netmask 255.255.255.0  broadcast 192.168.13.255
+        inet6 fe80::389f:2fff:fe7f:cada  prefixlen 64  scopeid 0x20<link>
+        ether 3a:9f:2f:7f:ca:da  txqueuelen 1000  (Ethernet)
+        RX packets 20  bytes 2604 (2.6 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 7  bytes 586 (586.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+h7-eth3: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.20.8  netmask 255.255.255.0  broadcast 192.168.20.255
+        inet6 fe80::70ce:12ff:fecc:d990  prefixlen 64  scopeid 0x20<link>
+        ether 72:ce:12:cc:d9:90  txqueuelen 1000  (Ethernet)
+        RX packets 20  bytes 2604 (2.6 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 7  bytes 586 (586.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+lo: flags=73<UP,LOOPBACK,RUNNING>  mtu 65536
+        inet 127.0.0.1  netmask 255.0.0.0
+        inet6 ::1  prefixlen 128  scopeid 0x10<host>
+        loop  txqueuelen 1000  (Local Loopback)
+        RX packets 0  bytes 0 (0.0 B)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 0  bytes 0 (0.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+2026-01-27 14:46:47.427 [cefctrl] INFO: [client] Config directory is ./h0
+2026-01-27 14:46:47.427 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.0
+2026-01-27 14:46:47.427 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:47.484 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:47.490 [cefctrl] INFO: [client] Config directory is ./h0
+2026-01-27 14:46:47.490 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.0
+2026-01-27 14:46:47.490 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:47.547 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:47.553 [cefctrl] INFO: [client] Config directory is ./h0
+2026-01-27 14:46:47.553 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.0
+2026-01-27 14:46:47.553 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:47.610 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:47.616 [cefctrl] INFO: [client] Config directory is ./h0
+2026-01-27 14:46:47.616 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.0
+2026-01-27 14:46:47.616 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:47.673 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:47.679 [cefctrl] INFO: [client] Config directory is ./h0
+2026-01-27 14:46:47.679 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.0
+2026-01-27 14:46:47.679 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:47.735 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:47.741 [cefctrl] INFO: [client] Config directory is ./h0
+2026-01-27 14:46:47.742 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.0
+2026-01-27 14:46:47.742 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:47.798 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:47.804 [cefctrl] INFO: [client] Config directory is ./h0
+2026-01-27 14:46:47.804 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.0
+2026-01-27 14:46:47.804 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:47.860 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:47.866 [cefctrl] INFO: [client] Config directory is ./h0
+2026-01-27 14:46:47.866 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.0
+2026-01-27 14:46:47.866 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:47.923 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:47.928 [cefctrl] INFO: [client] Config directory is ./h0
+2026-01-27 14:46:47.928 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.0
+2026-01-27 14:46:47.928 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:47.985 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:47.991 [cefctrl] INFO: [client] Config directory is ./h0
+2026-01-27 14:46:47.991 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.0
+2026-01-27 14:46:47.991 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:48.047 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:48.053 [cefctrl] INFO: [client] Config directory is ./h0
+2026-01-27 14:46:48.054 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.0
+2026-01-27 14:46:48.054 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:48.110 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:48.116 [cefctrl] INFO: [client] Config directory is ./h0
+2026-01-27 14:46:48.116 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.0
+2026-01-27 14:46:48.116 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:48.173 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:48.179 [cefctrl] INFO: [client] Config directory is ./h0
+2026-01-27 14:46:48.179 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.0
+2026-01-27 14:46:48.179 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:48.235 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:48.242 [cefctrl] INFO: [client] Config directory is ./h0
+2026-01-27 14:46:48.242 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.0
+2026-01-27 14:46:48.242 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:48.298 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:48.304 [cefctrl] INFO: [client] Config directory is ./h0
+2026-01-27 14:46:48.304 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.0
+2026-01-27 14:46:48.304 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:48.361 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:48.367 [cefctrl] INFO: [client] Config directory is ./h0
+2026-01-27 14:46:48.367 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.0
+2026-01-27 14:46:48.367 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:48.423 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:48.429 [cefctrl] INFO: [client] Config directory is ./h0
+2026-01-27 14:46:48.429 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.0
+2026-01-27 14:46:48.429 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:48.486 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:48.492 [cefctrl] INFO: [client] Config directory is ./h0
+2026-01-27 14:46:48.492 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.0
+2026-01-27 14:46:48.492 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:48.548 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:48.554 [cefctrl] INFO: [client] Config directory is ./h0
+2026-01-27 14:46:48.554 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.0
+2026-01-27 14:46:48.554 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:48.611 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:48.617 [cefctrl] INFO: [client] Config directory is ./h0
+2026-01-27 14:46:48.617 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.0
+2026-01-27 14:46:48.617 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:48.674 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:48.680 [cefctrl] INFO: [client] Config directory is ./h0
+2026-01-27 14:46:48.680 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.0
+2026-01-27 14:46:48.680 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:48.737 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:48.742 [cefctrl] INFO: [client] Config directory is ./h0
+2026-01-27 14:46:48.743 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.0
+2026-01-27 14:46:48.743 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:48.799 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:48.805 [cefctrl] INFO: [client] Config directory is ./h0
+2026-01-27 14:46:48.805 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.0
+2026-01-27 14:46:48.805 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:48.862 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:48.868 [cefctrl] INFO: [client] Config directory is ./h0
+2026-01-27 14:46:48.868 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.0
+2026-01-27 14:46:48.868 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:48.925 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:48.931 [cefctrl] INFO: [client] Config directory is ./h0
+2026-01-27 14:46:48.931 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.0
+2026-01-27 14:46:48.931 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:48.987 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:48.993 [cefctrl] INFO: [client] Config directory is ./h0
+2026-01-27 14:46:48.993 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.0
+2026-01-27 14:46:48.993 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:49.050 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:49.056 [cefctrl] INFO: [client] Config directory is ./h0
+2026-01-27 14:46:49.056 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.0
+2026-01-27 14:46:49.056 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:49.113 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:49.119 [cefctrl] INFO: [client] Config directory is ./h0
+2026-01-27 14:46:49.119 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.0
+2026-01-27 14:46:49.119 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:49.175 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:49.182 [cefctrl] INFO: [client] Config directory is ./h1
+2026-01-27 14:46:49.182 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.1
+2026-01-27 14:46:49.182 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:49.238 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:49.244 [cefctrl] INFO: [client] Config directory is ./h1
+2026-01-27 14:46:49.244 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.1
+2026-01-27 14:46:49.244 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:49.301 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:49.307 [cefctrl] INFO: [client] Config directory is ./h1
+2026-01-27 14:46:49.307 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.1
+2026-01-27 14:46:49.307 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:49.363 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:49.369 [cefctrl] INFO: [client] Config directory is ./h1
+2026-01-27 14:46:49.369 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.1
+2026-01-27 14:46:49.369 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:49.426 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:49.432 [cefctrl] INFO: [client] Config directory is ./h1
+2026-01-27 14:46:49.432 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.1
+2026-01-27 14:46:49.432 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:49.488 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:49.494 [cefctrl] INFO: [client] Config directory is ./h1
+2026-01-27 14:46:49.494 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.1
+2026-01-27 14:46:49.494 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:49.551 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:49.557 [cefctrl] INFO: [client] Config directory is ./h1
+2026-01-27 14:46:49.557 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.1
+2026-01-27 14:46:49.557 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:49.613 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:49.619 [cefctrl] INFO: [client] Config directory is ./h1
+2026-01-27 14:46:49.619 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.1
+2026-01-27 14:46:49.619 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:49.676 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:49.682 [cefctrl] INFO: [client] Config directory is ./h1
+2026-01-27 14:46:49.682 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.1
+2026-01-27 14:46:49.682 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:49.738 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:49.744 [cefctrl] INFO: [client] Config directory is ./h1
+2026-01-27 14:46:49.744 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.1
+2026-01-27 14:46:49.744 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:49.801 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:49.807 [cefctrl] INFO: [client] Config directory is ./h1
+2026-01-27 14:46:49.807 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.1
+2026-01-27 14:46:49.807 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:49.863 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:49.869 [cefctrl] INFO: [client] Config directory is ./h1
+2026-01-27 14:46:49.869 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.1
+2026-01-27 14:46:49.869 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:49.926 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:49.932 [cefctrl] INFO: [client] Config directory is ./h1
+2026-01-27 14:46:49.932 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.1
+2026-01-27 14:46:49.932 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:49.988 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:49.994 [cefctrl] INFO: [client] Config directory is ./h1
+2026-01-27 14:46:49.994 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.1
+2026-01-27 14:46:49.994 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:50.051 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:50.056 [cefctrl] INFO: [client] Config directory is ./h1
+2026-01-27 14:46:50.056 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.1
+2026-01-27 14:46:50.057 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:50.113 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:50.119 [cefctrl] INFO: [client] Config directory is ./h1
+2026-01-27 14:46:50.119 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.1
+2026-01-27 14:46:50.119 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:50.176 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:50.181 [cefctrl] INFO: [client] Config directory is ./h1
+2026-01-27 14:46:50.182 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.1
+2026-01-27 14:46:50.182 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:50.238 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:50.244 [cefctrl] INFO: [client] Config directory is ./h1
+2026-01-27 14:46:50.244 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.1
+2026-01-27 14:46:50.244 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:50.301 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:50.306 [cefctrl] INFO: [client] Config directory is ./h1
+2026-01-27 14:46:50.307 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.1
+2026-01-27 14:46:50.307 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:50.363 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:50.369 [cefctrl] INFO: [client] Config directory is ./h1
+2026-01-27 14:46:50.369 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.1
+2026-01-27 14:46:50.369 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:50.426 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:50.432 [cefctrl] INFO: [client] Config directory is ./h1
+2026-01-27 14:46:50.432 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.1
+2026-01-27 14:46:50.432 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:50.488 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:50.494 [cefctrl] INFO: [client] Config directory is ./h1
+2026-01-27 14:46:50.494 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.1
+2026-01-27 14:46:50.494 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:50.551 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:50.557 [cefctrl] INFO: [client] Config directory is ./h1
+2026-01-27 14:46:50.557 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.1
+2026-01-27 14:46:50.557 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:50.613 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:50.620 [cefctrl] INFO: [client] Config directory is ./h1
+2026-01-27 14:46:50.620 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.1
+2026-01-27 14:46:50.620 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:50.676 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:50.682 [cefctrl] INFO: [client] Config directory is ./h1
+2026-01-27 14:46:50.682 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.1
+2026-01-27 14:46:50.682 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:50.739 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:50.745 [cefctrl] INFO: [client] Config directory is ./h1
+2026-01-27 14:46:50.745 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.1
+2026-01-27 14:46:50.745 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:50.801 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:50.807 [cefctrl] INFO: [client] Config directory is ./h1
+2026-01-27 14:46:50.807 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.1
+2026-01-27 14:46:50.807 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:50.864 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:50.870 [cefctrl] INFO: [client] Config directory is ./h1
+2026-01-27 14:46:50.870 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.1
+2026-01-27 14:46:50.870 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:50.926 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:50.932 [cefctrl] INFO: [client] Config directory is ./h2
+2026-01-27 14:46:50.933 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.2
+2026-01-27 14:46:50.933 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:50.989 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:50.995 [cefctrl] INFO: [client] Config directory is ./h2
+2026-01-27 14:46:50.995 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.2
+2026-01-27 14:46:50.995 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:51.051 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:51.057 [cefctrl] INFO: [client] Config directory is ./h2
+2026-01-27 14:46:51.057 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.2
+2026-01-27 14:46:51.057 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:51.114 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:51.120 [cefctrl] INFO: [client] Config directory is ./h2
+2026-01-27 14:46:51.120 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.2
+2026-01-27 14:46:51.120 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:51.176 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:51.182 [cefctrl] INFO: [client] Config directory is ./h2
+2026-01-27 14:46:51.182 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.2
+2026-01-27 14:46:51.182 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:51.239 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:51.244 [cefctrl] INFO: [client] Config directory is ./h2
+2026-01-27 14:46:51.244 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.2
+2026-01-27 14:46:51.244 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:51.301 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:51.307 [cefctrl] INFO: [client] Config directory is ./h2
+2026-01-27 14:46:51.307 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.2
+2026-01-27 14:46:51.307 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:51.363 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:51.369 [cefctrl] INFO: [client] Config directory is ./h2
+2026-01-27 14:46:51.369 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.2
+2026-01-27 14:46:51.369 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:51.426 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:51.431 [cefctrl] INFO: [client] Config directory is ./h2
+2026-01-27 14:46:51.431 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.2
+2026-01-27 14:46:51.431 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:51.488 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:51.494 [cefctrl] INFO: [client] Config directory is ./h2
+2026-01-27 14:46:51.494 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.2
+2026-01-27 14:46:51.494 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:51.550 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:51.556 [cefctrl] INFO: [client] Config directory is ./h2
+2026-01-27 14:46:51.556 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.2
+2026-01-27 14:46:51.557 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:51.613 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:51.619 [cefctrl] INFO: [client] Config directory is ./h2
+2026-01-27 14:46:51.619 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.2
+2026-01-27 14:46:51.619 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:51.676 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:51.682 [cefctrl] INFO: [client] Config directory is ./h2
+2026-01-27 14:46:51.682 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.2
+2026-01-27 14:46:51.682 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:51.738 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:51.744 [cefctrl] INFO: [client] Config directory is ./h2
+2026-01-27 14:46:51.744 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.2
+2026-01-27 14:46:51.744 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:51.801 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:51.806 [cefctrl] INFO: [client] Config directory is ./h2
+2026-01-27 14:46:51.807 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.2
+2026-01-27 14:46:51.807 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:51.863 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:51.869 [cefctrl] INFO: [client] Config directory is ./h2
+2026-01-27 14:46:51.869 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.2
+2026-01-27 14:46:51.869 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:51.925 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:51.931 [cefctrl] INFO: [client] Config directory is ./h2
+2026-01-27 14:46:51.931 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.2
+2026-01-27 14:46:51.931 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:51.988 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:51.994 [cefctrl] INFO: [client] Config directory is ./h2
+2026-01-27 14:46:51.994 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.2
+2026-01-27 14:46:51.994 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:52.050 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:52.056 [cefctrl] INFO: [client] Config directory is ./h2
+2026-01-27 14:46:52.056 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.2
+2026-01-27 14:46:52.056 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:52.113 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:52.119 [cefctrl] INFO: [client] Config directory is ./h2
+2026-01-27 14:46:52.119 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.2
+2026-01-27 14:46:52.119 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:52.176 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:52.182 [cefctrl] INFO: [client] Config directory is ./h2
+2026-01-27 14:46:52.182 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.2
+2026-01-27 14:46:52.182 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:52.238 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:52.244 [cefctrl] INFO: [client] Config directory is ./h2
+2026-01-27 14:46:52.244 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.2
+2026-01-27 14:46:52.244 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:52.300 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:52.306 [cefctrl] INFO: [client] Config directory is ./h2
+2026-01-27 14:46:52.306 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.2
+2026-01-27 14:46:52.306 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:52.363 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:52.368 [cefctrl] INFO: [client] Config directory is ./h2
+2026-01-27 14:46:52.369 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.2
+2026-01-27 14:46:52.369 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:52.425 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:52.431 [cefctrl] INFO: [client] Config directory is ./h2
+2026-01-27 14:46:52.431 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.2
+2026-01-27 14:46:52.431 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:52.487 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:52.493 [cefctrl] INFO: [client] Config directory is ./h2
+2026-01-27 14:46:52.493 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.2
+2026-01-27 14:46:52.493 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:52.550 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:52.556 [cefctrl] INFO: [client] Config directory is ./h2
+2026-01-27 14:46:52.556 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.2
+2026-01-27 14:46:52.556 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:52.612 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:52.618 [cefctrl] INFO: [client] Config directory is ./h2
+2026-01-27 14:46:52.618 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.2
+2026-01-27 14:46:52.618 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:52.674 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:52.681 [cefctrl] INFO: [client] Config directory is ./h3
+2026-01-27 14:46:52.681 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.3
+2026-01-27 14:46:52.681 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:52.737 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+h5 command: ifconfig h5-eth0 192.168.1.6
+h7 command: ifconfig h7-eth0 192.168.1.8
+h2 command: ifconfig h2-eth0 192.168.2.3
+h3 command: ifconfig h3-eth0 192.168.2.4
+h0 command: ifconfig h0-eth0 192.168.3.1
+h6 command: ifconfig h6-eth0 192.168.3.7
+h1 command: ifconfig h1-eth0 192.168.4.2
+h4 command: ifconfig h4-eth0 192.168.4.5
+h1 command: ifconfig h1-eth1 192.168.5.2
+h5 command: ifconfig h5-eth1 192.168.5.6
+h3 command: ifconfig h3-eth1 192.168.6.4
+h5 command: ifconfig h5-eth2 192.168.6.6
+h1 command: ifconfig h1-eth2 192.168.7.2
+h3 command: ifconfig h3-eth2 192.168.7.4
+h4 command: ifconfig h4-eth1 192.168.8.5
+h7 command: ifconfig h7-eth1 192.168.8.8
+h1 command: ifconfig h1-eth3 192.168.9.2
+h6 command: ifconfig h6-eth1 192.168.9.7
+h2 command: ifconfig h2-eth1 192.168.10.3
+h6 command: ifconfig h6-eth2 192.168.10.7
+h0 command: ifconfig h0-eth1 192.168.11.1
+h5 command: ifconfig h5-eth3 192.168.11.6
+h3 command: ifconfig h3-eth3 192.168.12.4
+h4 command: ifconfig h4-eth2 192.168.12.5
+h3 command: ifconfig h3-eth4 192.168.13.4
+h7 command: ifconfig h7-eth2 192.168.13.8
+h0 command: ifconfig h0-eth2 192.168.14.1
+h1 command: ifconfig h1-eth4 192.168.14.2
+h0 command: ifconfig h0-eth3 192.168.15.1
+h4 command: ifconfig h4-eth3 192.168.15.5
+h4 command: ifconfig h4-eth4 192.168.16.5
+h6 command: ifconfig h6-eth3 192.168.16.7
+h5 command: ifconfig h5-eth4 192.168.17.6
+h6 command: ifconfig h6-eth4 192.168.17.7
+h1 command: ifconfig h1-eth5 192.168.18.2
+h2 command: ifconfig h2-eth2 192.168.18.3
+h2 command: ifconfig h2-eth3 192.168.19.3
+h4 command: ifconfig h4-eth5 192.168.19.5
+h2 command: ifconfig h2-eth4 192.168.20.3
+h7 command: ifconfig h7-eth3 192.168.20.8
+h1 command: csmgrdstart -d ./h1 > h1-csmgrd-log
+h3 command: csmgrdstart -d ./h3 > h3-csmgrd-log
+h5 command: csmgrdstart -d ./h5 > h5-csmgrd-log
+h7 command: csmgrdstart -d ./h7 > h7-csmgrd-log
+h0 command: cefnetdstart -d ./h0 > h0-cefnetd-log
+h1 command: cefnetdstart -d ./h1 > h1-cefnetd-log
+h2 command: cefnetdstart -d ./h2 > h2-cefnetd-log
+h3 command: cefnetdstart -d ./h3 > h3-cefnetd-log
+h4 command: cefnetdstart -d ./h4 > h4-cefnetd-log
+h5 command: cefnetdstart -d ./h5 > h5-cefnetd-log
+h6 command: cefnetdstart -d ./h6 > h6-cefnetd-log
+h7 command: cefnetdstart -d ./h7 > h7-cefnetd-log
+h0 command: cefroute add ccnx:/test/example2 udp 192.168.14.2 -d ./h0
+h0 command: cefroute add ccnx:/test/example2 udp 192.168.15.5 -d ./h0
+h0 command: cefroute add ccnx:/test/example2 udp 192.168.11.6 -d ./h0
+h0 command: cefroute add ccnx:/test/example2 udp 192.168.3.7 -d ./h0
+h0 command: cefroute add ccnx:/test/example3 udp 192.168.14.2 -d ./h0
+h0 command: cefroute add ccnx:/test/example3 udp 192.168.15.5 -d ./h0
+h0 command: cefroute add ccnx:/test/example3 udp 192.168.3.7 -d ./h0
+h0 command: cefroute add ccnx:/test/example3 udp 192.168.11.6 -d ./h0
+h0 command: cefroute add ccnx:/test/example4 udp 192.168.14.2 -d ./h0
+h0 command: cefroute add ccnx:/test/example4 udp 192.168.15.5 -d ./h0
+h0 command: cefroute add ccnx:/test/example4 udp 192.168.11.6 -d ./h0
+h0 command: cefroute add ccnx:/test/example4 udp 192.168.3.7 -d ./h0
+h0 command: cefroute add ccnx:/test/example5 udp 192.168.15.5 -d ./h0
+h0 command: cefroute add ccnx:/test/example5 udp 192.168.14.2 -d ./h0
+h0 command: cefroute add ccnx:/test/example5 udp 192.168.3.7 -d ./h0
+h0 command: cefroute add ccnx:/test/example5 udp 192.168.11.6 -d ./h0
+h0 command: cefroute add ccnx:/test/example6 udp 192.168.11.6 -d ./h0
+h0 command: cefroute add ccnx:/test/example6 udp 192.168.14.2 -d ./h0
+h0 command: cefroute add ccnx:/test/example6 udp 192.168.3.7 -d ./h0
+h0 command: cefroute add ccnx:/test/example6 udp 192.168.15.5 -d ./h0
+h0 command: cefroute add ccnx:/test/example7 udp 192.168.3.7 -d ./h0
+h0 command: cefroute add ccnx:/test/example7 udp 192.168.14.2 -d ./h0
+h0 command: cefroute add ccnx:/test/example7 udp 192.168.15.5 -d ./h0
+h0 command: cefroute add ccnx:/test/example7 udp 192.168.11.6 -d ./h0
+h0 command: cefroute add ccnx:/test/example8 udp 192.168.15.5 -d ./h0
+h0 command: cefroute add ccnx:/test/example8 udp 192.168.11.6 -d ./h0
+h0 command: cefroute add ccnx:/test/example8 udp 192.168.14.2 -d ./h0
+h0 command: cefroute add ccnx:/test/example8 udp 192.168.3.7 -d ./h0
+h1 command: cefroute add ccnx:/test/example1 udp 192.168.14.1 -d ./h1
+h1 command: cefroute add ccnx:/test/example1 udp 192.168.4.5 -d ./h1
+h1 command: cefroute add ccnx:/test/example1 udp 192.168.5.6 -d ./h1
+h1 command: cefroute add ccnx:/test/example1 udp 192.168.9.7 -d ./h1
+h1 command: cefroute add ccnx:/test/example3 udp 192.168.18.3 -d ./h1
+h1 command: cefroute add ccnx:/test/example3 udp 192.168.7.4 -d ./h1
+h1 command: cefroute add ccnx:/test/example3 udp 192.168.4.5 -d ./h1
+h1 command: cefroute add ccnx:/test/example3 udp 192.168.9.7 -d ./h1
+h1 command: cefroute add ccnx:/test/example4 udp 192.168.7.4 -d ./h1
+h1 command: cefroute add ccnx:/test/example4 udp 192.168.18.3 -d ./h1
+h1 command: cefroute add ccnx:/test/example4 udp 192.168.4.5 -d ./h1
+h1 command: cefroute add ccnx:/test/example4 udp 192.168.5.6 -d ./h1
+h1 command: cefroute add ccnx:/test/example5 udp 192.168.4.5 -d ./h1
+h1 command: cefroute add ccnx:/test/example5 udp 192.168.14.1 -d ./h1
+h1 command: cefroute add ccnx:/test/example5 udp 192.168.18.3 -d ./h1
+h1 command: cefroute add ccnx:/test/example5 udp 192.168.7.4 -d ./h1
+h1 command: cefroute add ccnx:/test/example6 udp 192.168.5.6 -d ./h1
+h1 command: cefroute add ccnx:/test/example6 udp 192.168.14.1 -d ./h1
+h1 command: cefroute add ccnx:/test/example6 udp 192.168.7.4 -d ./h1
+h1 command: cefroute add ccnx:/test/example6 udp 192.168.9.7 -d ./h1
+h1 command: cefroute add ccnx:/test/example7 udp 192.168.9.7 -d ./h1
+h1 command: cefroute add ccnx:/test/example7 udp 192.168.14.1 -d ./h1
+h1 command: cefroute add ccnx:/test/example7 udp 192.168.18.3 -d ./h1
+h1 command: cefroute add ccnx:/test/example7 udp 192.168.4.5 -d ./h1
+h1 command: cefroute add ccnx:/test/example8 udp 192.168.18.3 -d ./h1
+h1 command: cefroute add ccnx:/test/example8 udp 192.168.7.4 -d ./h1
+h1 command: cefroute add ccnx:/test/example8 udp 192.168.4.5 -d ./h1
+h1 command: cefroute add ccnx:/test/example8 udp 192.168.5.6 -d ./h1
+h2 command: cefroute add ccnx:/test/example1 udp 192.168.18.2 -d ./h2
+h2 command: cefroute add ccnx:/test/example1 udp 192.168.19.5 -d ./h2
+h2 command: cefroute add ccnx:/test/example1 udp 192.168.10.7 -d ./h2
+h2 command: cefroute add ccnx:/test/example1 udp 192.168.2.4 -d ./h2
+h2 command: cefroute add ccnx:/test/example2 udp 192.168.18.2 -d ./h2
+h2 command: cefroute add ccnx:/test/example2 udp 192.168.2.4 -d ./h2
+h2 command: cefroute add ccnx:/test/example2 udp 192.168.19.5 -d ./h2
+h2 command: cefroute add ccnx:/test/example2 udp 192.168.10.7 -d ./h2
+h2 command: cefroute add ccnx:/test/example4 udp 192.168.2.4 -d ./h2
+h2 command: cefroute add ccnx:/test/example4 udp 192.168.18.2 -d ./h2
+h2 command: cefroute add ccnx:/test/example4 udp 192.168.19.5 -d ./h2
+h2 command: cefroute add ccnx:/test/example4 udp 192.168.20.8 -d ./h2
+h2 command: cefroute add ccnx:/test/example5 udp 192.168.19.5 -d ./h2
+h2 command: cefroute add ccnx:/test/example5 udp 192.168.18.2 -d ./h2
+h2 command: cefroute add ccnx:/test/example5 udp 192.168.2.4 -d ./h2
+h2 command: cefroute add ccnx:/test/example5 udp 192.168.10.7 -d ./h2
+h2 command: cefroute add ccnx:/test/example6 udp 192.168.18.2 -d ./h2
+h2 command: cefroute add ccnx:/test/example6 udp 192.168.2.4 -d ./h2
+h2 command: cefroute add ccnx:/test/example6 udp 192.168.10.7 -d ./h2
+h2 command: cefroute add ccnx:/test/example6 udp 192.168.20.8 -d ./h2
+h2 command: cefroute add ccnx:/test/example7 udp 192.168.10.7 -d ./h2
+h2 command: cefroute add ccnx:/test/example7 udp 192.168.18.2 -d ./h2
+h2 command: cefroute add ccnx:/test/example7 udp 192.168.19.5 -d ./h2
+h2 command: cefroute add ccnx:/test/example7 udp 192.168.2.4 -d ./h2
+h2 command: cefroute add ccnx:/test/example8 udp 192.168.20.8 -d ./h2
+h2 command: cefroute add ccnx:/test/example8 udp 192.168.2.4 -d ./h2
+h2 command: cefroute add ccnx:/test/example8 udp 192.168.19.5 -d ./h2
+h2 command: cefroute add ccnx:/test/example8 udp 192.168.18.2 -d ./h2
+h3 command: cefroute add ccnx:/test/example1 udp 192.168.7.2 -d ./h3
+h3 command: 2026-01-27 14:46:52.743 [cefctrl] INFO: [client] Config directory is ./h3
+2026-01-27 14:46:52.744 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.3
+2026-01-27 14:46:52.744 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:52.800 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:52.806 [cefctrl] INFO: [client] Config directory is ./h3
+2026-01-27 14:46:52.806 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.3
+2026-01-27 14:46:52.806 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:52.863 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:52.869 [cefctrl] INFO: [client] Config directory is ./h3
+2026-01-27 14:46:52.869 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.3
+2026-01-27 14:46:52.869 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:52.925 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:52.931 [cefctrl] INFO: [client] Config directory is ./h3
+2026-01-27 14:46:52.931 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.3
+2026-01-27 14:46:52.931 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:52.988 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:52.994 [cefctrl] INFO: [client] Config directory is ./h3
+2026-01-27 14:46:52.994 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.3
+2026-01-27 14:46:52.994 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:53.051 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:53.056 [cefctrl] INFO: [client] Config directory is ./h3
+2026-01-27 14:46:53.057 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.3
+2026-01-27 14:46:53.057 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:53.113 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:53.119 [cefctrl] INFO: [client] Config directory is ./h3
+2026-01-27 14:46:53.119 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.3
+2026-01-27 14:46:53.119 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:53.175 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:53.181 [cefctrl] INFO: [client] Config directory is ./h3
+2026-01-27 14:46:53.181 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.3
+2026-01-27 14:46:53.181 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:53.238 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:53.244 [cefctrl] INFO: [client] Config directory is ./h3
+2026-01-27 14:46:53.244 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.3
+2026-01-27 14:46:53.244 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:53.300 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:53.306 [cefctrl] INFO: [client] Config directory is ./h3
+2026-01-27 14:46:53.306 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.3
+2026-01-27 14:46:53.306 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:53.363 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:53.369 [cefctrl] INFO: [client] Config directory is ./h3
+2026-01-27 14:46:53.369 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.3
+2026-01-27 14:46:53.369 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:53.425 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:53.431 [cefctrl] INFO: [client] Config directory is ./h3
+2026-01-27 14:46:53.431 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.3
+2026-01-27 14:46:53.431 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:53.488 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:53.493 [cefctrl] INFO: [client] Config directory is ./h3
+2026-01-27 14:46:53.493 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.3
+2026-01-27 14:46:53.493 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:53.550 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:53.556 [cefctrl] INFO: [client] Config directory is ./h3
+2026-01-27 14:46:53.556 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.3
+2026-01-27 14:46:53.556 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:53.612 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:53.618 [cefctrl] INFO: [client] Config directory is ./h3
+2026-01-27 14:46:53.618 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.3
+2026-01-27 14:46:53.618 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:53.675 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:53.681 [cefctrl] INFO: [client] Config directory is ./h3
+2026-01-27 14:46:53.681 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.3
+2026-01-27 14:46:53.681 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:53.738 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:53.744 [cefctrl] INFO: [client] Config directory is ./h3
+2026-01-27 14:46:53.744 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.3
+2026-01-27 14:46:53.744 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:53.801 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:53.807 [cefctrl] INFO: [client] Config directory is ./h3
+2026-01-27 14:46:53.807 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.3
+2026-01-27 14:46:53.807 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:53.863 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:53.869 [cefctrl] INFO: [client] Config directory is ./h3
+2026-01-27 14:46:53.869 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.3
+2026-01-27 14:46:53.869 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:53.926 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:53.932 [cefctrl] INFO: [client] Config directory is ./h3
+2026-01-27 14:46:53.932 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.3
+2026-01-27 14:46:53.932 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:53.988 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:53.994 [cefctrl] INFO: [client] Config directory is ./h3
+2026-01-27 14:46:53.994 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.3
+2026-01-27 14:46:53.994 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:54.050 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:54.056 [cefctrl] INFO: [client] Config directory is ./h3
+2026-01-27 14:46:54.057 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.3
+2026-01-27 14:46:54.057 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:54.113 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:54.119 [cefctrl] INFO: [client] Config directory is ./h3
+2026-01-27 14:46:54.119 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.3
+2026-01-27 14:46:54.119 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:54.175 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:54.181 [cefctrl] INFO: [client] Config directory is ./h3
+2026-01-27 14:46:54.181 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.3
+2026-01-27 14:46:54.181 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:54.238 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:54.244 [cefctrl] INFO: [client] Config directory is ./h3
+2026-01-27 14:46:54.244 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.3
+2026-01-27 14:46:54.244 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:54.300 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:54.306 [cefctrl] INFO: [client] Config directory is ./h3
+2026-01-27 14:46:54.306 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.3
+2026-01-27 14:46:54.306 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:54.363 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:54.369 [cefctrl] INFO: [client] Config directory is ./h3
+2026-01-27 14:46:54.369 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.3
+2026-01-27 14:46:54.369 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:54.425 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:54.431 [cefctrl] INFO: [client] Config directory is ./h4
+2026-01-27 14:46:54.432 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.4
+2026-01-27 14:46:54.432 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:54.488 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:54.494 [cefctrl] INFO: [client] Config directory is ./h4
+2026-01-27 14:46:54.494 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.4
+2026-01-27 14:46:54.494 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:54.551 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:54.557 [cefctrl] INFO: [client] Config directory is ./h4
+2026-01-27 14:46:54.557 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.4
+2026-01-27 14:46:54.557 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:54.613 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:54.619 [cefctrl] INFO: [client] Config directory is ./h4
+2026-01-27 14:46:54.620 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.4
+2026-01-27 14:46:54.620 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:54.676 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:54.682 [cefctrl] INFO: [client] Config directory is ./h4
+2026-01-27 14:46:54.682 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.4
+2026-01-27 14:46:54.682 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:54.739 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:54.745 [cefctrl] INFO: [client] Config directory is ./h4
+2026-01-27 14:46:54.745 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.4
+2026-01-27 14:46:54.745 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:54.801 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:54.808 [cefctrl] INFO: [client] Config directory is ./h4
+2026-01-27 14:46:54.808 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.4
+2026-01-27 14:46:54.808 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:54.864 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:54.870 [cefctrl] INFO: [client] Config directory is ./h4
+2026-01-27 14:46:54.870 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.4
+2026-01-27 14:46:54.870 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:54.927 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:54.933 [cefctrl] INFO: [client] Config directory is ./h4
+2026-01-27 14:46:54.933 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.4
+2026-01-27 14:46:54.933 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:54.990 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:54.996 [cefctrl] INFO: [client] Config directory is ./h4
+2026-01-27 14:46:54.996 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.4
+2026-01-27 14:46:54.996 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:55.052 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:55.058 [cefctrl] INFO: [client] Config directory is ./h4
+2026-01-27 14:46:55.058 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.4
+2026-01-27 14:46:55.058 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:55.115 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:55.121 [cefctrl] INFO: [client] Config directory is ./h4
+2026-01-27 14:46:55.121 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.4
+2026-01-27 14:46:55.121 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:55.177 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:55.184 [cefctrl] INFO: [client] Config directory is ./h4
+2026-01-27 14:46:55.184 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.4
+2026-01-27 14:46:55.184 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:55.240 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:55.246 [cefctrl] INFO: [client] Config directory is ./h4
+2026-01-27 14:46:55.246 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.4
+2026-01-27 14:46:55.246 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:55.303 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:55.309 [cefctrl] INFO: [client] Config directory is ./h4
+2026-01-27 14:46:55.309 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.4
+2026-01-27 14:46:55.309 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:55.366 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:55.372 [cefctrl] INFO: [client] Config directory is ./h4
+2026-01-27 14:46:55.372 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.4
+2026-01-27 14:46:55.372 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:55.429 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:55.435 [cefctrl] INFO: [client] Config directory is ./h4
+2026-01-27 14:46:55.435 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.4
+2026-01-27 14:46:55.435 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:55.491 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:55.497 [cefctrl] INFO: [client] Config directory is ./h4
+2026-01-27 14:46:55.498 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.4
+2026-01-27 14:46:55.498 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:55.554 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:55.560 [cefctrl] INFO: [client] Config directory is ./h4
+2026-01-27 14:46:55.560 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.4
+2026-01-27 14:46:55.560 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:55.617 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:55.623 [cefctrl] INFO: [client] Config directory is ./h4
+2026-01-27 14:46:55.623 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.4
+2026-01-27 14:46:55.623 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:55.679 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:55.686 [cefctrl] INFO: [client] Config directory is ./h4
+2026-01-27 14:46:55.686 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.4
+2026-01-27 14:46:55.686 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:55.742 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:55.749 [cefctrl] INFO: [client] Config directory is ./h4
+2026-01-27 14:46:55.749 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.4
+2026-01-27 14:46:55.749 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:55.805 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:55.811 [cefctrl] INFO: [client] Config directory is ./h4
+2026-01-27 14:46:55.811 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.4
+2026-01-27 14:46:55.811 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:55.868 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:55.874 [cefctrl] INFO: [client] Config directory is ./h4
+2026-01-27 14:46:55.874 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.4
+2026-01-27 14:46:55.874 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:55.930 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:55.937 [cefctrl] INFO: [client] Config directory is ./h4
+2026-01-27 14:46:55.937 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.4
+2026-01-27 14:46:55.937 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:55.993 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:55.999 [cefctrl] INFO: [client] Config directory is ./h4
+2026-01-27 14:46:55.999 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.4
+2026-01-27 14:46:55.999 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:56.056 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:56.062 [cefctrl] INFO: [client] Config directory is ./h4
+2026-01-27 14:46:56.062 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.4
+2026-01-27 14:46:56.062 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:56.118 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:56.125 [cefctrl] INFO: [client] Config directory is ./h4
+2026-01-27 14:46:56.125 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.4
+2026-01-27 14:46:56.125 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:56.181 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:56.188 [cefctrl] INFO: [client] Config directory is ./h5
+2026-01-27 14:46:56.188 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.5
+2026-01-27 14:46:56.188 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:56.244 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:56.250 [cefctrl] INFO: [client] Config directory is ./h5
+2026-01-27 14:46:56.250 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.5
+2026-01-27 14:46:56.250 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:56.307 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:56.313 [cefctrl] INFO: [client] Config directory is ./h5
+2026-01-27 14:46:56.313 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.5
+2026-01-27 14:46:56.313 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:56.369 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:56.375 [cefctrl] INFO: [client] Config directory is ./h5
+2026-01-27 14:46:56.375 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.5
+2026-01-27 14:46:56.375 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:56.432 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:56.438 [cefctrl] INFO: [client] Config directory is ./h5
+2026-01-27 14:46:56.438 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.5
+2026-01-27 14:46:56.438 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:56.495 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:56.501 [cefctrl] INFO: [client] Config directory is ./h5
+2026-01-27 14:46:56.501 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.5
+2026-01-27 14:46:56.501 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:56.557 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:56.563 [cefctrl] INFO: [client] Config directory is ./h5
+2026-01-27 14:46:56.564 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.5
+2026-01-27 14:46:56.564 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:56.620 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:56.626 [cefctrl] INFO: [client] Config directory is ./h5
+2026-01-27 14:46:56.626 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.5
+2026-01-27 14:46:56.626 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:56.682 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:56.688 [cefctrl] INFO: [client] Config directory is ./h5
+2026-01-27 14:46:56.689 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.5
+2026-01-27 14:46:56.689 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:56.745 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:56.751 [cefctrl] INFO: [client] Config directory is ./h5
+2026-01-27 14:46:56.751 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.5
+2026-01-27 14:46:56.751 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:56.807 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:56.813 [cefctrl] INFO: [client] Config directory is ./h5
+2026-01-27 14:46:56.814 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.5
+2026-01-27 14:46:56.814 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:56.870 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:56.876 [cefctrl] INFO: [client] Config directory is ./h5
+2026-01-27 14:46:56.876 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.5
+2026-01-27 14:46:56.876 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:56.932 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:56.938 [cefctrl] INFO: [client] Config directory is ./h5
+2026-01-27 14:46:56.938 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.5
+2026-01-27 14:46:56.938 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:56.995 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:56.001 [cefctrl] INFO: [client] Config directory is ./h5
+2026-01-27 14:46:57.001 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.5
+2026-01-27 14:46:57.001 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:57.057 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:57.063 [cefctrl] INFO: [client] Config directory is ./h5
+2026-01-27 14:46:57.063 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.5
+2026-01-27 14:46:57.063 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:57.119 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:57.126 [cefctrl] INFO: [client] Config directory is ./h5
+2026-01-27 14:46:57.126 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.5
+2026-01-27 14:46:57.126 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:57.182 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:57.188 [cefctrl] INFO: [client] Config directory is ./h5
+2026-01-27 14:46:57.188 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.5
+2026-01-27 14:46:57.188 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:57.245 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:57.251 [cefctrl] INFO: [client] Config directory is ./h5
+2026-01-27 14:46:57.251 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.5
+2026-01-27 14:46:57.251 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:57.307 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:57.313 [cefctrl] INFO: [client] Config directory is ./h5
+2026-01-27 14:46:57.313 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.5
+2026-01-27 14:46:57.313 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:57.370 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:57.376 [cefctrl] INFO: [client] Config directory is ./h5
+2026-01-27 14:46:57.376 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.5
+2026-01-27 14:46:57.376 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:57.433 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:57.439 [cefctrl] INFO: [client] Config directory is ./h5
+2026-01-27 14:46:57.439 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.5
+2026-01-27 14:46:57.439 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:57.495 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:57.501 [cefctrl] INFO: [client] Config directory is ./h5
+2026-01-27 14:46:57.501 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.5
+2026-01-27 14:46:57.501 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:57.558 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:57.564 [cefctrl] INFO: [client] Config directory is ./h5
+2026-01-27 14:46:57.564 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.5
+2026-01-27 14:46:57.564 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:57.620 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:57.627 [cefctrl] INFO: [client] Config directory is ./h5
+2026-01-27 14:46:57.627 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.5
+2026-01-27 14:46:57.627 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:57.683 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:57.689 [cefctrl] INFO: [client] Config directory is ./h5
+2026-01-27 14:46:57.689 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.5
+2026-01-27 14:46:57.689 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:57.746 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:57.752 [cefctrl] INFO: [client] Config directory is ./h5
+2026-01-27 14:46:57.752 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.5
+2026-01-27 14:46:57.752 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:57.808 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:57.814 [cefctrl] INFO: [client] Config directory is ./h5
+2026-01-27 14:46:57.814 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.5
+2026-01-27 14:46:57.814 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:57.871 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:57.877 [cefctrl] INFO: [client] Config directory is ./h5
+2026-01-27 14:46:57.877 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.5
+2026-01-27 14:46:57.877 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:57.934 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:57.940 [cefctrl] INFO: [client] Config directory is ./h6
+2026-01-27 14:46:57.940 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.6
+2026-01-27 14:46:57.940 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:57.996 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:58.002 [cefctrl] INFO: [client] Config directory is ./h6
+2026-01-27 14:46:58.002 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.6
+2026-01-27 14:46:58.002 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:58.059 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:58.064 [cefctrl] INFO: [client] Config directory is ./h6
+2026-01-27 14:46:58.064 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.6
+2026-01-27 14:46:58.064 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:58.121 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:58.127 [cefctrl] INFO: [client] Config directory is ./h6
+2026-01-27 14:46:58.127 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.6
+2026-01-27 14:46:58.127 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:58.183 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:58.189 [cefctrl] INFO: [client] Config directory is ./h6
+2026-01-27 14:46:58.189 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.6
+2026-01-27 14:46:58.189 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:58.246 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:58.252 [cefctrl] INFO: [client] Config directory is ./h6
+2026-01-27 14:46:58.252 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.6
+2026-01-27 14:46:58.252 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:58.308 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:58.314 [cefctrl] INFO: [client] Config directory is ./h6
+2026-01-27 14:46:58.314 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.6
+2026-01-27 14:46:58.314 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:58.371 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:58.377 [cefctrl] INFO: [client] Config directory is ./h6
+2026-01-27 14:46:58.377 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.6
+2026-01-27 14:46:58.377 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:58.433 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:58.439 [cefctrl] INFO: [client] Config directory is ./h6
+2026-01-27 14:46:58.439 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.6
+2026-01-27 14:46:58.439 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:58.496 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:58.502 [cefctrl] INFO: [client] Config directory is ./h6
+2026-01-27 14:46:58.502 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.6
+2026-01-27 14:46:58.502 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:58.558 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:58.564 [cefctrl] INFO: [client] Config directory is ./h6
+2026-01-27 14:46:58.564 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.6
+2026-01-27 14:46:58.564 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:58.621 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:58.626 [cefctrl] INFO: [client] Config directory is ./h6
+2026-01-27 14:46:58.626 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.6
+2026-01-27 14:46:58.626 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:58.683 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:58.689 [cefctrl] INFO: [client] Config directory is ./h6
+2026-01-27 14:46:58.689 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.6
+2026-01-27 14:46:58.689 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:58.745 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:58.751 [cefctrl] INFO: [client] Config directory is ./h6
+2026-01-27 14:46:58.751 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.6
+2026-01-27 14:46:58.751 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:58.808 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:58.814 [cefctrl] INFO: [client] Config directory is ./h6
+2026-01-27 14:46:58.814 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.6
+2026-01-27 14:46:58.814 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:58.871 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:58.877 [cefctrl] INFO: [client] Config directory is ./h6
+2026-01-27 14:46:58.877 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.6
+2026-01-27 14:46:58.877 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:58.933 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:58.940 [cefctrl] INFO: [client] Config directory is ./h6
+2026-01-27 14:46:58.940 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.6
+2026-01-27 14:46:58.940 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:58.996 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:59.002 [cefctrl] INFO: [client] Config directory is ./h6
+2026-01-27 14:46:59.002 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.6
+2026-01-27 14:46:59.002 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:59.059 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:59.065 [cefctrl] INFO: [client] Config directory is ./h6
+2026-01-27 14:46:59.065 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.6
+2026-01-27 14:46:59.065 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:59.121 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:59.127 [cefctrl] INFO: [client] Config directory is ./h6
+2026-01-27 14:46:59.127 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.6
+2026-01-27 14:46:59.127 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:59.184 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:59.190 [cefctrl] INFO: [client] Config directory is ./h6
+2026-01-27 14:46:59.190 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.6
+2026-01-27 14:46:59.190 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:59.246 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:59.252 [cefctrl] INFO: [client] Config directory is ./h6
+2026-01-27 14:46:59.252 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.6
+2026-01-27 14:46:59.252 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:59.309 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:59.315 [cefctrl] INFO: [client] Config directory is ./h6
+2026-01-27 14:46:59.315 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.6
+2026-01-27 14:46:59.315 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:59.371 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:59.377 [cefctrl] INFO: [client] Config directory is ./h6
+2026-01-27 14:46:59.377 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.6
+2026-01-27 14:46:59.377 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:59.434 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:59.440 [cefctrl] INFO: [client] Config directory is ./h6
+2026-01-27 14:46:59.440 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.6
+2026-01-27 14:46:59.440 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:59.496 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:59.502 [cefctrl] INFO: [client] Config directory is ./h6
+2026-01-27 14:46:59.502 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.6
+2026-01-27 14:46:59.502 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:59.558 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:59.564 [cefctrl] INFO: [client] Config directory is ./h6
+2026-01-27 14:46:59.564 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.6
+2026-01-27 14:46:59.564 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:59.621 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:59.627 [cefctrl] INFO: [client] Config directory is ./h6
+2026-01-27 14:46:59.627 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.6
+2026-01-27 14:46:59.627 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:59.683 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:59.690 [cefctrl] INFO: [client] Config directory is ./h7
+2026-01-27 14:46:59.690 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.7
+2026-01-27 14:46:59.690 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:59.746 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:59.752 [cefctrl] INFO: [client] Config directory is ./h7
+2026-01-27 14:46:59.753 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.7
+2026-01-27 14:46:59.753 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:59.809 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:59.815 [cefctrl] INFO: [client] Config directory is ./h7
+2026-01-27 14:46:59.815 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.7
+2026-01-27 14:46:59.815 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:59.872 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:59.878 [cefctrl] INFO: [client] Config directory is ./h7
+2026-01-27 14:46:59.878 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.7
+2026-01-27 14:46:59.878 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:59.934 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:46:59.941 [cefctrl] INFO: [client] Config directory is ./h7
+2026-01-27 14:46:59.941 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.7
+2026-01-27 14:46:59.941 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:46:59.997 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:47:00.003 [cefctrl] INFO: [client] Config directory is ./h7
+2026-01-27 14:47:00.003 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.7
+2026-01-27 14:47:00.003 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:47:00.060 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:47:00.066 [cefctrl] INFO: [client] Config directory is ./h7
+2026-01-27 14:47:00.066 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.7
+2026-01-27 14:47:00.066 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:47:00.122 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+cefroute add ccnx:/test/example1 udp 192.168.12.5 -d ./h3
+h3 command: cefroute add ccnx:/test/example1 udp 192.168.6.6 -d ./h3
+h3 command: cefroute add ccnx:/test/example1 udp 192.168.2.3 -d ./h3
+h3 command: cefroute add ccnx:/test/example2 udp 192.168.7.2 -d ./h3
+h3 command: cefroute add ccnx:/test/example2 udp 192.168.2.3 -d ./h3
+h3 command: cefroute add ccnx:/test/example2 udp 192.168.12.5 -d ./h3
+h3 command: cefroute add ccnx:/test/example2 udp 192.168.6.6 -d ./h3
+h3 command: cefroute add ccnx:/test/example3 udp 192.168.2.3 -d ./h3
+h3 command: cefroute add ccnx:/test/example3 udp 192.168.7.2 -d ./h3
+h3 command: cefroute add ccnx:/test/example3 udp 192.168.12.5 -d ./h3
+h3 command: cefroute add ccnx:/test/example3 udp 192.168.13.8 -d ./h3
+h3 command: cefroute add ccnx:/test/example5 udp 192.168.12.5 -d ./h3
+h3 command: cefroute add ccnx:/test/example5 udp 192.168.7.2 -d ./h3
+h3 command: cefroute add ccnx:/test/example5 udp 192.168.2.3 -d ./h3
+h3 command: cefroute add ccnx:/test/example5 udp 192.168.13.8 -d ./h3
+h3 command: cefroute add ccnx:/test/example6 udp 192.168.6.6 -d ./h3
+h3 command: cefroute add ccnx:/test/example6 udp 192.168.7.2 -d ./h3
+h3 command: cefroute add ccnx:/test/example6 udp 192.168.13.8 -d ./h3
+h3 command: cefroute add ccnx:/test/example6 udp 192.168.2.3 -d ./h3
+h3 command: cefroute add ccnx:/test/example7 udp 192.168.7.2 -d ./h3
+h3 command: cefroute add ccnx:/test/example7 udp 192.168.2.3 -d ./h3
+h3 command: cefroute add ccnx:/test/example7 udp 192.168.12.5 -d ./h3
+h3 command: cefroute add ccnx:/test/example7 udp 192.168.6.6 -d ./h3
+h3 command: cefroute add ccnx:/test/example8 udp 192.168.13.8 -d ./h3
+h3 command: cefroute add ccnx:/test/example8 udp 192.168.2.3 -d ./h3
+h3 command: cefroute add ccnx:/test/example8 udp 192.168.12.5 -d ./h3
+h3 command: cefroute add ccnx:/test/example8 udp 192.168.6.6 -d ./h3
+h4 command: cefroute add ccnx:/test/example1 udp 192.168.15.1 -d ./h4
+h4 command: cefroute add ccnx:/test/example1 udp 192.168.4.2 -d ./h4
+h4 command: cefroute add ccnx:/test/example1 udp 192.168.16.7 -d ./h4
+h4 command: cefroute add ccnx:/test/example1 udp 192.168.19.3 -d ./h4
+h4 command: cefroute add ccnx:/test/example2 udp 192.168.4.2 -d ./h4
+h4 command: cefroute add ccnx:/test/example2 udp 192.168.15.1 -d ./h4
+h4 command: cefroute add ccnx:/test/example2 udp 192.168.19.3 -d ./h4
+h4 command: cefroute add ccnx:/test/example2 udp 192.168.12.4 -d ./h4
+h4 command: cefroute add ccnx:/test/example3 udp 192.168.19.3 -d ./h4
+h4 command: cefroute add ccnx:/test/example3 udp 192.168.4.2 -d ./h4
+h4 command: cefroute add ccnx:/test/example3 udp 192.168.12.4 -d ./h4
+h4 command: cefroute add ccnx:/test/example3 udp 192.168.16.7 -d ./h4
+h4 command: cefroute add ccnx:/test/example4 udp 192.168.12.4 -d ./h4
+h4 command: cefroute add ccnx:/test/example4 udp 192.168.4.2 -d ./h4
+h4 command: cefroute add ccnx:/test/example4 udp 192.168.19.3 -d ./h4
+h4 command: cefroute add ccnx:/test/example4 udp 192.168.8.8 -d ./h4
+h4 command: cefroute add ccnx:/test/example6 udp 192.168.15.1 -d ./h4
+h4 command: cefroute add ccnx:/test/example6 udp 192.168.4.2 -d ./h4
+h4 command: cefroute add ccnx:/test/example6 udp 192.168.12.4 -d ./h4
+h4 command: cefroute add ccnx:/test/example6 udp 192.168.16.7 -d ./h4
+h4 command: cefroute add ccnx:/test/example7 udp 192.168.16.7 -d ./h4
+h4 command: cefroute add ccnx:/test/example7 udp 192.168.15.1 -d ./h4
+h4 command: cefroute add ccnx:/test/example7 udp 192.168.4.2 -d ./h4
+h4 command: cefroute add ccnx:/test/example7 udp 192.168.19.3 -d ./h4
+h4 command: cefroute add ccnx:/test/example8 udp 192.168.8.8 -d ./h4
+h4 command: cefroute add ccnx:/test/example8 udp 192.168.19.3 -d ./h4
+h4 command: cefroute add ccnx:/test/example8 udp 192.168.12.4 -d ./h4
+h4 command: cefroute add ccnx:/test/example8 udp 192.168.15.1 -d ./h4
+h5 command: cefroute add ccnx:/test/example1 udp 192.168.11.1 -d ./h5
+h5 command: cefroute add ccnx:/test/example1 udp 192.168.5.2 -d ./h5
+h5 command: cefroute add ccnx:/test/example1 udp 192.168.17.7 -d ./h5
+h5 command: cefroute add ccnx:/test/example1 udp 192.168.6.4 -d ./h5
+h5 command: cefroute add ccnx:/test/example2 udp 192.168.5.2 -d ./h5
+h5 command: cefroute add ccnx:/test/example2 udp 192.168.11.1 -d ./h5
+h5 command: cefroute add ccnx:/test/example2 udp 192.168.6.4 -d ./h5
+h5 command: cefroute add ccnx:/test/example2 udp 192.168.17.7 -d ./h5
+h5 command: cefroute add ccnx:/test/example3 udp 192.168.5.2 -d ./h5
+h5 command: cefroute add ccnx:/test/example3 udp 192.168.6.4 -d ./h5
+h5 command: cefroute add ccnx:/test/example3 udp 192.168.17.7 -d ./h5
+h5 command: cefroute add ccnx:/test/example3 udp 192.168.1.8 -d ./h5
+h5 command: cefroute add ccnx:/test/example4 udp 192.168.6.4 -d ./h5
+h5 command: cefroute add ccnx:/test/example4 udp 192.168.5.2 -d ./h5
+h5 command: cefroute add ccnx:/test/example4 udp 192.168.1.8 -d ./h5
+h5 command: cefroute add ccnx:/test/example4 udp 192.168.11.1 -d ./h5
+h5 command: cefroute add ccnx:/test/example5 udp 192.168.11.1 -d ./h5
+h5 command: cefroute add ccnx:/test/example5 udp 192.168.5.2 -d ./h5
+h5 command: cefroute add ccnx:/test/example5 udp 192.168.6.4 -d ./h5
+h5 command: cefroute add ccnx:/test/example5 udp 192.168.17.7 -d ./h5
+h5 command: cefroute add ccnx:/test/example7 udp 192.168.17.7 -d ./h5
+h5 command: cefroute add ccnx:/test/example7 udp 192.168.11.1 -d ./h5
+h5 command: cefroute add ccnx:/test/example7 udp 192.168.5.2 -d ./h5
+h5 command: cefroute add ccnx:/test/example7 udp 192.168.6.4 -d ./h5
+h5 command: cefroute add ccnx:/test/example8 udp 192.168.1.8 -d ./h5
+h5 command: cefroute add ccnx:/test/example8 udp 192.168.6.4 -d ./h5
+h5 command: cefroute add ccnx:/test/example8 udp 192.168.11.1 -d ./h5
+h5 command: cefroute add ccnx:/test/example8 udp 192.168.5.2 -d ./h5
+h6 command: cefroute add ccnx:/test/example1 udp 192.168.3.1 -d ./h6
+h6 command: cefroute add ccnx:/test/example1 udp 192.168.9.2 -d ./h6
+h6 command: cefroute add ccnx:/test/example1 udp 192.168.16.5 -d ./h6
+h6 command: cefroute add ccnx:/test/example1 udp 192.168.17.6 -d ./h6
+h6 command: cefroute add ccnx:/test/example2 udp 192.168.9.2 -d ./h6
+h6 command: cefroute add ccnx:/test/example2 udp 192.168.3.1 -d ./h6
+h6 command: cefroute add ccnx:/test/example2 udp 192.168.10.3 -d ./h6
+h6 command: cefroute add ccnx:/test/example2 udp 192.168.16.5 -d ./h6
+h6 command: cefroute add ccnx:/test/example3 udp 192.168.10.3 -d ./h6
+h6 command: cefroute add ccnx:/test/example3 udp 192.168.9.2 -d ./h6
+h6 command: cefroute add ccnx:/test/example3 udp 192.168.16.5 -d ./h6
+h6 command: cefroute add ccnx:/test/example3 udp 192.168.3.1 -d ./h6
+h6 command: cefroute add ccnx:/test/example4 udp 192.168.9.2 -d ./h6
+h6 command: cefroute add ccnx:/test/example4 udp 192.168.10.3 -d ./h6
+h6 command: cefroute add ccnx:/test/example4 udp 192.168.16.5 -d ./h6
+h6 command: cefroute add ccnx:/test/example4 udp 192.168.17.6 -d ./h6
+h6 command: cefroute add ccnx:/test/example5 udp 192.168.16.5 -d ./h6
+h6 command: cefroute add ccnx:/test/example5 udp 192.168.3.1 -d ./h6
+h6 command: cefroute add ccnx:/test/example5 udp 192.168.9.2 -d ./h6
+h6 command: cefroute add ccnx:/test/example5 udp 192.168.10.3 -d ./h6
+h6 command: cefroute add ccnx:/test/example6 udp 192.168.17.6 -d ./h6
+h6 command: cefroute add ccnx:/test/example6 udp 192.168.3.1 -d ./h6
+h6 command: cefroute add ccnx:/test/example6 udp 192.168.9.2 -d ./h6
+h6 command: cefroute add ccnx:/test/example6 udp 192.168.10.3 -d ./h6
+h6 command: cefroute add ccnx:/test/example8 udp 192.168.10.3 -d ./h6
+h6 command: cefroute add ccnx:/test/example8 udp 192.168.16.5 -d ./h6
+h6 command: cefroute add ccnx:/test/example8 udp 192.168.17.6 -d ./h6
+h6 command: cefroute add ccnx:/test/example8 udp 192.168.3.1 -d ./h6
+h7 command: cefroute add ccnx:/test/example1 udp 192.168.8.5 -d ./h7
+h7 command: cefroute add ccnx:/test/example1 udp 192.168.1.6 -d ./h7
+h7 command: cefroute add ccnx:/test/example1 udp 192.168.20.3 -d ./h7
+h7 command: cefroute add ccnx:/test/example1 udp 192.168.13.4 -d ./h7
+h7 command: cefroute add ccnx:/test/example2 udp 192.168.20.3 -d ./h7
+h7 command: cefroute add ccnx:/test/example2 udp 192.168.13.4 -d ./h7
+h7 command: cefroute add ccnx:/test/example2 udp 192.168.8.5 -d ./h7
+2026-01-27 14:47:00.128 [cefctrl] INFO: [client] Config directory is ./h7
+2026-01-27 14:47:00.128 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.7
+2026-01-27 14:47:00.128 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:47:00.185 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:47:00.191 [cefctrl] INFO: [client] Config directory is ./h7
+2026-01-27 14:47:00.191 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.7
+2026-01-27 14:47:00.191 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:47:00.248 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:47:00.254 [cefctrl] INFO: [client] Config directory is ./h7
+2026-01-27 14:47:00.254 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.7
+2026-01-27 14:47:00.254 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:47:00.310 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:47:00.316 [cefctrl] INFO: [client] Config directory is ./h7
+2026-01-27 14:47:00.316 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.7
+2026-01-27 14:47:00.316 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:47:00.373 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:47:00.379 [cefctrl] INFO: [client] Config directory is ./h7
+2026-01-27 14:47:00.379 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.7
+2026-01-27 14:47:00.379 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:47:00.435 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:47:00.441 [cefctrl] INFO: [client] Config directory is ./h7
+2026-01-27 14:47:00.441 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.7
+2026-01-27 14:47:00.441 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:47:00.498 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:47:00.504 [cefctrl] INFO: [client] Config directory is ./h7
+2026-01-27 14:47:00.504 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.7
+2026-01-27 14:47:00.504 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:47:00.560 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:47:00.566 [cefctrl] INFO: [client] Config directory is ./h7
+2026-01-27 14:47:00.566 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.7
+2026-01-27 14:47:00.566 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:47:00.623 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:47:00.628 [cefctrl] INFO: [client] Config directory is ./h7
+2026-01-27 14:47:00.628 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.7
+2026-01-27 14:47:00.628 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:47:00.685 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:47:00.691 [cefctrl] INFO: [client] Config directory is ./h7
+2026-01-27 14:47:00.691 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.7
+2026-01-27 14:47:00.691 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:47:00.747 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:47:00.753 [cefctrl] INFO: [client] Config directory is ./h7
+2026-01-27 14:47:00.753 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.7
+2026-01-27 14:47:00.753 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:47:00.810 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:47:00.816 [cefctrl] INFO: [client] Config directory is ./h7
+2026-01-27 14:47:00.816 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.7
+2026-01-27 14:47:00.816 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:47:00.873 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:47:00.878 [cefctrl] INFO: [client] Config directory is ./h7
+2026-01-27 14:47:00.879 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.7
+2026-01-27 14:47:00.879 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:47:00.935 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:47:00.941 [cefctrl] INFO: [client] Config directory is ./h7
+2026-01-27 14:47:00.941 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.7
+2026-01-27 14:47:00.941 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:47:00.998 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:47:01.003 [cefctrl] INFO: [client] Config directory is ./h7
+2026-01-27 14:47:01.004 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.7
+2026-01-27 14:47:01.004 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:47:01.060 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:47:01.066 [cefctrl] INFO: [client] Config directory is ./h7
+2026-01-27 14:47:01.066 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.7
+2026-01-27 14:47:01.066 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:47:01.122 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:47:01.128 [cefctrl] INFO: [client] Config directory is ./h7
+2026-01-27 14:47:01.128 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.7
+2026-01-27 14:47:01.128 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:47:01.185 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:47:01.191 [cefctrl] INFO: [client] Config directory is ./h7
+2026-01-27 14:47:01.191 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.7
+2026-01-27 14:47:01.191 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:47:01.247 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:47:01.253 [cefctrl] INFO: [client] Config directory is ./h7
+2026-01-27 14:47:01.253 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.7
+2026-01-27 14:47:01.253 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:47:01.310 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:47:01.316 [cefctrl] INFO: [client] Config directory is ./h7
+2026-01-27 14:47:01.316 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.7
+2026-01-27 14:47:01.316 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:47:01.372 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:47:01.378 [cefctrl] INFO: [client] Config directory is ./h7
+2026-01-27 14:47:01.378 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.7
+2026-01-27 14:47:01.378 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:47:01.434 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+
+FIB status per host:
+2026-01-27 14:47:01.441 [cefctrl] INFO: [client] Config directory is ./h0
+2026-01-27 14:47:01.441 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.0
+2026-01-27 14:47:01.441 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:47:01.497 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:47:01.503 [cefctrl] INFO: [client] Config directory is ./h1
+2026-01-27 14:47:01.504 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.1
+2026-01-27 14:47:01.504 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:47:01.560 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:47:01.566 [cefctrl] INFO: [client] Config directory is ./h2
+2026-01-27 14:47:01.566 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.2
+2026-01-27 14:47:01.566 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:47:01.623 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:47:01.629 [cefctrl] INFO: [client] Config directory is ./h3
+2026-01-27 14:47:01.629 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.3
+2026-01-27 14:47:01.629 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:47:01.685 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:47:01.692 [cefctrl] INFO: [client] Config directory is ./h4
+2026-01-27 14:47:01.692 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.4
+2026-01-27 14:47:01.692 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:47:01.748 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:47:01.754 [cefctrl] INFO: [client] Config directory is ./h5
+2026-01-27 14:47:01.754 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.5
+2026-01-27 14:47:01.754 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:47:01.811 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:47:01.817 [cefctrl] INFO: [client] Config directory is ./h6
+2026-01-27 14:47:01.817 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.6
+2026-01-27 14:47:01.817 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:47:01.874 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+2026-01-27 14:47:01.880 [cefctrl] INFO: [client] Config directory is ./h7
+2026-01-27 14:47:01.880 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.7
+2026-01-27 14:47:01.880 [cefctrl] INFO: [client] Listen Port is 9695
+2026-01-27 14:47:01.936 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+
+Mesh topology (per-host tree view):
+h0
+|-- h1 (via s13)
+|   |-- h2 (via s17)
+|   `-- h3 (via s6)
+|-- h4 (via s14)
+|   `-- h7 (via s7)
+|-- h5 (via s10)
+`-- h6 (via s2)
+
+h1
+|-- h0 (via s13)
+|-- h2 (via s17)
+|   `-- h7 (via s19)
+|-- h3 (via s6)
+|-- h4 (via s3)
+|-- h5 (via s4)
+`-- h6 (via s8)
+
+h2
+|-- h1 (via s17)
+|   |-- h0 (via s13)
+|   `-- h5 (via s4)
+|-- h3 (via s1)
+|-- h4 (via s18)
+|-- h6 (via s9)
+`-- h7 (via s19)
+
+h3
+|-- h1 (via s6)
+|   |-- h0 (via s13)
+|   `-- h6 (via s8)
+|-- h2 (via s1)
+|-- h4 (via s11)
+|-- h5 (via s5)
+`-- h7 (via s12)
+
+h4
+|-- h0 (via s14)
+|   `-- h5 (via s10)
+|-- h1 (via s3)
+|-- h2 (via s18)
+|-- h3 (via s11)
+|-- h6 (via s15)
+`-- h7 (via s7)
+
+h5
+|-- h0 (via s10)
+|   `-- h4 (via s14)
+|-- h1 (via s4)
+|   `-- h2 (via s17)
+|-- h3 (via s5)
+|-- h6 (via s16)
+`-- h7 (via s0)
+
+h6
+|-- h0 (via s2)
+|-- h1 (via s8)
+|   `-- h3 (via s6)
+|-- h2 (via s9)
+|   `-- h7 (via s19)
+|-- h4 (via s15)
+`-- h5 (via s16)
+
+h7
+|-- h2 (via s19)
+|   |-- h1 (via s17)
+|   `-- h6 (via s9)
+|-- h3 (via s12)
+|-- h4 (via s7)
+|   `-- h0 (via s14)
+`-- h5 (via s0)
+
+h7 command: cefroute add ccnx:/test/example2 udp 192.168.1.6 -d ./h7
+h7 command: cefroute add ccnx:/test/example3 udp 192.168.20.3 -d ./h7
+h7 command: cefroute add ccnx:/test/example3 udp 192.168.13.4 -d ./h7
+h7 command: cefroute add ccnx:/test/example3 udp 192.168.8.5 -d ./h7
+h7 command: cefroute add ccnx:/test/example3 udp 192.168.1.6 -d ./h7
+h7 command: cefroute add ccnx:/test/example4 udp 192.168.13.4 -d ./h7
+h7 command: cefroute add ccnx:/test/example4 udp 192.168.20.3 -d ./h7
+h7 command: cefroute add ccnx:/test/example4 udp 192.168.8.5 -d ./h7
+h7 command: cefroute add ccnx:/test/example4 udp 192.168.1.6 -d ./h7
+h7 command: cefroute add ccnx:/test/example5 udp 192.168.8.5 -d ./h7
+h7 command: cefroute add ccnx:/test/example5 udp 192.168.20.3 -d ./h7
+h7 command: cefroute add ccnx:/test/example5 udp 192.168.13.4 -d ./h7
+h7 command: cefroute add ccnx:/test/example5 udp 192.168.1.6 -d ./h7
+h7 command: cefroute add ccnx:/test/example6 udp 192.168.1.6 -d ./h7
+h7 command: cefroute add ccnx:/test/example6 udp 192.168.13.4 -d ./h7
+h7 command: cefroute add ccnx:/test/example6 udp 192.168.20.3 -d ./h7
+h7 command: cefroute add ccnx:/test/example6 udp 192.168.8.5 -d ./h7
+h7 command: cefroute add ccnx:/test/example7 udp 192.168.20.3 -d ./h7
+h7 command: cefroute add ccnx:/test/example7 udp 192.168.8.5 -d ./h7
+h7 command: cefroute add ccnx:/test/example7 udp 192.168.1.6 -d ./h7
+h7 command: cefroute add ccnx:/test/example7 udp 192.168.13.4 -d ./h7
+h0 command: cefstatus -d ./h0
+h1 command: cefstatus -d ./h1
+h2 command: cefstatus -d ./h2
+h3 command: cefstatus -d ./h3
+h4 command: cefstatus -d ./h4
+h5 command: cefstatus -d ./h5
+h6 command: cefstatus -d ./h6
+h7 command: cefstatus -d ./h7
+Traceback (most recent call last):
+  File "/home/yamakawa/Development/github/cefore-emu-koh11235813/mesh-disaster-topology.py", line 374, in <module>
+    main()
+  File "/home/yamakawa/Development/github/cefore-emu-koh11235813/mesh-disaster-topology.py", line 370, in main
+    run_disaster_topology(args)
+  File "/home/yamakawa/Development/github/cefore-emu-koh11235813/mesh-disaster-topology.py", line 215, in run_disaster_topology
+    cache_nodes = select_k_centers(host_graph, cache_count)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/yamakawa/Development/github/cefore-emu-koh11235813/mesh-disaster-topology.py", line 172, in select_k_centers
+    min_dist = compute_distances(graph, centers[0], weight_fn)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/yamakawa/Development/github/cefore-emu-koh11235813/mesh-disaster-topology.py", line 147, in compute_distances
+    for node in queue:
+RuntimeError: deque mutated during iteration
