@@ -1,0 +1,9 @@
+[cefputfile] Start
+[cefputfile] Parsing parameters ... OK
+2026-01-27 15:22:19.264 [cefputfile] INFO: [client] Config directory is ./h7
+2026-01-27 15:22:19.264 [cefputfile] INFO: [client] Local Socket Name is /tmp/cef_9695.7
+2026-01-27 15:22:19.264 [cefputfile] INFO: [client] Listen Port is 9695
+[cefputfile] Init Cefore Client package ... OK
+[cefputfile] Conversion from URI into Name ... OK
+[cefputfile] Checking the input file ... OK
+2026-01-27 15:22:19.321 [cefputfile] ERROR: cef_client_connect (connect:Connection refused)
