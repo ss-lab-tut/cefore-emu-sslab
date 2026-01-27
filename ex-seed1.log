@@ -1,0 +1,430 @@
+h0 command: ifconfig h0-eth0 192.168.1.1
+h9 command: ifconfig h9-eth0 192.168.1.10
+h2 command: ifconfig h2-eth0 192.168.2.3
+h4 command: ifconfig h4-eth0 192.168.2.5
+h5 command: ifconfig h5-eth0 192.168.3.6
+h6 command: ifconfig h6-eth0 192.168.3.7
+h3 command: ifconfig h3-eth0 192.168.4.4
+h8 command: ifconfig h8-eth0 192.168.4.9
+h1 command: ifconfig h1-eth0 192.168.5.2
+h7 command: ifconfig h7-eth0 192.168.5.8
+h4 command: ifconfig h4-eth1 192.168.6.5
+h5 command: ifconfig h5-eth1 192.168.6.6
+h1 command: ifconfig h1-eth1 192.168.7.2
+h5 command: ifconfig h5-eth2 192.168.7.6
+h0 command: ifconfig h0-eth1 192.168.8.1
+h3 command: ifconfig h3-eth1 192.168.8.4
+h8 command: ifconfig h8-eth1 192.168.9.9
+h9 command: ifconfig h9-eth1 192.168.9.10
+h1 command: ifconfig h1-eth2 192.168.10.2
+h2 command: ifconfig h2-eth1 192.168.10.3
+h1 command: ifconfig h1-eth3 192.168.11.2
+h3 command: ifconfig h3-eth2 192.168.11.4
+h7 command: ifconfig h7-eth1 192.168.12.8
+h9 command: ifconfig h9-eth2 192.168.12.10
+h3 command: ifconfig h3-eth3 192.168.13.4
+h5 command: ifconfig h5-eth3 192.168.13.6
+h7 command: ifconfig h7-eth2 192.168.14.8
+h8 command: ifconfig h8-eth2 192.168.14.9
+h0 command: ifconfig h0-eth2 192.168.15.1
+h5 command: ifconfig h5-eth4 192.168.15.6
+h2 command: ifconfig h2-eth2 192.168.16.3
+h8 command: ifconfig h8-eth3 192.168.16.9
+h3 command: ifconfig h3-eth4 192.168.17.4
+h6 command: ifconfig h6-eth1 192.168.17.7
+h1 command: ifconfig h1-eth4 192.168.18.2
+h4 command: ifconfig h4-eth2 192.168.18.5
+h0 command: ifconfig h0-eth3 192.168.19.1
+h4 command: ifconfig h4-eth3 192.168.19.5
+h0 command: ifconfig h0-eth4 192.168.20.1
+h6 command: ifconfig h6-eth2 192.168.20.7
+h2 command: ifconfig h2-eth3 192.168.21.3
+h7 command: ifconfig h7-eth3 192.168.21.8
+h2 command: ifconfig h2-eth4 192.168.22.3
+h3 command: ifconfig h3-eth5 192.168.22.4
+h5 command: ifconfig h5-eth5 192.168.23.6
+h9 command: ifconfig h9-eth3 192.168.23.10
+h0 command: ifconfig h0-eth5 192.168.24.1
+h8 command: ifconfig h8-eth4 192.168.24.9
+h1 command: csmgrdstart -d ./h1 > h1-csmgrd-log 2>&1
+h3 command: csmgrdstart -d ./h3 > h3-csmgrd-log 2>&1
+h5 command: csmgrdstart -d ./h5 > h5-csmgrd-log 2>&1
+h7 command: csmgrdstart -d ./h7 > h7-csmgrd-log 2>&1
+h9 command: csmgrdstart -d ./h9 > h9-csmgrd-log 2>&1
+h0 command: cefnetdstart -d ./h0 > h0-cefnetd-log 2>&1
+h1 command: cefnetdstart -d ./h1 > h1-cefnetd-log 2>&1
+h2 command: cefnetdstart -d ./h2 > h2-cefnetd-log 2>&1
+h3 command: cefnetdstart -d ./h3 > h3-cefnetd-log 2>&1
+h4 command: cefnetdstart -d ./h4 > h4-cefnetd-log 2>&1
+h5 command: cefnetdstart -d ./h5 > h5-cefnetd-log 2>&1
+h6 command: cefnetdstart -d ./h6 > h6-cefnetd-log 2>&1
+h7 command: cefnetdstart -d ./h7 > h7-cefnetd-log 2>&1
+h8 command: cefnetdstart -d ./h8 > h8-cefnetd-log 2>&1
+h9 command: cefnetdstart -d ./h9 > h9-cefnetd-log 2>&1
+h0 command: cefroute add ccnx:/test/example2 udp 192.168.8.4 -d ./h0
+h0 command: cefroute add ccnx:/test/example2 udp 192.168.19.5 -d ./h0
+h0 command: cefroute add ccnx:/test/example2 udp 192.168.15.6 -d ./h0
+h0 command: cefroute add ccnx:/test/example2 udp 192.168.20.7 -d ./h0
+h0 command: cefroute add ccnx:/test/example3 udp 192.168.8.4 -d ./h0
+h0 command: cefroute add ccnx:/test/example3 udp 192.168.19.5 -d ./h0
+h0 command: cefroute add ccnx:/test/example3 udp 192.168.24.9 -d ./h0
+h0 command: cefroute add ccnx:/test/example3 udp 192.168.15.6 -d ./h0
+h0 command: cefroute add ccnx:/test/example4 udp 192.168.8.4 -d ./h0
+h0 command: cefroute add ccnx:/test/example4 udp 192.168.15.6 -d ./h0
+h0 command: cefroute add ccnx:/test/example4 udp 192.168.20.7 -d ./h0
+h0 command: cefroute add ccnx:/test/example4 udp 192.168.24.9 -d ./h0
+h0 command: cefroute add ccnx:/test/example5 udp 192.168.19.5 -d ./h0
+h0 command: cefroute add ccnx:/test/example5 udp 192.168.15.6 -d ./h0
+h0 command: cefroute add ccnx:/test/example5 udp 192.168.8.4 -d ./h0
+h0 command: cefroute add ccnx:/test/example5 udp 192.168.20.7 -d ./h0
+h0 command: cefroute add ccnx:/test/example6 udp 192.168.15.6 -d ./h0
+h0 command: cefroute add ccnx:/test/example6 udp 192.168.8.4 -d ./h0
+h0 command: cefroute add ccnx:/test/example6 udp 192.168.19.5 -d ./h0
+h0 command: cefroute add ccnx:/test/example6 udp 192.168.20.7 -d ./h0
+h0 command: cefroute add ccnx:/test/example7 udp 192.168.20.7 -d ./h0
+h0 command: cefroute add ccnx:/test/example7 udp 192.168.8.4 -d ./h0
+h0 command: cefroute add ccnx:/test/example7 udp 192.168.15.6 -d ./h0
+h0 command: cefroute add ccnx:/test/example7 udp 192.168.19.5 -d ./h0
+h0 command: cefroute add ccnx:/test/example8 udp 192.168.24.9 -d ./h0
+h0 command: cefroute add ccnx:/test/example8 udp 192.168.1.10 -d ./h0
+h0 command: cefroute add ccnx:/test/example8 udp 192.168.8.4 -d ./h0
+h0 command: cefroute add ccnx:/test/example8 udp 192.168.19.5 -d ./h0
+h0 command: cefroute add ccnx:/test/example9 udp 192.168.24.9 -d ./h0
+h0 command: cefroute add ccnx:/test/example9 udp 192.168.8.4 -d ./h0
+h0 command: cefroute add ccnx:/test/example9 udp 192.168.1.10 -d ./h0
+h0 command: cefroute add ccnx:/test/example9 udp 192.168.19.5 -d ./h0
+h0 command: cefroute add ccnx:/test/example10 udp 192.168.1.10 -d ./h0
+h0 command: cefroute add ccnx:/test/example10 udp 192.168.15.6 -d ./h0
+h0 command: cefroute add ccnx:/test/example10 udp 192.168.24.9 -d ./h0
+h0 command: cefroute add ccnx:/test/example10 udp 192.168.8.4 -d ./h0
+h1 command: cefroute add ccnx:/test/example1 udp 192.168.11.4 -d ./h1
+h1 command: cefroute add ccnx:/test/example1 udp 192.168.18.5 -d ./h1
+h1 command: cefroute add ccnx:/test/example1 udp 192.168.7.6 -d ./h1
+h1 command: cefroute add ccnx:/test/example1 udp 192.168.10.3 -d ./h1
+h1 command: cefroute add ccnx:/test/example3 udp 192.168.10.3 -d ./h1
+h1 command: cefroute add ccnx:/test/example3 udp 192.168.11.4 -d ./h1
+h1 command: cefroute add ccnx:/test/example3 udp 192.168.18.5 -d ./h1
+h1 command: cefroute add ccnx:/test/example3 udp 192.168.5.8 -d ./h1
+h1 command: cefroute add ccnx:/test/example4 udp 192.168.11.4 -d ./h1
+h1 command: cefroute add ccnx:/test/example4 udp 192.168.10.3 -d ./h1
+h1 command: cefroute add ccnx:/test/example4 udp 192.168.7.6 -d ./h1
+h1 command: cefroute add ccnx:/test/example4 udp 192.168.18.5 -d ./h1
+h1 command: cefroute add ccnx:/test/example5 udp 192.168.18.5 -d ./h1
+h1 command: cefroute add ccnx:/test/example5 udp 192.168.10.3 -d ./h1
+h1 command: cefroute add ccnx:/test/example5 udp 192.168.7.6 -d ./h1
+h1 command: cefroute add ccnx:/test/example5 udp 192.168.11.4 -d ./h1
+h1 command: cefroute add ccnx:/test/example6 udp 192.168.7.6 -d ./h1
+h1 command: cefroute add ccnx:/test/example6 udp 192.168.11.4 -d ./h1
+h1 command: cefroute add ccnx:/test/example6 udp 192.168.18.5 -d ./h1
+h1 command: cefroute add ccnx:/test/example6 udp 192.168.10.3 -d ./h1
+h1 command: cefroute add ccnx:/test/example7 udp 192.168.11.4 -d ./h1
+h1 command: cefroute add ccnx:/test/example7 udp 192.168.7.6 -d ./h1
+h1 command: cefroute add ccnx:/test/example7 udp 192.168.10.3 -d ./h1
+h1 command: cefroute add ccnx:/test/example7 udp 192.168.18.5 -d ./h1
+h1 command: cefroute add ccnx:/test/example8 udp 192.168.5.8 -d ./h1
+h1 command: cefroute add ccnx:/test/example8 udp 192.168.10.3 -d ./h1
+h1 command: cefroute add ccnx:/test/example8 udp 192.168.11.4 -d ./h1
+h1 command: cefroute add ccnx:/test/example8 udp 192.168.18.5 -d ./h1
+h1 command: cefroute add ccnx:/test/example9 udp 192.168.10.3 -d ./h1
+h1 command: cefroute add ccnx:/test/example9 udp 192.168.11.4 -d ./h1
+h1 command: cefroute add ccnx:/test/example9 udp 192.168.5.8 -d ./h1
+h1 command: cefroute add ccnx:/test/example9 udp 192.168.18.5 -d ./h1
+h1 command: cefroute add ccnx:/test/example10 udp 192.168.7.6 -d ./h1
+h1 command: cefroute add ccnx:/test/example10 udp 192.168.5.8 -d ./h1
+h1 command: cefroute add ccnx:/test/example10 udp 192.168.10.3 -d ./h1
+h1 command: cefroute add ccnx:/test/example10 udp 192.168.11.4 -d ./h1
+h2 command: cefroute add ccnx:/test/example1 udp 192.168.22.4 -d ./h2
+h2 command: cefroute add ccnx:/test/example1 udp 192.168.2.5 -d ./h2
+h2 command: cefroute add ccnx:/test/example1 udp 192.168.16.9 -d ./h2
+h2 command: cefroute add ccnx:/test/example1 udp 192.168.10.2 -d ./h2
+h2 command: cefroute add ccnx:/test/example2 udp 192.168.10.2 -d ./h2
+h2 command: cefroute add ccnx:/test/example2 udp 192.168.22.4 -d ./h2
+h2 command: cefroute add ccnx:/test/example2 udp 192.168.2.5 -d ./h2
+h2 command: cefroute add ccnx:/test/example2 udp 192.168.21.8 -d ./h2
+h2 command: cefroute add ccnx:/test/example4 udp 192.168.22.4 -d ./h2
+h2 command: cefroute add ccnx:/test/example4 udp 192.168.10.2 -d ./h2
+h2 command: cefroute add ccnx:/test/example4 udp 192.168.16.9 -d ./h2
+h2 command: cefroute add ccnx:/test/example4 udp 192.168.2.5 -d ./h2
+h2 command: cefroute add ccnx:/test/example5 udp 192.168.2.5 -d ./h2
+h2 command: cefroute add ccnx:/test/example5 udp 192.168.10.2 -d ./h2
+h2 command: cefroute add ccnx:/test/example5 udp 192.168.22.4 -d ./h2
+h2 command: cefroute add ccnx:/test/example5 udp 192.168.21.8 -d ./h2
+h2 command: cefroute add ccnx:/test/example6 udp 192.168.10.2 -d ./h2
+h2 command: cefroute add ccnx:/test/example6 udp 192.168.22.4 -d ./h2
+h2 command: cefroute add ccnx:/test/example6 udp 192.168.2.5 -d ./h2
+h2 command: cefroute add ccnx:/test/example6 udp 192.168.21.8 -d ./h2
+h2 command: cefroute add ccnx:/test/example7 udp 192.168.22.4 -d ./h2
+h2 command: cefroute add ccnx:/test/example7 udp 192.168.10.2 -d ./h2
+h2 command: cefroute add ccnx:/test/example7 udp 192.168.2.5 -d ./h2
+h2 command: cefroute add ccnx:/test/example7 udp 192.168.16.9 -d ./h2
+h2 command: cefroute add ccnx:/test/example8 udp 192.168.21.8 -d ./h2
+h2 command: cefroute add ccnx:/test/example8 udp 192.168.10.2 -d ./h2
+h2 command: cefroute add ccnx:/test/example8 udp 192.168.16.9 -d ./h2
+h2 command: cefroute add ccnx:/test/example8 udp 192.168.22.4 -d ./h2
+h2 command: cefroute add ccnx:/test/example9 udp 192.168.16.9 -d ./h2
+h2 command: cefroute add ccnx:/test/example9 udp 192.168.22.4 -d ./h2
+h2 command: cefroute add ccnx:/test/example9 udp 192.168.21.8 -d ./h2
+h2 command: cefroute add ccnx:/test/example9 udp 192.168.10.2 -d ./h2
+h2 command: cefroute add ccnx:/test/example10 udp 192.168.21.8 -d ./h2
+h2 command: cefroute add ccnx:/test/example10 udp 192.168.16.9 -d ./h2
+h2 command: cefroute add ccnx:/test/example10 udp 192.168.10.2 -d ./h2
+h2 command: cefroute add ccnx:/test/example10 udp 192.168.22.4 -d ./h2
+h3 command: cefroute add ccnx:/test/example1 udp 192.168.8.1 -d ./h3
+h3 command: cefroute add ccnx:/test/example1 udp 192.168.13.6 -d ./h3
+h3 command: cefroute add ccnx:/test/example1 udp 192.168.17.7 -d ./h3
+h3 command: cefroute add ccnx:/test/example1 udp 192.168.4.9 -d ./h3
+h3 command: cefroute add ccnx:/test/example2 udp 192.168.11.2 -d ./h3
+h3 command: cefroute add ccnx:/test/example2 udp 192.168.22.3 -d ./h3
+h3 command: cefroute add ccnx:/test/example2 udp 192.168.13.6 -d ./h3
+h3 command: cefroute add ccnx:/test/example2 udp 192.168.8.1 -d ./h3
+h3 command: cefroute add ccnx:/test/example3 udp 192.168.22.3 -d ./h3
+h3 command: cefroute add ccnx:/test/example3 udp 192.168.11.2 -d ./h3
+h3 command: cefroute add ccnx:/test/example3 udp 192.168.4.9 -d ./h3
+h3 command: cefroute add ccnx:/test/example3 udp 192.168.8.1 -d ./h3
+h3 command: cefroute add ccnx:/test/example5 udp 192.168.8.1 -d ./h3
+h3 command: cefroute add ccnx:/test/example5 udp 192.168.11.2 -d ./h3
+h3 command: cefroute add ccnx:/test/example5 udp 192.168.22.3 -d ./h3
+h3 command: cefroute add ccnx:/test/example5 udp 192.168.13.6 -d ./h3
+h3 command: cefroute add ccnx:/test/example6 udp 192.168.13.6 -d ./h3
+h3 command: cefroute add ccnx:/test/example6 udp 192.168.8.1 -d ./h3
+h3 command: cefroute add ccnx:/test/example6 udp 192.168.11.2 -d ./h3
+h3 command: cefroute add ccnx:/test/example6 udp 192.168.17.7 -d ./h3
+h3 command: cefroute add ccnx:/test/example7 udp 192.168.17.7 -d ./h3
+h3 command: cefroute add ccnx:/test/example7 udp 192.168.8.1 -d ./h3
+h3 command: cefroute add ccnx:/test/example7 udp 192.168.13.6 -d ./h3
+h3 command: cefroute add ccnx:/test/example7 udp 192.168.11.2 -d ./h3
+h3 command: cefroute add ccnx:/test/example8 udp 192.168.11.2 -d ./h3
+h3 command: cefroute add ccnx:/test/example8 udp 192.168.22.3 -d ./h3
+h3 command: cefroute add ccnx:/test/example8 udp 192.168.4.9 -d ./h3
+h3 command: cefroute add ccnx:/test/example8 udp 192.168.8.1 -d ./h3
+h3 command: cefroute add ccnx:/test/example9 udp 192.168.4.9 -d ./h3
+h3 command: cefroute add ccnx:/test/example9 udp 192.168.8.1 -d ./h3
+h3 command: cefroute add ccnx:/test/example9 udp 192.168.22.3 -d ./h3
+h3 command: cefroute add ccnx:/test/example9 udp 192.168.11.2 -d ./h3
+h3 command: cefroute add ccnx:/test/example10 udp 192.168.8.1 -d ./h3
+h3 command: cefroute add ccnx:/test/example10 udp 192.168.13.6 -d ./h3
+h3 command: cefroute add ccnx:/test/example10 udp 192.168.4.9 -d ./h3
+h3 command: cefroute add ccnx:/test/example10 udp 192.168.11.2 -d ./h3
+h4 command: cefroute add ccnx:/test/example1 udp 192.168.19.1 -d ./h4
+h4 command: cefroute add ccnx:/test/example1 udp 192.168.6.6 -d ./h4
+h4 command: cefroute add ccnx:/test/example1 udp 192.168.18.2 -d ./h4
+h4 command: cefroute add ccnx:/test/example1 udp 192.168.2.3 -d ./h4
+h4 command: cefroute add ccnx:/test/example2 udp 192.168.18.2 -d ./h4
+h4 command: cefroute add ccnx:/test/example2 udp 192.168.2.3 -d ./h4
+h4 command: cefroute add ccnx:/test/example2 udp 192.168.6.6 -d ./h4
+h4 command: cefroute add ccnx:/test/example2 udp 192.168.19.1 -d ./h4
+h4 command: cefroute add ccnx:/test/example3 udp 192.168.2.3 -d ./h4
+h4 command: cefroute add ccnx:/test/example3 udp 192.168.18.2 -d ./h4
+h4 command: cefroute add ccnx:/test/example3 udp 192.168.19.1 -d ./h4
+h4 command: cefroute add ccnx:/test/example3 udp 192.168.6.6 -d ./h4
+h4 command: cefroute add ccnx:/test/example4 udp 192.168.19.1 -d ./h4
+h4 command: cefroute add ccnx:/test/example4 udp 192.168.18.2 -d ./h4
+h4 command: cefroute add ccnx:/test/example4 udp 192.168.2.3 -d ./h4
+h4 command: cefroute add ccnx:/test/example4 udp 192.168.6.6 -d ./h4
+h4 command: cefroute add ccnx:/test/example6 udp 192.168.6.6 -d ./h4
+h4 command: cefroute add ccnx:/test/example6 udp 192.168.19.1 -d ./h4
+h4 command: cefroute add ccnx:/test/example6 udp 192.168.18.2 -d ./h4
+h4 command: cefroute add ccnx:/test/example6 udp 192.168.2.3 -d ./h4
+h4 command: cefroute add ccnx:/test/example7 udp 192.168.19.1 -d ./h4
+h4 command: cefroute add ccnx:/test/example7 udp 192.168.6.6 -d ./h4
+h4 command: cefroute add ccnx:/test/example7 udp 192.168.18.2 -d ./h4
+h4 command: cefroute add ccnx:/test/example7 udp 192.168.2.3 -d ./h4
+h4 command: cefroute add ccnx:/test/example8 udp 192.168.18.2 -d ./h4
+h4 command: cefroute add ccnx:/test/example8 udp 192.168.2.3 -d ./h4
+h4 command: cefroute add ccnx:/test/example8 udp 192.168.19.1 -d ./h4
+h4 command: cefroute add ccnx:/test/example8 udp 192.168.6.6 -d ./h4
+h4 command: cefroute add ccnx:/test/example9 udp 192.168.19.1 -d ./h4
+h4 command: cefroute add ccnx:/test/example9 udp 192.168.2.3 -d ./h4
+h4 command: cefroute add ccnx:/test/example9 udp 192.168.18.2 -d ./h4
+h4 command: cefroute add ccnx:/test/example9 udp 192.168.6.6 -d ./h4
+h4 command: cefroute add ccnx:/test/example10 udp 192.168.19.1 -d ./h4
+h4 command: cefroute add ccnx:/test/example10 udp 192.168.6.6 -d ./h4
+h4 command: cefroute add ccnx:/test/example10 udp 192.168.18.2 -d ./h4
+h4 command: cefroute add ccnx:/test/example10 udp 192.168.2.3 -d ./h4
+h5 command: cefroute add ccnx:/test/example1 udp 192.168.15.1 -d ./h5
+h5 command: cefroute add ccnx:/test/example1 udp 192.168.13.4 -d ./h5
+h5 command: cefroute add ccnx:/test/example1 udp 192.168.6.5 -d ./h5
+h5 command: cefroute add ccnx:/test/example1 udp 192.168.3.7 -d ./h5
+h5 command: cefroute add ccnx:/test/example2 udp 192.168.7.2 -d ./h5
+h5 command: cefroute add ccnx:/test/example2 udp 192.168.13.4 -d ./h5
+h5 command: cefroute add ccnx:/test/example2 udp 192.168.6.5 -d ./h5
+h5 command: cefroute add ccnx:/test/example2 udp 192.168.15.1 -d ./h5
+h5 command: cefroute add ccnx:/test/example3 udp 192.168.7.2 -d ./h5
+h5 command: cefroute add ccnx:/test/example3 udp 192.168.13.4 -d ./h5
+h5 command: cefroute add ccnx:/test/example3 udp 192.168.6.5 -d ./h5
+h5 command: cefroute add ccnx:/test/example3 udp 192.168.15.1 -d ./h5
+h5 command: cefroute add ccnx:/test/example4 udp 192.168.13.4 -d ./h5
+h5 command: cefroute add ccnx:/test/example4 udp 192.168.15.1 -d ./h5
+h5 command: cefroute add ccnx:/test/example4 udp 192.168.7.2 -d ./h5
+h5 command: cefroute add ccnx:/test/example4 udp 192.168.3.7 -d ./h5
+h5 command: cefroute add ccnx:/test/example5 udp 192.168.6.5 -d ./h5
+h5 command: cefroute add ccnx:/test/example5 udp 192.168.15.1 -d ./h5
+h5 command: cefroute add ccnx:/test/example5 udp 192.168.7.2 -d ./h5
+h5 command: cefroute add ccnx:/test/example5 udp 192.168.13.4 -d ./h5
+h5 command: cefroute add ccnx:/test/example7 udp 192.168.3.7 -d ./h5
+h5 command: cefroute add ccnx:/test/example7 udp 192.168.15.1 -d ./h5
+h5 command: cefroute add ccnx:/test/example7 udp 192.168.13.4 -d ./h5
+h5 command: cefroute add ccnx:/test/example7 udp 192.168.7.2 -d ./h5
+h5 command: cefroute add ccnx:/test/example8 udp 192.168.7.2 -d ./h5
+h5 command: cefroute add ccnx:/test/example8 udp 192.168.23.10 -d ./h5
+h5 command: cefroute add ccnx:/test/example8 udp 192.168.15.1 -d ./h5
+h5 command: cefroute add ccnx:/test/example8 udp 192.168.13.4 -d ./h5
+h5 command: cefroute add ccnx:/test/example9 udp 192.168.15.1 -d ./h5
+h5 command: cefroute add ccnx:/test/example9 udp 192.168.13.4 -d ./h5
+h5 command: cefroute add ccnx:/test/example9 udp 192.168.23.10 -d ./h5
+h5 command: cefroute add ccnx:/test/example9 udp 192.168.7.2 -d ./h5
+h5 command: cefroute add ccnx:/test/example10 udp 192.168.23.10 -d ./h5
+h5 command: cefroute add ccnx:/test/example10 udp 192.168.15.1 -d ./h5
+h5 command: cefroute add ccnx:/test/example10 udp 192.168.7.2 -d ./h5
+h5 command: cefroute add ccnx:/test/example10 udp 192.168.13.4 -d ./h5
+h6 command: cefroute add ccnx:/test/example1 udp 192.168.20.1 -d ./h6
+h6 command: cefroute add ccnx:/test/example1 udp 192.168.17.4 -d ./h6
+h6 command: cefroute add ccnx:/test/example1 udp 192.168.3.6 -d ./h6
+h6 command: cefroute add ccnx:/test/example2 udp 192.168.17.4 -d ./h6
+h6 command: cefroute add ccnx:/test/example2 udp 192.168.3.6 -d ./h6
+h6 command: cefroute add ccnx:/test/example2 udp 192.168.20.1 -d ./h6
+h6 command: cefroute add ccnx:/test/example3 udp 192.168.17.4 -d ./h6
+h6 command: cefroute add ccnx:/test/example3 udp 192.168.20.1 -d ./h6
+h6 command: cefroute add ccnx:/test/example3 udp 192.168.3.6 -d ./h6
+h6 command: cefroute add ccnx:/test/example4 udp 192.168.17.4 -d ./h6
+h6 command: cefroute add ccnx:/test/example4 udp 192.168.20.1 -d ./h6
+h6 command: cefroute add ccnx:/test/example4 udp 192.168.3.6 -d ./h6
+h6 command: cefroute add ccnx:/test/example5 udp 192.168.20.1 -d ./h6
+h6 command: cefroute add ccnx:/test/example5 udp 192.168.3.6 -d ./h6
+h6 command: cefroute add ccnx:/test/example5 udp 192.168.17.4 -d ./h6
+h6 command: cefroute add ccnx:/test/example6 udp 192.168.3.6 -d ./h6
+h6 command: cefroute add ccnx:/test/example6 udp 192.168.20.1 -d ./h6
+h6 command: cefroute add ccnx:/test/example6 udp 192.168.17.4 -d ./h6
+h6 command: cefroute add ccnx:/test/example8 udp 192.168.20.1 -d ./h6
+h6 command: cefroute add ccnx:/test/example8 udp 192.168.17.4 -d ./h6
+h6 command: cefroute add ccnx:/test/example8 udp 192.168.3.6 -d ./h6
+h6 command: cefroute add ccnx:/test/example9 udp 192.168.20.1 -d ./h6
+h6 command: cefroute add ccnx:/test/example9 udp 192.168.17.4 -d ./h6
+h6 command: cefroute add ccnx:/test/example9 udp 192.168.3.6 -d ./h6
+h6 command: cefroute add ccnx:/test/example10 udp 192.168.20.1 -d ./h6
+h6 command: cefroute add ccnx:/test/example10 udp 192.168.3.6 -d ./h6
+h6 command: cefroute add ccnx:/test/example10 udp 192.168.17.4 -d ./h6
+h7 command: cefroute add ccnx:/test/example1 udp 192.168.14.9 -d ./h7
+h7 command: cefroute add ccnx:/test/example1 udp 192.168.12.10 -d ./h7
+h7 command: cefroute add ccnx:/test/example1 udp 192.168.5.2 -d ./h7
+h7 command: cefroute add ccnx:/test/example1 udp 192.168.21.3 -d ./h7
+h7 command: cefroute add ccnx:/test/example2 udp 192.168.5.2 -d ./h7
+h7 command: cefroute add ccnx:/test/example2 udp 192.168.21.3 -d ./h7
+h7 command: cefroute add ccnx:/test/example2 udp 192.168.14.9 -d ./h7
+h7 command: cefroute add ccnx:/test/example2 udp 192.168.12.10 -d ./h7
+h7 command: cefroute add ccnx:/test/example3 udp 192.168.21.3 -d ./h7
+h7 command: cefroute add ccnx:/test/example3 udp 192.168.5.2 -d ./h7
+h7 command: cefroute add ccnx:/test/example3 udp 192.168.14.9 -d ./h7
+h7 command: cefroute add ccnx:/test/example3 udp 192.168.12.10 -d ./h7
+h7 command: cefroute add ccnx:/test/example4 udp 192.168.5.2 -d ./h7
+h7 command: cefroute add ccnx:/test/example4 udp 192.168.21.3 -d ./h7
+h7 command: cefroute add ccnx:/test/example4 udp 192.168.14.9 -d ./h7
+h7 command: cefroute add ccnx:/test/example4 udp 192.168.12.10 -d ./h7
+h7 command: cefroute add ccnx:/test/example5 udp 192.168.5.2 -d ./h7
+h7 command: cefroute add ccnx:/test/example5 udp 192.168.21.3 -d ./h7
+h7 command: cefroute add ccnx:/test/example5 udp 192.168.14.9 -d ./h7
+h7 command: cefroute add ccnx:/test/example5 udp 192.168.12.10 -d ./h7
+h7 command: cefroute add ccnx:/test/example6 udp 192.168.5.2 -d ./h7
+h7 command: cefroute add ccnx:/test/example6 udp 192.168.12.10 -d ./h7
+h7 command: cefroute add ccnx:/test/example6 udp 192.168.21.3 -d ./h7
+h7 command: cefroute add ccnx:/test/example6 udp 192.168.14.9 -d ./h7
+h7 command: cefroute add ccnx:/test/example7 udp 192.168.5.2 -d ./h7
+h7 command: cefroute add ccnx:/test/example7 udp 192.168.21.3 -d ./h7
+h7 command: cefroute add ccnx:/test/example7 udp 192.168.14.9 -d ./h7
+h7 command: cefroute add ccnx:/test/example7 udp 192.168.12.10 -d ./h7
+h7 command: cefroute add ccnx:/test/example9 udp 192.168.14.9 -d ./h7
+h7 command: cefroute add ccnx:/test/example9 udp 192.168.21.3 -d ./h7
+h7 command: cefroute add ccnx:/test/example9 udp 192.168.12.10 -d ./h7
+h7 command: cefroute add ccnx:/test/example9 udp 192.168.5.2 -d ./h7
+h7 command: cefroute add ccnx:/test/example10 udp 192.168.12.10 -d ./h7
+h7 command: cefroute add ccnx:/test/example10 udp 192.168.14.9 -d ./h7
+h7 command: cefroute add ccnx:/test/example10 udp 192.168.5.2 -d ./h7
+h7 command: cefroute add ccnx:/test/example10 udp 192.168.21.3 -d ./h7
+h8 command: cefroute add ccnx:/test/example1 udp 192.168.24.1 -d ./h8
+h8 command: cefroute add ccnx:/test/example1 udp 192.168.4.4 -d ./h8
+h8 command: cefroute add ccnx:/test/example1 udp 192.168.9.10 -d ./h8
+h8 command: cefroute add ccnx:/test/example1 udp 192.168.16.3 -d ./h8
+h8 command: cefroute add ccnx:/test/example2 udp 192.168.16.3 -d ./h8
+h8 command: cefroute add ccnx:/test/example2 udp 192.168.4.4 -d ./h8
+h8 command: cefroute add ccnx:/test/example2 udp 192.168.14.8 -d ./h8
+h8 command: cefroute add ccnx:/test/example2 udp 192.168.24.1 -d ./h8
+h8 command: cefroute add ccnx:/test/example3 udp 192.168.16.3 -d ./h8
+h8 command: cefroute add ccnx:/test/example3 udp 192.168.4.4 -d ./h8
+h8 command: cefroute add ccnx:/test/example3 udp 192.168.14.8 -d ./h8
+h8 command: cefroute add ccnx:/test/example3 udp 192.168.24.1 -d ./h8
+h8 command: cefroute add ccnx:/test/example4 udp 192.168.4.4 -d ./h8
+h8 command: cefroute add ccnx:/test/example4 udp 192.168.24.1 -d ./h8
+h8 command: cefroute add ccnx:/test/example4 udp 192.168.16.3 -d ./h8
+h8 command: cefroute add ccnx:/test/example4 udp 192.168.14.8 -d ./h8
+h8 command: cefroute add ccnx:/test/example5 udp 192.168.24.1 -d ./h8
+h8 command: cefroute add ccnx:/test/example5 udp 192.168.16.3 -d ./h8
+h8 command: cefroute add ccnx:/test/example5 udp 192.168.4.4 -d ./h8
+h8 command: cefroute add ccnx:/test/example5 udp 192.168.14.8 -d ./h8
+h8 command: cefroute add ccnx:/test/example6 udp 192.168.24.1 -d ./h8
+h8 command: cefroute add ccnx:/test/example6 udp 192.168.4.4 -d ./h8
+h8 command: cefroute add ccnx:/test/example6 udp 192.168.9.10 -d ./h8
+h8 command: cefroute add ccnx:/test/example6 udp 192.168.16.3 -d ./h8
+h8 command: cefroute add ccnx:/test/example7 udp 192.168.24.1 -d ./h8
+h8 command: cefroute add ccnx:/test/example7 udp 192.168.4.4 -d ./h8
+h8 command: cefroute add ccnx:/test/example7 udp 192.168.16.3 -d ./h8
+h8 command: cefroute add ccnx:/test/example7 udp 192.168.9.10 -d ./h8
+h8 command: cefroute add ccnx:/test/example8 udp 192.168.14.8 -d ./h8
+h8 command: cefroute add ccnx:/test/example8 udp 192.168.16.3 -d ./h8
+h8 command: cefroute add ccnx:/test/example8 udp 192.168.9.10 -d ./h8
+h8 command: cefroute add ccnx:/test/example8 udp 192.168.24.1 -d ./h8
+h8 command: cefroute add ccnx:/test/example10 udp 192.168.9.10 -d ./h8
+h8 command: cefroute add ccnx:/test/example10 udp 192.168.24.1 -d ./h8
+h8 command: cefroute add ccnx:/test/example10 udp 192.168.14.8 -d ./h8
+h8 command: cefroute add ccnx:/test/example10 udp 192.168.16.3 -d ./h8
+h9 command: cefroute add ccnx:/test/example1 udp 192.168.1.1 -d ./h9
+h9 command: cefroute add ccnx:/test/example1 udp 192.168.23.6 -d ./h9
+h9 command: cefroute add ccnx:/test/example1 udp 192.168.9.9 -d ./h9
+h9 command: cefroute add ccnx:/test/example1 udp 192.168.12.8 -d ./h9
+h9 command: cefroute add ccnx:/test/example2 udp 192.168.23.6 -d ./h9
+h9 command: cefroute add ccnx:/test/example2 udp 192.168.12.8 -d ./h9
+h9 command: cefroute add ccnx:/test/example2 udp 192.168.1.1 -d ./h9
+h9 command: cefroute add ccnx:/test/example2 udp 192.168.9.9 -d ./h9
+h9 command: cefroute add ccnx:/test/example3 udp 192.168.12.8 -d ./h9
+h9 command: cefroute add ccnx:/test/example3 udp 192.168.9.9 -d ./h9
+h9 command: cefroute add ccnx:/test/example3 udp 192.168.1.1 -d ./h9
+h9 command: cefroute add ccnx:/test/example3 udp 192.168.23.6 -d ./h9
+h9 command: cefroute add ccnx:/test/example4 udp 192.168.1.1 -d ./h9
+h9 command: cefroute add ccnx:/test/example4 udp 192.168.23.6 -d ./h9
+h9 command: cefroute add ccnx:/test/example4 udp 192.168.9.9 -d ./h9
+h9 command: cefroute add ccnx:/test/example4 udp 192.168.12.8 -d ./h9
+h9 command: cefroute add ccnx:/test/example5 udp 192.168.1.1 -d ./h9
+h9 command: cefroute add ccnx:/test/example5 udp 192.168.23.6 -d ./h9
+h9 command: cefroute add ccnx:/test/example5 udp 192.168.12.8 -d ./h9
+h9 command: cefroute add ccnx:/test/example5 udp 192.168.9.9 -d ./h9
+h9 command: cefroute add ccnx:/test/example6 udp 192.168.23.6 -d ./h9
+h9 command: cefroute add ccnx:/test/example6 udp 192.168.1.1 -d ./h9
+h9 command: cefroute add ccnx:/test/example6 udp 192.168.12.8 -d ./h9
+h9 command: cefroute add ccnx:/test/example6 udp 192.168.9.9 -d ./h9
+h9 command: cefroute add ccnx:/test/example7 udp 192.168.1.1 -d ./h9
+h9 command: cefroute add ccnx:/test/example7 udp 192.168.23.6 -d ./h9
+h9 command: cefroute add ccnx:/test/example7 udp 192.168.9.9 -d ./h9
+h9 command: cefroute add ccnx:/test/example7 udp 192.168.12.8 -d ./h9
+h9 command: cefroute add ccnx:/test/example8 udp 192.168.12.8 -d ./h9
+h9 command: cefroute add ccnx:/test/example8 udp 192.168.9.9 -d ./h9
+h9 command: cefroute add ccnx:/test/example8 udp 192.168.1.1 -d ./h9
+h9 command: cefroute add ccnx:/test/example8 udp 192.168.23.6 -d ./h9
+h9 command: cefroute add ccnx:/test/example9 udp 192.168.9.9 -d ./h9
+h9 command: cefroute add ccnx:/test/example9 udp 192.168.1.1 -d ./h9
+h9 command: cefroute add ccnx:/test/example9 udp 192.168.12.8 -d ./h9
+h9 command: cefroute add ccnx:/test/example9 udp 192.168.23.6 -d ./h9
+h0 command: cefstatus -d ./h0
+h1 command: cefstatus -d ./h1
+h2 command: cefstatus -d ./h2
+h3 command: cefstatus -d ./h3
+h4 command: cefstatus -d ./h4
+h5 command: cefstatus -d ./h5
+h6 command: cefstatus -d ./h6
+h7 command: cefstatus -d ./h7
+h8 command: cefstatus -d ./h8
+h9 command: cefstatus -d ./h9
+h9 command: cefputfile ccnx:/test/example10/test.py -f ./sample-putfile -t 3000 -e 3000 -d ./h9 > cefputfile_10_24_1_20_15_none.log
+h8 command: cefgetfile ccnx:/test/example10/test.py -f ./recvfile_at_h8 -d ./h8 > cefgetfile_10_24_1_20_15_1_h8.log
+h3 command: cefgetfile ccnx:/test/example10/test.py -f ./recvfile_at_h3 -d ./h3 > cefgetfile_10_24_1_20_15_6_h3.log
+h4 command: cefgetfile ccnx:/test/example10/test.py -f ./recvfile_at_h4 -d ./h4 > cefgetfile_10_24_1_20_15_6_h4.log
+h4 command: cefgetfile ccnx:/test/example10/test.py -f ./recvfile_at_h4 -d ./h4 > cefgetfile_10_24_1_20_15_6_h4.log
+h3 command: cefgetfile ccnx:/test/example10/test.py -f ./recvfile_at_h3 -d ./h3 > cefgetfile_10_24_1_20_15_7_h3.log

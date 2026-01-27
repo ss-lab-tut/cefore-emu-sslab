@@ -1,13 +1,13 @@
 [cefputfile] Start
 [cefputfile] Parsing parameters ... OK
-2026-01-26 17:05:48.807 [cefputfile] INFO: [client] Config directory is ./h7
-2026-01-26 17:05:48.807 [cefputfile] INFO: [client] Local Socket Name is /tmp/cef_9695.7
-2026-01-26 17:05:48.807 [cefputfile] INFO: [client] Listen Port is 9695
+2026-01-27 17:04:45.626 [cefputfile] INFO: [client] Config directory is ./h9
+2026-01-27 17:04:45.626 [cefputfile] INFO: [client] Local Socket Name is /tmp/cef_9695.9
+2026-01-27 17:04:45.626 [cefputfile] INFO: [client] Listen Port is 9695
 [cefputfile] Init Cefore Client package ... OK
 [cefputfile] Conversion from URI into Name ... OK
 [cefputfile] Checking the input file ... OK
 [cefputfile] Connect to cefnetd ... OK
-[cefputfile] URI         = ccnx:/test/example8/test.py
+[cefputfile] URI         = ccnx:/test/example10/test.py
 [cefputfile] File        = ./sample-putfile
 [cefputfile] Rate        = 5.000 Mbps
 [cefputfile] Block Size  = 1024 Bytes
@@ -18,5 +18,5 @@
 [cefputfile] Terminate
 [cefputfile] Tx Frames  = 424
 [cefputfile] Tx Bytes   = 433390
-[cefputfile] Duration   = 0.699 sec
-[cefputfile] Throughput = 4966971 bps
+[cefputfile] Duration   = 0.698 sec
+[cefputfile] Throughput = 4970168 bps
