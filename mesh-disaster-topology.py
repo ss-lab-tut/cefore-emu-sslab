@@ -145,6 +145,11 @@ def parse_ext_args(values):
     return entries
 
 
+def run_host_command(net, host_idx, command):
+    proc = net.hosts[host_idx].popen(command, shell=True)
+    return proc.wait()
+
+
 def compute_distances(graph, source, weight_fn=None):
     if weight_fn is None:
         distances = {source: 0}
@@ -258,7 +263,7 @@ def run_disaster_topology(args):
         f"-d ./h{publisher} > {log_name}"
     )
     print(f"h{publisher}", "command:", command)
-    net.hosts[publisher].cmd(command)
+    run_host_command(net, publisher, command)
     time.sleep(5)
 
     stop_event = None
@@ -294,7 +299,7 @@ def run_disaster_topology(args):
             f"-d ./h{consumer} > {log_name}"
         )
         print(f"h{consumer}", "command:", command)
-        net.hosts[consumer].cmd(command)
+        run_host_command(net, consumer, command)
         if idx < 5 and args.get_interval > 0:
             time.sleep(args.get_interval)
 
