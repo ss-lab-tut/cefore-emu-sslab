@@ -331,7 +331,7 @@ def main():
     parser.add_argument(
         "--down-count",
         type=int,
-        default=3,
+        default=5,
         help="number of hosts to keep down per cycle",
     )
     parser.add_argument(
