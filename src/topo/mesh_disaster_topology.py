@@ -301,8 +301,7 @@ def run_disaster_topology(args):
         infile = op.get("file", "./sample-putfile")
         log_name = op.get("log", f"cefputfile_h{host}.log")
         command = (
-            f"cefputfile {uri} -f {infile} -t 3000 -e 3000 "
-            f"-d ./h{host} > {log_name}"
+            f"cefputfile {uri} -f {infile} -t 3000 -e 3000 -d ./h{host} > {log_name}"
         )
         print(f"h{host}", "command:", command)
         run_host_command(net, host, command)
@@ -337,9 +336,7 @@ def run_disaster_topology(args):
                 else ",".join(str(host_id) for host_id in down_hosts)
             )
             seed_label = "none" if args.seed is None else str(args.seed)
-            log_name = (
-                f"cefgetfile_seed{seed_label}_downhosts{down_host_label}_h{consumer}.log"
-            )
+            log_name = f"cefgetfile_seed{seed_label}_downhosts{down_host_label}_h{consumer}.log"
             ops_get.append(
                 {
                     "host": consumer,
@@ -354,10 +351,7 @@ def run_disaster_topology(args):
         uri = op["uri"]
         outfile = op.get("file", f"./recvfile_at_h{consumer}")
         log_name = op.get("log", f"cefgetfile_h{consumer}.log")
-        command = (
-            f"cefgetfile {uri} -f {outfile} "
-            f"-d ./h{consumer} > {log_name}"
-        )
+        command = f"cefgetfile {uri} -f {outfile} -d ./h{consumer} > {log_name}"
         print(f"h{consumer}", "command:", command)
         run_host_command(net, consumer, command)
         if idx < len(ops_get) - 1 and args.get_interval > 0:
@@ -473,7 +467,7 @@ def main():
     parser.add_argument(
         "--switch-pool",
         type=int,
-        default=0,
+        default=2,
         help="number of switches to share across links (0 = one switch per link)",
     )
     parser.add_argument(
