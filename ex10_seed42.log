@@ -1,0 +1,232 @@
+h3 command: ifconfig h3-eth0 192.168.1.4
+h4 command: ifconfig h4-eth0 192.168.1.5
+h5 command: ifconfig h5-eth0 192.168.1.6
+h6 command: ifconfig h6-eth0 192.168.1.7
+h7 command: ifconfig h7-eth0 192.168.1.8
+h9 command: ifconfig h9-eth0 192.168.1.10
+h6 command: ifconfig h6-eth1 192.168.2.7
+h7 command: ifconfig h7-eth1 192.168.2.8
+h8 command: ifconfig h8-eth0 192.168.2.9
+h9 command: ifconfig h9-eth1 192.168.2.10
+h0 command: ifconfig h0-eth0 192.168.3.1
+h1 command: ifconfig h1-eth0 192.168.3.2
+h2 command: ifconfig h2-eth0 192.168.3.3
+h3 command: ifconfig h3-eth1 192.168.3.4
+h4 command: ifconfig h4-eth1 192.168.3.5
+h5 command: ifconfig h5-eth1 192.168.3.6
+h8 command: ifconfig h8-eth1 192.168.3.9
+h9 command: ifconfig h9-eth2 192.168.3.10
+h1 command: csmgrdstart -d ./h1 > /dev/null 2>&1
+h3 command: csmgrdstart -d ./h3 > /dev/null 2>&1
+h5 command: csmgrdstart -d ./h5 > /dev/null 2>&1
+h7 command: csmgrdstart -d ./h7 > /dev/null 2>&1
+h9 command: csmgrdstart -d ./h9 > /dev/null 2>&1
+h0 command: cefnetdstart -d ./h0 > /dev/null 2>&1
+h1 command: cefnetdstart -d ./h1 > /dev/null 2>&1
+h2 command: cefnetdstart -d ./h2 > /dev/null 2>&1
+h3 command: cefnetdstart -d ./h3 > /dev/null 2>&1
+h4 command: cefnetdstart -d ./h4 > /dev/null 2>&1
+h5 command: cefnetdstart -d ./h5 > /dev/null 2>&1
+h6 command: cefnetdstart -d ./h6 > /dev/null 2>&1
+h7 command: cefnetdstart -d ./h7 > /dev/null 2>&1
+h8 command: cefnetdstart -d ./h8 > /dev/null 2>&1
+h9 command: cefnetdstart -d ./h9 > /dev/null 2>&1
+h0 command: cefroute add ccnx:/test/experiment/content1 udp 192.168.3.10 -d ./h0
+h0 command: cefroute add ccnx:/test/experiment/content1 udp 192.168.3.2 -d ./h0
+h1 command: cefroute add ccnx:/test/experiment/content1 udp 192.168.3.10 -d ./h1
+h1 command: cefroute add ccnx:/test/experiment/content1 udp 192.168.3.1 -d ./h1
+h2 command: cefroute add ccnx:/test/experiment/content1 udp 192.168.3.10 -d ./h2
+h2 command: cefroute add ccnx:/test/experiment/content1 udp 192.168.3.1 -d ./h2
+h3 command: cefroute add ccnx:/test/experiment/content1 udp 192.168.3.10 -d ./h3
+h3 command: cefroute add ccnx:/test/experiment/content1 udp 192.168.3.1 -d ./h3
+h4 command: cefroute add ccnx:/test/experiment/content1 udp 192.168.3.10 -d ./h4
+h4 command: cefroute add ccnx:/test/experiment/content1 udp 192.168.3.1 -d ./h4
+h5 command: cefroute add ccnx:/test/experiment/content1 udp 192.168.3.10 -d ./h5
+h5 command: cefroute add ccnx:/test/experiment/content1 udp 192.168.3.1 -d ./h5
+h6 command: cefroute add ccnx:/test/experiment/content1 udp 192.168.2.10 -d ./h6
+h6 command: cefroute add ccnx:/test/experiment/content1 udp 192.168.1.4 -d ./h6
+h7 command: cefroute add ccnx:/test/experiment/content1 udp 192.168.2.10 -d ./h7
+h7 command: cefroute add ccnx:/test/experiment/content1 udp 192.168.1.4 -d ./h7
+h8 command: cefroute add ccnx:/test/experiment/content1 udp 192.168.3.10 -d ./h8
+h8 command: cefroute add ccnx:/test/experiment/content1 udp 192.168.3.1 -d ./h8
+h0 command: cefroute add ccnx:/test/experiment/content2 udp 192.168.3.10 -d ./h0
+h0 command: cefroute add ccnx:/test/experiment/content2 udp 192.168.3.2 -d ./h0
+h1 command: cefroute add ccnx:/test/experiment/content2 udp 192.168.3.10 -d ./h1
+h1 command: cefroute add ccnx:/test/experiment/content2 udp 192.168.3.1 -d ./h1
+h2 command: cefroute add ccnx:/test/experiment/content2 udp 192.168.3.10 -d ./h2
+h2 command: cefroute add ccnx:/test/experiment/content2 udp 192.168.3.1 -d ./h2
+h3 command: cefroute add ccnx:/test/experiment/content2 udp 192.168.3.10 -d ./h3
+h3 command: cefroute add ccnx:/test/experiment/content2 udp 192.168.3.1 -d ./h3
+h4 command: cefroute add ccnx:/test/experiment/content2 udp 192.168.3.10 -d ./h4
+h4 command: cefroute add ccnx:/test/experiment/content2 udp 192.168.3.1 -d ./h4
+h5 command: cefroute add ccnx:/test/experiment/content2 udp 192.168.3.10 -d ./h5
+h5 command: cefroute add ccnx:/test/experiment/content2 udp 192.168.3.1 -d ./h5
+h6 command: cefroute add ccnx:/test/experiment/content2 udp 192.168.2.10 -d ./h6
+h6 command: cefroute add ccnx:/test/experiment/content2 udp 192.168.1.4 -d ./h6
+h7 command: cefroute add ccnx:/test/experiment/content2 udp 192.168.2.10 -d ./h7
+h7 command: cefroute add ccnx:/test/experiment/content2 udp 192.168.1.4 -d ./h7
+h8 command: cefroute add ccnx:/test/experiment/content2 udp 192.168.3.10 -d ./h8
+h8 command: cefroute add ccnx:/test/experiment/content2 udp 192.168.3.1 -d ./h8
+h0 command: cefroute add ccnx:/test/experiment/content3 udp 192.168.3.10 -d ./h0
+h0 command: cefroute add ccnx:/test/experiment/content3 udp 192.168.3.2 -d ./h0
+h1 command: cefroute add ccnx:/test/experiment/content3 udp 192.168.3.10 -d ./h1
+h1 command: cefroute add ccnx:/test/experiment/content3 udp 192.168.3.1 -d ./h1
+h2 command: cefroute add ccnx:/test/experiment/content3 udp 192.168.3.10 -d ./h2
+h2 command: cefroute add ccnx:/test/experiment/content3 udp 192.168.3.1 -d ./h2
+h3 command: cefroute add ccnx:/test/experiment/content3 udp 192.168.3.10 -d ./h3
+h3 command: cefroute add ccnx:/test/experiment/content3 udp 192.168.3.1 -d ./h3
+h4 command: cefroute add ccnx:/test/experiment/content3 udp 192.168.3.10 -d ./h4
+h4 command: cefroute add ccnx:/test/experiment/content3 udp 192.168.3.1 -d ./h4
+h5 command: cefroute add ccnx:/test/experiment/content3 udp 192.168.3.10 -d ./h5
+h5 command: cefroute add ccnx:/test/experiment/content3 udp 192.168.3.1 -d ./h5
+h6 command: cefroute add ccnx:/test/experiment/content3 udp 192.168.2.10 -d ./h6
+h6 command: cefroute add ccnx:/test/experiment/content3 udp 192.168.1.4 -d ./h6
+h7 command: cefroute add ccnx:/test/experiment/content3 udp 192.168.2.10 -d ./h7
+h7 command: cefroute add ccnx:/test/experiment/content3 udp 192.168.1.4 -d ./h7
+h8 command: cefroute add ccnx:/test/experiment/content3 udp 192.168.3.10 -d ./h8
+h8 command: cefroute add ccnx:/test/experiment/content3 udp 192.168.3.1 -d ./h8
+h1 command: cefroute add ccnx:/test/experiment/content4 udp 192.168.3.1 -d ./h1
+h1 command: cefroute add ccnx:/test/experiment/content4 udp 192.168.3.3 -d ./h1
+h2 command: cefroute add ccnx:/test/experiment/content4 udp 192.168.3.1 -d ./h2
+h2 command: cefroute add ccnx:/test/experiment/content4 udp 192.168.3.2 -d ./h2
+h3 command: cefroute add ccnx:/test/experiment/content4 udp 192.168.3.1 -d ./h3
+h3 command: cefroute add ccnx:/test/experiment/content4 udp 192.168.3.2 -d ./h3
+h4 command: cefroute add ccnx:/test/experiment/content4 udp 192.168.3.1 -d ./h4
+h4 command: cefroute add ccnx:/test/experiment/content4 udp 192.168.3.2 -d ./h4
+h5 command: cefroute add ccnx:/test/experiment/content4 udp 192.168.3.1 -d ./h5
+h5 command: cefroute add ccnx:/test/experiment/content4 udp 192.168.3.2 -d ./h5
+h6 command: cefroute add ccnx:/test/experiment/content4 udp 192.168.1.4 -d ./h6
+h6 command: cefroute add ccnx:/test/experiment/content4 udp 192.168.1.5 -d ./h6
+h7 command: cefroute add ccnx:/test/experiment/content4 udp 192.168.1.4 -d ./h7
+h7 command: cefroute add ccnx:/test/experiment/content4 udp 192.168.1.5 -d ./h7
+h8 command: cefroute add ccnx:/test/experiment/content4 udp 192.168.3.1 -d ./h8
+h8 command: cefroute add ccnx:/test/experiment/content4 udp 192.168.3.2 -d ./h8
+h9 command: cefroute add ccnx:/test/experiment/content4 udp 192.168.3.1 -d ./h9
+h9 command: cefroute add ccnx:/test/experiment/content4 udp 192.168.3.2 -d ./h9
+h1 command: cefroute add ccnx:/test/experiment/content5 udp 192.168.3.1 -d ./h1
+h1 command: cefroute add ccnx:/test/experiment/content5 udp 192.168.3.3 -d ./h1
+h2 command: cefroute add ccnx:/test/experiment/content5 udp 192.168.3.1 -d ./h2
+h2 command: cefroute add ccnx:/test/experiment/content5 udp 192.168.3.2 -d ./h2
+h3 command: cefroute add ccnx:/test/experiment/content5 udp 192.168.3.1 -d ./h3
+h3 command: cefroute add ccnx:/test/experiment/content5 udp 192.168.3.2 -d ./h3
+h4 command: cefroute add ccnx:/test/experiment/content5 udp 192.168.3.1 -d ./h4
+h4 command: cefroute add ccnx:/test/experiment/content5 udp 192.168.3.2 -d ./h4
+h5 command: cefroute add ccnx:/test/experiment/content5 udp 192.168.3.1 -d ./h5
+h5 command: cefroute add ccnx:/test/experiment/content5 udp 192.168.3.2 -d ./h5
+h6 command: cefroute add ccnx:/test/experiment/content5 udp 192.168.1.4 -d ./h6
+h6 command: cefroute add ccnx:/test/experiment/content5 udp 192.168.1.5 -d ./h6
+h7 command: cefroute add ccnx:/test/experiment/content5 udp 192.168.1.4 -d ./h7
+h7 command: cefroute add ccnx:/test/experiment/content5 udp 192.168.1.5 -d ./h7
+h8 command: cefroute add ccnx:/test/experiment/content5 udp 192.168.3.1 -d ./h8
+h8 command: cefroute add ccnx:/test/experiment/content5 udp 192.168.3.2 -d ./h8
+h9 command: cefroute add ccnx:/test/experiment/content5 udp 192.168.3.1 -d ./h9
+h9 command: cefroute add ccnx:/test/experiment/content5 udp 192.168.3.2 -d ./h9
+h1 command: cefroute add ccnx:/test/experiment/content6 udp 192.168.3.1 -d ./h1
+h1 command: cefroute add ccnx:/test/experiment/content6 udp 192.168.3.3 -d ./h1
+h2 command: cefroute add ccnx:/test/experiment/content6 udp 192.168.3.1 -d ./h2
+h2 command: cefroute add ccnx:/test/experiment/content6 udp 192.168.3.2 -d ./h2
+h3 command: cefroute add ccnx:/test/experiment/content6 udp 192.168.3.1 -d ./h3
+h3 command: cefroute add ccnx:/test/experiment/content6 udp 192.168.3.2 -d ./h3
+h4 command: cefroute add ccnx:/test/experiment/content6 udp 192.168.3.1 -d ./h4
+h4 command: cefroute add ccnx:/test/experiment/content6 udp 192.168.3.2 -d ./h4
+h5 command: cefroute add ccnx:/test/experiment/content6 udp 192.168.3.1 -d ./h5
+h5 command: cefroute add ccnx:/test/experiment/content6 udp 192.168.3.2 -d ./h5
+h6 command: cefroute add ccnx:/test/experiment/content6 udp 192.168.1.4 -d ./h6
+h6 command: cefroute add ccnx:/test/experiment/content6 udp 192.168.1.5 -d ./h6
+h7 command: cefroute add ccnx:/test/experiment/content6 udp 192.168.1.4 -d ./h7
+h7 command: cefroute add ccnx:/test/experiment/content6 udp 192.168.1.5 -d ./h7
+h8 command: cefroute add ccnx:/test/experiment/content6 udp 192.168.3.1 -d ./h8
+h8 command: cefroute add ccnx:/test/experiment/content6 udp 192.168.3.2 -d ./h8
+h9 command: cefroute add ccnx:/test/experiment/content6 udp 192.168.3.1 -d ./h9
+h9 command: cefroute add ccnx:/test/experiment/content6 udp 192.168.3.2 -d ./h9
+h0 command: cefroute add ccnx:/test/experiment/content7 udp 192.168.3.4 -d ./h0
+h0 command: cefroute add ccnx:/test/experiment/content7 udp 192.168.3.2 -d ./h0
+h1 command: cefroute add ccnx:/test/experiment/content7 udp 192.168.3.4 -d ./h1
+h1 command: cefroute add ccnx:/test/experiment/content7 udp 192.168.3.1 -d ./h1
+h2 command: cefroute add ccnx:/test/experiment/content7 udp 192.168.3.4 -d ./h2
+h2 command: cefroute add ccnx:/test/experiment/content7 udp 192.168.3.1 -d ./h2
+h4 command: cefroute add ccnx:/test/experiment/content7 udp 192.168.3.4 -d ./h4
+h4 command: cefroute add ccnx:/test/experiment/content7 udp 192.168.3.1 -d ./h4
+h5 command: cefroute add ccnx:/test/experiment/content7 udp 192.168.3.4 -d ./h5
+h5 command: cefroute add ccnx:/test/experiment/content7 udp 192.168.3.1 -d ./h5
+h6 command: cefroute add ccnx:/test/experiment/content7 udp 192.168.1.4 -d ./h6
+h6 command: cefroute add ccnx:/test/experiment/content7 udp 192.168.1.5 -d ./h6
+h7 command: cefroute add ccnx:/test/experiment/content7 udp 192.168.1.4 -d ./h7
+h7 command: cefroute add ccnx:/test/experiment/content7 udp 192.168.1.5 -d ./h7
+h8 command: cefroute add ccnx:/test/experiment/content7 udp 192.168.3.4 -d ./h8
+h8 command: cefroute add ccnx:/test/experiment/content7 udp 192.168.3.1 -d ./h8
+h9 command: cefroute add ccnx:/test/experiment/content7 udp 192.168.3.4 -d ./h9
+h9 command: cefroute add ccnx:/test/experiment/content7 udp 192.168.3.1 -d ./h9
+h0 command: cefroute add ccnx:/test/experiment/content8 udp 192.168.3.4 -d ./h0
+h0 command: cefroute add ccnx:/test/experiment/content8 udp 192.168.3.2 -d ./h0
+h1 command: cefroute add ccnx:/test/experiment/content8 udp 192.168.3.4 -d ./h1
+h1 command: cefroute add ccnx:/test/experiment/content8 udp 192.168.3.1 -d ./h1
+h2 command: cefroute add ccnx:/test/experiment/content8 udp 192.168.3.4 -d ./h2
+h2 command: cefroute add ccnx:/test/experiment/content8 udp 192.168.3.1 -d ./h2
+h4 command: cefroute add ccnx:/test/experiment/content8 udp 192.168.3.4 -d ./h4
+h4 command: cefroute add ccnx:/test/experiment/content8 udp 192.168.3.1 -d ./h4
+h5 command: cefroute add ccnx:/test/experiment/content8 udp 192.168.3.4 -d ./h5
+h5 command: cefroute add ccnx:/test/experiment/content8 udp 192.168.3.1 -d ./h5
+h6 command: cefroute add ccnx:/test/experiment/content8 udp 192.168.1.4 -d ./h6
+h6 command: cefroute add ccnx:/test/experiment/content8 udp 192.168.1.5 -d ./h6
+h7 command: cefroute add ccnx:/test/experiment/content8 udp 192.168.1.4 -d ./h7
+h7 command: cefroute add ccnx:/test/experiment/content8 udp 192.168.1.5 -d ./h7
+h8 command: cefroute add ccnx:/test/experiment/content8 udp 192.168.3.4 -d ./h8
+h8 command: cefroute add ccnx:/test/experiment/content8 udp 192.168.3.1 -d ./h8
+h9 command: cefroute add ccnx:/test/experiment/content8 udp 192.168.3.4 -d ./h9
+h9 command: cefroute add ccnx:/test/experiment/content8 udp 192.168.3.1 -d ./h9
+h0 command: cefroute add ccnx:/test/experiment/content9 udp 192.168.3.4 -d ./h0
+h0 command: cefroute add ccnx:/test/experiment/content9 udp 192.168.3.2 -d ./h0
+h1 command: cefroute add ccnx:/test/experiment/content9 udp 192.168.3.4 -d ./h1
+h1 command: cefroute add ccnx:/test/experiment/content9 udp 192.168.3.1 -d ./h1
+h2 command: cefroute add ccnx:/test/experiment/content9 udp 192.168.3.4 -d ./h2
+h2 command: cefroute add ccnx:/test/experiment/content9 udp 192.168.3.1 -d ./h2
+h4 command: cefroute add ccnx:/test/experiment/content9 udp 192.168.3.4 -d ./h4
+h4 command: cefroute add ccnx:/test/experiment/content9 udp 192.168.3.1 -d ./h4
+h5 command: cefroute add ccnx:/test/experiment/content9 udp 192.168.3.4 -d ./h5
+h5 command: cefroute add ccnx:/test/experiment/content9 udp 192.168.3.1 -d ./h5
+h6 command: cefroute add ccnx:/test/experiment/content9 udp 192.168.1.4 -d ./h6
+h6 command: cefroute add ccnx:/test/experiment/content9 udp 192.168.1.5 -d ./h6
+h7 command: cefroute add ccnx:/test/experiment/content9 udp 192.168.1.4 -d ./h7
+h7 command: cefroute add ccnx:/test/experiment/content9 udp 192.168.1.5 -d ./h7
+h8 command: cefroute add ccnx:/test/experiment/content9 udp 192.168.3.4 -d ./h8
+h8 command: cefroute add ccnx:/test/experiment/content9 udp 192.168.3.1 -d ./h8
+h9 command: cefroute add ccnx:/test/experiment/content9 udp 192.168.3.4 -d ./h9
+h9 command: cefroute add ccnx:/test/experiment/content9 udp 192.168.3.1 -d ./h9
+h0 command: cefstatus -d ./h0
+h1 command: cefstatus -d ./h1
+h2 command: cefstatus -d ./h2
+h3 command: cefstatus -d ./h3
+h4 command: cefstatus -d ./h4
+h5 command: cefstatus -d ./h5
+h6 command: cefstatus -d ./h6
+h7 command: cefstatus -d ./h7
+h8 command: cefstatus -d ./h8
+h9 command: cefstatus -d ./h9
+h9 command: cefputfile ccnx:/test/experiment/content1 -f ./sample-putfile -t 3000 -e 3000 -d ./h9 > cefputfile_h9_c1.log
+h9 command: cefputfile ccnx:/test/experiment/content2 -f ./sample-putfile -t 3000 -e 3000 -d ./h9 > cefputfile_h9_c2.log
+h9 command: cefputfile ccnx:/test/experiment/content3 -f ./sample-putfile -t 3000 -e 3000 -d ./h9 > cefputfile_h9_c3.log
+h0 command: cefputfile ccnx:/test/experiment/content4 -f ./sample-putfile -t 3000 -e 3000 -d ./h0 > cefputfile_h0_c4.log
+h0 command: cefputfile ccnx:/test/experiment/content5 -f ./sample-putfile -t 3000 -e 3000 -d ./h0 > cefputfile_h0_c5.log
+h0 command: cefputfile ccnx:/test/experiment/content6 -f ./sample-putfile -t 3000 -e 3000 -d ./h0 > cefputfile_h0_c6.log
+h3 command: cefputfile ccnx:/test/experiment/content7 -f ./sample-putfile -t 3000 -e 3000 -d ./h3 > cefputfile_h3_c7.log
+h3 command: cefputfile ccnx:/test/experiment/content8 -f ./sample-putfile -t 3000 -e 3000 -d ./h3 > cefputfile_h3_c8.log
+h3 command: cefputfile ccnx:/test/experiment/content9 -f ./sample-putfile -t 3000 -e 3000 -d ./h3 > cefputfile_h3_c9.log
+h1 command: cefgetfile ccnx:/test/experiment/content1 -f ./recvfile_h1_c1 -d ./h1 > cefgetfile_h1_c1.log
+h6 command: cefgetfile ccnx:/test/experiment/content1 -f ./recvfile_h6_c1 -d ./h6 > cefgetfile_h6_c1.log
+h1 command: cefgetfile ccnx:/test/experiment/content2 -f ./recvfile_h1_c2 -d ./h1 > cefgetfile_h1_c2.log
+h6 command: cefgetfile ccnx:/test/experiment/content2 -f ./recvfile_h6_c2 -d ./h6 > cefgetfile_h6_c2.log
+h6 command: cefgetfile ccnx:/test/experiment/content3 -f ./recvfile_h6_c3 -d ./h6 > cefgetfile_h6_c3.log
+h6 command: cefgetfile ccnx:/test/experiment/content3 -f ./recvfile_h6_c3 -d ./h6 > cefgetfile_h6_c3.log
+h1 command: cefgetfile ccnx:/test/experiment/content4 -f ./recvfile_h1_c4 -d ./h1 > cefgetfile_h1_c4.log
+h6 command: cefgetfile ccnx:/test/experiment/content4 -f ./recvfile_h6_c4 -d ./h6 > cefgetfile_h6_c4.log
+h4 command: cefgetfile ccnx:/test/experiment/content5 -f ./recvfile_h4_c5 -d ./h4 > cefgetfile_h4_c5.log
+h1 command: cefgetfile ccnx:/test/experiment/content5 -f ./recvfile_h1_c5 -d ./h1 > cefgetfile_h1_c5.log
+h1 command: cefgetfile ccnx:/test/experiment/content6 -f ./recvfile_h1_c6 -d ./h1 > cefgetfile_h1_c6.log
+h1 command: cefgetfile ccnx:/test/experiment/content6 -f ./recvfile_h1_c6 -d ./h1 > cefgetfile_h1_c6.log
+h1 command: cefgetfile ccnx:/test/experiment/content7 -f ./recvfile_h1_c7 -d ./h1 > cefgetfile_h1_c7.log
+h1 command: cefgetfile ccnx:/test/experiment/content7 -f ./recvfile_h1_c7 -d ./h1 > cefgetfile_h1_c7.log
+h6 command: cefgetfile ccnx:/test/experiment/content8 -f ./recvfile_h6_c8 -d ./h6 > cefgetfile_h6_c8.log
+h6 command: cefgetfile ccnx:/test/experiment/content8 -f ./recvfile_h6_c8 -d ./h6 > cefgetfile_h6_c8.log
+h1 command: cefgetfile ccnx:/test/experiment/content9 -f ./recvfile_h1_c9 -d ./h1 > cefgetfile_h1_c9.log
+h6 command: cefgetfile ccnx:/test/experiment/content9 -f ./recvfile_h6_c9 -d ./h6 > cefgetfile_h6_c9.log

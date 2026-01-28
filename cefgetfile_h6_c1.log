@@ -1,8 +1,8 @@
 [cefgetfile] Start
 [cefgetfile] Parsing parameters ...OK
-2026-01-28 15:50:04.917 [cefgetfile] INFO: [client] Config directory is ./h6
-2026-01-28 15:50:04.917 [cefgetfile] INFO: [client] Local Socket Name is /tmp/cef_9695.6
-2026-01-28 15:50:04.917 [cefgetfile] INFO: [client] Listen Port is 9695
+2026-01-28 16:39:22.894 [cefgetfile] INFO: [client] Config directory is ./h6
+2026-01-28 16:39:22.894 [cefgetfile] INFO: [client] Local Socket Name is /tmp/cef_9695.6
+2026-01-28 16:39:22.894 [cefgetfile] INFO: [client] Listen Port is 9695
 [cefgetfile] Init Cefore Client package ... OK
 [cefgetfile] Conversion from URI into Name ... OK
 [cefgetfile] Checking the output file ... OK
@@ -16,9 +16,9 @@
 [cefgetfile] Rx Frames (ContentObject) = 424
 [cefgetfile] Rx Bytes (All)            = 451198
 [cefgetfile] Rx Bytes (ContentObject)  = 433390
-[cefgetfile] Duration                  = 0.348 sec
-[cefgetfile] Throughput                = 10405947 bps
-[cefgetfile] Goodput                   = 9995243 bps
-[cefgetfile] Jitter (Ave)              = 818 us
-[cefgetfile] Jitter (Max)              = 6657 us
-[cefgetfile] Jitter (Var)              = 719496 us
+[cefgetfile] Duration                  = 0.196 sec
+[cefgetfile] Throughput                = 18466084 bps
+[cefgetfile] Goodput                   = 17737260 bps
+[cefgetfile] Jitter (Ave)              = 461 us
+[cefgetfile] Jitter (Max)              = 48175 us
+[cefgetfile] Jitter (Var)              = 5812872 us

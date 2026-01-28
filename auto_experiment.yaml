@@ -1,20 +1,19 @@
-hosts: 10
-switches: 15
+hosts: 15
+switches: 10
 switch_pool: 3
 seed: 42
-k: 2
+k: 4
 
 auto:
   publishers: [9, 0, 3]
   consumers: "random:5"
-  content_count: 3
+  content_count: 5
   uri_prefix: "ccnx:/test/experiment"
-  consumer_per_content: 2
+  consumer_per_content: 4
 
 down_interval: 30
 down_duration: 10
 down_stagger: 5
 down_count: 2
 get_interval: 5
-topo_png: ex1-seed42.png
-topo_layout: spring
+topo_layout:

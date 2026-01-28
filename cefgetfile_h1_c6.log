@@ -1,8 +1,8 @@
 [cefgetfile] Start
 [cefgetfile] Parsing parameters ...OK
-2026-01-28 15:51:56.730 [cefgetfile] INFO: [client] Config directory is ./h1
-2026-01-28 15:51:56.730 [cefgetfile] INFO: [client] Local Socket Name is /tmp/cef_9695.1
-2026-01-28 15:51:56.730 [cefgetfile] INFO: [client] Listen Port is 9695
+2026-01-28 16:41:10.925 [cefgetfile] INFO: [client] Config directory is ./h1
+2026-01-28 16:41:10.925 [cefgetfile] INFO: [client] Local Socket Name is /tmp/cef_9695.1
+2026-01-28 16:41:10.925 [cefgetfile] INFO: [client] Listen Port is 9695
 [cefgetfile] Init Cefore Client package ... OK
 [cefgetfile] Conversion from URI into Name ... OK
 [cefgetfile] Checking the output file ... OK
