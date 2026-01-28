@@ -64,6 +64,55 @@ Key options:
 - `--get-interval`: seconds between `cefgetfile` runs
 - `--bw nodeA,nodeB,mbps`: set bandwidth on a link (repeatable)
 - `--ext host,ifname[,ip][,mtu]`: attach external interface to a host (repeatable)
+- `--config path`: JSON or YAML configuration file
+
+### Configuration Files
+
+Use `--config` to load settings from a JSON or YAML file. YAML support requires `pyyaml`.
+
+**Multiple publishers example (JSON):**
+```bash
+sudo python3 mesh-disaster-topology.py --config configs/examples/multi_publisher.json
+```
+
+```json
+{
+  "hosts": 10,
+  "switches": 15,
+  "seed": 42,
+  "puts": [
+    {"host": 9, "uri": "ccnx:/test/video1", "file": "./video.bin"},
+    {"host": 7, "uri": "ccnx:/test/data1", "file": "./data.bin"}
+  ],
+  "gets": [
+    {"host": 0, "uri": "ccnx:/test/video1"},
+    {"host": 1, "uri": "ccnx:/test/data1"}
+  ]
+}
+```
+
+**Auto-generation example (YAML):**
+```bash
+sudo python3 mesh-disaster-topology.py --config configs/examples/auto_experiment.yaml
+```
+
+```yaml
+hosts: 10
+switches: 15
+seed: 42
+auto:
+  publishers: [9]           # Publisher host IDs
+  consumers: "random:5"     # Random 5 consumers
+  content_count: 3          # Contents per publisher
+  uri_prefix: "ccnx:/test"
+  consumer_per_content: 2   # Get operations per content
+```
+
+The `auto` block generates put/get operations automatically:
+- `publishers`: list of host IDs acting as publishers
+- `consumers`: `"random:N"` or list of host IDs
+- `content_count`: number of content items per publisher
+- `consumer_per_content`: number of get operations per content
 
 Logs:
 - `cefputfile_{hosts}_{switches}_{seed}_{down-interval}_{down-duration}_{downhost}.log`

@@ -11,6 +11,36 @@ CeforeEmu is a network emulator based on Mininet for testing Cefore (Content-Cen
 - Mininet version 2.3.0 must be installed
 - All scripts require root privileges (sudo)
 
+## Project Structure
+
+```
+cefore-emu/
+├── src/                           # Main source code
+│   ├── config/                    # Configuration utilities
+│   │   ├── __init__.py
+│   │   ├── loader.py              # JSON/YAML config loader
+│   │   └── auto_generator.py      # Auto put/get generation
+│   └── topo/                      # Topology implementations
+│       ├── simple_three_nodes_two_switch.py   # 3-node linear topology
+│       ├── five_node_two_switch.py            # Scalable linear topology
+│       ├── mesh_nodes_switches.py             # Random mesh topology
+│       └── mesh_disaster_topology.py          # Mesh with disaster simulation
+│
+├── configs/                       # Configuration
+│   ├── templates/                 # Host templates
+│   │   ├── h0/                    # Consumer template (CS_MODE=0)
+│   │   ├── h1/                    # Router template (CS_MODE=2)
+│   │   └── h2/                    # Publisher template (CS_MODE=0)
+│   └── examples/                  # Example configurations
+│       ├── multi_publisher.json   # Multiple publisher example
+│       └── auto_experiment.yaml   # Auto-generation example
+│
+├── *.py (root)                    # Entry point wrappers for src/topo/
+├── buffer.sh                      # UDP buffer configuration
+├── pyproject.toml                 # Package configuration
+└── CLAUDE.md                      # This file
+```
+
 ## Running Topology Scripts
 
 **Simple 3-node linear topology (consumer-router-publisher):**
@@ -31,6 +61,18 @@ sudo python3 mesh-nodes-switches.py --hosts 8 --switches 12 --k 3 --seed 42
 - `--switches`: Number of random links (min 2, max n*(n-1)/2)
 - `--k`: Number of shortest paths per destination for multipath routing (default 2)
 - `--seed`: Random seed for deterministic topology generation
+
+**Mesh disaster topology with host failures:**
+```bash
+sudo python3 mesh-disaster-topology.py --hosts 10 --switches 15 --seed 42 \
+    --down-interval 30 --down-duration 10 --down-count 2
+```
+
+**Using JSON/YAML configuration:**
+```bash
+sudo python3 mesh-disaster-topology.py --config configs/examples/multi_publisher.json
+sudo python3 mesh-disaster-topology.py --config configs/examples/auto_experiment.yaml
+```
 
 **Exiting Mininet:**
 ```
@@ -61,11 +103,15 @@ All topology scripts follow a common pattern:
 - **Router** (h1, odd-numbered hosts): Forwards interests/content, runs cache manager (csmgrd)
 - **Publisher** (h2, last host): Stores and serves content via `cefputfile`
 
-### Host Configuration Directories
+### Host Configuration Templates
 
-- `h0/`, `h1/`, `h2/` are template directories containing Cefore configuration files
-- For topologies with >3 hosts, additional directories (h3, h4, ...) are generated dynamically by copying templates
-- Dynamic directories are cleaned up after script completion via `cleanup_node_dirs()`
+Templates are located in `configs/templates/`:
+
+- `h0/` - Consumer template (CS_MODE=0, no caching)
+- `h1/` - Router template (CS_MODE=2, external cache manager)
+- `h2/` - Publisher template (CS_MODE=1, local cache mode)
+
+For topologies with >3 hosts, additional directories (h3, h4, ...) are generated dynamically by copying templates. Dynamic directories are cleaned up after script completion via `cleanup_node_dirs()`.
 
 **Configuration files per host:**
 - `cefnetd.conf` - Forwarding daemon config (includes LOCAL_SOCK_ID)
@@ -73,6 +119,7 @@ All topology scripts follow a common pattern:
 - `csmgrd.conf` - Cache manager config
 - `conpubd.conf` - Publisher daemon config
 - `plugin.conf` - Plugin configuration
+- `cefnetd.key` - Key configuration
 - `default-private-key`, `default-public-key` - Cryptographic keys (sensitive)
 
 ### Key Functions
@@ -88,23 +135,95 @@ All topology scripts follow a common pattern:
   - For each source-destination pair, selects k best neighbors based on their precomputed distance to destination
   - `shortest_path()`: Dijkstra's algorithm with edge/node banning support (used for constrained pathfinding)
   - `k_shortest_paths()`: Yen's algorithm for finding k alternate paths (available but not used in main FIB setup)
-  - Each destination gets a unique URI prefix: `ccnx:/test/exampleN`
+  - `set_fib()`: Sets FIB entries for all destinations with default URI pattern `ccnx:/test/exampleN`
+  - `set_fib_for_uris()`: Sets FIB entries for specific URI-to-publisher mappings (used with custom puts configuration)
 
 **Dynamic Configuration:**
 - `update_local_sock_id()`: Modifies LOCAL_SOCK_ID in config files to avoid socket conflicts
 - `ensure_node_dirs()`: Creates host directories from templates based on role heuristics
+- `select_template()`: Determines which template (h0/h1/h2) to use for each host index
 
-### Mesh Topology Specifics
+### Mesh Topology Features
 
-The mesh topology (`mesh-nodes-switches.py`) implements advanced features:
+The mesh topologies (`mesh-nodes-switches.py`, `mesh-disaster-topology.py`) implement advanced features:
 
 - **Multipath routing**: k-shortest paths per destination for redundancy
 - **Link control**: `link_up()` and `link_down()` functions to simulate failures
-- **Staggered multi-host outages**: Support for simulating multiple simultaneous link failures
 - **Topology visualization**: `print_mesh_links()` renders ASCII tree view showing each host's connectivity
 - **Status inspection**: `run_cefstatus()` to view FIB state
 - **Deterministic generation**: `--seed` parameter for reproducible topologies
 - **Publisher-aware linking**: First link always connects to publisher for guaranteed connectivity
+- **PNG output**: `render_topology_png()` generates topology visualization images
+
+### Disaster Topology Features
+
+The disaster topology (`mesh-disaster-topology.py`) adds:
+
+**Host Failure Simulation:**
+```bash
+--down-interval <sec>    # Interval between down/up cycles
+--down-duration <sec>    # Time to keep hosts down
+--down-count <n>         # Number of hosts to down per cycle
+--down-stagger <sec>     # Offset between individual host downs
+--down-exclude <ids>     # Host IDs to exclude (comma-separated)
+```
+
+**Bandwidth Control:**
+```bash
+--bw nodeA,nodeB,mbps    # Set link bandwidth (repeatable)
+```
+
+**External Interface:**
+```bash
+--ext host,ifname[,ip][,mtu]   # Attach external interface to host
+```
+
+**JSON/YAML Configuration:**
+
+Configuration files support both JSON and YAML formats (YAML requires `pyyaml`).
+
+Basic JSON example with multiple publishers:
+```json
+{
+  "hosts": 10,
+  "switches": 15,
+  "seed": 42,
+  "puts": [
+    {"host": 9, "uri": "ccnx:/test/video1", "file": "./video.bin"},
+    {"host": 7, "uri": "ccnx:/test/data1", "file": "./data.bin"}
+  ],
+  "gets": [
+    {"host": 0, "uri": "ccnx:/test/video1"},
+    {"host": 1, "uri": "ccnx:/test/data1"}
+  ]
+}
+```
+
+YAML example with auto-generation:
+```yaml
+hosts: 10
+switches: 15
+seed: 42
+auto:
+  publishers: [9]           # Publisher host IDs
+  consumers: "random:5"     # Random 5 consumers or list [0, 1, 2]
+  content_count: 3          # Contents per publisher
+  uri_prefix: "ccnx:/test"  # URI prefix for generated content
+  consumer_per_content: 2   # Get operations per content
+```
+
+The `auto` configuration automatically generates put/get operations:
+- `publishers`: List of host IDs that will publish content
+- `consumers`: Either `"random:N"` for N random consumers or a list of host IDs
+- `content_count`: Number of content items each publisher creates
+- `uri_prefix`: Base URI for generated content (default: `ccnx:/test`)
+- `consumer_per_content`: Number of consumers that request each content
+
+**Topology PNG Output:**
+```bash
+--topo-png output.png           # Output path
+--topo-layout spring            # Layout: spring, kamada_kawai, circular
+```
 
 ## Runtime Artifacts
 
@@ -112,26 +231,44 @@ After running scripts, the following files appear in the root directory:
 
 - `hN-cefnetd-log` - Forwarding daemon logs for host N
 - `hN-csmgrd-log` - Cache manager logs for router hosts
-- `cefputfile-log` - Publisher operation log
-- `cefgetfile-log` - Consumer operation log
-- `recvfile_at_h0` - Retrieved content file at consumer
+- `cefputfile-log` / `cefputfile_*.log` - Publisher operation logs
+- `cefgetfile-log` / `cefgetfile_*.log` - Consumer operation logs
+- `recvfile_at_h0` / `recvfile_at_hN` - Retrieved content files
+- `ex-seed*.png` - Topology visualization images (when --topo-png used)
 
 ## Common Modifications
 
 **Adding a new host role:**
-Modify `select_template()` to return appropriate template (h0, h1, or h2) based on index and host count.
+Modify `select_template()` in the topology script to return appropriate template (h0, h1, or h2) based on index and host count.
 
 **Changing content URI:**
-Update the `ccnx:/test` prefix in `setFib()` or `set_fib()` and corresponding `cefputfile`/`cefgetfile` commands.
+Update the `ccnx:/test` prefix in `setFib()` or `set_fib()` and corresponding `cefputfile`/`cefgetfile` commands. For disaster topology, use `--config` JSON or `--puts`/`--gets` options.
 
 **Adjusting cache behavior:**
-Edit `h1/csmgrd.conf` template (applies to all router nodes).
+Edit `configs/templates/h1/csmgrd.conf` template (applies to all router nodes).
 
 **Testing link failures:**
-In mesh topology, uncomment the `link_down()` calls (lines 448-454) or add custom failure scenarios before `run_cefgetfile()`. Multiple simultaneous link failures can be used to test staggered multi-host outages and multipath routing resilience.
+- Basic: Use `link_down()` function in mesh scripts
+- Advanced: Use disaster topology with `--down-*` options for automated failure simulation
+
+## Development
+
+**Package management:**
+The project uses `pyproject.toml` with uv for dependency management.
+
+```bash
+uv sync              # Install dependencies
+uv run python3 ...   # Run with managed environment
+```
+
+**Dependencies:**
+- mininet>=2.3.0
+- networkx>=3.6.1 (for topology algorithms and PNG output)
+- matplotlib>=3.10.8 (for PNG output)
+- pyyaml>=6.0 (for YAML configuration support)
 
 ## Security Notes
 
-- `h*/default-private-key` files contain sensitive cryptographic material - do not commit changes or share
+- `configs/templates/h*/default-private-key` files contain sensitive cryptographic material - do not commit changes or share
 - All scripts require root privileges due to Mininet's network namespace manipulation
 - Only run in trusted/isolated environments (VMs recommended)

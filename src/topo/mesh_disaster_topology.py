@@ -7,6 +7,7 @@ Periodic host failure emulator based on mesh_nodes_switches.py.
 import argparse
 import heapq
 import random
+import sys
 import threading
 import time
 from collections import deque
@@ -16,6 +17,8 @@ from mininet.link import Intf, TCLink
 from mininet.log import info, setLogLevel
 from mininet.net import Mininet
 
+from config.auto_generator import generate_operations
+from config.loader import load_config, merge_cli_and_config, validate_config
 from topo.mesh_nodes_switches import (  # type: ignore
     MeshTopo,
     build_host_graph,
@@ -26,6 +29,7 @@ from topo.mesh_nodes_switches import (  # type: ignore
     render_topology_png,
     run_cefstatus_all,
     set_fib,
+    set_fib_for_uris,
     set_ip_addr,
     start_cefnetd,
     start_csmgrd,
@@ -33,20 +37,6 @@ from topo.mesh_nodes_switches import (  # type: ignore
     stop_csmgrd,
     wait_for_cefnetd,
 )
-
-def load_config(path):
-    if not path:
-        return {}
-    config_path = Path(path)
-    if not config_path.exists():
-        sys.exit(f"config file not found: {config_path}")
-    import json
-
-    with open(config_path, "r", encoding="utf-8") as f:
-        try:
-            return json.load(f)
-        except json.JSONDecodeError as exc:
-            sys.exit(f"failed to parse config JSON: {exc}")
 
 
 def parse_int_list(value):
@@ -249,7 +239,41 @@ def run_disaster_topology(args):
     for idx in range(args.hosts):
         wait_for_cefnetd(net, idx)
 
-    set_fib(net, topo.mesh_links, args.k)
+    ops_put = args.puts or []
+    ops_get = args.gets or []
+
+    auto_config = getattr(args, "auto", None)
+    if auto_config and not ops_put and not ops_get:
+        ops_put, ops_get = generate_operations(auto_config, args.hosts, args.seed)
+
+    if not ops_put:
+        publisher = args.hosts - 1
+        publish_link = pick_publish_link(topo.mesh_links, publisher)
+        publish_uri = f"ccnx:/test/example{publisher + 1}/test.py"
+        seed_label = "none" if args.seed is None else str(args.seed)
+        down_host_label = "none"
+        log_name = (
+            f"cefputfile_{args.hosts}_{args.switches}_{seed_label}_"
+            f"{args.down_interval}_{args.down_duration}_{down_host_label}.log"
+        )
+        ops_put = [
+            {
+                "host": publisher,
+                "uri": publish_uri,
+                "file": "./sample-putfile",
+                "log": log_name,
+            }
+        ]
+
+    uri_publishers = {}
+    for op in ops_put:
+        uri_publishers[op["uri"]] = op["host"]
+
+    if uri_publishers:
+        set_fib_for_uris(net, topo.mesh_links, args.k, uri_publishers)
+    else:
+        set_fib(net, topo.mesh_links, args.k)
+
     run_cefstatus_all(net, args.hosts)
     print_mesh_links(topo.mesh_links)
     render_topology_png(
@@ -270,28 +294,6 @@ def run_disaster_topology(args):
 
     for host_name, intf_name, ip, mtu in parse_ext_args(args.ext):
         attach_external_interface(net, host_name, intf_name, ip, mtu)
-
-    ops_put = args.puts or []
-    ops_get = args.gets or []
-
-    if not ops_put:
-        publisher = args.hosts - 1
-        publish_link = pick_publish_link(topo.mesh_links, publisher)
-        publish_uri = f"ccnx:/test/example{publisher + 1}/test.py"
-        seed_label = "none" if args.seed is None else str(args.seed)
-        down_host_label = "none"
-        log_name = (
-            f"cefputfile_{args.hosts}_{args.switches}_{seed_label}_"
-            f"{args.down_interval}_{args.down_duration}_{down_host_label}.log"
-        )
-        ops_put = [
-            {
-                "host": publisher,
-                "uri": publish_uri,
-                "file": "./sample-putfile",
-                "log": log_name,
-            }
-        ]
 
     for op in ops_put:
         host = op["host"]
@@ -489,41 +491,12 @@ def main():
     args = parser.parse_args()
 
     config_data = load_config(args.config)
-    for key in (
-        "hosts",
-        "switches",
-        "seed",
-        "k",
-        "down_interval",
-        "down_duration",
-        "down_exclude",
-        "down_count",
-        "down_stagger",
-        "cache_count",
-        "bw",
-        "ext",
-        "get_interval",
-        "topo_png",
-        "topo_layout",
-        "switch_pool",
-        "puts",
-        "gets",
-    ):
-        if key in config_data:
-            setattr(args, key, config_data[key])
-
-    if isinstance(args.puts, str) and args.puts:
-        import json
-
-        args.puts = json.loads(args.puts)
-    if isinstance(args.gets, str) and args.gets:
-        import json
-
-        args.gets = json.loads(args.gets)
-    if isinstance(args.bw, str) and args.bw:
-        args.bw = [args.bw]
-    if isinstance(args.ext, str) and args.ext:
-        args.ext = [args.ext]
+    errors = validate_config(config_data)
+    if errors:
+        for error in errors:
+            print(f"config error: {error}", file=sys.stderr)
+        sys.exit(1)
+    merge_cli_and_config(args, config_data)
 
     setLogLevel("info")
     run_disaster_topology(args)
