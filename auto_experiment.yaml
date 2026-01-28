@@ -12,5 +12,7 @@ auto:
 
 down_interval: 30
 down_duration: 10
+down_stagger: 5
 down_count: 2
 get_interval: 5
+

@@ -1,0 +1,20 @@
+Traceback (most recent call last):
+  File "/home/yamakawa/Development/github/cefore-emu-koh11235813/mesh-disaster-topology.py", line 13, in <module>
+    main()
+  File "/home/yamakawa/Development/github/cefore-emu-koh11235813/src/topo/mesh_disaster_topology.py", line 467, in main
+    parser.add_argument(
+  File "/usr/lib/python3.12/argparse.py", line 1507, in add_argument
+    return self._add_action(action)
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/argparse.py", line 1889, in _add_action
+    self._optionals._add_action(action)
+  File "/usr/lib/python3.12/argparse.py", line 1709, in _add_action
+    action = super(_ArgumentGroup, self)._add_action(action)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/argparse.py", line 1521, in _add_action
+    self._check_conflict(action)
+  File "/usr/lib/python3.12/argparse.py", line 1658, in _check_conflict
+    conflict_handler(action, confl_optionals)
+  File "/usr/lib/python3.12/argparse.py", line 1667, in _handle_conflict_error
+    raise ArgumentError(action, message % conflict_string)
+argparse.ArgumentError: argument --switch-pool: conflicting option string: --switch-pool
