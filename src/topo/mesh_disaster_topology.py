@@ -18,6 +18,24 @@ from mininet.log import info, setLogLevel
 from mininet.net import Mininet
 
 from config.auto_generator import generate_operations
+
+
+class Tee:
+    """Write to multiple streams simultaneously."""
+
+    def __init__(self, *streams):
+        self.streams = streams
+
+    def write(self, data):
+        for s in self.streams:
+            s.write(data)
+            s.flush()
+
+    def flush(self):
+        for s in self.streams:
+            s.flush()
+
+
 from config.loader import load_config, merge_cli_and_config, validate_config
 from topo.mesh_nodes_switches import (  # type: ignore
     MeshTopo,
@@ -455,8 +473,19 @@ def main():
     parser.add_argument(
         "--topo-png",
         type=str,
-        default="",
-        help="write topology PNG to this path (requires networkx/matplotlib)",
+        default=None,
+        help="write topology PNG to this path (default: ex{hosts}_seed{seed}.png)",
+    )
+    parser.add_argument(
+        "--script-log",
+        type=str,
+        default=None,
+        help="log script output to file (default: ex{hosts}_seed{seed}.log)",
+    )
+    parser.add_argument(
+        "--no-script-log",
+        action="store_true",
+        help="disable script log output",
     )
     parser.add_argument(
         "--topo-layout",
@@ -486,8 +515,33 @@ def main():
         sys.exit(1)
     merge_cli_and_config(args, config_data)
 
-    setLogLevel("info")
-    run_disaster_topology(args)
+    # Set dynamic default for topo_png
+    seed_label = "none" if args.seed is None else str(args.seed)
+    if args.topo_png is None:
+        args.topo_png = f"ex{args.hosts}_seed{seed_label}.png"
+
+    # Set up script logging
+    log_fp = None
+    original_stdout = None
+    original_stderr = None
+    if not args.no_script_log:
+        log_name = (
+            args.script_log if args.script_log else f"ex{args.hosts}_seed{seed_label}.log"
+        )
+        log_fp = open(log_name, "w")
+        original_stdout = sys.stdout
+        original_stderr = sys.stderr
+        sys.stdout = Tee(original_stdout, log_fp)
+        sys.stderr = Tee(original_stderr, log_fp)
+
+    try:
+        setLogLevel("info")
+        run_disaster_topology(args)
+    finally:
+        if log_fp:
+            sys.stdout = original_stdout
+            sys.stderr = original_stderr
+            log_fp.close()
 
 
 if __name__ == "__main__":
