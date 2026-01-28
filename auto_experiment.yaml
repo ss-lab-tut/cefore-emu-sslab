@@ -1,5 +1,6 @@
 hosts: 10
 switches: 15
+switch_pool: 3
 seed: 42
 k: 2
 
@@ -15,4 +16,5 @@ down_duration: 10
 down_stagger: 5
 down_count: 2
 get_interval: 5
-
+topo_png: ex1-seed42.png
+topo_layout: spring
