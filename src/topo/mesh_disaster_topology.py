@@ -465,12 +465,6 @@ def main():
         help="topology layout: spring, kamada_kawai, or circular",
     )
     parser.add_argument(
-        "--switch-pool",
-        type=int,
-        default=2,
-        help="number of switches to share across links (0 = one switch per link)",
-    )
-    parser.add_argument(
         "--puts",
         type=str,
         default="",
