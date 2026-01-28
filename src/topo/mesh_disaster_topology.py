@@ -19,11 +19,12 @@ from mininet.net import Mininet
 from topo.mesh_nodes_switches import (  # type: ignore
     MeshTopo,
     build_host_graph,
+    cleanup_node_dirs,
     ensure_node_dirs,
     pick_publish_link,
     print_mesh_links,
-    run_cefstatus_all,
     render_topology_png,
+    run_cefstatus_all,
     set_fib,
     set_ip_addr,
     start_cefnetd,
@@ -32,6 +33,20 @@ from topo.mesh_nodes_switches import (  # type: ignore
     stop_csmgrd,
     wait_for_cefnetd,
 )
+
+def load_config(path):
+    if not path:
+        return {}
+    config_path = Path(path)
+    if not config_path.exists():
+        sys.exit(f"config file not found: {config_path}")
+    import json
+
+    with open(config_path, "r", encoding="utf-8") as f:
+        try:
+            return json.load(f)
+        except json.JSONDecodeError as exc:
+            sys.exit(f"failed to parse config JSON: {exc}")
 
 
 def parse_int_list(value):
@@ -199,7 +214,9 @@ def select_k_centers(graph, k, weight_fn=None):
         centers.append(farthest)
         dist_map = compute_distances(graph, farthest, weight_fn)
         for node in nodes:
-            min_dist[node] = min(min_dist.get(node, float("inf")), dist_map.get(node, float("inf")))
+            min_dist[node] = min(
+                min_dist.get(node, float("inf")), dist_map.get(node, float("inf"))
+            )
     return centers
 
 
@@ -254,28 +271,40 @@ def run_disaster_topology(args):
     for host_name, intf_name, ip, mtu in parse_ext_args(args.ext):
         attach_external_interface(net, host_name, intf_name, ip, mtu)
 
-    publisher = args.hosts - 1
-    publish_link = mesh.pick_publish_link(topo.mesh_links, publisher)
-    publish_uri = f"ccnx:/test/example{publisher + 1}/test.py"
-    consumer = (
-        publish_link["host_b"]
-        if publish_link["host_a"] == publisher
-        else publish_link["host_a"]
-    )
+    ops_put = args.puts or []
+    ops_get = args.gets or []
 
-    seed_label = "none" if args.seed is None else str(args.seed)
-    down_host_label = "none"
-    log_name = (
-        f"cefputfile_{args.hosts}_{args.switches}_{seed_label}_"
-        f"{args.down_interval}_{args.down_duration}_{down_host_label}.log"
-    )
-    command = (
-        f"cefputfile {publish_uri} -f ./sample-putfile -t 3000 -e 3000 "
-        f"-d ./h{publisher} > {log_name}"
-    )
-    print(f"h{publisher}", "command:", command)
-    run_host_command(net, publisher, command)
-    time.sleep(5)
+    if not ops_put:
+        publisher = args.hosts - 1
+        publish_link = pick_publish_link(topo.mesh_links, publisher)
+        publish_uri = f"ccnx:/test/example{publisher + 1}/test.py"
+        seed_label = "none" if args.seed is None else str(args.seed)
+        down_host_label = "none"
+        log_name = (
+            f"cefputfile_{args.hosts}_{args.switches}_{seed_label}_"
+            f"{args.down_interval}_{args.down_duration}_{down_host_label}.log"
+        )
+        ops_put = [
+            {
+                "host": publisher,
+                "uri": publish_uri,
+                "file": "./sample-putfile",
+                "log": log_name,
+            }
+        ]
+
+    for op in ops_put:
+        host = op["host"]
+        uri = op["uri"]
+        infile = op.get("file", "./sample-putfile")
+        log_name = op.get("log", f"cefputfile_h{host}.log")
+        command = (
+            f"cefputfile {uri} -f {infile} -t 3000 -e 3000 "
+            f"-d ./h{host} > {log_name}"
+        )
+        print(f"h{host}", "command:", command)
+        run_host_command(net, host, command)
+        time.sleep(1)
 
     stop_event = None
     flap_state = {"last_down_host": None, "down_hosts": []}
@@ -293,25 +322,43 @@ def run_disaster_topology(args):
         )
 
     rng = rng or random.Random()
-    for idx in range(1, 6):
-        candidates = [h for h in range(args.hosts) if h != publisher]
-        consumer = rng.choice(candidates)
-        down_hosts = flap_state.get("down_hosts") or []
-        down_host_label = "none" if not down_hosts else ",".join(
-            str(host_id) for host_id in down_hosts
-        )
-        seed_label = "none" if args.seed is None else str(args.seed)
-        log_name = (
-            f"cefgetfile_seed{seed_label}_downhosts{down_host_label}_"
-            f"h{consumer}.log"
-        )
+    if not ops_get:
+        # default: 5 random consumers for the first publish URI
+        base_uri = ops_put[0]["uri"]
+        for idx in range(1, 6):
+            candidates = [h for h in range(args.hosts) if h != ops_put[0]["host"]]
+            consumer = rng.choice(candidates)
+            down_hosts = flap_state.get("down_hosts") or []
+            down_host_label = (
+                "none"
+                if not down_hosts
+                else ",".join(str(host_id) for host_id in down_hosts)
+            )
+            seed_label = "none" if args.seed is None else str(args.seed)
+            log_name = (
+                f"cefgetfile_seed{seed_label}_downhosts{down_host_label}_h{consumer}.log"
+            )
+            ops_get.append(
+                {
+                    "host": consumer,
+                    "uri": base_uri,
+                    "file": f"./recvfile_at_h{consumer}",
+                    "log": log_name,
+                }
+            )
+
+    for idx, op in enumerate(ops_get):
+        consumer = op["host"]
+        uri = op["uri"]
+        outfile = op.get("file", f"./recvfile_at_h{consumer}")
+        log_name = op.get("log", f"cefgetfile_h{consumer}.log")
         command = (
-            f"cefgetfile {publish_uri} -f ./recvfile_at_h{consumer} "
+            f"cefgetfile {uri} -f {outfile} "
             f"-d ./h{consumer} > {log_name}"
         )
         print(f"h{consumer}", "command:", command)
         run_host_command(net, consumer, command)
-        if idx < 5 and args.get_interval > 0:
+        if idx < len(ops_get) - 1 and args.get_interval > 0:
             time.sleep(args.get_interval)
 
     # CLI(net)
@@ -320,16 +367,17 @@ def run_disaster_topology(args):
         stop_event.set()
 
     for idx in range(args.hosts):
-        mesh.stop_cefnetd(net, idx)
+        stop_cefnetd(net, idx)
 
     for idx in range(args.hosts):
         if idx % 2 == 1:
-            mesh.stop_csmgrd(net, idx)
+            stop_csmgrd(net, idx)
     net.stop()
-    mesh.cleanup_node_dirs()
+    cleanup_node_dirs()
 
 
 def main():
+    config_data = {}
     parser = argparse.ArgumentParser(
         description="Cefore mesh topology with periodic host down"
     )
@@ -403,6 +451,12 @@ def main():
         help="seconds between cefgetfile runs",
     )
     parser.add_argument(
+        "--config",
+        type=str,
+        default="",
+        help="JSON config file to override parameters and define put/get ops",
+    )
+    parser.add_argument(
         "--topo-png",
         type=str,
         default="",
@@ -414,7 +468,62 @@ def main():
         default="spring",
         help="topology layout: spring, kamada_kawai, or circular",
     )
+    parser.add_argument(
+        "--switch-pool",
+        type=int,
+        default=0,
+        help="number of switches to share across links (0 = one switch per link)",
+    )
+    parser.add_argument(
+        "--puts",
+        type=str,
+        default="",
+        help="JSON list of put ops (host,uri,file,log)",
+    )
+    parser.add_argument(
+        "--gets",
+        type=str,
+        default="",
+        help="JSON list of get ops (host,uri,file,log)",
+    )
     args = parser.parse_args()
+
+    config_data = load_config(args.config)
+    for key in (
+        "hosts",
+        "switches",
+        "seed",
+        "k",
+        "down_interval",
+        "down_duration",
+        "down_exclude",
+        "down_count",
+        "down_stagger",
+        "cache_count",
+        "bw",
+        "ext",
+        "get_interval",
+        "topo_png",
+        "topo_layout",
+        "switch_pool",
+        "puts",
+        "gets",
+    ):
+        if key in config_data:
+            setattr(args, key, config_data[key])
+
+    if isinstance(args.puts, str) and args.puts:
+        import json
+
+        args.puts = json.loads(args.puts)
+    if isinstance(args.gets, str) and args.gets:
+        import json
+
+        args.gets = json.loads(args.gets)
+    if isinstance(args.bw, str) and args.bw:
+        args.bw = [args.bw]
+    if isinstance(args.ext, str) and args.ext:
+        args.ext = [args.ext]
 
     setLogLevel("info")
     run_disaster_topology(args)
