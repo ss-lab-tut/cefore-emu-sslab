@@ -1,6 +1,7 @@
 num: 1
 hosts: 15
 switches: 20
+node_per-switch: 6
 seed: 42
 k: 4
 
