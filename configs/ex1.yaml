@@ -1,12 +1,11 @@
 num: 1
 hosts: 15
-switches: 10
-switch_pool: 3
+switches: 20
 seed: 42
 k: 4
 
 auto:
-  publishers: [9, 0, 3]
+  publishers: [9, 13, 3]
   consumers: "random:5"
   content_count: 5
   uri_prefix: "ccnx:/test/experiment"
