@@ -16,8 +16,8 @@ from mininet.link import Intf, TCLink
 from mininet.log import info, setLogLevel
 from mininet.net import Mininet
 
-from ..config.auto_generator import generate_operations
-from ..config.loader import load_config, merge_cli_and_config, validate_config
+from config.auto_generator import generate_operations
+from config.loader import load_config, merge_cli_and_config, validate_config
 from .cef_daemons import (
     run_cefstatus_all,
     start_cefnetd,
