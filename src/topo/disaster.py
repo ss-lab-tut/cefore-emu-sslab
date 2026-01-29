@@ -5,10 +5,12 @@ Periodic host failure emulator based on mesh topology.
 """
 
 import argparse
+import json
 import random
 import sys
 import threading
 import time
+from pathlib import Path
 
 from mininet.link import Intf, TCLink
 from mininet.log import info, setLogLevel
@@ -28,6 +30,7 @@ from .graph_algos import select_k_centers
 from .links import pick_publish_link, set_node_links_state
 from .mesh_topo import MeshTopo
 from .net_config import set_fib, set_fib_for_uris, set_ip_addr
+from .paths import resolve_run_dir
 from .templates import cleanup_node_dirs, ensure_node_dirs
 from .viz import build_host_graph, print_mesh_links, render_topology_png
 
@@ -230,19 +233,23 @@ def run_host_command(net, host_idx, command):
     return proc.wait()
 
 
-def run_disaster_topology(args):
+def run_disaster_topology(args, run_dir: Path = None):
     """Run disaster topology simulation.
 
     Args:
         args: Parsed command-line arguments.
+        run_dir: Output directory for logs and artifacts.
     """
+    if run_dir is None:
+        run_dir = Path(".")
+
     rng = random.Random(args.seed) if args.seed is not None else None
 
     # ops_put から publishers を抽出（auto 設定も展開）
     ops_put = args.puts or []
     auto_config = getattr(args, "auto", None)
     if auto_config and not ops_put:
-        ops_put, _ = generate_operations(auto_config, args.hosts, args.seed)
+        ops_put, _ = generate_operations(auto_config, args.hosts, args.seed, run_dir)
 
     publisher_ids = set(op["host"] for op in ops_put) if ops_put else None
 
@@ -276,7 +283,7 @@ def run_disaster_topology(args):
     ops_get = args.gets or []
 
     if auto_config and not ops_get:
-        _, ops_get = generate_operations(auto_config, args.hosts, args.seed)
+        _, ops_get = generate_operations(auto_config, args.hosts, args.seed, run_dir)
 
     if not ops_put:
         publisher = args.hosts - 1
@@ -293,7 +300,7 @@ def run_disaster_topology(args):
                 "host": publisher,
                 "uri": publish_uri,
                 "file": "./sample-putfile",
-                "log": log_name,
+                "log": str(run_dir / log_name),
             }
         ]
 
@@ -308,9 +315,14 @@ def run_disaster_topology(args):
 
     run_cefstatus_all(net, args.hosts)
     print_mesh_links(topo.mesh_links)
+
+    # Resolve topology PNG path with run_dir
+    topo_png_path = args.topo_png
+    if topo_png_path:
+        topo_png_path = str(run_dir / Path(topo_png_path).name)
     render_topology_png(
         topo.mesh_links,
-        args.topo_png,
+        topo_png_path,
         seed=args.seed,
         layout=args.topo_layout,
     )
@@ -332,8 +344,13 @@ def run_disaster_topology(args):
         uri = op["uri"]
         infile = op.get("file", "./sample-putfile")
         log_name = op.get("log", f"cefputfile_h{host}.log")
+        # If log_name doesn't already contain run_dir, prepend it
+        if not Path(log_name).is_absolute() and not str(log_name).startswith(str(run_dir)):
+            log_path = str(run_dir / log_name)
+        else:
+            log_path = log_name
         command = (
-            f"cefputfile {uri} -f {infile} -t 3000 -e 3000 -d ./h{host} > {log_name}"
+            f"cefputfile {uri} -f {infile} -t 3000 -e 3000 -d ./h{host} > {log_path}"
         )
         print(f"h{host}", "command:", command)
         run_host_command(net, host, command)
@@ -373,17 +390,24 @@ def run_disaster_topology(args):
                 {
                     "host": consumer,
                     "uri": base_uri,
-                    "file": f"./recvfile_at_h{consumer}",
-                    "log": log_name,
+                    "file": str(run_dir / f"recvfile_at_h{consumer}"),
+                    "log": str(run_dir / log_name),
                 }
             )
 
     for idx, op in enumerate(ops_get):
         consumer = op["host"]
         uri = op["uri"]
-        outfile = op.get("file", f"./recvfile_at_h{consumer}")
+        outfile = op.get("file", f"recvfile_at_h{consumer}")
         log_name = op.get("log", f"cefgetfile_h{consumer}.log")
-        command = f"cefgetfile {uri} -f {outfile} -d ./h{consumer} > {log_name}"
+        # If paths don't already contain run_dir, prepend it
+        if not Path(outfile).is_absolute() and not str(outfile).startswith(str(run_dir)):
+            outfile = str(run_dir / outfile)
+        if not Path(log_name).is_absolute() and not str(log_name).startswith(str(run_dir)):
+            log_path = str(run_dir / log_name)
+        else:
+            log_path = log_name
+        command = f"cefgetfile {uri} -f {outfile} -d ./h{consumer} > {log_path}"
         print(f"h{consumer}", "command:", command)
         run_host_command(net, consumer, command)
         if idx < len(ops_get) - 1 and args.get_interval > 0:
@@ -519,6 +543,29 @@ def main():
         default="",
         help="JSON list of get ops (host,uri,file,log)",
     )
+    parser.add_argument(
+        "--num",
+        type=int,
+        default=None,
+        help="experiment number (enables log directory output)",
+    )
+    parser.add_argument(
+        "--output-dir",
+        type=str,
+        default="logs",
+        help="base output directory (default: logs)",
+    )
+    parser.add_argument(
+        "--timestamp",
+        action="store_true",
+        help="add timestamp to output directory name",
+    )
+    parser.add_argument(
+        "--legacy",
+        action="store_true",
+        dest="legacy_layout",
+        help="use legacy layout (output to current directory)",
+    )
     args = parser.parse_args()
 
     config_data = load_config(args.config)
@@ -529,10 +576,32 @@ def main():
         sys.exit(1)
     merge_cli_and_config(args, config_data)
 
+    # Resolve output directory
+    run_dir = resolve_run_dir(args)
+
     # Set dynamic default for topo_png
     seed_label = "none" if args.seed is None else str(args.seed)
     if args.topo_png is None:
         args.topo_png = f"ex{args.hosts}_seed{seed_label}.png"
+
+    # Write meta.json with experiment configuration
+    if run_dir != Path("."):
+        meta_data = {
+            "num": getattr(args, "num", None),
+            "hosts": args.hosts,
+            "switches": args.switches,
+            "seed": args.seed,
+            "k": args.k,
+            "down_interval": args.down_interval,
+            "down_duration": args.down_duration,
+            "down_count": args.down_count,
+            "down_stagger": args.down_stagger,
+            "down_exclude": args.down_exclude,
+            "cache_count": args.cache_count,
+            "get_interval": args.get_interval,
+        }
+        meta_path = run_dir / "meta.json"
+        meta_path.write_text(json.dumps(meta_data, indent=2), encoding="utf-8")
 
     # Set up script logging
     log_fp = None
@@ -540,9 +609,10 @@ def main():
     original_stderr = None
     if not args.no_script_log:
         log_name = (
-            args.script_log if args.script_log else f"ex{args.hosts}_seed{seed_label}.log"
+            args.script_log if args.script_log else "script.log"
         )
-        log_fp = open(log_name, "w")
+        log_path = run_dir / log_name
+        log_fp = open(log_path, "w")
         original_stdout = sys.stdout
         original_stderr = sys.stderr
         sys.stdout = Tee(original_stdout, log_fp)
@@ -550,7 +620,7 @@ def main():
 
     try:
         setLogLevel("info")
-        run_disaster_topology(args)
+        run_disaster_topology(args, run_dir)
     finally:
         if log_fp:
             sys.stdout = original_stdout

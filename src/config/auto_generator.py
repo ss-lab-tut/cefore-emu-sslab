@@ -1,6 +1,7 @@
 """Auto-generate put/get operations from auto configuration."""
 
 import random
+from pathlib import Path
 from typing import Any
 
 
@@ -34,6 +35,7 @@ def generate_operations(
     auto_config: dict[str, Any],
     host_count: int,
     seed: int | None,
+    run_dir: Path = None,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     """Generate put/get operations from auto configuration.
 
@@ -46,6 +48,7 @@ def generate_operations(
             - consumer_per_content: number of get ops per content (default 1)
         host_count: Total number of hosts.
         seed: Random seed.
+        run_dir: Output directory for logs and artifacts.
 
     Returns:
         Tuple of (puts_list, gets_list).
@@ -59,6 +62,8 @@ def generate_operations(
             "consumer_per_content": 2
         }
     """
+    if run_dir is None:
+        run_dir = Path(".")
     rng = random.Random(seed)
 
     publishers = auto_config.get("publishers", [host_count - 1])
@@ -86,7 +91,7 @@ def generate_operations(
                 "host": publisher,
                 "uri": uri,
                 "file": "./sample-putfile",
-                "log": f"cefputfile_h{publisher}_c{content_idx}.log",
+                "log": str(run_dir / f"cefputfile_h{publisher}_c{content_idx}.log"),
             })
 
             for _ in range(consumer_per_content):
@@ -96,8 +101,8 @@ def generate_operations(
                 gets_list.append({
                     "host": consumer,
                     "uri": uri,
-                    "file": f"./recvfile_h{consumer}_c{content_idx}",
-                    "log": f"cefgetfile_h{consumer}_c{content_idx}.log",
+                    "file": str(run_dir / f"recvfile_h{consumer}_c{content_idx}"),
+                    "log": str(run_dir / f"cefgetfile_h{consumer}_c{content_idx}.log"),
                 })
 
     return puts_list, gets_list

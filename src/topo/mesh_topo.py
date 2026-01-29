@@ -10,6 +10,7 @@ import argparse
 import random
 import sys
 import time
+from pathlib import Path
 
 from mininet.cli import CLI
 from mininet.log import info, setLogLevel
@@ -28,6 +29,7 @@ from .cef_daemons import (
 )
 from .links import pick_publish_link
 from .net_config import set_fib, set_ip_addr
+from .paths import resolve_run_dir
 from .templates import cleanup_node_dirs, ensure_node_dirs
 from .viz import print_mesh_links, render_topology_png
 
@@ -182,6 +184,7 @@ def run_mesh_topology(
     topo_png=None,
     topo_layout="spring",
     switch_pool=0,
+    run_dir=None,
 ):
     """Run mesh topology simulation.
 
@@ -193,7 +196,10 @@ def run_mesh_topology(
         topo_png: Path to save topology PNG.
         topo_layout: Layout algorithm for PNG.
         switch_pool: Number of switches to share.
+        run_dir: Output directory for logs and artifacts.
     """
+    if run_dir is None:
+        run_dir = Path(".")
     if host_num < 3:
         sys.exit("host count must be at least 3")
     if k_paths < 1:
@@ -239,7 +245,12 @@ def run_mesh_topology(
     set_fib(net, topo.mesh_links, k_paths)
     run_cefstatus_all(net, host_num)
     print_mesh_links(topo.mesh_links)
-    render_topology_png(topo.mesh_links, topo_png, seed=seed, layout=topo_layout)
+
+    # Resolve topology PNG path with run_dir
+    topo_png_path = topo_png
+    if topo_png_path:
+        topo_png_path = str(run_dir / Path(topo_png_path).name)
+    render_topology_png(topo.mesh_links, topo_png_path, seed=seed, layout=topo_layout)
     time.sleep(1)
 
     publisher = host_num - 1
@@ -254,7 +265,8 @@ def run_mesh_topology(
     run_cefputfile(net, publisher, publish_uri)
     time.sleep(5)
 
-    run_cefgetfile(net, consumer, publish_uri, f"./recvfile_at_h{consumer}")
+    recvfile_path = str(run_dir / f"recvfile_at_h{consumer}")
+    run_cefgetfile(net, consumer, publish_uri, recvfile_path)
 
     CLI(net)
 
@@ -315,7 +327,33 @@ def main():
         default="spring",
         help="topology layout: spring, kamada_kawai, or circular",
     )
+    parser.add_argument(
+        "--num",
+        type=int,
+        default=None,
+        help="experiment number (enables log directory output)",
+    )
+    parser.add_argument(
+        "--output-dir",
+        type=str,
+        default="logs",
+        help="base output directory (default: logs)",
+    )
+    parser.add_argument(
+        "--timestamp",
+        action="store_true",
+        help="add timestamp to output directory name",
+    )
+    parser.add_argument(
+        "--legacy",
+        action="store_true",
+        dest="legacy_layout",
+        help="use legacy layout (output to current directory)",
+    )
     args = parser.parse_args()
+
+    # Resolve output directory
+    run_dir = resolve_run_dir(args)
 
     setLogLevel("info")
     run_mesh_topology(
@@ -326,6 +364,7 @@ def main():
         topo_png=args.topo_png,
         topo_layout=args.topo_layout,
         switch_pool=args.switch_pool,
+        run_dir=run_dir,
     )
 
 

@@ -114,6 +114,49 @@ The `auto` block generates put/get operations automatically:
 - `content_count`: number of content items per publisher
 - `consumer_per_content`: number of get operations per content
 
-Logs:
+### Log Output Directory
+
+When `num` is specified in the config (or via `--num`), logs are organized into a dedicated directory:
+
+```
+logs/ex{num}_seed{seed}/
+├── script.log              # Script execution log
+├── topology.png            # Topology diagram
+├── cefputfile_*.log        # cefputfile logs
+├── cefgetfile_*.log        # cefgetfile logs
+├── recvfile_*              # Received files
+└── meta.json               # Configuration snapshot
+```
+
+**Example with log directory (YAML):**
+```yaml
+num: 1                    # Experiment number (enables log directory)
+hosts: 10
+switches: 15
+seed: 42
+output_dir: "logs"        # Optional: base directory (default: logs)
+timestamp: false          # Optional: add timestamp to directory name
+```
+
+**CLI options for log directory:**
+```bash
+# Enable log directory output
+sudo python3 mesh-disaster-topology.py --num 1 --hosts 10 --switches 15 --seed 42
+
+# Custom output directory
+sudo python3 mesh-disaster-topology.py --config config.yaml --output-dir experiments
+
+# Add timestamp to directory name (ex1_seed42_20260129-1530)
+sudo python3 mesh-disaster-topology.py --config config.yaml --timestamp
+
+# Force legacy layout (current directory) even when num is set
+sudo python3 mesh-disaster-topology.py --config config.yaml --legacy
+```
+
+**Backward compatibility:**
+- When `num` is not specified, logs are output to the current directory (legacy behavior)
+- `--legacy` flag forces legacy behavior even when `num` is set in config
+
+Legacy logs:
 - `cefputfile_{hosts}_{switches}_{seed}_{down-interval}_{down-duration}_{downhost}.log`
 - `cefgetfile_{hosts}_{switches}_{seed}_{down-interval}_{down-duration}_{downhost}_hX.log`

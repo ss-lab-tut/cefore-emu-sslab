@@ -36,7 +36,7 @@ from .links import (
 )
 from .mesh_topo import MeshTopo, max_possible_links, min_required_links, run_mesh_topology
 from .net_config import set_fib, set_fib_for_uris, set_ip_addr
-from .paths import ROOT_DIR, TEMPLATE_ROOT
+from .paths import ROOT_DIR, TEMPLATE_ROOT, resolve_run_dir
 from .templates import cleanup_node_dirs, ensure_node_dirs, select_template
 from .viz import build_host_graph, build_tree, print_mesh_links, render_topology_png
 
@@ -44,6 +44,7 @@ __all__ = [
     # paths
     "ROOT_DIR",
     "TEMPLATE_ROOT",
+    "resolve_run_dir",
     # templates
     "select_template",
     "ensure_node_dirs",

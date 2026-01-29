@@ -1,0 +1,25 @@
+# Example configuration with experiment number for organized log output
+# Logs will be output to: logs/ex1_seed42/
+
+num: 1                    # Experiment number (required for log directory)
+hosts: 10
+switches: 15
+seed: 42
+k: 2
+
+# Optional: customize output directory (default: logs)
+# output_dir: "logs"
+
+# Optional: add timestamp to directory name
+# timestamp: true
+
+auto:
+  publishers: [9]
+  consumers: "random:5"
+  content_count: 3
+  uri_prefix: "ccnx:/test"
+  consumer_per_content: 2
+
+down_interval: 30
+down_duration: 10
+down_count: 2

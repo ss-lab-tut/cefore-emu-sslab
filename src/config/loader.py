@@ -75,6 +75,22 @@ def validate_config(config: dict[str, Any]) -> list[str]:
         if not isinstance(config["k"], int) or config["k"] < 1:
             errors.append("k must be an integer >= 1")
 
+    if "num" in config:
+        if not isinstance(config["num"], int) or config["num"] < 1:
+            errors.append("num must be an integer >= 1")
+
+    if "output_dir" in config:
+        if not isinstance(config["output_dir"], str):
+            errors.append("output_dir must be a string")
+
+    if "timestamp" in config:
+        if not isinstance(config["timestamp"], bool):
+            errors.append("timestamp must be a boolean")
+
+    if "legacy_layout" in config:
+        if not isinstance(config["legacy_layout"], bool):
+            errors.append("legacy_layout must be a boolean")
+
     if "puts" in config:
         if not isinstance(config["puts"], list):
             errors.append("puts must be a list")
@@ -149,6 +165,10 @@ def merge_cli_and_config(args: Any, config: dict[str, Any]) -> None:
         "puts",
         "gets",
         "auto",
+        "num",
+        "output_dir",
+        "timestamp",
+        "legacy_layout",
     )
 
     for key in config_keys:
