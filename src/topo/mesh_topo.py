@@ -63,14 +63,15 @@ class MeshTopo(Topo):
     """Simple topology with mesh links."""
 
     # pylint: disable=arguments-differ
-    def build(self, hosts, swhich_num=2, rng=None, switch_pool=0, **_kwargs):
+    def build(self, hosts, swhich_num=2, rng=None, node_per_switch=2, **_kwargs):
         """Build mesh topology.
 
         Args:
             hosts: Number of hosts.
             swhich_num: Number of links to create.
             rng: Random number generator.
-            switch_pool: Number of switches to share (0 = one per link).
+            node_per_switch: Maximum number of hosts per switch
+                            (0 = unlimited, 2 = one switch per link).
         """
         if rng is None:
             rng = random.Random()
@@ -84,11 +85,6 @@ class MeshTopo(Topo):
             raise ValueError(
                 f"swhich_num must be at least {min_links} to cover all hosts"
             )
-
-        if switch_pool <= 0:
-            switch_pool = swhich_num
-        if switch_pool < 1:
-            raise ValueError("switch_pool must be at least 1")
 
         host_nodes = [self.addHost(f"h{idx}") for idx in range(hosts)]
 
@@ -128,42 +124,49 @@ class MeshTopo(Topo):
                     )
                     break
 
-        switch_names = [f"s{idx}" for idx in range(switch_pool)]
-        switch_nodes = [self.addSwitch(name) for name in switch_names]
-        switch_hosts = {name: set() for name in switch_names}
+        # スイッチ割り当て（容量ベース）
+        switch_hosts = {}  # switch_name -> set of host_ids
         host_switches = {idx: set() for idx in range(hosts)}
-        pair_switch = {}
-
-        switch_cycle = list(switch_names)
-        rng.shuffle(switch_cycle)
-        cycle_idx = 0
+        switch_count = 0
 
         for host_a, host_b in selected_links:
-            pair_key = (host_a, host_b)
+            # 両ホストが既に同じスイッチに接続していればそれを使用
             shared = host_switches[host_a].intersection(host_switches[host_b])
             if shared:
                 switch_name = sorted(shared)[0]
-            elif cycle_idx < len(switch_cycle):
-                switch_name = switch_cycle[cycle_idx]
-                cycle_idx += 1
             else:
-                switch_name = rng.choice(switch_names)
+                # 容量に空きがあるスイッチを探す
+                switch_name = None
+                for sw, sw_hosts in switch_hosts.items():
+                    # このスイッチに両ホストを追加しても容量内か？
+                    new_hosts = sw_hosts | {host_a, host_b}
+                    if node_per_switch <= 0 or len(new_hosts) <= node_per_switch:
+                        switch_name = sw
+                        break
 
-            pair_switch[pair_key] = switch_name
-            # 常に更新（再利用時も新規追加時も）
+                # 空きがなければ新規スイッチを作成
+                if switch_name is None:
+                    switch_name = f"s{switch_count}"
+                    switch_count += 1
+                    switch_hosts[switch_name] = set()
+
+            # スイッチにホストを登録
             switch_hosts[switch_name].update({host_a, host_b})
             host_switches[host_a].add(switch_name)
             host_switches[host_b].add(switch_name)
 
-        for idx, switch_name in enumerate(switch_names):
-            hosts_for_switch = sorted(switch_hosts[switch_name])
-            if not hosts_for_switch:
-                continue
+        # スイッチノードを作成してリンクを追加
+        switch_nodes = {}
+        for switch_name in switch_hosts:
+            switch_nodes[switch_name] = self.addSwitch(switch_name)
+
+        for idx, (switch_name, hosts_set) in enumerate(switch_hosts.items()):
+            hosts_for_switch = sorted(hosts_set)
             host_eth = {}
             for host_idx in hosts_for_switch:
                 host_eth[host_idx] = host_ports[host_idx]
                 host_ports[host_idx] += 1
-                self.addLink(host_nodes[host_idx], switch_nodes[idx])
+                self.addLink(host_nodes[host_idx], switch_nodes[switch_name])
             self.mesh_links.append(
                 {
                     "subnet": idx + 1,
@@ -181,7 +184,7 @@ def run_mesh_topology(
     k_paths,
     topo_png=None,
     topo_layout="spring",
-    switch_pool=0,
+    node_per_switch=2,
     run_dir=None,
 ):
     """Run mesh topology simulation.
@@ -193,7 +196,7 @@ def run_mesh_topology(
         k_paths: Number of shortest paths per destination.
         topo_png: Path to save topology PNG.
         topo_layout: Layout algorithm for PNG.
-        switch_pool: Number of switches to share.
+        node_per_switch: Maximum hosts per switch (0=unlimited, 2=default).
         run_dir: Output directory for logs and artifacts.
     """
     if run_dir is None:
@@ -218,7 +221,7 @@ def run_mesh_topology(
         hosts=host_num,
         swhich_num=swhich_num,
         rng=rng,
-        switch_pool=switch_pool,
+        node_per_switch=node_per_switch,
     )
     net = Mininet(topo=topo, waitConnected=True)
     net.start()
@@ -296,10 +299,10 @@ def main():
         help="number of random links (min: 2, max: all pairs)",
     )
     parser.add_argument(
-        "--switch-pool",
+        "--node-per-switch",
         type=int,
-        default=0,
-        help="number of switches to share across links (0 = one switch per link)",
+        default=2,
+        help="max hosts per switch (0=unlimited, 2=one switch per link)",
     )
     parser.add_argument(
         "--seed",
@@ -361,7 +364,7 @@ def main():
         args.k,
         topo_png=args.topo_png,
         topo_layout=args.topo_layout,
-        switch_pool=args.switch_pool,
+        node_per_switch=args.node_per_switch,
         run_dir=run_dir,
     )
 

@@ -259,7 +259,7 @@ def run_disaster_topology(args, run_dir: Path = None):
         hosts=args.hosts,
         swhich_num=args.switches,
         rng=rng,
-        switch_pool=args.switch_pool,
+        node_per_switch=args.node_per_switch,
     )
     net = Mininet(topo=topo, link=TCLink, waitConnected=True)
     net.start()
@@ -441,10 +441,10 @@ def main():
         help="number of random links (min: 2, max: all pairs)",
     )
     parser.add_argument(
-        "--switch-pool",
+        "--node-per-switch",
         type=int,
-        default=0,
-        help="number of switches to share across links (0 = one switch per link)",
+        default=2,
+        help="max hosts per switch (0=unlimited, 2=one switch per link)",
     )
     parser.add_argument("--seed", type=int, default=None, help="random seed")
     parser.add_argument("--k", type=int, default=2, help="k shortest paths")

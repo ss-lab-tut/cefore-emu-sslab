@@ -161,7 +161,7 @@ def merge_cli_and_config(args: Any, config: dict[str, Any]) -> None:
         "get_interval",
         "topo_png",
         "topo_layout",
-        "switch_pool",
+        "node_per_switch",
         "puts",
         "gets",
         "auto",
