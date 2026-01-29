@@ -1,23 +1,35 @@
 #!/usr/bin/env python
 
 """
-Periodic host failure emulator based on mesh_nodes_switches.py.
+Periodic host failure emulator based on mesh topology.
 """
 
 import argparse
-import heapq
 import random
 import sys
 import threading
 import time
-from collections import deque
-from pathlib import Path
 
 from mininet.link import Intf, TCLink
 from mininet.log import info, setLogLevel
 from mininet.net import Mininet
 
-from config.auto_generator import generate_operations
+from ..config.auto_generator import generate_operations
+from ..config.loader import load_config, merge_cli_and_config, validate_config
+from .cef_daemons import (
+    run_cefstatus_all,
+    start_cefnetd,
+    start_csmgrd,
+    stop_cefnetd,
+    stop_csmgrd,
+    wait_for_cefnetd,
+)
+from .graph_algos import select_k_centers
+from .links import pick_publish_link, set_node_links_state
+from .mesh_topo import MeshTopo
+from .net_config import set_fib, set_fib_for_uris, set_ip_addr
+from .templates import cleanup_node_dirs, ensure_node_dirs
+from .viz import build_host_graph, print_mesh_links, render_topology_png
 
 
 class Tee:
@@ -36,45 +48,39 @@ class Tee:
             s.flush()
 
 
-from config.loader import load_config, merge_cli_and_config, validate_config
-from topo.mesh_nodes_switches import (  # type: ignore
-    MeshTopo,
-    build_host_graph,
-    cleanup_node_dirs,
-    ensure_node_dirs,
-    pick_publish_link,
-    print_mesh_links,
-    render_topology_png,
-    run_cefstatus_all,
-    set_fib,
-    set_fib_for_uris,
-    set_ip_addr,
-    start_cefnetd,
-    start_csmgrd,
-    stop_cefnetd,
-    stop_csmgrd,
-    wait_for_cefnetd,
-)
-
-
 def parse_int_list(value):
+    """Parse comma-separated integer list.
+
+    Args:
+        value: Comma-separated string of integers.
+
+    Returns:
+        List of integers.
+    """
     if not value:
         return []
     return [int(item) for item in value.split(",") if item.strip() != ""]
 
 
-def set_node_links_state(net, node_name, state):
-    node = net.get(node_name)
-    for link in net.links:
-        if link.intf1.node == node:
-            net.configLinkStatus(node.name, link.intf2.node.name, state)
-        elif link.intf2.node == node:
-            net.configLinkStatus(node.name, link.intf1.node.name, state)
-
-
 def periodic_host_flap(
     net, host_num, interval, down_time, rng, exclude, state, down_count, stagger
 ):
+    """Start periodic host flapping in background thread.
+
+    Args:
+        net: Mininet network instance.
+        host_num: Total number of hosts.
+        interval: Seconds between down events.
+        down_time: Seconds to keep hosts down.
+        rng: Random number generator (None for round-robin).
+        exclude: Set of host IDs to exclude from flapping.
+        state: Dict to track current down hosts.
+        down_count: Number of hosts to down per cycle.
+        stagger: Seconds between individual host downs.
+
+    Returns:
+        threading.Event to stop flapping.
+    """
     host_ids = [idx for idx in range(host_num) if idx not in exclude]
     if not host_ids:
         info("no hosts available for flapping\n")
@@ -136,6 +142,14 @@ def periodic_host_flap(
 
 
 def set_link_bandwidth(net, node_a, node_b, bandwidth):
+    """Set bandwidth on link between two nodes.
+
+    Args:
+        net: Mininet network instance.
+        node_a: First node name.
+        node_b: Second node name.
+        bandwidth: Bandwidth in Mbps.
+    """
     for link in net.linksBetween(net.get(node_a), net.get(node_b)):
         link.intf1.config(bw=bandwidth)
         link.intf2.config(bw=bandwidth)
@@ -143,6 +157,15 @@ def set_link_bandwidth(net, node_a, node_b, bandwidth):
 
 
 def attach_external_interface(net, host_name, intf_name, ip=None, mtu=None):
+    """Attach external interface to a host.
+
+    Args:
+        net: Mininet network instance.
+        host_name: Host name to attach interface to.
+        intf_name: External interface name.
+        ip: Optional IP address to assign.
+        mtu: Optional MTU to set.
+    """
     host = net.get(host_name)
     Intf(intf_name, node=host)
     if mtu:
@@ -153,6 +176,14 @@ def attach_external_interface(net, host_name, intf_name, ip=None, mtu=None):
 
 
 def parse_bw_args(values):
+    """Parse bandwidth arguments.
+
+    Args:
+        values: List of "nodeA,nodeB,mbps" strings.
+
+    Returns:
+        List of (node_a, node_b, bandwidth) tuples.
+    """
     entries = []
     for value in values or []:
         parts = [part.strip() for part in value.split(",")]
@@ -163,6 +194,14 @@ def parse_bw_args(values):
 
 
 def parse_ext_args(values):
+    """Parse external interface arguments.
+
+    Args:
+        values: List of "host,ifname[,ip][,mtu]" strings.
+
+    Returns:
+        List of (host_name, intf_name, ip, mtu) tuples.
+    """
     entries = []
     for value in values or []:
         parts = [part.strip() for part in value.split(",")]
@@ -177,60 +216,37 @@ def parse_ext_args(values):
 
 
 def run_host_command(net, host_idx, command):
+    """Run command on host and wait for completion.
+
+    Args:
+        net: Mininet network instance.
+        host_idx: Host index.
+        command: Shell command string.
+
+    Returns:
+        Exit code.
+    """
     proc = net.hosts[host_idx].popen(command, shell=True)
     return proc.wait()
 
 
-def compute_distances(graph, source, weight_fn=None):
-    if weight_fn is None:
-        distances = {source: 0}
-        queue = deque([source])
-        while queue:
-            node = queue.popleft()
-            for neighbor in sorted(graph.get(node, [])):
-                if neighbor not in distances:
-                    distances[neighbor] = distances[node] + 1
-                    queue.append(neighbor)
-        return distances
-    distances = {source: 0}
-    heap = [(0, source)]
-    while heap:
-        dist, node = heapq.heappop(heap)
-        if dist != distances.get(node):
-            continue
-        for neighbor in sorted(graph.get(node, [])):
-            new_dist = dist + weight_fn(node, neighbor)
-            if new_dist < distances.get(neighbor, float("inf")):
-                distances[neighbor] = new_dist
-                heapq.heappush(heap, (new_dist, neighbor))
-    return distances
-
-
-def select_k_centers(graph, k, weight_fn=None):
-    nodes = sorted(graph.keys())
-    if not nodes or k <= 0:
-        return []
-    centers = [nodes[0]]
-    min_dist = compute_distances(graph, centers[0], weight_fn)
-    while len(centers) < k:
-        farthest = max(
-            nodes,
-            key=lambda node: (min_dist.get(node, float("inf")), -node),
-        )
-        if farthest in centers:
-            break
-        centers.append(farthest)
-        dist_map = compute_distances(graph, farthest, weight_fn)
-        for node in nodes:
-            min_dist[node] = min(
-                min_dist.get(node, float("inf")), dist_map.get(node, float("inf"))
-            )
-    return centers
-
-
 def run_disaster_topology(args):
+    """Run disaster topology simulation.
+
+    Args:
+        args: Parsed command-line arguments.
+    """
     rng = random.Random(args.seed) if args.seed is not None else None
-    ensure_node_dirs(args.hosts, rng or random.Random())
+
+    # ops_put から publishers を抽出（auto 設定も展開）
+    ops_put = args.puts or []
+    auto_config = getattr(args, "auto", None)
+    if auto_config and not ops_put:
+        ops_put, _ = generate_operations(auto_config, args.hosts, args.seed)
+
+    publisher_ids = set(op["host"] for op in ops_put) if ops_put else None
+
+    ensure_node_dirs(args.hosts, rng or random.Random(), publisher_ids)
 
     topo = MeshTopo(
         hosts=args.hosts,
@@ -244,7 +260,6 @@ def run_disaster_topology(args):
     set_ip_addr(net, topo.mesh_links)
 
     for idx in range(args.hosts):
-        node_name = f"h{idx}"
         info(net.hosts[idx].cmd("ifconfig"))
 
     for idx in range(args.hosts):
@@ -257,12 +272,11 @@ def run_disaster_topology(args):
     for idx in range(args.hosts):
         wait_for_cefnetd(net, idx)
 
-    ops_put = args.puts or []
+    # ops_put は ensure_node_dirs の前に既に抽出済み
     ops_get = args.gets or []
 
-    auto_config = getattr(args, "auto", None)
-    if auto_config and not ops_put and not ops_get:
-        ops_put, ops_get = generate_operations(auto_config, args.hosts, args.seed)
+    if auto_config and not ops_get:
+        _, ops_get = generate_operations(auto_config, args.hosts, args.seed)
 
     if not ops_put:
         publisher = args.hosts - 1
@@ -391,7 +405,7 @@ def run_disaster_topology(args):
 
 
 def main():
-    config_data = {}
+    """CLI entry point for disaster topology."""
     parser = argparse.ArgumentParser(
         description="Cefore mesh topology with periodic host down"
     )
