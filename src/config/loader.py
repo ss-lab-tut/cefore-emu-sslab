@@ -75,6 +75,24 @@ def validate_config(config: dict[str, Any]) -> list[str]:
         if not isinstance(config["k"], int) or config["k"] < 1:
             errors.append("k must be an integer >= 1")
 
+    if "host_degree_min" in config:
+        if not isinstance(config["host_degree_min"], int) or config["host_degree_min"] < 1:
+            errors.append("host_degree_min must be an integer >= 1")
+
+    if "host_degree_max" in config:
+        if not isinstance(config["host_degree_max"], int):
+            errors.append("host_degree_max must be an integer")
+        else:
+            min_val = config.get("host_degree_min", 1)
+            if not isinstance(min_val, int):
+                min_val = 1
+            if config["host_degree_max"] < min_val:
+                errors.append("host_degree_max must be >= host_degree_min")
+
+    if "switch_use_all" in config:
+        if not isinstance(config["switch_use_all"], bool):
+            errors.append("switch_use_all must be a boolean")
+
     if "num" in config:
         if not isinstance(config["num"], int) or config["num"] < 1:
             errors.append("num must be an integer >= 1")
@@ -162,6 +180,9 @@ def merge_cli_and_config(args: Any, config: dict[str, Any]) -> None:
         "topo_png",
         "topo_layout",
         "node_per_switch",
+        "host_degree_min",
+        "host_degree_max",
+        "switch_use_all",
         "puts",
         "gets",
         "auto",

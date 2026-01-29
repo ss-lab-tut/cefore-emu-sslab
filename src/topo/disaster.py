@@ -262,6 +262,7 @@ def run_disaster_topology(args, run_dir: Path = None):
         node_per_switch=args.node_per_switch,
         host_degree_min=args.host_degree_min,
         host_degree_max=args.host_degree_max,
+        switch_use_all=args.switch_use_all,
     )
     net = Mininet(topo=topo, link=TCLink, waitConnected=True)
     net.start()
@@ -459,6 +460,11 @@ def main():
         type=int,
         default=2,
         help="maximum number of switches per host",
+    )
+    parser.add_argument(
+        "--switch-use-all",
+        action="store_true",
+        help="create switches up to --switches and distribute extra links evenly (may exceed host_degree_max)",
     )
     parser.add_argument("--seed", type=int, default=None, help="random seed")
     parser.add_argument("--k", type=int, default=2, help="k shortest paths")

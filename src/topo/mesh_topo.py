@@ -54,6 +54,7 @@ class MeshTopo(Topo):
         node_per_switch=2,
         host_degree_min=1,
         host_degree_max=2,
+        switch_use_all=False,
         **_kwargs,
     ):
         """Build mesh topology.
@@ -65,6 +66,8 @@ class MeshTopo(Topo):
             node_per_switch: Switch capacity (max hosts per switch; 0 = unlimited).
             host_degree_min: Minimum number of switches each host connects to (>=1).
             host_degree_max: Maximum number of switches each host connects to.
+            switch_use_all: If True, create switches up to swhich_num and
+                distribute extra host connections evenly (may exceed host_degree_max).
         """
         if rng is None:
             rng = random.Random()
@@ -151,6 +154,59 @@ class MeshTopo(Topo):
                 f"(increase switch capacity or host degree range)"
             )
 
+        # 4.5. 余剰スイッチ枠の充填（switch_use_all が有効な場合）
+        if switch_use_all and swhich_num:
+            extra_switches = max(0, swhich_num - switch_count)
+            if extra_switches > 0:
+                import heapq
+
+                info(
+                    "switch_use_all enabled: distributing extra switches; host degrees may exceed host_degree_max\n"
+                )
+
+                # 現在の度数を算出（switch_hosts から集計）
+                current_deg = [0] * hosts
+                for hs in switch_hosts.values():
+                    for h in hs:
+                        current_deg[h] += 1
+
+                # 最小度数優先 + ランダムタイブレーク。
+                heap = [[deg, rng.random(), host_idx] for host_idx, deg in enumerate(current_deg)]
+                heapq.heapify(heap)
+
+                for _ in range(extra_switches):
+                    if not heap:
+                        info("warning: no hosts available to attach to extra switches\n")
+                        break
+
+                    sw = new_switch()
+                    cap_left = min(switch_capacity, hosts)
+                    used_hosts = set()
+                    popped = []
+
+                    while cap_left > 0 and heap:
+                        deg, tie, host_idx = heapq.heappop(heap)
+                        if host_idx in used_hosts:
+                            popped.append([deg, tie, host_idx, False])
+                            continue
+
+                        used_hosts.add(host_idx)
+                        popped.append([deg, tie, host_idx, True])
+                        cap_left -= 1
+
+                    # 戻し入れる（接続したホストは度数を+1してランダム値も更新）
+                    for deg, tie, host_idx, used in popped:
+                        if used:
+                            deg += 1
+                            current_deg[host_idx] += 1
+                            switch_hosts[sw].add(host_idx)
+                        heapq.heappush(heap, [deg, rng.random(), host_idx])
+
+                if switch_count < swhich_num:
+                    info(
+                        "warning: could not reach requested switch count; capacity or host pool exhausted\n"
+                    )
+
         # 5. スイッチノードを作成してリンクを追加（残度で空のスイッチはない）
         for idx, (switch_name, hosts_set) in enumerate(switch_hosts.items()):
             hosts_for_switch = sorted(hosts_set)
@@ -179,6 +235,7 @@ def run_mesh_topology(
     node_per_switch=2,
     host_degree_min=1,
     host_degree_max=2,
+    switch_use_all=False,
     run_dir=None,
 ):
     """Run mesh topology simulation.
@@ -193,6 +250,7 @@ def run_mesh_topology(
         node_per_switch: Switch capacity (max hosts per switch; 0=unlimited, 2=default).
         host_degree_min: Minimum switches per host.
         host_degree_max: Maximum switches per host.
+        switch_use_all: Use all switch slots up to swhich_num by adding extra links.
         run_dir: Output directory for logs and artifacts.
     """
     if run_dir is None:
@@ -220,6 +278,7 @@ def run_mesh_topology(
         node_per_switch=node_per_switch,
         host_degree_min=host_degree_min,
         host_degree_max=host_degree_max,
+        switch_use_all=switch_use_all,
     )
     net = Mininet(topo=topo, waitConnected=True)
     net.start()
@@ -315,6 +374,11 @@ def main():
         help="maximum number of switches per host",
     )
     parser.add_argument(
+        "--switch-use-all",
+        action="store_true",
+        help="create switches up to --switches and distribute extra links evenly (may exceed host_degree_max)",
+    )
+    parser.add_argument(
         "--seed",
         type=int,
         default=None,
@@ -377,6 +441,7 @@ def main():
         node_per_switch=args.node_per_switch,
         host_degree_min=args.host_degree_min,
         host_degree_max=args.host_degree_max,
+        switch_use_all=args.switch_use_all,
         run_dir=run_dir,
     )
 
