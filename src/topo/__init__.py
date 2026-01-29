@@ -34,7 +34,7 @@ from .links import (
     set_link_state,
     set_node_links_state,
 )
-from .mesh_topo import MeshTopo, max_possible_links, min_required_links, run_mesh_topology
+from .mesh_topo import MeshTopo, min_required_switches, run_mesh_topology
 from .net_config import set_fib, set_fib_for_uris, set_ip_addr
 from .paths import ROOT_DIR, TEMPLATE_ROOT, resolve_run_dir
 from .templates import cleanup_node_dirs, ensure_node_dirs, select_template
@@ -89,8 +89,7 @@ __all__ = [
     "render_topology_png",
     # mesh_topo
     "MeshTopo",
-    "min_required_links",
-    "max_possible_links",
+    "min_required_switches",
     "run_mesh_topology",
     # disaster
     "Tee",
