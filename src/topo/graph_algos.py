@@ -4,6 +4,65 @@ import heapq
 from collections import deque
 
 
+class UnionFind:
+    """Union-Find data structure for connectivity tracking."""
+
+    def __init__(self, n):
+        """Initialize Union-Find with n elements.
+
+        Args:
+            n: Number of elements (0 to n-1).
+        """
+        self.parent = list(range(n))
+        self.size = [1] * n
+
+    def find(self, x):
+        """Find root of element with path compression.
+
+        Args:
+            x: Element to find root of.
+
+        Returns:
+            Root element.
+        """
+        while x != self.parent[x]:
+            self.parent[x] = self.parent[self.parent[x]]  # path compression
+            x = self.parent[x]
+        return x
+
+    def connected(self, a, b):
+        """Check if two elements are in the same set.
+
+        Args:
+            a: First element.
+            b: Second element.
+
+        Returns:
+            True if connected, False otherwise.
+        """
+        return self.find(a) == self.find(b)
+
+    def union(self, a, b):
+        """Unite two elements into the same set.
+
+        Args:
+            a: First element.
+            b: Second element.
+
+        Returns:
+            True if elements were in different sets and are now united,
+            False if they were already in the same set.
+        """
+        ra, rb = self.find(a), self.find(b)
+        if ra == rb:
+            return False
+        if self.size[ra] < self.size[rb]:
+            ra, rb = rb, ra
+        self.parent[rb] = ra
+        self.size[ra] += self.size[rb]
+        return True
+
+
 def shortest_path(
     graph, source, target, banned_edges=None, banned_nodes=None, weight_fn=None
 ):

@@ -27,6 +27,7 @@ from .cef_daemons import (
     stop_csmgrd,
     wait_for_cefnetd,
 )
+from .graph_algos import UnionFind
 from .links import pick_publish_link
 from .net_config import set_fib, set_ip_addr
 from .paths import resolve_run_dir
@@ -90,33 +91,30 @@ class MeshTopo(Topo):
             raise ValueError("switch_pool must be at least 1")
 
         host_nodes = [self.addHost(f"h{idx}") for idx in range(hosts)]
-        host_ids = list(range(hosts))
-        rng.shuffle(host_ids)
+
+        # Union-Find による連結性保証
+        uf = UnionFind(hosts)
+        all_pairs = [(a, b) for a in range(hosts) for b in range(a + 1, hosts)]
+        rng.shuffle(all_pairs)
+
         selected_links = []
         used_links = set()
-        for idx in range(0, hosts - 1, 2):
-            host_a, host_b = sorted((host_ids[idx], host_ids[idx + 1]))
-            selected_links.append((host_a, host_b))
-            used_links.add((host_a, host_b))
-        if hosts % 2 == 1:
-            last_host = host_ids[-1]
-            other_host = rng.choice(
-                [host for host in range(hosts) if host != last_host]
-            )
-            host_a, host_b = sorted((last_host, other_host))
-            if (host_a, host_b) not in used_links:
-                selected_links.append((host_a, host_b))
-                used_links.add((host_a, host_b))
 
-        if len(selected_links) < swhich_num:
-            link_pairs = [
-                (a, b)
-                for a in range(hosts)
-                for b in range(a + 1, hosts)
-                if (a, b) not in used_links
-            ]
-            rng.shuffle(link_pairs)
-            selected_links.extend(link_pairs[: swhich_num - len(selected_links)])
+        # フェーズ1: 連結化（N-1本でグラフが連結になる）
+        for a, b in all_pairs:
+            if uf.union(a, b):
+                selected_links.append((a, b))
+                used_links.add((a, b))
+            if len(selected_links) >= hosts - 1:
+                break
+
+        # フェーズ2: 冗長リンク追加（経路多重化）
+        for a, b in all_pairs:
+            if len(selected_links) >= swhich_num:
+                break
+            if (a, b) not in used_links:
+                selected_links.append((a, b))
+                used_links.add((a, b))
 
         self.mesh_links = []
         host_ports = [0] * hosts
@@ -144,16 +142,16 @@ class MeshTopo(Topo):
             pair_key = (host_a, host_b)
             shared = host_switches[host_a].intersection(host_switches[host_b])
             if shared:
-                pair_switch[pair_key] = sorted(shared)[0]
-                continue
-            if cycle_idx < len(switch_cycle):
+                switch_name = sorted(shared)[0]
+            elif cycle_idx < len(switch_cycle):
                 switch_name = switch_cycle[cycle_idx]
                 cycle_idx += 1
             else:
                 switch_name = rng.choice(switch_names)
+
             pair_switch[pair_key] = switch_name
-            switch_hosts[switch_name].add(host_a)
-            switch_hosts[switch_name].add(host_b)
+            # 常に更新（再利用時も新規追加時も）
+            switch_hosts[switch_name].update({host_a, host_b})
             host_switches[host_a].add(switch_name)
             host_switches[host_b].add(switch_name)
 
