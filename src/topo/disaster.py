@@ -133,6 +133,8 @@ def periodic_host_flap(
                 state["last_down_host"] = host_idx
                 active_down.add(host_idx)
                 update_state()
+                info(f"\n[flap] active down {active_down}\n")
+                info(f"\n[flap] down state {state["down_hosts"]}\n")
                 info(f"\n[flap] down {host_name}\n")
                 set_node_links_state(net, host_name, "down")
                 schedule_up(host_idx)
