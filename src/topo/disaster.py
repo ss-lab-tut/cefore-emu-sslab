@@ -12,6 +12,7 @@ import threading
 import time
 from pathlib import Path
 
+from mininet.cli import CLI
 from mininet.link import Intf, TCLink
 from mininet.log import info, setLogLevel
 from mininet.net import Mininet
@@ -428,12 +429,17 @@ def run_disaster_topology(args, run_dir: Path = None):
             run_cefgetfile(net, consumer, uri, outfile, log_path=log_path)
         else:
             # log_path_factoryを使用して動的にログファイル名を生成
-            def make_log_factory(i, c, seed, rd):
+            # flap_state_refをクロージャでキャプチャし、snapが空の場合は現在の状態を取得
+            def make_log_factory(i, c, seed, rd, flap_state_ref):
                 def factory(snap):
+                    # snapが空の場合、flap_stateから現在の状態を取得
+                    actual_snap = snap
+                    if not actual_snap and flap_state_ref is not None:
+                        actual_snap = flap_state_ref.snapshot()
                     down_label = (
                         "none"
-                        if not snap
-                        else ",".join(str(h) for h in sorted(snap))
+                        if not actual_snap
+                        else ",".join(str(h) for h in sorted(actual_snap))
                     )
                     return str(
                         rd / f"cefgetfile_seed{seed}_downhosts{down_label}_idx{i}_h{c}.log"
@@ -441,7 +447,7 @@ def run_disaster_topology(args, run_dir: Path = None):
 
                 return factory
 
-            log_factory = make_log_factory(idx, consumer, seed_label, run_dir)
+            log_factory = make_log_factory(idx, consumer, seed_label, run_dir, flap_state)
             run_cefgetfile(
                 net,
                 consumer,
@@ -454,7 +460,7 @@ def run_disaster_topology(args, run_dir: Path = None):
         if idx < len(ops_get) - 1 and args.get_interval > 0:
             time.sleep(args.get_interval)
 
-    # CLI(net)
+    CLI(net)
 
     if stop_event is not None:
         stop_event.set()

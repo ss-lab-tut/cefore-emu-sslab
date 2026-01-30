@@ -87,22 +87,22 @@ def generate_operations(
             content_idx += 1
             uri = f"{uri_prefix}/content{content_idx}"
 
+            # log は含めない - disaster.py で動的生成（down状態を反映するため）
             puts_list.append({
                 "host": publisher,
                 "uri": uri,
                 "file": "./sample-putfile",
-                "log": str(run_dir / f"cefputfile_h{publisher}_c{content_idx}.log"),
             })
 
             for _ in range(consumer_per_content):
                 if not consumers:
                     break
                 consumer = rng.choice(consumers)
+                # log は含めない - disaster.py で動的生成（down状態を反映するため）
                 gets_list.append({
                     "host": consumer,
                     "uri": uri,
                     "file": str(run_dir / f"recvfile_h{consumer}_c{content_idx}"),
-                    "log": str(run_dir / f"cefgetfile_h{consumer}_c{content_idx}.log"),
                 })
 
     return puts_list, gets_list

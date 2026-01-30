@@ -1,0 +1,14 @@
+{
+  "num": 5,
+  "hosts": 15,
+  "switches": 30,
+  "seed": 42,
+  "k": 4,
+  "down_interval": 20,
+  "down_duration": 30,
+  "down_count": 2,
+  "down_stagger": 5,
+  "down_exclude": "",
+  "cache_count": 0,
+  "get_interval": 5
+}
