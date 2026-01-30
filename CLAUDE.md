@@ -261,6 +261,10 @@ uv sync              # Install dependencies
 uv run python3 ...   # Run with managed environment
 ```
 
+## Notice
+Separate functions into separate files by type, and do not recreate existing functions in the execution script. If you need to edit them, edit the existing function and check that the modifications have been made.
+Make functions as flexible as possible by using variables.
+
 **Dependencies:**
 - mininet>=2.3.0
 - networkx>=3.6.1 (for topology algorithms and PNG output)

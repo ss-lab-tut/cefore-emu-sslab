@@ -19,6 +19,7 @@ from mininet.net import Mininet
 from config.auto_generator import generate_operations
 from config.loader import load_config, merge_cli_and_config, validate_config
 from .cef_daemons import (
+    run_cefgetfile,
     run_cefstatus_all,
     start_cefnetd,
     start_csmgrd,
@@ -134,7 +135,7 @@ def periodic_host_flap(
                 active_down.add(host_idx)
                 update_state()
                 info(f"\n[flap] active down {active_down}\n")
-                info(f"\n[flap] down state {state["down_hosts"]}\n")
+                info(f"\n[flap] down state {state['down_hosts']}\n")
                 info(f"\n[flap] down {host_name}\n")
                 set_node_links_state(net, host_name, "down")
                 schedule_up(host_idx)
@@ -392,34 +393,44 @@ def run_disaster_topology(args, run_dir: Path = None):
                 }
             )
 
+    wait_state = flap_state if stop_event is not None else None
+    seed_label = "none" if args.seed is None else str(args.seed)
+
     for idx, op in enumerate(ops_get):
         consumer = op["host"]
         uri = op["uri"]
         outfile = op.get("file", f"recvfile_at_h{consumer}")
 
-        # 動的にログファイル名を生成（現在のdown状態を反映 + インデックス）
-        if "log" in op:
-            log_name = op["log"]
-        else:
-            down_hosts = flap_state.get("down_hosts") or []
-            down_host_label = (
-                "none"
-                if not down_hosts
-                else ",".join(str(host_id) for host_id in sorted(down_hosts))
-            )
-            seed_label = "none" if args.seed is None else str(args.seed)
-            log_name = f"cefgetfile_seed{seed_label}_downhosts{down_host_label}_idx{idx}_h{consumer}.log"
-
-        # If paths don't already contain run_dir, prepend it
+        # パス解決
         if not Path(outfile).is_absolute() and not str(outfile).startswith(str(run_dir)):
             outfile = str(run_dir / outfile)
-        if not Path(log_name).is_absolute() and not str(log_name).startswith(str(run_dir)):
-            log_path = str(run_dir / log_name)
+
+        # 明示的にlogが指定されている場合はそれを使用
+        if "log" in op:
+            log_name = op["log"]
+            if not Path(log_name).is_absolute() and not str(log_name).startswith(str(run_dir)):
+                log_path = str(run_dir / log_name)
+            else:
+                log_path = log_name
+            run_cefgetfile(net, consumer, uri, outfile, log_path=log_path)
         else:
-            log_path = log_name
-        command = f"cefgetfile {uri} -f {outfile} -d ./h{consumer} > {log_path}"
-        print(f"h{consumer}", "command:", command)
-        run_host_command(net, consumer, command)
+            # log_path_factoryを使用して動的にログファイル名を生成
+            def make_log_factory(i, c, seed, rd):
+                def factory(snap):
+                    down_label = (
+                        "none" if not snap
+                        else ",".join(str(h) for h in sorted(snap))
+                    )
+                    return str(rd / f"cefgetfile_seed{seed}_downhosts{down_label}_idx{i}_h{c}.log")
+                return factory
+
+            log_factory = make_log_factory(idx, consumer, seed_label, run_dir)
+            run_cefgetfile(
+                net, consumer, uri, outfile,
+                wait_for_down=wait_state if idx == 0 else None,
+                log_path_factory=log_factory,
+            )
+
         if idx < len(ops_get) - 1 and args.get_interval > 0:
             time.sleep(args.get_interval)
 
