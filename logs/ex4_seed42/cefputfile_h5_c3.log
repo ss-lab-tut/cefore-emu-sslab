@@ -1,0 +1,22 @@
+[cefputfile] Start
+[cefputfile] Parsing parameters ... OK
+2026-01-30 11:39:36.978 [cefputfile] INFO: [client] Config directory is ./h5
+2026-01-30 11:39:36.978 [cefputfile] INFO: [client] Local Socket Name is /tmp/cef_9695.5
+2026-01-30 11:39:36.978 [cefputfile] INFO: [client] Listen Port is 9695
+[cefputfile] Init Cefore Client package ... OK
+[cefputfile] Conversion from URI into Name ... OK
+[cefputfile] Checking the input file ... OK
+[cefputfile] Connect to cefnetd ... OK
+[cefputfile] URI         = ccnx:/test/experiment/content3
+[cefputfile] File        = ./sample-putfile
+[cefputfile] Rate        = 5.000 Mbps
+[cefputfile] Block Size  = 1024 Bytes
+[cefputfile] Cache Time  = 3000 sec
+[cefputfile] Expiration  = 3000 sec
+[cefputfile] Start creating Content Objects
+[cefputfile] Unconnect to cefnetd ... OK
+[cefputfile] Terminate
+[cefputfile] Tx Frames  = 424
+[cefputfile] Tx Bytes   = 433390
+[cefputfile] Duration   = 0.700 sec
+[cefputfile] Throughput = 4960086 bps
