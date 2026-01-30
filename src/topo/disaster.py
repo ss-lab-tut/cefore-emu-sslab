@@ -557,12 +557,15 @@ def run_disaster_topology(args, run_dir: Path = None):
                         else ",".join(str(h) for h in sorted(actual_snap))
                     )
                     return str(
-                        rd / f"cefgetfile_seed{seed}_downhosts{down_label}_idx{i}_h{c}.log"
+                        rd
+                        / f"cefgetfile_seed{seed}_downhosts{down_label}_idx{i}_h{c}.log"
                     )
 
                 return factory
 
-            log_factory = make_log_factory(idx, consumer, seed_label, run_dir, flap_state)
+            log_factory = make_log_factory(
+                idx, consumer, seed_label, run_dir, flap_state
+            )
             run_cefgetfile(
                 net,
                 consumer,
@@ -587,10 +590,6 @@ def run_disaster_topology(args, run_dir: Path = None):
         if idx % 2 == 1:
             stop_csmgrd(net, idx)
     cleanup_external_bridges()
-
-    # Cleanup bridge routes before stopping network
-    bridge_manager.cleanup()
-
     net.stop()
     cleanup_node_dirs()
 
