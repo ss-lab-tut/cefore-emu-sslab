@@ -18,6 +18,7 @@ from mininet.net import Mininet
 
 from config.auto_generator import generate_operations
 from config.loader import load_config, merge_cli_and_config, validate_config
+
 from .cef_daemons import (
     run_cefgetfile,
     run_cefstatus_all,
@@ -134,8 +135,6 @@ def periodic_host_flap(
                 state["last_down_host"] = host_idx
                 active_down.add(host_idx)
                 update_state()
-                info(f"\n[flap] active down {active_down}\n")
-                info(f"\n[flap] down state {state['down_hosts']}\n")
                 info(f"\n[flap] down {host_name}\n")
                 set_node_links_state(net, host_name, "down")
                 schedule_up(host_idx)
@@ -351,7 +350,9 @@ def run_disaster_topology(args, run_dir: Path = None):
         infile = op.get("file", "./sample-putfile")
         log_name = op.get("log", f"cefputfile_h{host}.log")
         # If log_name doesn't already contain run_dir, prepend it
-        if not Path(log_name).is_absolute() and not str(log_name).startswith(str(run_dir)):
+        if not Path(log_name).is_absolute() and not str(log_name).startswith(
+            str(run_dir)
+        ):
             log_path = str(run_dir / log_name)
         else:
             log_path = log_name
@@ -402,13 +403,17 @@ def run_disaster_topology(args, run_dir: Path = None):
         outfile = op.get("file", f"recvfile_at_h{consumer}")
 
         # パス解決
-        if not Path(outfile).is_absolute() and not str(outfile).startswith(str(run_dir)):
+        if not Path(outfile).is_absolute() and not str(outfile).startswith(
+            str(run_dir)
+        ):
             outfile = str(run_dir / outfile)
 
         # 明示的にlogが指定されている場合はそれを使用
         if "log" in op:
             log_name = op["log"]
-            if not Path(log_name).is_absolute() and not str(log_name).startswith(str(run_dir)):
+            if not Path(log_name).is_absolute() and not str(log_name).startswith(
+                str(run_dir)
+            ):
                 log_path = str(run_dir / log_name)
             else:
                 log_path = log_name
@@ -418,15 +423,22 @@ def run_disaster_topology(args, run_dir: Path = None):
             def make_log_factory(i, c, seed, rd):
                 def factory(snap):
                     down_label = (
-                        "none" if not snap
+                        "none"
+                        if not snap
                         else ",".join(str(h) for h in sorted(snap))
                     )
-                    return str(rd / f"cefgetfile_seed{seed}_downhosts{down_label}_idx{i}_h{c}.log")
+                    return str(
+                        rd / f"cefgetfile_seed{seed}_downhosts{down_label}_idx{i}_h{c}.log"
+                    )
+
                 return factory
 
             log_factory = make_log_factory(idx, consumer, seed_label, run_dir)
             run_cefgetfile(
-                net, consumer, uri, outfile,
+                net,
+                consumer,
+                uri,
+                outfile,
                 wait_for_down=wait_state if idx == 0 else None,
                 log_path_factory=log_factory,
             )
@@ -646,9 +658,7 @@ def main():
     original_stdout = None
     original_stderr = None
     if not args.no_script_log:
-        log_name = (
-            args.script_log if args.script_log else "script.log"
-        )
+        log_name = args.script_log if args.script_log else "script.log"
         log_path = run_dir / log_name
         log_fp = open(log_path, "w")
         original_stdout = sys.stdout

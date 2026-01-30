@@ -145,7 +145,7 @@ def run_cefgetfile(
     if log_path_factory:
         chosen_log = log_path_factory(snapshot)
     else:
-        chosen_log = log_path if log_path else "cefgetfile-log"
+        chosen_log = log_path if log_path else "cefgetfile.log"
 
     command = f"cefgetfile {uri} -f {output_path} -d ./{node_name} > {chosen_log}"
     print(node_name, "command:", command)
