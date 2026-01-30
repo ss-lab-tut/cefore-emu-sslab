@@ -28,6 +28,7 @@ from .cef_daemons import (
     stop_csmgrd,
     wait_for_cefnetd,
 )
+from .flap_state import FlapState
 from .graph_algos import select_k_centers
 from .links import pick_publish_link, set_node_links_state
 from .mesh_topo import MeshTopo
@@ -79,7 +80,7 @@ def periodic_host_flap(
         down_time: Seconds to keep hosts down.
         rng: Random number generator (None for round-robin).
         exclude: Set of host IDs to exclude from flapping.
-        state: Dict to track current down hosts.
+        state: FlapState instance or dict to track current down hosts.
         down_count: Number of hosts to down per cycle.
         stagger: Seconds between individual host downs.
 
@@ -92,12 +93,20 @@ def periodic_host_flap(
         return threading.Event()
     stop_event = threading.Event()
 
+    # Check if state is a FlapState object or legacy dict
+    use_flap_state = hasattr(state, "update") and hasattr(state, "snapshot")
+
     def worker():
         position = 0
         active_down = set()
 
-        def update_state():
-            state["down_hosts"] = sorted(active_down)
+        def update_state(last_down=None):
+            if use_flap_state:
+                state.update(active_down, last_down)
+            else:
+                state["down_hosts"] = sorted(active_down)
+                if last_down is not None:
+                    state["last_down_host"] = last_down
 
         def schedule_up(host_idx):
             def do_up():
@@ -132,9 +141,8 @@ def periodic_host_flap(
                 if stop_event.wait(stagger if offset > 0 else 0):
                     return
                 host_name = f"h{host_idx}"
-                state["last_down_host"] = host_idx
                 active_down.add(host_idx)
-                update_state()
+                update_state(last_down=host_idx)
                 info(f"\n[flap] down {host_name}\n")
                 set_node_links_state(net, host_name, "down")
                 schedule_up(host_idx)
@@ -364,7 +372,7 @@ def run_disaster_topology(args, run_dir: Path = None):
         time.sleep(1)
 
     stop_event = None
-    flap_state = {"last_down_host": None, "down_hosts": []}
+    flap_state = FlapState()
     if args.down_interval > 0 and args.down_duration > 0:
         stop_event = periodic_host_flap(
             net,

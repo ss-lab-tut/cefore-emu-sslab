@@ -18,6 +18,7 @@ from .config_io import (
     update_node_name,
 )
 from .disaster import Tee, run_disaster_topology
+from .flap_state import FlapState
 from .graph_algos import (
     compute_distances,
     dijkstra_all,
@@ -94,4 +95,6 @@ __all__ = [
     # disaster
     "Tee",
     "run_disaster_topology",
+    # flap_state
+    "FlapState",
 ]

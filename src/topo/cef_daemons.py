@@ -120,7 +120,8 @@ def run_cefgetfile(
         uri: Content URI.
         output_path: Path to save retrieved file.
         log_path: Path for log output (default: cefgetfile-log).
-        wait_for_down: Optional dict with "down_hosts" key to wait for non-empty state.
+        wait_for_down: Optional FlapState object or dict with "down_hosts" key
+            to wait for non-empty state.
         wait_timeout: Max seconds to wait for down state (default: 5.0).
         log_path_factory: Optional callback fn(down_hosts_snapshot) -> log_path.
 
@@ -134,12 +135,30 @@ def run_cefgetfile(
     if wait_for_down is not None:
         deadline = time.time() + wait_timeout
         while time.time() < deadline:
-            snapshot = wait_for_down.get("down_hosts") or []
+            # FlapStateオブジェクトの場合（snapshot()メソッドを持つ）
+            if hasattr(wait_for_down, "snapshot"):
+                snapshot = wait_for_down.snapshot()
+            # 従来の辞書の場合（後方互換性）
+            elif isinstance(wait_for_down, dict):
+                snapshot = list(wait_for_down.get("down_hosts") or [])
+            # get()メソッドを持つオブジェクトの場合（FlapState.get()含む）
+            elif hasattr(wait_for_down, "get"):
+                snapshot = list(wait_for_down.get("down_hosts") or [])
+            else:
+                snapshot = []
+
             if snapshot:
                 break
             time.sleep(0.1)
+
+        # 最終状態のスナップショット取得（タイムアウト時）
         if not snapshot:
-            snapshot = wait_for_down.get("down_hosts") or []
+            if hasattr(wait_for_down, "snapshot"):
+                snapshot = wait_for_down.snapshot()
+            elif isinstance(wait_for_down, dict):
+                snapshot = list(wait_for_down.get("down_hosts") or [])
+            elif hasattr(wait_for_down, "get"):
+                snapshot = list(wait_for_down.get("down_hosts") or [])
 
     # ログパスの決定（優先順位: log_path_factory > log_path > デフォルト）
     if log_path_factory:
