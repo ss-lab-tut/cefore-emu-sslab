@@ -17,7 +17,12 @@ from .config_io import (
     update_local_sock_id,
     update_node_name,
 )
-from .disaster import Tee, run_disaster_topology
+from .disaster import (
+    Tee,
+    attach_external_via_bridge,
+    cleanup_external_bridges,
+    run_disaster_topology,
+)
 from .flap_state import FlapState
 from .graph_algos import (
     compute_distances,
@@ -95,6 +100,8 @@ __all__ = [
     # disaster
     "Tee",
     "run_disaster_topology",
+    "attach_external_via_bridge",
+    "cleanup_external_bridges",
     # flap_state
     "FlapState",
 ]

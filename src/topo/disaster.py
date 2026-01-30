@@ -7,6 +7,7 @@ Periodic host failure emulator based on mesh topology.
 import argparse
 import json
 import random
+import subprocess
 import sys
 import threading
 import time
@@ -16,6 +17,7 @@ from mininet.cli import CLI
 from mininet.link import Intf, TCLink
 from mininet.log import info, setLogLevel
 from mininet.net import Mininet
+from mininet.node import Node
 
 from config.auto_generator import generate_operations
 from config.loader import load_config, merge_cli_and_config, validate_config
@@ -170,23 +172,127 @@ def set_link_bandwidth(net, node_a, node_b, bandwidth):
         info(f"set bw {bandwidth} Mbps between {node_a} and {node_b}\n")
 
 
+# Track created bridges for cleanup
+_created_bridges = {}
+
+
+def _run_root_cmd(cmd):
+    """Run command in root namespace."""
+    result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+    if result.returncode != 0 and result.stderr:
+        info(f"[bridge] cmd failed: {cmd}\n  stderr: {result.stderr}\n")
+    return result.returncode == 0
+
+
+def attach_external_via_bridge(net, host_name, phy_intf, ip=None, mtu=None):
+    """Attach host to external network via Linux bridge (does not hijack NIC).
+
+    Creates a Linux bridge, enslaves the physical interface, and connects
+    the Mininet host via a veth pair. Optionally runs DHCP to get an IP.
+
+    Args:
+        net: Mininet network instance.
+        host_name: Host name to attach (e.g., "h0").
+        phy_intf: Physical interface name on host machine (e.g., "eth0").
+        ip: Optional static IP (CIDR format). If None, runs dhclient.
+        mtu: Optional MTU to set on bridge and veth.
+    """
+    bridge_name = f"br-{host_name}"
+    veth_root = f"veth-{host_name}-root"
+    veth_host = f"veth-{host_name}"
+
+    host = net.get(host_name)
+    if host is None:
+        info(f"[bridge] host {host_name} not found\n")
+        return
+
+    info(f"[bridge] creating bridge {bridge_name} for {host_name} via {phy_intf}\n")
+
+    # 1. Create Linux bridge
+    _run_root_cmd(f"ip link add {bridge_name} type bridge")
+    _run_root_cmd(f"ip link set {bridge_name} up")
+
+    # 2. Enslave physical interface to bridge (keep it in root namespace)
+    _run_root_cmd(f"ip link set {phy_intf} up")
+    _run_root_cmd(f"ip link set {phy_intf} master {bridge_name}")
+
+    # 3. Create veth pair
+    _run_root_cmd(f"ip link add {veth_root} type veth peer name {veth_host}")
+    _run_root_cmd(f"ip link set {veth_root} master {bridge_name}")
+    _run_root_cmd(f"ip link set {veth_root} up")
+    _run_root_cmd(f"ip link set {veth_host} up")
+
+    # 4. Move veth-host end into Mininet host's namespace
+    # Get the PID of the Mininet host
+    host_pid = host.pid
+    _run_root_cmd(f"ip link set {veth_host} netns {host_pid}")
+
+    # 5. Configure the interface inside Mininet host
+    host.cmd(f"ip link set {veth_host} up")
+
+    # 6. Apply MTU if specified
+    if mtu:
+        _run_root_cmd(f"ip link set {bridge_name} mtu {mtu}")
+        _run_root_cmd(f"ip link set {veth_root} mtu {mtu}")
+        host.cmd(f"ip link set {veth_host} mtu {mtu}")
+
+    # 7. IP configuration
+    if ip:
+        # Static IP
+        host.cmd(f"ip addr add {ip} dev {veth_host}")
+        info(f"[bridge] {host_name}: static IP {ip} on {veth_host}\n")
+    else:
+        # DHCP - run dhclient in background
+        info(f"[bridge] {host_name}: starting dhclient on {veth_host}\n")
+        host.cmd(f"dhclient -v {veth_host} &")
+
+    # Track for cleanup
+    _created_bridges[host_name] = {
+        "bridge": bridge_name,
+        "veth_root": veth_root,
+        "veth_host": veth_host,
+        "phy_intf": phy_intf,
+    }
+
+    info(f"[bridge] attached {host_name} to {phy_intf} via bridge {bridge_name}\n")
+
+
+def cleanup_external_bridges():
+    """Clean up all created bridges and veth pairs."""
+    for host_name, info_dict in list(_created_bridges.items()):
+        bridge_name = info_dict["bridge"]
+        veth_root = info_dict["veth_root"]
+        phy_intf = info_dict["phy_intf"]
+
+        info(f"[bridge] cleaning up {bridge_name}\n")
+
+        # Release physical interface from bridge
+        _run_root_cmd(f"ip link set {phy_intf} nomaster")
+
+        # Delete veth pair (deleting one end removes both)
+        _run_root_cmd(f"ip link del {veth_root} 2>/dev/null")
+
+        # Delete bridge
+        _run_root_cmd(f"ip link set {bridge_name} down")
+        _run_root_cmd(f"ip link del {bridge_name}")
+
+    _created_bridges.clear()
+
+
 def attach_external_interface(net, host_name, intf_name, ip=None, mtu=None):
-    """Attach external interface to a host.
+    """Attach external interface to a host via bridge (backward compatible).
+
+    This function now uses the bridge approach instead of directly attaching
+    the physical interface to avoid hijacking the NIC from the host machine.
 
     Args:
         net: Mininet network instance.
         host_name: Host name to attach interface to.
         intf_name: External interface name.
-        ip: Optional IP address to assign.
+        ip: Optional IP address to assign. If None, uses DHCP.
         mtu: Optional MTU to set.
     """
-    host = net.get(host_name)
-    Intf(intf_name, node=host)
-    if mtu:
-        host.cmd(f"ifconfig {intf_name} mtu {mtu}")
-    if ip:
-        host.cmd(f"ifconfig {intf_name} {ip}")
-    info(f"attached {intf_name} to {host_name}\n")
+    attach_external_via_bridge(net, host_name, intf_name, ip, mtu)
 
 
 def parse_bw_args(values):
@@ -471,6 +577,7 @@ def run_disaster_topology(args, run_dir: Path = None):
     for idx in range(args.hosts):
         if idx % 2 == 1:
             stop_csmgrd(net, idx)
+    cleanup_external_bridges()
     net.stop()
     cleanup_node_dirs()
 
