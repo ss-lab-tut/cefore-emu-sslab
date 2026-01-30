@@ -150,6 +150,21 @@ def validate_config(config: dict[str, Any]) -> list[str]:
                         "auto.consumers must be 'random:N' string or list of host IDs"
                     )
 
+    if "bridges" in config:
+        if not isinstance(config["bridges"], list):
+            errors.append("bridges must be a list")
+        else:
+            for idx, bridge in enumerate(config["bridges"]):
+                if not isinstance(bridge, dict):
+                    errors.append(f"bridges[{idx}] must be a dict")
+                    continue
+                if "switch" not in bridge:
+                    errors.append(f"bridges[{idx}] missing required field 'switch'")
+                if "root_ip" not in bridge:
+                    errors.append(f"bridges[{idx}] missing required field 'root_ip'")
+                if "local_routes" not in bridge:
+                    errors.append(f"bridges[{idx}] missing required field 'local_routes'")
+
     return errors
 
 
@@ -176,6 +191,7 @@ def merge_cli_and_config(args: Any, config: dict[str, Any]) -> None:
         "cache_count",
         "bw",
         "ext",
+        "bridges",
         "get_interval",
         "topo_png",
         "topo_layout",

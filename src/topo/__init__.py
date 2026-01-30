@@ -18,6 +18,7 @@ from .config_io import (
     update_node_name,
 )
 from .disaster import Tee, run_disaster_topology
+from .external_bridge import BridgeManager, parse_bridge_args, setup_bridges
 from .flap_state import FlapState
 from .graph_algos import (
     compute_distances,
@@ -95,6 +96,10 @@ __all__ = [
     # disaster
     "Tee",
     "run_disaster_topology",
+    # external_bridge
+    "BridgeManager",
+    "parse_bridge_args",
+    "setup_bridges",
     # flap_state
     "FlapState",
 ]

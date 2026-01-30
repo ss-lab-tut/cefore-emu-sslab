@@ -29,6 +29,7 @@ from .cef_daemons import (
     stop_csmgrd,
     wait_for_cefnetd,
 )
+from .external_bridge import BridgeManager, parse_bridge_args, setup_bridges
 from .flap_state import FlapState
 from .graph_algos import select_k_centers
 from .links import pick_publish_link, set_node_links_state
@@ -280,6 +281,14 @@ def run_disaster_topology(args, run_dir: Path = None):
 
     set_ip_addr(net, topo.mesh_links)
 
+    # Set up root namespace bridges for cross-VM communication
+    bridge_manager = BridgeManager()
+    bridge_configs = getattr(args, "bridges", None) or []
+    if not bridge_configs:
+        bridge_configs = parse_bridge_args(getattr(args, "bridge", None))
+    if bridge_configs:
+        setup_bridges(net, bridge_manager, bridge_configs, args.hosts)
+
     for idx in range(args.hosts):
         info(net.hosts[idx].cmd("ifconfig"))
 
@@ -471,6 +480,10 @@ def run_disaster_topology(args, run_dir: Path = None):
     for idx in range(args.hosts):
         if idx % 2 == 1:
             stop_csmgrd(net, idx)
+
+    # Cleanup bridge routes before stopping network
+    bridge_manager.cleanup()
+
     net.stop()
     cleanup_node_dirs()
 
@@ -559,6 +572,12 @@ def main():
         action="append",
         default=[],
         help="attach external intf: host,ifname[,ip][,mtu] (repeatable)",
+    )
+    parser.add_argument(
+        "--bridge",
+        action="append",
+        default=[],
+        help="root ns bridge: switch,root_ip,local_routes[,ext_routes,gateway] (repeatable)",
     )
     parser.add_argument(
         "--get-interval",
