@@ -381,20 +381,12 @@ def run_disaster_topology(args, run_dir: Path = None):
         for idx in range(1, 6):
             candidates = [h for h in range(args.hosts) if h != ops_put[0]["host"]]
             consumer = rng.choice(candidates)
-            down_hosts = flap_state.get("down_hosts") or []
-            down_host_label = (
-                "none"
-                if not down_hosts
-                else ",".join(str(host_id) for host_id in down_hosts)
-            )
-            seed_label = "none" if args.seed is None else str(args.seed)
-            log_name = f"cefgetfile_seed{seed_label}_downhosts{down_host_label}_h{consumer}.log"
+            # log は含めない - 実行時に動的生成（down状態を反映するため）
             ops_get.append(
                 {
                     "host": consumer,
                     "uri": base_uri,
                     "file": str(run_dir / f"recvfile_at_h{consumer}"),
-                    "log": str(run_dir / log_name),
                 }
             )
 
@@ -402,7 +394,20 @@ def run_disaster_topology(args, run_dir: Path = None):
         consumer = op["host"]
         uri = op["uri"]
         outfile = op.get("file", f"recvfile_at_h{consumer}")
-        log_name = op.get("log", f"cefgetfile_h{consumer}.log")
+
+        # 動的にログファイル名を生成（現在のdown状態を反映 + インデックス）
+        if "log" in op:
+            log_name = op["log"]
+        else:
+            down_hosts = flap_state.get("down_hosts") or []
+            down_host_label = (
+                "none"
+                if not down_hosts
+                else ",".join(str(host_id) for host_id in sorted(down_hosts))
+            )
+            seed_label = "none" if args.seed is None else str(args.seed)
+            log_name = f"cefgetfile_seed{seed_label}_downhosts{down_host_label}_idx{idx}_h{consumer}.log"
+
         # If paths don't already contain run_dir, prepend it
         if not Path(outfile).is_absolute() and not str(outfile).startswith(str(run_dir)):
             outfile = str(run_dir / outfile)
