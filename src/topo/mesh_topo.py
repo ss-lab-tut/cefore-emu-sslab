@@ -102,14 +102,17 @@ class MeshTopo(Topo):
 
         host_order = list(range(hosts))
         rng.shuffle(host_order)
+        # 度数降順でソート（同点はシャッフル順を維持 - Pythonのsortは安定ソート）
+        host_order.sort(key=lambda h: degrees[h], reverse=True)
         connected = [host_order[0]]
         remaining = host_order[1:]
 
         for host in remaining:
-            # pick an already connected host with remaining degree
-            rng.shuffle(connected)
+            # partner選択: 残度数が最大のconnectedノードを選ぶ
+            # 同点の場合はシャッフル順を維持（安定ソート）
+            candidates = sorted(connected, key=lambda n: degrees[n], reverse=True)
             partner = None
-            for cand in connected:
+            for cand in candidates:
                 if degrees[cand] > 0 and degrees[host] > 0:
                     partner = cand
                     break
