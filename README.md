@@ -2,17 +2,21 @@
 ## Overview
 CeforeEmu is a network emulator based on Mininet, which can be run on Ubuntu 22.04. CeforeEmu creates a virtual network topology with virtual hosts where Cefore daemons (*cefnetd*) can be launched. The simple script (simple-three-nodes-two-switch.py) launches three Cefore nodes (h0:consumer, h1:router, h2:publisher), which are linearly connected. In this scenario, the publisher node executes *cefputfile* to input the sample-putfile into the local cache, and then, the consumer tries to download the file by executing *cefgetfile*.
 
+Mesh scripts are also available:
+- `mesh-nodes-switches.py`: random host-to-host mesh with multi-path FIB.
+- `mesh-disaster-topology.py`: periodic host down/up + bandwidth control + external interface attach, with repeated `cefgetfile` logging.
+
 ## How to Run 
 ### Required Task before Starting
 * Install Cefore into your Ubuntu (22.04) environment.
 * Install Mininet (version 2.3.0) into your Ubuntu environment.
   (please see https://mininet.org/)
-* Download and extract the CeforeEmu archive in your woking directory.
+* Download and extract the CeforeEmu archive in your working directory.
 
 ### How to Start and Finish
 * Run the python script:
-  
-  `sudo python3 simple-three-nodes-two-switchs.py`
+
+  `sudo python3 simple-three-nodes-two-switch.py`
 * Enter *exit* command, after finishing the processing:
   
   `mininet> exit`
@@ -24,3 +28,135 @@ CeforeEmu is a network emulator based on Mininet, which can be run on Ubuntu 22.
 Finally, you can check the log files of *cefputfile*, *cefgetfile* and *cefnetd*, which are created in the directory after finishing the processing.
 
 If you want to change the Cefore configuration of each node, please modify the configure file under each directory (h0, h1, and h2).
+
+## Mesh Topology Scripts
+### mesh-nodes-switches.py
+Random mesh of hosts connected by switches. Each destination host hX maps to prefix `ccnx:/test/example{X+1}` and uses k-shortest paths for FIB.
+
+Run with options:
+```
+sudo python3 mesh-nodes-switches.py --help
+sudo python3 mesh-nodes-switches.py --hosts 8 --switches 12 --seed 5 --k 3
+```
+
+Key options:
+- `--hosts`: number of hosts
+- `--switches`: number of random links (min: 2, max: all pairs)
+- `--seed`: random seed for deterministic topology
+- `--k`: number of shortest paths per destination
+
+### mesh-disaster-topology.py
+Adds periodic host down/up, optional bandwidth limits, external interface attachment, and repeated `cefgetfile` logging.
+
+Run with options:
+```
+sudo python3 mesh-disaster-topology.py --help
+sudo python3 mesh-disaster-topology.py --hosts 8 --switches 12 --seed 5 --k 2 \
+  --down-interval 20 --down-duration 15 --down-count 3 --down-stagger 3 \
+  --get-interval 10
+```
+
+Key options:
+- `--down-interval`: seconds between down events (0 to disable)
+- `--down-duration`: seconds to keep host down
+- `--down-count`: number of hosts down per cycle
+- `--down-stagger`: seconds to stagger down events within a cycle
+- `--get-interval`: seconds between `cefgetfile` runs
+- `--bw nodeA,nodeB,mbps`: set bandwidth on a link (repeatable)
+- `--ext host,ifname[,ip][,mtu]`: attach external interface to a host (repeatable)
+- `--config path`: JSON or YAML configuration file
+
+### Configuration Files
+
+Use `--config` to load settings from a JSON or YAML file. YAML support requires `pyyaml`.
+
+**Multiple publishers example (JSON):**
+```bash
+sudo python3 mesh-disaster-topology.py --config configs/examples/multi_publisher.json
+```
+
+```json
+{
+  "hosts": 10,
+  "switches": 15,
+  "seed": 42,
+  "puts": [
+    {"host": 9, "uri": "ccnx:/test/video1", "file": "./video.bin"},
+    {"host": 7, "uri": "ccnx:/test/data1", "file": "./data.bin"}
+  ],
+  "gets": [
+    {"host": 0, "uri": "ccnx:/test/video1"},
+    {"host": 1, "uri": "ccnx:/test/data1"}
+  ]
+}
+```
+
+**Auto-generation example (YAML):**
+```bash
+sudo python3 mesh-disaster-topology.py --config configs/examples/auto_experiment.yaml
+```
+
+```yaml
+hosts: 10
+switches: 15
+seed: 42
+auto:
+  publishers: [9]           # Publisher host IDs
+  consumers: "random:5"     # Random 5 consumers
+  content_count: 3          # Contents per publisher
+  uri_prefix: "ccnx:/test"
+  consumer_per_content: 2   # Get operations per content
+```
+
+The `auto` block generates put/get operations automatically:
+- `publishers`: list of host IDs acting as publishers
+- `consumers`: `"random:N"` or list of host IDs
+- `content_count`: number of content items per publisher
+- `consumer_per_content`: number of get operations per content
+
+### Log Output Directory
+
+When `num` is specified in the config (or via `--num`), logs are organized into a dedicated directory:
+
+```
+logs/ex{num}_seed{seed}/
+├── script.log              # Script execution log
+├── topology.png            # Topology diagram
+├── cefputfile_*.log        # cefputfile logs
+├── cefgetfile_*.log        # cefgetfile logs
+├── recvfile_*              # Received files
+└── meta.json               # Configuration snapshot
+```
+
+**Example with log directory (YAML):**
+```yaml
+num: 1                    # Experiment number (enables log directory)
+hosts: 10
+switches: 15
+seed: 42
+output_dir: "logs"        # Optional: base directory (default: logs)
+timestamp: false          # Optional: add timestamp to directory name
+```
+
+**CLI options for log directory:**
+```bash
+# Enable log directory output
+sudo python3 mesh-disaster-topology.py --num 1 --hosts 10 --switches 15 --seed 42
+
+# Custom output directory
+sudo python3 mesh-disaster-topology.py --config config.yaml --output-dir experiments
+
+# Add timestamp to directory name (ex1_seed42_20260129-1530)
+sudo python3 mesh-disaster-topology.py --config config.yaml --timestamp
+
+# Force legacy layout (current directory) even when num is set
+sudo python3 mesh-disaster-topology.py --config config.yaml --legacy
+```
+
+**Backward compatibility:**
+- When `num` is not specified, logs are output to the current directory (legacy behavior)
+- `--legacy` flag forces legacy behavior even when `num` is set in config
+
+Legacy logs:
+- `cefputfile_{hosts}_{switches}_{seed}_{down-interval}_{down-duration}_{downhost}.log`
+- `cefgetfile_{hosts}_{switches}_{seed}_{down-interval}_{down-duration}_{downhost}_hX.log`

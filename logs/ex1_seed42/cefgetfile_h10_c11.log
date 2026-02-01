@@ -1,0 +1,24 @@
+[cefgetfile] Start
+[cefgetfile] Parsing parameters ...OK
+2026-01-29 17:40:57.074 [cefgetfile] INFO: [client] Config directory is ./h10
+2026-01-29 17:40:57.074 [cefgetfile] INFO: [client] Local Socket Name is /tmp/cef_9695.10
+2026-01-29 17:40:57.074 [cefgetfile] INFO: [client] Listen Port is 9695
+[cefgetfile] Init Cefore Client package ... OK
+[cefgetfile] Conversion from URI into Name ... OK
+[cefgetfile] Checking the output file ... OK
+[cefgetfile] Connect to cefnetd ... OK
+[cefgetfile] URI=ccnx:/test/experiment/content11
+[cefgetfile] Start sending Interests
+[cefgetfile] Completed to get all the chunks.
+[cefgetfile] Unconnect to cefnetd ... OK
+[cefgetfile] Terminate
+[cefgetfile] Rx Frames (All)           = 424
+[cefgetfile] Rx Frames (ContentObject) = 424
+[cefgetfile] Rx Bytes (All)            = 451622
+[cefgetfile] Rx Bytes (ContentObject)  = 433390
+[cefgetfile] Duration                  = 0.183 sec
+[cefgetfile] Throughput                = 19855225 bps
+[cefgetfile] Goodput                   = 19053669 bps
+[cefgetfile] Jitter (Ave)              = 429 us
+[cefgetfile] Jitter (Max)              = 11460 us
+[cefgetfile] Jitter (Var)              = 431066 us

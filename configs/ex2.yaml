@@ -1,0 +1,20 @@
+num: 2
+hosts: 15
+switches: 20
+node_per_switch: 4
+seed: 42
+k: 4
+
+auto:
+  publishers: [1, 7, 13]
+  consumers: "random:5"
+  content_count: 5
+  uri_prefix: "ccnx:/test/experiment"
+  consumer_per_content: 4
+
+down_interval: 30
+down_duration: 10
+down_stagger: 5
+down_count: 2
+get_interval: 5
+topo_layout:

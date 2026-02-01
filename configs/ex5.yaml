@@ -1,0 +1,32 @@
+num: 5
+hosts: 15
+switches: 30
+node_per_switch: 6
+host_degree_max: 4
+host_degree_min: 1
+switch_use_all: false
+seed: 42
+k: 4
+
+auto:
+  publishers: [9, 13, 3]
+  consumers: "random:5"
+  content_count: 5
+  uri_prefix: "ccnx:/test/experiment"
+  consumer_per_content: 4
+
+down_interval: 20
+down_duration: 30
+down_stagger: 5
+down_count: 2
+get_interval: 5
+topo_layout:
+bw: h3, s1, 1
+bw: h10, s5, 0.5
+bridges:
+  - switch: s3
+    root_ip: "192.168.100.1/24"
+    local_routes: "192.168.1.0/24"
+    external_routes: "192.168.201.0/24"  # Optional: VM host network
+    gateway: "192.168.201.62"            # Optional: Other VM IP
+    hosts: [4]                     # Optional: Only configure these hosts
