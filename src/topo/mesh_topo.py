@@ -262,14 +262,14 @@ def run_mesh_topology(
         sys.exit("host count must be at least 3")
     if k_paths < 1:
         sys.exit("k must be at least 1")
-    if swhich_num < 2:
-        sys.exit("link count must be at least 2")
-    max_links = max_possible_links(host_num)
-    if swhich_num > max_links:
-        sys.exit(f"link count must be at most {max_links}")
-    min_links = min_required_links(host_num)
-    if swhich_num < min_links:
-        sys.exit(f"link count must be at least {min_links} to cover all hosts")
+    if swhich_num and swhich_num < 1:
+        sys.exit("switch count must be at least 1 (or 0 for unlimited)")
+    required_switches = min_required_switches(host_num, node_per_switch or host_num)
+    if swhich_num and swhich_num < required_switches:
+        sys.exit(
+            f"switch count must be at least {required_switches} "
+            f"to connect {host_num} hosts with capacity {node_per_switch}"
+        )
 
     rng = random.Random(seed)
     ensure_node_dirs(host_num, rng)

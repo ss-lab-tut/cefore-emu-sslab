@@ -541,39 +541,28 @@ def run_disaster_topology(args, run_dir: Path = None):
                 log_path = str(run_dir / log_name)
             else:
                 log_path = log_name
-            run_cefgetfile(net, consumer, uri, outfile, log_path=log_path)
+            run_cefgetfile(net, consumer, uri, outfile, log_name=log_path)
         else:
-            # log_path_factoryを使用して動的にログファイル名を生成
-            # flap_state_refをクロージャでキャプチャし、snapが空の場合は現在の状態を取得
-            def make_log_factory(i, c, seed, rd, flap_state_ref):
-                def factory(snap):
-                    # snapが空の場合、flap_stateから現在の状態を取得
-                    actual_snap = snap
-                    if not actual_snap and flap_state_ref is not None:
-                        actual_snap = flap_state_ref.snapshot()
-                    down_label = (
-                        "none"
-                        if not actual_snap
-                        else ",".join(str(h) for h in sorted(actual_snap))
-                    )
-                    return str(
-                        rd
-                        / f"cefgetfile_seed{seed}_downhosts{down_label}_idx{i}_h{c}.log"
-                    )
+            # 最初のget操作の場合、down状態を待機
+            if idx == 0 and wait_state is not None:
+                wait_state.wait()
 
-                return factory
+            # flap_stateから現在のdown状態を取得してログ名を生成
+            if flap_state is not None:
+                snap = flap_state.snapshot()
+                down_label = (
+                    "none"
+                    if not snap
+                    else ",".join(str(h) for h in sorted(snap))
+                )
+            else:
+                down_label = "none"
 
-            log_factory = make_log_factory(
-                idx, consumer, seed_label, run_dir, flap_state
+            log_path = str(
+                run_dir
+                / f"cefgetfile_seed{seed_label}_downhosts{down_label}_idx{idx}_h{consumer}.log"
             )
-            run_cefgetfile(
-                net,
-                consumer,
-                uri,
-                outfile,
-                wait_for_down=wait_state if idx == 0 else None,
-                log_path_factory=log_factory,
-            )
+            run_cefgetfile(net, consumer, uri, outfile, log_name=log_path)
 
         if idx < len(ops_get) - 1 and args.get_interval > 0:
             time.sleep(args.get_interval)

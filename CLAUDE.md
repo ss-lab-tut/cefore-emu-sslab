@@ -2,6 +2,17 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+# Write a program based on the Unix philosophy
+* Write programs that do one thing and do it well.
+* Write programs to work together.
+* Write programs to handle text streams, because that is a universal interface.
+
+## Notice
+
+Separate functions into separate files by type, and do not recreate existing functions in the execution script. If you need to edit them, edit the existing function and check that the modifications have been made.
+Make functions as flexible as possible by using variables.
+
+
 ## Project Overview
 
 CeforeEmu is a network emulator based on Mininet for testing Cefore (Content-Centric Networking framework) deployments. It creates virtual network topologies with virtual hosts running Cefore daemons (cefnetd) to simulate content distribution scenarios.
@@ -260,10 +271,6 @@ The project uses `pyproject.toml` with uv for dependency management.
 uv sync              # Install dependencies
 uv run python3 ...   # Run with managed environment
 ```
-
-## Notice
-Separate functions into separate files by type, and do not recreate existing functions in the execution script. If you need to edit them, edit the existing function and check that the modifications have been made.
-Make functions as flexible as possible by using variables.
 
 **Dependencies:**
 - mininet>=2.3.0
