@@ -518,7 +518,6 @@ def run_disaster_topology(args, run_dir: Path = None):
                 }
             )
 
-    wait_state = flap_state if stop_event is not None else None
     seed_label = "none" if args.seed is None else str(args.seed)
 
     for idx, op in enumerate(ops_get):
@@ -532,8 +531,8 @@ def run_disaster_topology(args, run_dir: Path = None):
         ):
             outfile = str(run_dir / outfile)
 
-        # 明示的にlogが指定されている場合はそれを使用
-        if "log" in op:
+        # 明示的にlogが指定されている場合はそれを使用（null/Noneはスキップ）
+        if op.get("log"):
             log_name = op["log"]
             if not Path(log_name).is_absolute() and not str(log_name).startswith(
                 str(run_dir)
@@ -543,10 +542,6 @@ def run_disaster_topology(args, run_dir: Path = None):
                 log_path = log_name
             run_cefgetfile(net, consumer, uri, outfile, log_name=log_path)
         else:
-            # 最初のget操作の場合、down状態を待機
-            if idx == 0 and wait_state is not None:
-                wait_state.wait()
-
             # flap_stateから現在のdown状態を取得してログ名を生成
             if flap_state is not None:
                 snap = flap_state.snapshot()
