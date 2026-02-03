@@ -24,6 +24,7 @@ from config.loader import load_config, merge_cli_and_config, validate_config
 
 from .cef_daemons import (
     run_cefgetfile,
+    run_cefputfile,
     run_cefstatus_all,
     start_cefnetd,
     start_csmgrd,
@@ -480,11 +481,19 @@ def run_disaster_topology(args, run_dir: Path = None):
             log_path = str(run_dir / log_name)
         else:
             log_path = log_name
-        command = (
-            f"cefputfile {uri} -f {infile} -t 3000 -e 3000 -d ./h{host} > {log_path}"
+        run_cefputfile(
+            net,
+            host,
+            uri,
+            file_path=infile,
+            rate=op.get("rate"),
+            block_size=op.get("block_size"),
+            expiry=op.get("expiry", 3000),
+            cache_time=op.get("cache_time", 3000),
+            valid_algo=op.get("valid_algo"),
+            port_num=op.get("port_num"),
+            log_name=log_path,
         )
-        print(f"h{host}", "command:", command)
-        run_host_command(net, host, command)
         time.sleep(1)
 
     stop_event = None
@@ -540,7 +549,19 @@ def run_disaster_topology(args, run_dir: Path = None):
                 log_path = str(run_dir / log_name)
             else:
                 log_path = log_name
-            run_cefgetfile(net, consumer, uri, outfile, log_name=log_path)
+            run_cefgetfile(
+                net,
+                consumer,
+                uri,
+                outfile,
+                owner_only=op.get("owner_only", False),
+                chunk=op.get("chunk"),
+                pipeline=op.get("pipeline"),
+                valid_algo=op.get("valid_algo"),
+                port_num=op.get("port_num"),
+                sg=op.get("sg"),
+                log_name=log_path,
+            )
         else:
             # flap_stateから現在のdown状態を取得してログ名を生成
             if flap_state is not None:
@@ -557,7 +578,19 @@ def run_disaster_topology(args, run_dir: Path = None):
                 run_dir
                 / f"cefgetfile_seed{seed_label}_downhosts{down_label}_idx{idx}_h{consumer}.log"
             )
-            run_cefgetfile(net, consumer, uri, outfile, log_name=log_path)
+            run_cefgetfile(
+                net,
+                consumer,
+                uri,
+                outfile,
+                owner_only=op.get("owner_only", False),
+                chunk=op.get("chunk"),
+                pipeline=op.get("pipeline"),
+                valid_algo=op.get("valid_algo"),
+                port_num=op.get("port_num"),
+                sg=op.get("sg"),
+                log_name=log_path,
+            )
 
         if idx < len(ops_get) - 1 and args.get_interval > 0:
             time.sleep(args.get_interval)

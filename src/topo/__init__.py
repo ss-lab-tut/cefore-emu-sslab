@@ -2,9 +2,11 @@
 
 from .cef_daemons import (
     run_cefgetfile,
+    run_cefpubfile,
     run_cefputfile,
     run_cefstatus,
     run_cefstatus_all,
+    run_cefsubfile,
     start_cefnetd,
     start_csmgrd,
     stop_cefnetd,
@@ -86,6 +88,8 @@ __all__ = [
     "stop_cefnetd",
     "run_cefputfile",
     "run_cefgetfile",
+    "run_cefpubfile",
+    "run_cefsubfile",
     "run_cefstatus",
     "run_cefstatus_all",
     # viz

@@ -121,6 +121,13 @@ def validate_config(config: dict[str, Any]) -> list[str]:
                     errors.append(f"puts[{idx}] missing required field 'host'")
                 if "uri" not in op:
                     errors.append(f"puts[{idx}] missing required field 'uri'")
+                for field in ("rate", "block_size", "expiry", "cache_time"):
+                    if field in op and not isinstance(op[field], (int, float)):
+                        errors.append(f"puts[{idx}].{field} must be a number")
+                if "valid_algo" in op and not isinstance(op["valid_algo"], str):
+                    errors.append(f"puts[{idx}].valid_algo must be a string")
+                if "port_num" in op and not isinstance(op["port_num"], int):
+                    errors.append(f"puts[{idx}].port_num must be an integer")
 
     if "gets" in config:
         if not isinstance(config["gets"], list):
@@ -134,6 +141,15 @@ def validate_config(config: dict[str, Any]) -> list[str]:
                     errors.append(f"gets[{idx}] missing required field 'host'")
                 if "uri" not in op:
                     errors.append(f"gets[{idx}] missing required field 'uri'")
+                if "owner_only" in op and not isinstance(op["owner_only"], bool):
+                    errors.append(f"gets[{idx}].owner_only must be a boolean")
+                for field in ("chunk", "pipeline", "sg"):
+                    if field in op and not isinstance(op[field], int):
+                        errors.append(f"gets[{idx}].{field} must be an integer")
+                if "valid_algo" in op and not isinstance(op["valid_algo"], str):
+                    errors.append(f"gets[{idx}].valid_algo must be a string")
+                if "port_num" in op and not isinstance(op["port_num"], int):
+                    errors.append(f"gets[{idx}].port_num must be an integer")
 
     if "auto" in config:
         auto = config["auto"]

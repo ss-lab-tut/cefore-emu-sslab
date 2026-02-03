@@ -154,6 +154,12 @@ For topologies with >3 hosts, additional directories (h3, h4, ...) are generated
 - `ensure_node_dirs()`: Creates host directories from templates based on role heuristics
 - `select_template()`: Determines which template (h0/h1/h2) to use for each host index
 
+**Content Operations (exported from `src/topo`):**
+- `run_cefputfile()`: Publish content via cefputfile with configurable options
+- `run_cefgetfile()`: Retrieve content via cefgetfile with configurable options
+- `run_cefpubfile()`: Publish content via cefpubfile (pub/sub model)
+- `run_cefsubfile()`: Subscribe to content via cefsubfile (pub/sub model)
+
 ### Mesh Topology Features
 
 The mesh topologies (`mesh-nodes-switches.py`, `mesh-disaster-topology.py`) implement advanced features:
@@ -200,7 +206,7 @@ Basic JSON example with multiple publishers:
   "switches": 15,
   "seed": 42,
   "puts": [
-    {"host": 9, "uri": "ccnx:/test/video1", "file": "./video.bin"},
+    {"host": 9, "uri": "ccnx:/test/video1", "file": "./video.bin", "rate": 10, "expiry": 5000, "cache_time": 5000},
     {"host": 7, "uri": "ccnx:/test/data1", "file": "./data.bin"}
   ],
   "gets": [
@@ -209,6 +215,30 @@ Basic JSON example with multiple publishers:
   ]
 }
 ```
+
+**puts optional fields:**
+
+| Field | Type | cefputfile flag | Description |
+|-------|------|----------------|-------------|
+| `rate` | int/float | `-r` | Transfer rate (Mbps) |
+| `block_size` | int | `-b` | Max payload length (bytes) |
+| `expiry` | int/float | `-e` | Content Object lifetime (seconds) |
+| `cache_time` | int/float | `-t` | Cache deletion period (seconds) |
+| `valid_algo` | str | `-v` | Validation algorithm (crc32c / rsa-sha256) |
+| `port_num` | int | `-p` | Port number |
+
+**gets optional fields:**
+
+| Field | Type | cefgetfile flag | Description |
+|-------|------|----------------|-------------|
+| `owner_only` | bool | `-o` | Owner-only mode |
+| `chunk` | int | `-m` | Max chunks to retrieve |
+| `pipeline` | int | `-s` | Pipeline count |
+| `valid_algo` | str | `-v` | Validation algorithm (crc32c / rsa-sha256) |
+| `port_num` | int | `-p` | Port number |
+| `sg` | int | `-z` | Send Long Life Interest |
+
+Note: In disaster topology, `expiry` and `cache_time` default to 3000 if not specified. In `run_cefputfile()` itself, they default to None (flag omitted).
 
 YAML example with auto-generation:
 ```yaml
