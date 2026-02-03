@@ -474,26 +474,44 @@ def run_disaster_topology(args, run_dir: Path = None):
         uri = op["uri"]
         infile = op.get("file", "./sample-putfile")
         log_name = op.get("log", f"cefputfile_h{host}.log")
-        # If log_name doesn't already contain run_dir, prepend it
-        if not Path(log_name).is_absolute() and not str(log_name).startswith(
-            str(run_dir)
-        ):
+        if not Path(log_name).is_absolute() and not str(log_name).startswith(str(run_dir)):
             log_path = str(run_dir / log_name)
         else:
             log_path = log_name
-        run_cefputfile(
-            net,
-            host,
-            uri,
-            file_path=infile,
-            rate=op.get("rate"),
-            block_size=op.get("block_size"),
-            expiry=op.get("expiry", 3000),
-            cache_time=op.get("cache_time", 3000),
-            valid_algo=op.get("valid_algo"),
-            port_num=op.get("port_num"),
-            log_name=log_path,
-        )
+
+        if op.get("mode") == "pubsub":
+            pub_opts = op.get("pub_opts", {}) or {}
+            run_cefpubfile(
+                net,
+                host,
+                uri,
+                file_path=infile,
+                rate=pub_opts.get("rate"),
+                block_size=pub_opts.get("block_size"),
+                expiry=pub_opts.get("expiry"),
+                cache_time=pub_opts.get("cache_time"),
+                lifetime=pub_opts.get("lifetime"),
+                retry_limit=pub_opts.get("retry_limit"),
+                target=pub_opts.get("target"),
+                ti_valid_algo=pub_opts.get("ti_valid_algo"),
+                rd_valid_algo=pub_opts.get("rd_valid_algo"),
+                port_num=pub_opts.get("port_num"),
+                log_name=log_path,
+            )
+        else:
+            run_cefputfile(
+                net,
+                host,
+                uri,
+                file_path=infile,
+                rate=op.get("rate"),
+                block_size=op.get("block_size"),
+                expiry=op.get("expiry", 3000),
+                cache_time=op.get("cache_time", 3000),
+                valid_algo=op.get("valid_algo"),
+                port_num=op.get("port_num"),
+                log_name=log_path,
+            )
         time.sleep(1)
 
     stop_event = None
@@ -543,41 +561,36 @@ def run_disaster_topology(args, run_dir: Path = None):
         # 明示的にlogが指定されている場合はそれを使用（null/Noneはスキップ）
         if op.get("log"):
             log_name = op["log"]
-            if not Path(log_name).is_absolute() and not str(log_name).startswith(
-                str(run_dir)
-            ):
+            if not Path(log_name).is_absolute() and not str(log_name).startswith(str(run_dir)):
                 log_path = str(run_dir / log_name)
             else:
                 log_path = log_name
-            run_cefgetfile(
+        else:
+            if flap_state is not None:
+                snap = flap_state.snapshot()
+                down_label = "none" if not snap else ",".join(str(h) for h in sorted(snap))
+            else:
+                down_label = "none"
+            log_path = str(run_dir / f"cefgetfile_seed{seed_label}_downhosts{down_label}_idx{idx}_h{consumer}.log")
+
+        if op.get("mode") == "pubsub":
+            # optional wait before sub
+            wait_sec = op.get("wait") or op.get("sub_opts", {}).get("wait")
+            if wait_sec:
+                time.sleep(wait_sec)
+            sub_opts = op.get("sub_opts", {}) or {}
+            run_cefsubfile(
                 net,
                 consumer,
                 uri,
-                outfile,
-                owner_only=op.get("owner_only", False),
-                chunk=op.get("chunk"),
-                pipeline=op.get("pipeline"),
-                valid_algo=op.get("valid_algo"),
-                port_num=op.get("port_num"),
-                sg=op.get("sg"),
+                output_path=outfile,
+                pipeline=sub_opts.get("pipeline"),
+                ri_valid_algo=sub_opts.get("ri_valid_algo"),
+                td_valid_algo=sub_opts.get("td_valid_algo"),
+                port_num=sub_opts.get("port_num"),
                 log_name=log_path,
             )
         else:
-            # flap_stateから現在のdown状態を取得してログ名を生成
-            if flap_state is not None:
-                snap = flap_state.snapshot()
-                down_label = (
-                    "none"
-                    if not snap
-                    else ",".join(str(h) for h in sorted(snap))
-                )
-            else:
-                down_label = "none"
-
-            log_path = str(
-                run_dir
-                / f"cefgetfile_seed{seed_label}_downhosts{down_label}_idx{idx}_h{consumer}.log"
-            )
             run_cefgetfile(
                 net,
                 consumer,

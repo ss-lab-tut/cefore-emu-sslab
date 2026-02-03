@@ -29,3 +29,8 @@
 ## Security & Configuration Notes
 - `h*/default-private-key` contains private key material. Treat it as sensitive and avoid sharing in logs or tickets.
 - Running the scripts requires root privileges; use trusted environments only.
+
+# Write a program based on the Unix philosophy
+* Write programs that do one thing and do it well.
+* Write programs to work together.
+* Write programs to handle text streams, because that is a universal interface.
