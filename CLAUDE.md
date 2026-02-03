@@ -31,6 +31,12 @@ cefore-emu/
 │   │   ├── __init__.py
 │   │   ├── loader.py              # JSON/YAML config loader
 │   │   └── auto_generator.py      # Auto put/get generation
+│   ├── log/                       # Log parsing and CSV summarization
+│   │   ├── __init__.py            # Exports
+│   │   ├── filename.py            # Filename pattern → metadata extraction
+│   │   ├── parser.py              # Log text → dict parser
+│   │   ├── summarizer.py          # Directory walk + CSV output
+│   │   └── cli.py                 # argparse CLI
 │   └── topo/                      # Topology implementations
 │       ├── simple_three_nodes_two_switch.py   # 3-node linear topology
 │       ├── five_node_two_switch.py            # Scalable linear topology
@@ -43,9 +49,11 @@ cefore-emu/
 │   │   ├── h1/                    # Router template (CS_MODE=2)
 │   │   └── h2/                    # Publisher template (CS_MODE=0)
 │   └── examples/                  # Example configurations
-│       ├── multi_publisher.json   # Multiple publisher example
-│       └── auto_experiment.yaml   # Auto-generation example
+│       ├── multi_publisher.json       # Multiple publisher example
+│       ├── auto_experiment.yaml       # Auto-generation example
+│       └── manual_with_options.yaml   # Manual puts/gets with options example
 │
+├── log-summarize.py               # Log CSV summarization entry point
 ├── *.py (root)                    # Entry point wrappers for src/topo/
 ├── buffer.sh                      # UDP buffer configuration
 ├── pyproject.toml                 # Package configuration
@@ -265,6 +273,53 @@ The `auto` configuration automatically generates put/get operations:
 --topo-png output.png           # Output path
 --topo-layout spring            # Layout: spring, kamada_kawai, circular
 ```
+
+## Log Summarization
+
+The `log-summarize.py` tool collects cefputfile/cefgetfile/cefpubfile/cefsubfile logs from experiment directories and outputs per-command CSV files.
+
+**Basic usage:**
+```bash
+python3 log-summarize.py logs/ex1_seed42/
+```
+
+**Multiple directories (cross-experiment comparison):**
+```bash
+python3 log-summarize.py logs/ex1_seed42/ logs/ex5_seed42/ -o results/
+```
+
+**Pipe-friendly stdout output:**
+```bash
+python3 log-summarize.py logs/ex1_seed42/ --stdout | head -20
+```
+
+### Supported Log Filename Patterns
+
+| Pattern | Example | Extracted Fields |
+|---------|---------|-----------------|
+| host+content | `cefputfile_h13_c10.log` | command, host_id, content_id |
+| host only | `cefputfile_h9.log` | command, host_id |
+| disaster | `cefgetfile_seed42_downhosts0,1_idx16_h4.log` | command, host_id, seed, down_hosts, idx |
+| legacy | `cefgetfile-h0.log` | command, host_id |
+
+### CSV Column Structure
+
+**Common metadata columns (from meta.json + filename):**
+
+| Column | Source |
+|--------|--------|
+| experiment_dir | Directory name |
+| num, hosts, switches, seed, k | meta.json |
+| down_interval, down_duration, down_count, down_stagger, down_exclude, cache_count, get_interval | meta.json |
+| filename, host_id, content_id, file_seed, down_hosts, get_idx | Filename |
+
+**cefputfile-specific columns:**
+timestamp, uri, file, rate_mbps, block_size_bytes, cache_time_sec, expiration_sec, tx_frames, tx_bytes, duration_sec, throughput_bps, success
+
+**cefgetfile-specific columns:**
+timestamp, uri, rx_frames_all, rx_frames_content, rx_bytes_all, rx_bytes_content, duration_sec, throughput_bps, goodput_bps, jitter_ave_us, jitter_max_us, jitter_var_us, success
+
+**cefpubfile/cefsubfile:** Columns are extracted dynamically from `[command] Key = Value` lines in the log.
 
 ## Runtime Artifacts
 
