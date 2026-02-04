@@ -60,17 +60,36 @@ class Tee:
 
 
 def parse_int_list(value):
-    """Parse comma-separated integer list.
+    """Parse integer list from string or list input.
 
     Args:
-        value: Comma-separated string of integers.
+        value: Comma-separated string or list of integers/strings.
 
     Returns:
         List of integers.
     """
-    if not value:
+    if value is None or value == "":
         return []
-    return [int(item) for item in value.split(",") if item.strip() != ""]
+    items = []
+    if isinstance(value, (list, tuple, set)):
+        for item in value:
+            if item is None or item == "":
+                continue
+            if isinstance(item, str):
+                parts = [part for part in item.split(",") if part.strip() != ""]
+                items.extend(parts)
+            else:
+                items.append(item)
+    elif isinstance(value, str):
+        items = [part for part in value.split(",") if part.strip() != ""]
+    else:
+        items = [value]
+    try:
+        return [int(item) for item in items]
+    except (TypeError, ValueError) as exc:
+        raise ValueError(
+            f"expected list of ints or comma-separated string, got {value!r}"
+        ) from exc
 
 
 def periodic_host_flap(
@@ -417,7 +436,7 @@ def run_disaster_topology(args, run_dir: Path = None):
 
     if not ops_put:
         publisher = args.hosts - 1
-        publish_link = pick_publish_link(topo.mesh_links, publisher)
+        #        publish_link = pick_publish_link(topo.mesh_links, publisher)
         publish_uri = f"ccnx:/test/example{publisher + 1}/test.py"
         seed_label = "none" if args.seed is None else str(args.seed)
         down_host_label = "none"
@@ -474,7 +493,9 @@ def run_disaster_topology(args, run_dir: Path = None):
         uri = op["uri"]
         infile = op.get("file", "./sample-putfile")
         log_name = op.get("log", f"cefputfile_h{host}.log")
-        if not Path(log_name).is_absolute() and not str(log_name).startswith(str(run_dir)):
+        if not Path(log_name).is_absolute() and not str(log_name).startswith(
+            str(run_dir)
+        ):
             log_path = str(run_dir / log_name)
         else:
             log_path = log_name
@@ -561,17 +582,24 @@ def run_disaster_topology(args, run_dir: Path = None):
         # 明示的にlogが指定されている場合はそれを使用（null/Noneはスキップ）
         if op.get("log"):
             log_name = op["log"]
-            if not Path(log_name).is_absolute() and not str(log_name).startswith(str(run_dir)):
+            if not Path(log_name).is_absolute() and not str(log_name).startswith(
+                str(run_dir)
+            ):
                 log_path = str(run_dir / log_name)
             else:
                 log_path = log_name
         else:
             if flap_state is not None:
                 snap = flap_state.snapshot()
-                down_label = "none" if not snap else ",".join(str(h) for h in sorted(snap))
+                down_label = (
+                    "none" if not snap else ",".join(str(h) for h in sorted(snap))
+                )
             else:
                 down_label = "none"
-            log_path = str(run_dir / f"cefgetfile_seed{seed_label}_downhosts{down_label}_idx{idx}_h{consumer}.log")
+            log_path = str(
+                run_dir
+                / f"cefgetfile_seed{seed_label}_downhosts{down_label}_idx{idx}_h{consumer}.log"
+            )
 
         if op.get("mode") == "pubsub":
             # optional wait before sub
@@ -677,7 +705,7 @@ def main():
         "--down-exclude",
         type=str,
         default="",
-        help="comma-separated host ids to exclude from flapping",
+        help="comma-separated host ids to exclude from flapping (config can use list)",
     )
     parser.add_argument(
         "--down-count",
