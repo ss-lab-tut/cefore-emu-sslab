@@ -1,4 +1,4 @@
-num: 1
+num: 3
 hosts: 20
 switches: 20
 node_per_switch: 6
@@ -58,7 +58,7 @@ topo_layout:
 bw: h3, s1, 1
 bw: h10, s5, 0.5
 bridges:
-  - switch: s1
+  - switch: s8
     root_ip: "192.168.1.254/24"
     local_routes: "192.168.1.0/24"
     external_routes: "default"
