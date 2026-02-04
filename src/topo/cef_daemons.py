@@ -1,5 +1,6 @@
 """Cefore daemon control functions."""
 
+import shlex
 import time
 
 from mininet.log import info
@@ -114,7 +115,7 @@ def run_cefputfile(
         log_name: Name of the log file.
     """
     node_name = f"h{host_idx}"
-    cmd_parts = [f"cefputfile {uri} -f {file_path}"]
+    cmd_parts = [f"cefputfile {uri} -f {shlex.quote(file_path)}"]
 
     if rate is not None:
         cmd_parts.append(f"-r {rate}")
@@ -172,7 +173,7 @@ def run_cefgetfile(
         exit_code: Exit code of the command.
     """
     node_name = f"h{host_idx}"
-    cmd_parts = [f"cefgetfile {uri} -f {output_path}"]
+    cmd_parts = [f"cefgetfile {uri} -f {shlex.quote(output_path)}"]
 
     if owner_only:
         cmd_parts.append("-o")
@@ -254,7 +255,7 @@ def run_cefsubfile(
     cmd_parts = [f"cefsubfile {uri}"]
 
     if output_path is not None:
-        cmd_parts.append(f"-f {output_path}")
+        cmd_parts.append(f"-f {shlex.quote(output_path)}")
     if pipeline is not None:
         cmd_parts.append(f"-s {pipeline}")
     if ri_valid_algo is not None:
@@ -312,7 +313,7 @@ def run_cefpubfile(
         log_name: Name of the log file.
     """
     node_name = f"h{host_idx}"
-    cmd_parts = [f"cefpubfile {uri} -f {file_path}"]
+    cmd_parts = [f"cefpubfile {uri} -f {shlex.quote(file_path)}"]
 
     if rate is not None:
         cmd_parts.append(f"-r {rate}")

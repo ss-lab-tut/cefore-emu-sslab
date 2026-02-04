@@ -368,3 +368,7 @@ uv run python3 ...   # Run with managed environment
 - `configs/templates/h*/default-private-key` files contain sensitive cryptographic material - do not commit changes or share
 - All scripts require root privileges due to Mininet's network namespace manipulation
 - Only run in trusted/isolated environments (VMs recommended)
+
+## MCP Tool Settings
+
+Codex MCP を使用する際は、モデル `gpt-5.2-codex` (reasoning medium, summaries auto) を指定すること。

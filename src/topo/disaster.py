@@ -160,7 +160,11 @@ def periodic_host_flap(
                 host_name = f"h{host_idx}"
                 if not quiet:
                     info(f"\n[flap] up {host_name}\n")
-                set_node_links_state(net, host_name, "up")
+                try:
+                    set_node_links_state(net, host_name, "up")
+                except (AssertionError, OSError) as exc:
+                    if not quiet:
+                        info(f"\n[flap] failed to up {host_name}: {exc}\n")
                 active_down.discard(host_idx)
                 update_state()
 
@@ -191,7 +195,11 @@ def periodic_host_flap(
                 update_state(last_down=host_idx)
                 if not quiet:
                     info(f"\n[flap] down {host_name}\n")
-                set_node_links_state(net, host_name, "down")
+                try:
+                    set_node_links_state(net, host_name, "down")
+                except (AssertionError, OSError) as exc:
+                    if not quiet:
+                        info(f"\n[flap] failed to down {host_name}: {exc}\n")
                 schedule_up(host_idx)
 
             stop_event.wait(interval)
@@ -564,13 +572,16 @@ def run_disaster_topology(args, run_dir: Path = None, log_context=None):
     stop_event = None
     flap_state = FlapState()
     if args.down_interval > 0 and args.down_duration > 0:
+        exclude_ids = parse_int_list(args.down_exclude)
+        if publisher_ids:
+            exclude_ids = list(set(exclude_ids) | publisher_ids)
         stop_event = periodic_host_flap(
             net,
             args.hosts,
             args.down_interval,
             args.down_duration,
             rng,
-            parse_int_list(args.down_exclude),
+            exclude_ids,
             flap_state,
             args.down_count,
             args.down_stagger,

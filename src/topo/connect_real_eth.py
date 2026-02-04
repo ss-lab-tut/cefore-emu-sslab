@@ -7,6 +7,7 @@ Periodic host failure emulator based on mesh topology.
 import argparse
 import json
 import random
+import shlex
 import sys
 import threading
 import time
@@ -149,7 +150,11 @@ def periodic_host_flap(
                 host_name = f"h{host_idx}"
                 if not quiet:
                     info(f"\n[flap] up {host_name}\n")
-                set_node_links_state(net, host_name, "up")
+                try:
+                    set_node_links_state(net, host_name, "up")
+                except (AssertionError, OSError) as exc:
+                    if not quiet:
+                        info(f"\n[flap] failed to up {host_name}: {exc}\n")
                 active_down.discard(host_idx)
                 update_state()
 
@@ -180,7 +185,11 @@ def periodic_host_flap(
                 update_state(last_down=host_idx)
                 if not quiet:
                     info(f"\n[flap] down {host_name}\n")
-                set_node_links_state(net, host_name, "down")
+                try:
+                    set_node_links_state(net, host_name, "down")
+                except (AssertionError, OSError) as exc:
+                    if not quiet:
+                        info(f"\n[flap] failed to down {host_name}: {exc}\n")
                 schedule_up(host_idx)
 
             stop_event.wait(interval)
@@ -410,7 +419,7 @@ def run_connect(args, run_dir: Path = None, log_context=None):
         else:
             log_path = log_name
         command = (
-            f"cefputfile {uri} -f {infile} -t 3000 -e 3000 -d ./h{host} > {log_path}"
+            f"cefputfile {uri} -f {shlex.quote(infile)} -t 3000 -e 3000 -d ./h{host} > {log_path}"
         )
         print(f"h{host}", "command:", command)
         run_host_command(net, host, command)
