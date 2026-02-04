@@ -94,7 +94,15 @@ def parse_int_list(value):
 
 
 def periodic_host_flap(
-    net, host_num, interval, down_time, rng, exclude, state, down_count, stagger,
+    net,
+    host_num,
+    interval,
+    down_time,
+    rng,
+    exclude,
+    state,
+    down_count,
+    stagger,
     quiet=False,
 ):
     """Start periodic host flapping in background thread.
