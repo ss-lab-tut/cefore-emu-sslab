@@ -1,20 +1,54 @@
-num: 2
-hosts: 15
-switches: 20
-node_per_switch: 4
+hosts: 20
+switches: 30
 seed: 42
-k: 4
+node_per_switch: 6
+host_degree_max: 4
+host_degree_min: 1
+switch_use_all: false
+k: 2
+
+puts:
+  - host: 2
+    uri: "ccnx:/emergency/test"
+    file: "./専攻科_論文.pdf"
+    rate: 10
+    expiry: 5000
+    cache_time: 5000
+  - host: 9
+    uri: "ccnx:/test/data1"
+    file: "./disk IO.png"
+  - host: 3
+    uri: "ccnx:/emergency/test2"
+    file: "./SN7100andSN770.jpg"
+    expiry: 5000
+    rate: 4
+    cache_time: 3000
+
+gets:
+  - host: 0
+    uri: "ccnx:/emergency/test2"
+    pipeline: 4
+  - host: 6
+    uri: "ccnx:/test/data1"
+    owner_only: true
+  - host: 11
+    uri: "ccnx:/emergency/test"
+  - host: 16
+    uri: "ccnx:/emergency/test"
 
 auto:
-  publishers: [1, 7, 13]
+  uri: "ccnx:/emergency/test"
   consumers: "random:5"
   content_count: 5
-  uri_prefix: "ccnx:/test/experiment"
-  consumer_per_content: 4
 
-down_interval: 30
-down_duration: 10
+output_dir: "logs"
+timestamp: true
+
+
+down_interval: 10
+down_duration: 20
 down_stagger: 5
 down_count: 2
 get_interval: 5
-topo_layout:
+
+

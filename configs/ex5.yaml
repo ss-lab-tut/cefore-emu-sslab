@@ -27,6 +27,6 @@ bridges:
   - switch: s3
     root_ip: "192.168.100.1/24"
     local_routes: "192.168.1.0/24"
-    external_routes: "192.168.201.0/24"  # Optional: VM host network
-    gateway: "192.168.201.62"            # Optional: Other VM IP
+      #     external_routes: "192.168.201.0/24"  # Optional: VM host network
+      #     gateway: "192.168.201.62"            # Optional: Other VM IP
     hosts: [4]                     # Optional: Only configure these hosts

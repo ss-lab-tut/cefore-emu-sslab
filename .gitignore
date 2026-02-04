@@ -6,3 +6,8 @@ csmgr_fsc_*
 
 .DS_Store
 __pycache__
+
+*.pdf
+*.png
+*.jpg
+h*/
