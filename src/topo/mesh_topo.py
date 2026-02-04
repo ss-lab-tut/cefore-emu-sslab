@@ -12,6 +12,7 @@ import sys
 import time
 from pathlib import Path
 
+from mininet.clean import cleanup as mn_cleanup
 from mininet.cli import CLI
 from mininet.log import info, setLogLevel
 from mininet.net import Mininet
@@ -240,6 +241,7 @@ def run_mesh_topology(
     host_degree_max=2,
     switch_use_all=False,
     run_dir=None,
+    no_cli=False,
 ):
     """Run mesh topology simulation.
 
@@ -329,7 +331,8 @@ def run_mesh_topology(
     recvfile_path = str(run_dir / f"recvfile_at_h{consumer}")
     run_cefgetfile(net, consumer, publish_uri, recvfile_path)
 
-    CLI(net)
+    if not no_cli:
+        CLI(net)
 
     for idx in range(host_num):
         stop_cefnetd(net, idx)
@@ -338,6 +341,7 @@ def run_mesh_topology(
         if idx % 2 == 1:
             stop_csmgrd(net, idx)
     net.stop()
+    mn_cleanup()
     cleanup_node_dirs()
 
 
@@ -428,6 +432,11 @@ def main():
         dest="legacy_layout",
         help="use legacy layout (output to current directory)",
     )
+    parser.add_argument(
+        "--no-cli",
+        action="store_true",
+        help="skip interactive CLI (flap output visible on stdout)",
+    )
     args = parser.parse_args()
 
     # Resolve output directory
@@ -446,6 +455,7 @@ def main():
         host_degree_max=args.host_degree_max,
         switch_use_all=args.switch_use_all,
         run_dir=run_dir,
+        no_cli=args.no_cli,
     )
 
 

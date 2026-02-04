@@ -12,6 +12,7 @@ import threading
 import time
 from pathlib import Path
 
+from mininet.clean import cleanup as mn_cleanup
 from mininet.cli import CLI
 from mininet.link import Intf, TCLink
 from mininet.log import info, setLogLevel
@@ -90,7 +91,8 @@ def parse_int_list(value):
 
 
 def periodic_host_flap(
-    net, host_num, interval, down_time, rng, exclude, state, down_count, stagger
+    net, host_num, interval, down_time, rng, exclude, state, down_count, stagger,
+    quiet=False,
 ):
     """Start periodic host flapping in background thread.
 
@@ -134,7 +136,8 @@ def periodic_host_flap(
                 if stop_event.is_set():
                     return
                 host_name = f"h{host_idx}"
-                info(f"\n[flap] up {host_name}\n")
+                if not quiet:
+                    info(f"\n[flap] up {host_name}\n")
                 set_node_links_state(net, host_name, "up")
                 active_down.discard(host_idx)
                 update_state()
@@ -164,7 +167,8 @@ def periodic_host_flap(
                 host_name = f"h{host_idx}"
                 active_down.add(host_idx)
                 update_state(last_down=host_idx)
-                # info(f"\n[flap] down {host_name}\n")
+                if not quiet:
+                    info(f"\n[flap] down {host_name}\n")
                 set_node_links_state(net, host_name, "down")
                 schedule_up(host_idx)
 
@@ -400,7 +404,10 @@ def run_connect(args, run_dir: Path = None):
         run_host_command(net, host, command)
         time.sleep(1)
 
-    CLI(net)
+    use_cli = not getattr(args, "no_cli", False)
+
+    if use_cli:
+        CLI(net)
 
     if stop_event is not None:
         stop_event.set()
@@ -416,6 +423,7 @@ def run_connect(args, run_dir: Path = None):
     bridge_manager.cleanup()
 
     net.stop()
+    mn_cleanup()
     cleanup_node_dirs()
 
 
@@ -579,6 +587,11 @@ def main():
         action="store_true",
         dest="legacy_layout",
         help="use legacy layout (output to current directory)",
+    )
+    parser.add_argument(
+        "--no-cli",
+        action="store_true",
+        help="skip interactive CLI (flap output visible on stdout)",
     )
     args = parser.parse_args()
 

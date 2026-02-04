@@ -2,17 +2,16 @@
 This is a simple example that demonstrates cefsubfile/cefpubfile using three nodes.
 """
 
+import sys
+import time
+
+from mininet.clean import cleanup as mn_cleanup
 from mininet.cli import CLI
-from mininet.log import setLogLevel
+from mininet.link import TCLink
+from mininet.log import info, setLogLevel
 from mininet.net import Mininet
 from mininet.topo import Topo
-
 from mininet.util import irange
-from mininet.log import info
-
-from mininet.link import TCLink
-
-import time
 
 ### Topology and ip addrs
 # h0 <---s0---> h1 <---s1---> h2
@@ -63,6 +62,7 @@ def setFib( net, hostNum):
 
 def runSimpleLink():
     "Create and run simple link network"
+    no_cli = "--no-cli" in sys.argv
     hostNum = 3
     topo = simpleLinkTopo( n=hostNum )
     net = Mininet( topo=topo, link=TCLink, waitConnected=True )
@@ -110,8 +110,9 @@ def runSimpleLink():
     
     time.sleep(10)	
 
-    CLI( net )
-    
+    if not no_cli:
+        CLI( net )
+
     # Stop cefnetd at h0 and h1
     for id in irange( 0, (hostNum-1) ):
      command = "cefnetdstop -d ./h" + str(id)
@@ -120,6 +121,7 @@ def runSimpleLink():
      time.sleep(2)
 
     net.stop()
+    mn_cleanup()
 
 class simpleLinkTopo( Topo ):
     "Simple topology with linear links"

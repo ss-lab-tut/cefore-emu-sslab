@@ -10,6 +10,7 @@ import shutil
 import sys
 from pathlib import Path
 
+from mininet.clean import cleanup as mn_cleanup
 from mininet.cli import CLI
 from mininet.log import info, setLogLevel
 from mininet.net import Mininet
@@ -100,6 +101,7 @@ def stopCsmgrd(net):
 
 def runSimpleLink():
     "Create and run simple link network"
+    no_cli = "--no-cli" in sys.argv
     hostNum = 3
     ensure_node_dirs(hostNum)
     topo = simpleLinkTopo(n=hostNum)
@@ -152,7 +154,8 @@ def runSimpleLink():
     print(nodeName, "command:", command)
     net.hosts[0].cmd(command)
 
-    CLI(net)
+    if not no_cli:
+        CLI(net)
 
     # Stop cefnetd at h0 and h1
     for id in irange(0, (hostNum - 1)):
@@ -162,6 +165,7 @@ def runSimpleLink():
 
     stopCsmgrd(net)
     net.stop()
+    mn_cleanup()
 
 
 class simpleLinkTopo(Topo):

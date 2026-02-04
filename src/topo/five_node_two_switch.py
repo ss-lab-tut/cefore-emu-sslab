@@ -14,6 +14,7 @@ import sys
 import time
 from pathlib import Path
 
+from mininet.clean import cleanup as mn_cleanup
 from mininet.cli import CLI
 from mininet.log import info, setLogLevel
 from mininet.net import Mininet
@@ -140,7 +141,7 @@ def cleanup_node_dirs():
             shutil.rmtree(name)
 
 
-def run_line_topology(host_num):
+def run_line_topology(host_num, no_cli=False):
     if host_num < 2:
         sys.exit("host count must be at least 3")
 
@@ -188,7 +189,8 @@ def run_line_topology(host_num):
     print(node_name, "command:", command)
     net.hosts[0].cmd(command)
 
-    CLI(net)
+    if not no_cli:
+        CLI(net)
 
     for idx in range(host_num):
         stop_cefnetd(net, idx)
@@ -197,6 +199,7 @@ def run_line_topology(host_num):
         if idx % 2 == 1:
             stop_csmgrd(net, idx)
     net.stop()
+    mn_cleanup()
     cleanup_node_dirs()
 
 
@@ -219,10 +222,15 @@ def main():
         description="Cefore line topology (default: 3 hosts, 2 switches)"
     )
     parser.add_argument("--hosts", type=int, default=5, help="number of hosts")
+    parser.add_argument(
+        "--no-cli",
+        action="store_true",
+        help="skip interactive CLI",
+    )
     args = parser.parse_args()
 
     setLogLevel("info")
-    run_line_topology(args.hosts)
+    run_line_topology(args.hosts, no_cli=args.no_cli)
 
 
 if __name__ == "__main__":

@@ -109,6 +109,10 @@ def validate_config(config: dict[str, Any]) -> list[str]:
         if not isinstance(config["legacy_layout"], bool):
             errors.append("legacy_layout must be a boolean")
 
+    if "no_cli" in config:
+        if not isinstance(config["no_cli"], bool):
+            errors.append("no_cli must be a boolean")
+
     if "puts" in config:
         if not isinstance(config["puts"], list):
             errors.append("puts must be a list")
@@ -218,6 +222,7 @@ def merge_cli_and_config(args: Any, config: dict[str, Any]) -> None:
         "puts",
         "gets",
         "auto",
+        "no_cli",
         "num",
         "output_dir",
         "timestamp",

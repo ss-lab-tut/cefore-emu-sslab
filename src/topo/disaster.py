@@ -13,6 +13,7 @@ import threading
 import time
 from pathlib import Path
 
+from mininet.clean import cleanup as mn_cleanup
 from mininet.cli import CLI
 from mininet.link import Intf, TCLink
 from mininet.log import info, setLogLevel
@@ -93,7 +94,8 @@ def parse_int_list(value):
 
 
 def periodic_host_flap(
-    net, host_num, interval, down_time, rng, exclude, state, down_count, stagger
+    net, host_num, interval, down_time, rng, exclude, state, down_count, stagger,
+    quiet=False,
 ):
     """Start periodic host flapping in background thread.
 
@@ -137,7 +139,8 @@ def periodic_host_flap(
                 if stop_event.is_set():
                     return
                 host_name = f"h{host_idx}"
-                info(f"\n[flap] up {host_name}\n")
+                if not quiet:
+                    info(f"\n[flap] up {host_name}\n")
                 set_node_links_state(net, host_name, "up")
                 active_down.discard(host_idx)
                 update_state()
@@ -167,7 +170,8 @@ def periodic_host_flap(
                 host_name = f"h{host_idx}"
                 active_down.add(host_idx)
                 update_state(last_down=host_idx)
-                info(f"\n[flap] down {host_name}\n")
+                if not quiet:
+                    info(f"\n[flap] down {host_name}\n")
                 set_node_links_state(net, host_name, "down")
                 schedule_up(host_idx)
 
@@ -535,6 +539,8 @@ def run_disaster_topology(args, run_dir: Path = None):
             )
         time.sleep(1)
 
+    use_cli = not getattr(args, "no_cli", False)
+
     stop_event = None
     flap_state = FlapState()
     if args.down_interval > 0 and args.down_duration > 0:
@@ -548,6 +554,7 @@ def run_disaster_topology(args, run_dir: Path = None):
             flap_state,
             args.down_count,
             args.down_stagger,
+            quiet=use_cli,
         )
 
     rng = rng or random.Random()
@@ -636,7 +643,8 @@ def run_disaster_topology(args, run_dir: Path = None):
         if idx < len(ops_get) - 1 and args.get_interval > 0:
             time.sleep(args.get_interval)
 
-    CLI(net)
+    if use_cli:
+        CLI(net)
 
     if stop_event is not None:
         stop_event.set()
@@ -649,6 +657,7 @@ def run_disaster_topology(args, run_dir: Path = None):
             stop_csmgrd(net, idx)
     cleanup_external_bridges()
     net.stop()
+    mn_cleanup()
     cleanup_node_dirs()
 
 
@@ -812,6 +821,11 @@ def main():
         action="store_true",
         dest="legacy_layout",
         help="use legacy layout (output to current directory)",
+    )
+    parser.add_argument(
+        "--no-cli",
+        action="store_true",
+        help="skip interactive CLI (flap output visible on stdout)",
     )
     args = parser.parse_args()
 

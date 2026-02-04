@@ -3,9 +3,10 @@
 import sys
 import re
 
-from mininet.net import Mininet
-from mininet.cli import CLI 
+from mininet.clean import cleanup as mn_cleanup
+from mininet.cli import CLI
 from mininet.log import lg, info
+from mininet.net import Mininet
 from mininet.node import OVSKernelSwitch, Controller, Node
 from mininet.topo import Topo
 from mininet.util import irange
@@ -42,7 +43,7 @@ def ConnectToRootNS( network, switch, ip, routes ):
     info( '*** Adding routes in this vm-host: route add -net ' + routes + ' dev ' + str(intf) + '\n' )
     root.cmd( 'route add -net ' + routes + ' dev ' + str( intf ) )
 
-def ExecuteOneMininet( hostCount, h1_ip, routes, routes2, ip_anotherVM ):
+def ExecuteOneMininet( hostCount, h1_ip, routes, routes2, ip_anotherVM, no_cli=False ):
 
     # Make a topology
     topo = MakeTopo( hostCount )
@@ -72,16 +73,22 @@ def ExecuteOneMininet( hostCount, h1_ip, routes, routes2, ip_anotherVM ):
     root.cmd( 'route add -net ' + routes2 + ' gw ' + ip_anotherVM )
     
     net.start()
-    CLI( net )
-   
-    # Delete routes from this vm-host to Mininet hosts on another vm-host 
+    if not no_cli:
+        CLI( net )
+
+    # Delete routes from this vm-host to Mininet hosts on another vm-host
     info( '*** Deleting routes in this vm-host: route add -net ' + routes2 + '\n')
     root.cmd( 'route del -net ' + routes2 )
 
     net.stop()
+    mn_cleanup()
 
 if __name__ == '__main__':
     lg.setLogLevel( 'info' )
+
+    no_cli = "--no-cli" in sys.argv
+    if no_cli:
+        sys.argv.remove("--no-cli")
 
     if len( sys.argv ) > 4:
         h1_ip = sys.argv[1]
@@ -101,4 +108,4 @@ if __name__ == '__main__':
     info( "route_to_thisMininet:", route_to_thisMininet, '\n' )
     info( "route_to_anotherMininet:", route_to_anotherMininet, '\n' )
     info( "ip_anotherVM:", ip_anotherVM, '\n' )
-    ExecuteOneMininet( 1, h1_ip, route_to_thisMininet, route_to_anotherMininet, ip_anotherVM )
+    ExecuteOneMininet( 1, h1_ip, route_to_thisMininet, route_to_anotherMininet, ip_anotherVM, no_cli=no_cli )
