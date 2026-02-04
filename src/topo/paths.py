@@ -17,20 +17,26 @@ def resolve_run_dir(args: Any) -> Path:
 
     Returns:
         Path to the run directory. Returns current directory (".")
-        for legacy layout or when num is not specified.
+        for legacy layout or when neither num nor output_dir is specified.
     """
     if getattr(args, "legacy_layout", False):
         return Path(".")
 
     num = getattr(args, "num", None)
-    if num is None:
+    output_dir = getattr(args, "output_dir", None)
+
+    if num is None and not output_dir:
         return Path(".")
 
     seed = getattr(args, "seed", None)
     seed_label = "none" if seed is None else str(seed)
 
-    base = getattr(args, "output_dir", "logs") or "logs"
-    dir_name = f"ex{num}_seed{seed_label}"
+    base = output_dir or "logs"
+
+    if num is not None:
+        dir_name = f"ex{num}_seed{seed_label}"
+    else:
+        dir_name = f"seed{seed_label}"
 
     if getattr(args, "timestamp", False):
         dir_name += f"_{datetime.now().strftime('%Y%m%d-%H%M')}"
