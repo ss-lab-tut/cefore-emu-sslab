@@ -51,10 +51,21 @@ class Tee:
         for s in self.streams:
             s.write(data)
             s.flush()
+        return len(data)
 
     def flush(self):
         for s in self.streams:
             s.flush()
+
+    def fileno(self):
+        return self.streams[0].fileno()
+
+    def isatty(self):
+        return self.streams[0].isatty()
+
+    @property
+    def encoding(self):
+        return self.streams[0].encoding
 
 
 def parse_int_list(value):
@@ -268,12 +279,13 @@ def run_host_command(net, host_idx, command):
     return proc.wait()
 
 
-def run_connect(args, run_dir: Path = None):
+def run_connect(args, run_dir: Path = None, log_context=None):
     """Run disaster topology simulation.
 
     Args:
         args: Parsed command-line arguments.
         run_dir: Output directory for logs and artifacts.
+        log_context: Dict with original_stdout/stderr and tee_stdout/stderr for CLI.
     """
     if run_dir is None:
         run_dir = Path(".")
@@ -407,7 +419,13 @@ def run_connect(args, run_dir: Path = None):
     use_cli = not getattr(args, "no_cli", False)
 
     if use_cli:
+        if log_context:
+            sys.stdout = log_context["original_stdout"]
+            sys.stderr = log_context["original_stderr"]
         CLI(net)
+        if log_context:
+            sys.stdout = log_context["tee_stdout"]
+            sys.stderr = log_context["tee_stderr"]
 
     if stop_event is not None:
         stop_event.set()
@@ -643,9 +661,18 @@ def main():
         sys.stdout = Tee(original_stdout, log_fp)
         sys.stderr = Tee(original_stderr, log_fp)
 
+    log_context = None
+    if log_fp:
+        log_context = {
+            "original_stdout": original_stdout,
+            "original_stderr": original_stderr,
+            "tee_stdout": sys.stdout,
+            "tee_stderr": sys.stderr,
+        }
+
     try:
         setLogLevel("info")
-        run_connect(args, run_dir)
+        run_connect(args, run_dir, log_context=log_context)
     finally:
         if log_fp:
             sys.stdout = original_stdout

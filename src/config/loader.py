@@ -184,6 +184,10 @@ def validate_config(config: dict[str, Any]) -> list[str]:
                     errors.append(f"bridges[{idx}] missing required field 'root_ip'")
                 if "local_routes" not in bridge:
                     errors.append(f"bridges[{idx}] missing required field 'local_routes'")
+                if "nat" in bridge and not isinstance(bridge["nat"], bool):
+                    errors.append(f"bridges[{idx}].nat must be a boolean")
+                if "nat_out" in bridge and not isinstance(bridge["nat_out"], str):
+                    errors.append(f"bridges[{idx}].nat_out must be a string")
 
     return errors
 

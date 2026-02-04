@@ -71,7 +71,7 @@ class BridgeManager:
         Args:
             net: Mininet network instance.
             host_name: Host name to add route to.
-            dest_network: Destination network (e.g., "192.168.201.0/24").
+            dest_network: Destination network (e.g., "192.168.201.0/24" or "default").
             gateway: Gateway IP address.
         """
         host = net.get(host_name)
@@ -79,10 +79,15 @@ class BridgeManager:
             info(f"*** Warning: host {host_name} not found\n")
             return
 
-        cmd = f"route add -net {dest_network} gw {gateway}"
+        if dest_network in ("default", "0.0.0.0/0"):
+            cmd = f"ip route replace default via {gateway}"
+            del_cmd = "ip route del default"
+        else:
+            cmd = f"route add -net {dest_network} gw {gateway}"
+            del_cmd = f"route del -net {dest_network}"
         info(f"*** Adding route in {host_name}: {cmd}\n")
         host.cmd(cmd)
-        self.routes_to_cleanup.append((host, f"route del -net {dest_network}"))
+        self.routes_to_cleanup.append((host, del_cmd))
 
     def add_root_route(self, dest_network: str, gateway: str) -> None:
         """Add route from root namespace to external network.
@@ -97,8 +102,45 @@ class BridgeManager:
         root.cmd(cmd)
         self.routes_to_cleanup.append((root, f"route del -net {dest_network}"))
 
+    def enable_ip_forwarding(self) -> None:
+        """Enable IP forwarding on root namespace node."""
+        root = self.get_or_create_root()
+        root.cmd("sysctl -w net.ipv4.ip_forward=1")
+
+    def enable_nat(self, local_routes: str, out_intf: str = None) -> None:
+        """Enable NAT (masquerade) for local routes via outbound interface.
+
+        Args:
+            local_routes: Source network to masquerade (e.g., "192.168.1.0/24").
+            out_intf: Outbound interface name. If None, auto-detected from default route.
+        """
+        root = self.get_or_create_root()
+        if out_intf is None:
+            result = root.cmd("ip route show default")
+            parts = result.split()
+            if "dev" in parts:
+                idx = parts.index("dev")
+                if idx + 1 < len(parts):
+                    out_intf = parts[idx + 1]
+        if not out_intf:
+            info("*** Warning: could not detect outbound interface for NAT\n")
+            return
+
+        root_intf_name = str(self.root_intf)
+        cmds = [
+            f"iptables -t nat -A POSTROUTING -s {local_routes} -o {out_intf} -j MASQUERADE",
+            f"iptables -A FORWARD -i {root_intf_name} -o {out_intf} -s {local_routes} -j ACCEPT",
+            f"iptables -A FORWARD -i {out_intf} -o {root_intf_name} -d {local_routes} -m state --state RELATED,ESTABLISHED -j ACCEPT",
+        ]
+        for cmd in cmds:
+            info(f"*** NAT: {cmd}\n")
+            root.cmd(cmd)
+        for cmd in cmds:
+            del_cmd = cmd.replace(" -A ", " -D ")
+            self.routes_to_cleanup.append((root, del_cmd))
+
     def cleanup(self) -> None:
-        """Remove all created routes."""
+        """Remove all created routes and NAT rules."""
         for node, del_cmd in reversed(self.routes_to_cleanup):
             info(f"*** Removing route: {del_cmd}\n")
             node.cmd(del_cmd)
@@ -192,6 +234,13 @@ def setup_bridges(
             for host_idx in hosts:
                 host_name = f"h{host_idx}"
                 bridge_manager.add_host_route(net, host_name, external_routes, gateway)
+
+        # NAT enablement
+        use_nat = config.get("nat", False)
+        if use_nat:
+            bridge_manager.enable_ip_forwarding()
+            nat_out = config.get("nat_out")
+            bridge_manager.enable_nat(local_routes, nat_out)
 
         # Add routes from hosts to VM host network (192.168.201.0/24 pattern)
         vm_host_network = config.get("vm_host_network")
