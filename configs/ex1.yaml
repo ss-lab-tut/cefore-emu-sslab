@@ -11,7 +11,7 @@ k: 4
 puts:
   - host: 2
     uri: "ccnx:/emergency/test"
-    file: "./専攻科_論文.pdf"
+    file: "./style.css"
     rate: 10
     expiry: 5000
     cache_time: 5000
@@ -24,6 +24,9 @@ puts:
     expiry: 5000
     rate: 4
     cache_time: 3000
+  - host: 0
+    uri: "ccnx:/test/data2"
+    file: "./link-audio.sh"
 
 gets:
   - host: 0
@@ -44,13 +47,9 @@ auto:
 
 output_dir: "logs"
 timestamp: true
-
+no_cli: false
 
 down_interval: 10
-down_duration: 20
-down_stagger: 5
-down_count: 2
-get_interval: 5down_interval: 10
 down_duration: 20
 down_stagger: 5
 down_count: 2
@@ -59,7 +58,7 @@ topo_layout:
 bw: h3, s1, 1
 bw: h10, s5, 0.5
 bridges:
-  - switch: s3
+  - switch: s1
     root_ip: "192.168.100.1/24"
     local_routes: "192.168.1.0/24"
       #     external_routes: "192.168.201.0/24"  # Optional: VM host network

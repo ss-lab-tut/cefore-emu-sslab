@@ -10,7 +10,7 @@ k: 2
 puts:
   - host: 2
     uri: "ccnx:/emergency/test"
-    file: "./専攻科_論文.pdf"
+    file: "./style.css"
     rate: 10
     expiry: 5000
     cache_time: 5000
@@ -43,6 +43,7 @@ auto:
 
 output_dir: "logs"
 timestamp: true
+no_cli: true
 
 
 down_interval: 10
