@@ -195,11 +195,11 @@ h16 command: cefstatus -d ./h16
 h17 command: cefstatus -d ./h17
 h18 command: cefstatus -d ./h18
 h19 command: cefstatus -d ./h19
-h2 command: cefputfile ccnx:/emergency/test -f ./専攻科_論文.pdf -r 10 -e 5000 -t 5000 -d ./h2 > cefputfile_h2.log
-h9 command: cefputfile ccnx:/test/data1 -f ./disk IO.png -e 3000 -t 3000 -d ./h9 > cefputfile_h9.log
-h3 command: cefputfile ccnx:/emergency/test2 -f ./SN7100andSN770.jpg -r 4 -e 5000 -t 3000 -d ./h3 > cefputfile_h3.log
-h0 command: cefgetfile ccnx:/emergency/test2 -f recvfile_at_h0 -s 4 -d ./h0 > cefgetfile_seed42_downhosts8_idx0_h0.log
-h6 command: cefgetfile ccnx:/test/data1 -f recvfile_at_h6 -o -d ./h6 > cefgetfile_seed42_downhosts8,14_idx1_h6.log
-h11 command: cefgetfile ccnx:/emergency/test -f recvfile_at_h11 -d ./h11 > cefgetfile_seed42_downhosts5,12,14_idx2_h11.log
-h16 command: cefgetfile ccnx:/emergency/test -f recvfile_at_h16 -d ./h16 > cefgetfile_seed42_downhosts5,12,13_idx3_h16.log
+h2 command: cefputfile ccnx:/emergency/test -f ./専攻科_論文.pdf -r 10 -e 5000 -t 5000 -d ./h2 > logs/seed42_20260204-1212/cefputfile_h2.log
+h9 command: cefputfile ccnx:/test/data1 -f ./disk IO.png -e 3000 -t 3000 -d ./h9 > logs/seed42_20260204-1212/cefputfile_h9.log
+h3 command: cefputfile ccnx:/emergency/test2 -f ./SN7100andSN770.jpg -r 4 -e 5000 -t 3000 -d ./h3 > logs/seed42_20260204-1212/cefputfile_h3.log
+h0 command: cefgetfile ccnx:/emergency/test2 -f logs/seed42_20260204-1212/recvfile_at_h0 -s 4 -d ./h0 > logs/seed42_20260204-1212/cefgetfile_seed42_downhosts8_idx0_h0.log
+h6 command: cefgetfile ccnx:/test/data1 -f logs/seed42_20260204-1212/recvfile_at_h6 -o -d ./h6 > logs/seed42_20260204-1212/cefgetfile_seed42_downhosts8,14_idx1_h6.log
+h11 command: cefgetfile ccnx:/emergency/test -f logs/seed42_20260204-1212/recvfile_at_h11 -d ./h11 > logs/seed42_20260204-1212/cefgetfile_seed42_downhosts5,12_idx2_h11.log
+h16 command: cefgetfile ccnx:/emergency/test -f logs/seed42_20260204-1212/recvfile_at_h16 -d ./h16 > logs/seed42_20260204-1212/cefgetfile_seed42_downhosts5,13,19_idx3_h16.log
 mininet> 
