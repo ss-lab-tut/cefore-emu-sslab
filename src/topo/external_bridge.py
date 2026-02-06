@@ -65,6 +65,7 @@ class BridgeManager:
         host_name: str,
         dest_network: str,
         gateway: str,
+        dev: str | None = None,
     ) -> None:
         """Add route from Mininet host to external network.
 
@@ -79,11 +80,12 @@ class BridgeManager:
             info(f"*** Warning: host {host_name} not found\n")
             return
 
+        dev_clause = f" dev {dev}" if dev else ""
         if dest_network in ("default", "0.0.0.0/0"):
-            cmd = f"ip route replace default via {gateway}"
+            cmd = f"ip route replace default via {gateway}{dev_clause}"
             del_cmd = "ip route del default"
         else:
-            cmd = f"route add -net {dest_network} gw {gateway}"
+            cmd = f"route add -net {dest_network} gw {gateway}{dev_clause}"
             del_cmd = f"route del -net {dest_network}"
         info(f"*** Adding route in {host_name}: {cmd}\n")
         host.cmd(cmd)
@@ -217,11 +219,45 @@ def parse_bridge_args(values: list[str] | None) -> list[dict[str, Any]]:
     return entries
 
 
+def _resolve_root_ip(
+    switch_name: str,
+    root_ip: str | None,
+    mesh_links: list[dict[str, Any]] | None,
+) -> str | None:
+    if root_ip and root_ip != "auto":
+        return root_ip
+    if not mesh_links:
+        return root_ip
+    for link in mesh_links:
+        if link.get("switch") == switch_name:
+            subnet = link.get("subnet")
+            if subnet is not None:
+                return f"192.168.{subnet}.254/24"
+    return root_ip
+
+
+def _find_host_intf(
+    mesh_links: list[dict[str, Any]] | None,
+    host_idx: int,
+    switch_name: str,
+) -> str | None:
+    if not mesh_links:
+        return None
+    for link in mesh_links:
+        if link.get("switch") != switch_name:
+            continue
+        host_eth = link.get("host_eth") or {}
+        if host_idx in host_eth:
+            return f"h{host_idx}-eth{host_eth[host_idx]}"
+    return None
+
+
 def setup_bridges(
     net: Mininet,
     bridge_manager: BridgeManager,
     bridge_configs: list[dict[str, Any]],
     host_num: int,
+    mesh_links: list[dict[str, Any]] | None = None,
 ) -> None:
     """Set up all bridge configurations.
 
@@ -233,7 +269,10 @@ def setup_bridges(
     """
     for config in bridge_configs:
         switch = config["switch"]
-        root_ip = config["root_ip"]
+        root_ip = _resolve_root_ip(config["switch"], config.get("root_ip"), mesh_links)
+        if not root_ip:
+            info(f"*** Warning: root_ip not set for switch {switch}\n")
+            continue
         local_routes = config["local_routes"]
 
         # Connect root namespace to switch
@@ -259,7 +298,14 @@ def setup_bridges(
             # Add routes from hosts to external network via root node
             for host_idx in hosts:
                 host_name = f"h{host_idx}"
-                bridge_manager.add_host_route(net, host_name, external_routes, gateway)
+                dev = _find_host_intf(mesh_links, host_idx, switch)
+                bridge_manager.add_host_route(
+                    net,
+                    host_name,
+                    external_routes,
+                    gateway,
+                    dev=dev,
+                )
 
         # NAT enablement
         use_nat = config.get("nat", False)
@@ -278,4 +324,11 @@ def setup_bridges(
         if vm_host_network:
             for host_idx in hosts:
                 host_name = f"h{host_idx}"
-                bridge_manager.add_host_route(net, host_name, vm_host_network, gateway)
+                dev = _find_host_intf(mesh_links, host_idx, switch)
+                bridge_manager.add_host_route(
+                    net,
+                    host_name,
+                    vm_host_network,
+                    gateway,
+                    dev=dev,
+                )
