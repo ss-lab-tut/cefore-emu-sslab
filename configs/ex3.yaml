@@ -60,8 +60,10 @@ bw: h10, s5, 0.5
 bridges:
   - switch: s8
     root_ip: "192.168.10.254/24"
-    local_routes: "192.168.10.0/24"
-    external_routes: "default"
+    local_routes: "192.168.0.0/16"
+    external_routes: "0.0.0.0/0"
+    gateway: "133.243.146.1"
     nat: true
     hosts: [4]
     nat_out: "eno1"
+
