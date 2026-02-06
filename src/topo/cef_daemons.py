@@ -134,7 +134,7 @@ def run_cefputfile(
 
     if not log_name:
         log_name = f"cefputfile-h{host_idx}.log"
-    cmd_parts.append(f"> {log_name}")
+    cmd_parts.append(f"> {shlex.quote(str(log_name))} 2>&1")
 
     command = " ".join(cmd_parts)
     print(node_name, "command:", command)
@@ -192,7 +192,7 @@ def run_cefgetfile(
 
     if not log_name:
         log_name = f"cefgetfile-h{host_idx}.log"
-    cmd_parts.append(f"> {log_name}")
+    cmd_parts.append(f"> {shlex.quote(str(log_name))} 2>&1")
 
     command = " ".join(cmd_parts)
     print(node_name, "command:", command)
@@ -269,7 +269,7 @@ def run_cefsubfile(
 
     if not log_name:
         log_name = f"cefsubfile-h{host_idx}.log"
-    cmd_parts.append(f"> {log_name}")
+    cmd_parts.append(f"> {shlex.quote(str(log_name))} 2>&1")
 
     command = " ".join(cmd_parts)
     print(node_name, "command:", command)
@@ -340,7 +340,7 @@ def run_cefpubfile(
 
     if not log_name:
         log_name = f"cefpubfile-h{host_idx}.log"
-    cmd_parts.append(f"> {log_name}")
+    cmd_parts.append(f"> {shlex.quote(str(log_name))} 2>&1")
 
     command = " ".join(cmd_parts)
     print(node_name, "command:", command)

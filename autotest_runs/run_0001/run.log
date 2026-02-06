@@ -1,0 +1,13 @@
+Traceback (most recent call last):
+  File "/home/yamakawa/Development/github/cefore-emu-koh11235813/mesh-disaster-topology.py", line 13, in <module>
+    main()
+  File "/home/yamakawa/Development/github/cefore-emu-koh11235813/src/topo/disaster.py", line 1109, in main
+    run_disaster_topology(args, run_dir, log_context=log_context)
+  File "/home/yamakawa/Development/github/cefore-emu-koh11235813/src/topo/disaster.py", line 517, in run_disaster_topology
+    topo = MeshTopo(
+           ^^^^^^^^^
+  File "/home/yamakawa/Development/github/cefore-emu-koh11235813/.venv/lib/python3.12/site-packages/mininet/topo.py", line 115, in __init__
+    self.build( *args, **params )
+  File "/home/yamakawa/Development/github/cefore-emu-koh11235813/src/topo/mesh_topo.py", line 122, in build
+    raise ValueError("failed to build spanning tree under degree constraints")
+ValueError: failed to build spanning tree under degree constraints

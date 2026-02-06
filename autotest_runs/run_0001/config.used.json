@@ -1,0 +1,55 @@
+{
+  "hosts": 10,
+  "switches": 15,
+  "seed": 42,
+  "k": 2,
+  "num": 1,
+  "output_dir": "/home/yamakawa/Development/github/cefore-emu-koh11235813/autotest_runs/run_0001/logs",
+  "timestamp": false,
+  "legacy_layout": false,
+  "no_cli": true,
+  "duration": 120,
+  "results_json": "results.json",
+  "down_interval": 30,
+  "down_duration": 10,
+  "down_count": 2,
+  "down_stagger": 2,
+  "get_interval": 5,
+  "warmup_get_interval": 0,
+  "warmup_only_cache_nodes": true,
+  "cache_count": 3,
+  "cache_default_rct_ms": 1800000,
+  "publisher_host": 9,
+  "puts": [
+    {
+      "host": 9,
+      "uri": "ccnx:/test/hot/content1",
+      "file": "./sample-putfile",
+      "log": "cefputfile_h9_content1.log"
+    },
+    {
+      "host": 9,
+      "uri": "ccnx:/test/hot/content2",
+      "file": "./sample-putfile",
+      "log": "cefputfile_h9_content2.log"
+    }
+  ],
+  "gets": [
+    {
+      "host": 0,
+      "uri": "ccnx:/test/hot/content1"
+    },
+    {
+      "host": 1,
+      "uri": "ccnx:/test/hot/content2"
+    },
+    {
+      "host": 2,
+      "uri": "ccnx:/test/hot/content1"
+    },
+    {
+      "host": 3,
+      "uri": "ccnx:/test/hot/content2"
+    }
+  ]
+}

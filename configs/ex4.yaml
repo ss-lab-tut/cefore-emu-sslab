@@ -40,25 +40,25 @@ gets:
   - host: 16
     uri: "ccnx:/emergency/test"
 
-      #auto:
-      #  uri: "ccnx:/emergency/test"
-      #  consumers: "random:5"
-      #  content_count: 5
+auto:
+  uri: "ccnx:/emergency/test"
+  consumers: "random:5"
+  content_count: 5
 
 output_dir: "logs"
 timestamp: true
-no_cli: false
-duration: 360
-results_json: "logs/json"
-warmup_get_interval: 5
-cache_default_rct_ms: 50000
-  # publisher_host:
-hot_uris: ["ccnx:/emergency"]
+no_cli: true
+  # duration: 360
+  # results_json: "logs/json"
+  # warmup_get_interval: 5
+  # cache_default_rct_ms: 50000
+  #   # publisher_host:
+  # hot_uris: ["ccnx:/emergency"]
 
 down_interval: 10
 down_duration: 20
 down_stagger: 5
-down_count: 2
+down_count: 5
 get_interval: 5
 topo_layout:
 bw: h3, s1, 1

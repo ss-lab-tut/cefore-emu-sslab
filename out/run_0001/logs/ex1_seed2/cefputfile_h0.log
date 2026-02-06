@@ -1,8 +1,8 @@
 [cefputfile] Start
 [cefputfile] Parsing parameters ... OK
-2026-02-06 18:13:22.342 [cefputfile] INFO: [client] Config directory is ./h0
-2026-02-06 18:13:22.342 [cefputfile] INFO: [client] Local Socket Name is /tmp/cef_9695.0
-2026-02-06 18:13:22.342 [cefputfile] INFO: [client] Listen Port is 9695
+2026-02-06 18:28:05.872 [cefputfile] INFO: [client] Config directory is ./h0
+2026-02-06 18:28:05.872 [cefputfile] INFO: [client] Local Socket Name is /tmp/cef_9695.0
+2026-02-06 18:28:05.872 [cefputfile] INFO: [client] Listen Port is 9695
 [cefputfile] Init Cefore Client package ... OK
 [cefputfile] Conversion from URI into Name ... OK
 [cefputfile] Checking the input file ... OK
@@ -19,4 +19,4 @@
 [cefputfile] Tx Frames  = 1
 [cefputfile] Tx Bytes   = 732
 [cefputfile] Duration   = 0.004 sec
-[cefputfile] Throughput = 1777777 bps
+[cefputfile] Throughput = 1775083 bps
