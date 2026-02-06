@@ -59,7 +59,7 @@ bw: h3, s1, 1
 bw: h10, s5, 0.5
 bridges:
   - switch: s8
-    root_ip: "192.168.9.254/24"
+    root_ip: "auto"
     local_routes: "192.168.0.0/16"
     external_routes: "default"
     nat: true
