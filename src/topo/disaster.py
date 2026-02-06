@@ -692,6 +692,9 @@ def run_disaster_topology(args, run_dir: Path = None, log_context=None):
     for idx in range(args.hosts):
         if idx % 2 == 1:
             stop_csmgrd(net, idx)
+
+    # Cleanup bridge routes before stopping network
+    bridge_manager.cleanup()
     cleanup_external_bridges()
     net.stop()
     mn_cleanup()

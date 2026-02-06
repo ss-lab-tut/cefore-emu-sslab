@@ -139,6 +139,32 @@ class BridgeManager:
             del_cmd = cmd.replace(" -A ", " -D ")
             self.routes_to_cleanup.append((root, del_cmd))
 
+    def enable_proxy_arp(self) -> None:
+        """Enable Proxy ARP on root namespace interface.
+
+        This allows the root node to respond to ARP requests for
+        hosts in different subnets, enabling L3 routing across
+        subnet boundaries.
+        """
+        root = self.get_or_create_root()
+        if self.root_intf is None:
+            info("*** Warning: root interface not set, cannot enable proxy ARP\n")
+            return
+
+        root_intf_name = str(self.root_intf)
+        cmds = [
+            f"sysctl -w net.ipv4.conf.{root_intf_name}.proxy_arp=1",
+            "sysctl -w net.ipv4.conf.all.proxy_arp=1",
+        ]
+        for cmd in cmds:
+            info(f"*** Proxy ARP: {cmd}\n")
+            root.cmd(cmd)
+        # cleanup で restore
+        self.routes_to_cleanup.append(
+            (root, f"sysctl -w net.ipv4.conf.{root_intf_name}.proxy_arp=0")
+        )
+        self.routes_to_cleanup.append((root, "sysctl -w net.ipv4.conf.all.proxy_arp=0"))
+
     def cleanup(self) -> None:
         """Remove all created routes and NAT rules."""
         for node, del_cmd in reversed(self.routes_to_cleanup):
@@ -241,6 +267,11 @@ def setup_bridges(
             bridge_manager.enable_ip_forwarding()
             nat_out = config.get("nat_out")
             bridge_manager.enable_nat(local_routes, nat_out)
+
+        # Proxy ARP enablement (for cross-subnet L2 resolution)
+        use_proxy_arp = config.get("proxy_arp", False)
+        if use_proxy_arp:
+            bridge_manager.enable_proxy_arp()
 
         # Add routes from hosts to VM host network (192.168.201.0/24 pattern)
         vm_host_network = config.get("vm_host_network")
