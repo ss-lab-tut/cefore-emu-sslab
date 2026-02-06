@@ -141,6 +141,22 @@ class BridgeManager:
             del_cmd = cmd.replace(" -A ", " -D ")
             self.routes_to_cleanup.append((root, del_cmd))
 
+    def enable_normal_flow(self, net: Mininet, switch_name: str) -> None:
+        """Add NORMAL action flow to OVS switch for L2 learning bridge behavior.
+
+        Without this, the OpenFlow controller may not forward frames
+        to ports added after network startup (e.g., root namespace link).
+
+        Args:
+            net: Mininet network instance.
+            switch_name: Name of the OVS switch.
+        """
+        root = self.get_or_create_root()
+        root.cmd(f"ovs-ofctl add-flow {switch_name} priority=0,actions=NORMAL")
+        self.routes_to_cleanup.append(
+            (root, f"ovs-ofctl del-flows {switch_name} --strict priority=0")
+        )
+
     def enable_proxy_arp(self) -> None:
         """Enable Proxy ARP on root namespace interface.
 
@@ -278,6 +294,9 @@ def setup_bridges(
         # Connect root namespace to switch
         bridge_manager.connect_to_root_ns(net, switch, root_ip, local_routes)
 
+        # Enable L2 learning bridge on the connected switch
+        bridge_manager.enable_normal_flow(net, switch)
+
         # Extract gateway from root_ip for host routes
         gateway = extract_gateway_from_ip(root_ip)
 
@@ -306,6 +325,11 @@ def setup_bridges(
                     gateway,
                     dev=dev,
                 )
+
+            # Set DNS nameserver for external access
+            for host_idx in hosts:
+                host = net.get(f"h{host_idx}")
+                host.cmd("echo 'nameserver 8.8.8.8' > /etc/resolv.conf")
 
         # NAT enablement
         use_nat = config.get("nat", False)

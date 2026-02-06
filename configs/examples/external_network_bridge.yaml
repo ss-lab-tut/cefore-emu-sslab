@@ -1,0 +1,64 @@
+# External Network Bridge Template
+# OVS normal flow + NAT + Proxy ARP configuration for connecting
+# Mininet hosts to external networks (e.g., the Internet).
+#
+# Problem: After net.addLink(root, switch), the OpenFlow controller
+# may not flood frames to the new port. Hosts cannot reach the root
+# namespace gateway, even when IPs are on the same subnet.
+#
+# Solution:
+#   1. Add "priority=0,actions=NORMAL" flow to the bridge switch
+#      so OVS acts as a normal L2 learning bridge.
+#   2. Enable Proxy ARP so the root node responds to ARP requests
+#      for hosts in different subnets.
+#   3. Enable NAT (MASQUERADE) for outbound Internet traffic.
+#
+# The OVS normal flow is added automatically by setup_bridges().
+
+num: 1
+hosts: 10
+switches: 12
+seed: 42
+k: 2
+
+puts:
+  - host: 9
+    uri: "ccnx:/test/data1"
+    file: "./sample-putfile"
+
+gets:
+  - host: 0
+    uri: "ccnx:/test/data1"
+
+# Bridge configuration for external network access
+#
+# Fields:
+#   switch:          Switch to connect to root namespace
+#   root_ip:         IP for root namespace node ("auto" = derive from switch subnet)
+#   local_routes:    Mininet host networks to route (CIDR notation)
+#   external_routes: External network routes ("default" for Internet)
+#   nat:             Enable NAT (MASQUERADE) for outbound traffic
+#   nat_out:         Physical interface for NAT outbound (e.g., "eno1", "eth0")
+#   proxy_arp:       Enable Proxy ARP for cross-subnet L2 resolution
+#   hosts:           List of host indices to configure routes for
+#
+# Note: root_ip "auto" picks 192.168.<subnet>.254/24 from the first
+# mesh link on the switch, so it shares the same subnet as attached hosts.
+#
+# Note: proxy_arp is required when root_ip subnet differs from
+# Mininet host subnets. Without it, ARP requests from hosts
+# to the gateway will fail.
+
+bridges:
+  - switch: s8
+    root_ip: "auto"
+    local_routes: "192.168.0.0/16"
+    external_routes: "default"
+    nat: true
+    nat_out: "eno1"
+    proxy_arp: true
+    hosts: [0, 4, 5, 9]
+
+output_dir: "logs"
+timestamp: true
+no_cli: false
