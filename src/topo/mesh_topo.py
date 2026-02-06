@@ -28,12 +28,13 @@ from .cef_daemons import (
     stop_csmgrd,
     wait_for_cefnetd,
 )
+from .graph_algos import select_k_centers
 from .graph_algos import UnionFind
 from .links import pick_publish_link
 from .net_config import set_fib, set_ip_addr
-from .paths import resolve_run_dir
-from .templates import cleanup_node_dirs, ensure_node_dirs
-from .viz import print_mesh_links, render_topology_png
+from .paths import resolve_run_dir, resolve_run_path
+from .templates import apply_cache_node_settings, cleanup_node_dirs, ensure_node_dirs
+from .viz import build_host_graph, print_mesh_links, render_topology_png
 
 
 def min_required_switches(host_num, switch_capacity):
@@ -240,6 +241,7 @@ def run_mesh_topology(
     host_degree_min=1,
     host_degree_max=2,
     switch_use_all=False,
+    cache_count=0,
     run_dir=None,
     no_cli=False,
 ):
@@ -259,7 +261,9 @@ def run_mesh_topology(
         run_dir: Output directory for logs and artifacts.
     """
     if run_dir is None:
-        run_dir = Path(".")
+        run_dir = Path("logs")
+    run_dir = run_dir.resolve()
+    run_dir.mkdir(parents=True, exist_ok=True)
     if host_num < 3:
         sys.exit("host count must be at least 3")
     if k_paths < 1:
@@ -295,9 +299,17 @@ def run_mesh_topology(
         print(node_name, "command:", "ifconfig")
         info(net.hosts[idx].cmd("ifconfig"))
 
-    for idx in range(host_num):
-        if idx % 2 == 1:
-            start_csmgrd(net, idx)
+    host_graph, _ = build_host_graph(topo.mesh_links)
+    effective_cache_count = cache_count if cache_count > 0 else max(1, host_num // 2)
+    cache_nodes = select_k_centers(host_graph, effective_cache_count)
+    if not cache_nodes and host_num > 0:
+        cache_nodes = [host_num - 1]
+    cache_node_set = set(cache_nodes)
+    apply_cache_node_settings(host_num, cache_node_set, None)
+    if cache_nodes:
+        info("cache nodes: " + ", ".join(f"h{idx}" for idx in cache_nodes) + "\n")
+    for idx in sorted(cache_node_set):
+        start_csmgrd(net, idx)
 
     for idx in range(host_num):
         start_cefnetd(net, idx)
@@ -310,9 +322,13 @@ def run_mesh_topology(
     print_mesh_links(topo.mesh_links)
 
     # Resolve topology PNG path with run_dir
-    topo_png_path = topo_png
-    if topo_png_path:
-        topo_png_path = str(run_dir / Path(topo_png_path).name)
+    topo_png_path = str(
+        resolve_run_path(
+            run_dir,
+            topo_png,
+            f"ex{host_num}_seed{'none' if seed is None else seed}.png",
+        )
+    )
     render_topology_png(topo.mesh_links, topo_png_path, seed=seed, layout=topo_layout)
     time.sleep(1)
 
@@ -328,7 +344,7 @@ def run_mesh_topology(
     run_cefputfile(net, publisher, publish_uri)
     time.sleep(5)
 
-    recvfile_path = str(run_dir / f"recvfile_at_h{consumer}")
+    recvfile_path = str(resolve_run_path(run_dir, None, f"recvfile_at_h{consumer}"))
     run_cefgetfile(net, consumer, publish_uri, recvfile_path)
 
     if not no_cli:
@@ -337,9 +353,8 @@ def run_mesh_topology(
     for idx in range(host_num):
         stop_cefnetd(net, idx)
 
-    for idx in range(host_num):
-        if idx % 2 == 1:
-            stop_csmgrd(net, idx)
+    for idx in sorted(cache_node_set):
+        stop_csmgrd(net, idx)
     net.stop()
     mn_cleanup()
     cleanup_node_dirs()
@@ -398,6 +413,12 @@ def main():
         help="number of shortest paths per destination",
     )
     parser.add_argument(
+        "--cache-count",
+        type=int,
+        default=0,
+        help="number of cache nodes for csmgrd startup (0: hosts//2)",
+    )
+    parser.add_argument(
         "--topo-png",
         type=str,
         default="",
@@ -439,8 +460,12 @@ def main():
     )
     args = parser.parse_args()
 
+    if args.legacy_layout:
+        sys.exit("--legacy is disabled for deterministic output isolation")
+
     # Resolve output directory
     run_dir = resolve_run_dir(args)
+    run_dir = run_dir.resolve()
 
     setLogLevel("info")
     run_mesh_topology(
@@ -454,6 +479,7 @@ def main():
         host_degree_min=args.host_degree_min,
         host_degree_max=args.host_degree_max,
         switch_use_all=args.switch_use_all,
+        cache_count=args.cache_count,
         run_dir=run_dir,
         no_cli=args.no_cli,
     )

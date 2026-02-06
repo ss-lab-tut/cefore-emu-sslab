@@ -5,6 +5,7 @@ Periodic host failure emulator based on mesh topology.
 """
 
 import argparse
+from datetime import datetime, timezone
 import json
 import random
 import subprocess
@@ -25,7 +26,9 @@ from config.loader import load_config, merge_cli_and_config, validate_config
 
 from .cef_daemons import (
     run_cefgetfile,
+    run_cefpubfile,
     run_cefputfile,
+    run_cefsubfile,
     run_cefstatus_all,
     start_cefnetd,
     start_csmgrd,
@@ -39,8 +42,8 @@ from .graph_algos import select_k_centers
 from .links import pick_publish_link, set_node_links_state
 from .mesh_topo import MeshTopo
 from .net_config import set_fib, set_fib_for_uris, set_ip_addr
-from .paths import resolve_run_dir
-from .templates import cleanup_node_dirs, ensure_node_dirs
+from .paths import resolve_run_dir, resolve_run_path
+from .templates import apply_cache_node_settings, cleanup_node_dirs, ensure_node_dirs
 from .viz import build_host_graph, print_mesh_links, render_topology_png
 
 
@@ -402,6 +405,63 @@ def run_host_command(net, host_idx, command):
     return proc.wait()
 
 
+def _artifact_path(run_dir: Path, raw_path, default_name):
+    """Resolve output file path under run_dir."""
+    return resolve_run_path(run_dir, raw_path, default_name)
+
+
+def _timestamp_utc():
+    return datetime.now(timezone.utc).isoformat()
+
+
+def _detect_get_success(log_path: Path, out_path: Path, exit_code: int) -> dict:
+    """Evaluate cefgetfile success using exit code, log, and output file."""
+    log_text = ""
+    if log_path.exists():
+        log_text = log_path.read_text(encoding="utf-8", errors="replace")
+    has_completed = "Completed to get all the chunks." in log_text
+    has_out = out_path.exists() and out_path.stat().st_size > 0
+    success = exit_code == 0 and has_completed and has_out
+    return {
+        "success": success,
+        "has_completed_log": has_completed,
+        "has_output_file": has_out,
+    }
+
+
+def _build_warmup_ops(args, run_dir: Path, hot_uris, cache_nodes):
+    """Build warmup operations when not explicitly configured."""
+    explicit = getattr(args, "warmup_gets", None) or []
+    if explicit:
+        return explicit
+
+    if not hot_uris:
+        return []
+
+    warmup_nodes = list(cache_nodes) if getattr(args, "warmup_only_cache_nodes", True) else []
+    if not warmup_nodes:
+        warmup_nodes = [idx for idx in range(args.hosts)]
+
+    warmup_ops = []
+    for uri_idx, uri in enumerate(hot_uris):
+        for host_idx in warmup_nodes:
+            warmup_ops.append(
+                {
+                    "host": host_idx,
+                    "uri": uri,
+                    "file": str(run_dir / f"warmup_recv_h{host_idx}_u{uri_idx}"),
+                }
+            )
+    return warmup_ops
+
+
+def _resolve_results_path(args, run_dir: Path):
+    raw = getattr(args, "results_json", None)
+    if not raw:
+        return None
+    return _artifact_path(run_dir, raw, "results.json")
+
+
 def run_disaster_topology(args, run_dir: Path = None, log_context=None):
     """Run disaster topology simulation.
 
@@ -411,9 +471,25 @@ def run_disaster_topology(args, run_dir: Path = None, log_context=None):
         log_context: Dict with original_stdout/stderr and tee_stdout/stderr for CLI.
     """
     if run_dir is None:
-        run_dir = Path(".")
+        run_dir = Path("logs")
+    run_dir = run_dir.resolve()
+    run_dir.mkdir(parents=True, exist_ok=True)
 
-    rng = random.Random(args.seed) if args.seed is not None else None
+    rng = random.Random(args.seed) if args.seed is not None else random.Random()
+    results = []
+    net = None
+    bridge_manager = BridgeManager()
+    stop_event = None
+    started_csmgrd_hosts = set()
+
+    bridge_configs = getattr(args, "bridges", None) or []
+    if not bridge_configs:
+        bridge_configs = parse_bridge_args(getattr(args, "bridge", None))
+
+    results_path = _resolve_results_path(args, run_dir)
+    autotest_mode = bool(getattr(args, "no_cli", False) and results_path is not None)
+    if autotest_mode and (args.ext or bridge_configs):
+        sys.exit("autotest mode forbids ext/bridge configuration")
 
     # ops_put から publishers を抽出（auto 設定も展開）
     ops_put = args.puts or []
@@ -421,9 +497,22 @@ def run_disaster_topology(args, run_dir: Path = None, log_context=None):
     if auto_config and not ops_put:
         ops_put, _ = generate_operations(auto_config, args.hosts, args.seed, run_dir)
 
-    publisher_ids = set(op["host"] for op in ops_put) if ops_put else None
+    if not ops_put:
+        publisher = args.hosts - 1
+        publish_uri = f"ccnx:/test/example{publisher + 1}/test.py"
+        ops_put = [
+            {
+                "host": publisher,
+                "uri": publish_uri,
+                "file": "./sample-putfile",
+                "log": "cefputfile_default.log",
+            }
+        ]
 
-    ensure_node_dirs(args.hosts, rng or random.Random(), publisher_ids)
+    publisher_ids = set(op["host"] for op in ops_put)
+    hot_uris = list(dict.fromkeys(getattr(args, "hot_uris", []) or [op["uri"] for op in ops_put]))
+
+    ensure_node_dirs(args.hosts, rng, publisher_ids)
 
     topo = MeshTopo(
         hosts=args.hosts,
@@ -434,271 +523,292 @@ def run_disaster_topology(args, run_dir: Path = None, log_context=None):
         host_degree_max=args.host_degree_max,
         switch_use_all=args.switch_use_all,
     )
-    net = Mininet(topo=topo, link=TCLink, waitConnected=True)
-    net.start()
-
-    set_ip_addr(net, topo.mesh_links)
-
-    # Set up root namespace bridges for cross-VM communication
-    bridge_manager = BridgeManager()
-    bridge_configs = getattr(args, "bridges", None) or []
-    if not bridge_configs:
-        bridge_configs = parse_bridge_args(getattr(args, "bridge", None))
-    if bridge_configs:
-        setup_bridges(net, bridge_manager, bridge_configs, args.hosts, topo.mesh_links)
-
-    for idx in range(args.hosts):
-        info(net.hosts[idx].cmd("ifconfig"))
-
-    for idx in range(args.hosts):
-        if idx % 2 == 1:
-            start_csmgrd(net, idx)
-
-    for idx in range(args.hosts):
-        start_cefnetd(net, idx)
-
-    for idx in range(args.hosts):
-        wait_for_cefnetd(net, idx)
-
-    # ops_put は ensure_node_dirs の前に既に抽出済み
-    ops_get = args.gets or []
-
-    if auto_config and not ops_get:
-        _, ops_get = generate_operations(auto_config, args.hosts, args.seed, run_dir)
-
-    if not ops_put:
-        publisher = args.hosts - 1
-        #        publish_link = pick_publish_link(topo.mesh_links, publisher)
-        publish_uri = f"ccnx:/test/example{publisher + 1}/test.py"
-        seed_label = "none" if args.seed is None else str(args.seed)
-        down_host_label = "none"
-        log_name = (
-            f"cefputfile_{args.hosts}_{args.switches}_{seed_label}_"
-            f"{args.down_interval}_{args.down_duration}_{down_host_label}.log"
-        )
-        ops_put = [
-            {
-                "host": publisher,
-                "uri": publish_uri,
-                "file": "./sample-putfile",
-                "log": str(run_dir / log_name),
-            }
-        ]
-
-    uri_publishers = {}
-    for op in ops_put:
-        uri_publishers[op["uri"]] = op["host"]
-
-    if uri_publishers:
-        set_fib_for_uris(net, topo.mesh_links, args.k, uri_publishers)
-    else:
-        set_fib(net, topo.mesh_links, args.k)
-
-    run_cefstatus_all(net, args.hosts)
-    print_mesh_links(topo.mesh_links)
-
-    # Resolve topology PNG path with run_dir
-    topo_png_path = args.topo_png
-    if topo_png_path:
-        topo_png_path = str(run_dir / Path(topo_png_path).name)
-    render_topology_png(
-        topo.mesh_links,
-        topo_png_path,
-        seed=args.seed,
-        layout=args.topo_layout,
-    )
-    host_graph, _ = build_host_graph(topo.mesh_links)
-    cache_count = args.cache_count if args.cache_count > 0 else args.down_count + 1
-    cache_nodes = select_k_centers(host_graph, cache_count)
-    if cache_nodes:
-        info("cache nodes: " + ", ".join(f"h{idx}" for idx in cache_nodes) + "\n")
-    time.sleep(1)
-
-    for node_a, node_b, bandwidth in parse_bw_args(args.bw):
-        set_link_bandwidth(net, node_a, node_b, bandwidth)
-
-    for host_name, intf_name, ip, mtu in parse_ext_args(args.ext):
-        attach_external_interface(net, host_name, intf_name, ip, mtu)
-
-    for op in ops_put:
-        host = op["host"]
-        uri = op["uri"]
-        infile = op.get("file", "./sample-putfile")
-        log_name = op.get("log", f"cefputfile_h{host}.log")
-        if not Path(log_name).is_absolute() and not str(log_name).startswith(
-            str(run_dir)
-        ):
-            log_path = str(run_dir / log_name)
-        else:
-            log_path = log_name
-
-        if op.get("mode") == "pubsub":
-            pub_opts = op.get("pub_opts", {}) or {}
-            run_cefpubfile(
-                net,
-                host,
-                uri,
-                file_path=infile,
-                rate=pub_opts.get("rate"),
-                block_size=pub_opts.get("block_size"),
-                expiry=pub_opts.get("expiry"),
-                cache_time=pub_opts.get("cache_time"),
-                lifetime=pub_opts.get("lifetime"),
-                retry_limit=pub_opts.get("retry_limit"),
-                target=pub_opts.get("target"),
-                ti_valid_algo=pub_opts.get("ti_valid_algo"),
-                rd_valid_algo=pub_opts.get("rd_valid_algo"),
-                port_num=pub_opts.get("port_num"),
-                log_name=log_path,
-            )
-        else:
-            run_cefputfile(
-                net,
-                host,
-                uri,
-                file_path=infile,
-                rate=op.get("rate"),
-                block_size=op.get("block_size"),
-                expiry=op.get("expiry", 3000),
-                cache_time=op.get("cache_time", 3000),
-                valid_algo=op.get("valid_algo"),
-                port_num=op.get("port_num"),
-                log_name=log_path,
-            )
-        time.sleep(1)
-
-    use_cli = not getattr(args, "no_cli", False)
-
-    stop_event = None
     flap_state = FlapState()
-    if args.down_interval > 0 and args.down_duration > 0:
-        exclude_ids = parse_int_list(args.down_exclude)
-        if publisher_ids:
-            exclude_ids = list(set(exclude_ids) | publisher_ids)
-        stop_event = periodic_host_flap(
-            net,
-            args.hosts,
-            args.down_interval,
-            args.down_duration,
-            rng,
-            exclude_ids,
-            flap_state,
-            args.down_count,
-            args.down_stagger,
-            quiet=use_cli,
-        )
+    seed_label = "none" if args.seed is None else str(args.seed)
 
-    rng = rng or random.Random()
-    if not ops_get:
-        # default: 5 random consumers for the first publish URI
-        base_uri = ops_put[0]["uri"]
-        for idx in range(1, 6):
-            candidates = [h for h in range(args.hosts) if h != ops_put[0]["host"]]
-            consumer = rng.choice(candidates)
-            # log は含めない - 実行時に動的生成（down状態を反映するため）
-            ops_get.append(
+    def run_get_ops(ops, phase, per_get_interval, cycle_idx=0):
+        for idx, op in enumerate(ops):
+            consumer = int(op["host"])
+            uri = op["uri"]
+            outfile_path = _artifact_path(
+                run_dir,
+                op.get("file"),
+                f"{phase}_recvfile_h{consumer}_idx{idx}",
+            )
+            down_hosts = flap_state.snapshot()
+            if op.get("log"):
+                log_path = _artifact_path(
+                    run_dir,
+                    op["log"],
+                    f"{phase}_cefgetfile_h{consumer}_idx{idx}.log",
+                )
+            else:
+                down_label = "none" if not down_hosts else ",".join(
+                    str(h) for h in sorted(down_hosts)
+                )
+                log_path = _artifact_path(
+                    run_dir,
+                    None,
+                    (
+                        f"cefgetfile_seed{seed_label}_downhosts{down_label}_"
+                        f"phase{phase}_cycle{cycle_idx}_idx{idx}_h{consumer}.log"
+                    ),
+                )
+
+            if op.get("mode") == "pubsub":
+                sub_opts = op.get("sub_opts", {}) or {}
+                run_cefsubfile(
+                    net,
+                    consumer,
+                    uri,
+                    output_path=str(outfile_path),
+                    pipeline=sub_opts.get("pipeline"),
+                    ri_valid_algo=sub_opts.get("ri_valid_algo"),
+                    td_valid_algo=sub_opts.get("td_valid_algo"),
+                    port_num=sub_opts.get("port_num"),
+                    log_name=str(log_path),
+                )
+                exit_code = 0
+            else:
+                exit_code = run_cefgetfile(
+                    net,
+                    consumer,
+                    uri,
+                    str(outfile_path),
+                    owner_only=op.get("owner_only", False),
+                    chunk=op.get("chunk"),
+                    pipeline=op.get("pipeline"),
+                    valid_algo=op.get("valid_algo"),
+                    port_num=op.get("port_num"),
+                    sg=op.get("sg"),
+                    log_name=str(log_path),
+                )
+
+            verdict = _detect_get_success(log_path, outfile_path, exit_code)
+            publisher_host = op.get("publisher_host")
+            if publisher_host is None:
+                publisher_host = getattr(args, "publisher_host", None)
+            if publisher_host is None:
+                publisher_host = uri_publishers.get(uri)
+            publisher_down = (
+                publisher_host in down_hosts if publisher_host is not None else False
+            )
+            results.append(
                 {
+                    "ts": _timestamp_utc(),
+                    "phase": phase,
                     "host": consumer,
-                    "uri": base_uri,
-                    "file": str(run_dir / f"recvfile_at_h{consumer}"),
+                    "uri": uri,
+                    "out_file": str(outfile_path),
+                    "log_file": str(log_path),
+                    "exit_code": exit_code,
+                    "down_hosts": down_hosts,
+                    "publisher_host": publisher_host,
+                    "publisher_down": publisher_down,
+                    "success": verdict["success"],
+                    "has_completed_log": verdict["has_completed_log"],
+                    "has_output_file": verdict["has_output_file"],
                 }
             )
 
-    seed_label = "none" if args.seed is None else str(args.seed)
+            if idx < len(ops) - 1 and per_get_interval > 0:
+                time.sleep(per_get_interval)
 
-    for idx, op in enumerate(ops_get):
-        consumer = op["host"]
-        uri = op["uri"]
-        outfile = op.get("file", f"recvfile_at_h{consumer}")
+    try:
+        net = Mininet(topo=topo, link=TCLink, waitConnected=True)
+        net.start()
 
-        # パス解決
-        if not Path(outfile).is_absolute() and not str(outfile).startswith(
-            str(run_dir)
-        ):
-            outfile = str(run_dir / outfile)
+        set_ip_addr(net, topo.mesh_links)
+        if bridge_configs:
+            setup_bridges(net, bridge_manager, bridge_configs, args.hosts, topo.mesh_links)
 
-        # 明示的にlogが指定されている場合はそれを使用（null/Noneはスキップ）
-        if op.get("log"):
-            log_name = op["log"]
-            if not Path(log_name).is_absolute() and not str(log_name).startswith(
-                str(run_dir)
-            ):
-                log_path = str(run_dir / log_name)
-            else:
-                log_path = log_name
+        for idx in range(args.hosts):
+            info(net.hosts[idx].cmd("ifconfig"))
+
+        for node_a, node_b, bandwidth in parse_bw_args(args.bw):
+            set_link_bandwidth(net, node_a, node_b, bandwidth)
+
+        for host_name, intf_name, ip, mtu in parse_ext_args(args.ext):
+            attach_external_interface(net, host_name, intf_name, ip, mtu)
+
+        uri_publishers = {}
+        for op in ops_put:
+            uri_publishers[op["uri"]] = op["host"]
+
+        if uri_publishers:
+            set_fib_for_uris(net, topo.mesh_links, args.k, uri_publishers)
         else:
-            if flap_state is not None:
-                snap = flap_state.snapshot()
-                down_label = (
-                    "none" if not snap else ",".join(str(h) for h in sorted(snap))
+            set_fib(net, topo.mesh_links, args.k)
+
+        run_cefstatus_all(net, args.hosts)
+        print_mesh_links(topo.mesh_links)
+
+        topo_png = _artifact_path(
+            run_dir,
+            args.topo_png,
+            f"ex{args.hosts}_seed{seed_label}.png",
+        )
+        render_topology_png(
+            topo.mesh_links,
+            str(topo_png),
+            seed=args.seed,
+            layout=args.topo_layout,
+        )
+
+        host_graph, _ = build_host_graph(topo.mesh_links)
+        cache_count = args.cache_count if args.cache_count > 0 else args.down_count + 1
+        cache_nodes = select_k_centers(host_graph, cache_count)
+        if not cache_nodes and args.hosts > 0:
+            cache_nodes = [args.hosts - 1]
+        cache_node_set = set(cache_nodes)
+        if cache_nodes:
+            info("cache nodes: " + ", ".join(f"h{idx}" for idx in cache_nodes) + "\n")
+
+        apply_cache_node_settings(
+            args.hosts,
+            cache_node_set,
+            getattr(args, "cache_default_rct_ms", None),
+        )
+
+        for idx in sorted(cache_node_set):
+            start_csmgrd(net, idx)
+            started_csmgrd_hosts.add(idx)
+
+        for idx in range(args.hosts):
+            start_cefnetd(net, idx)
+        for idx in range(args.hosts):
+            wait_for_cefnetd(net, idx)
+
+        for op in ops_put:
+            host = int(op["host"])
+            uri = op["uri"]
+            infile = op.get("file", "./sample-putfile")
+            log_path = _artifact_path(
+                run_dir,
+                op.get("log"),
+                f"cefputfile_h{host}.log",
+            )
+            if op.get("mode") == "pubsub":
+                pub_opts = op.get("pub_opts", {}) or {}
+                run_cefpubfile(
+                    net,
+                    host,
+                    uri,
+                    file_path=infile,
+                    rate=pub_opts.get("rate"),
+                    block_size=pub_opts.get("block_size"),
+                    expiry=pub_opts.get("expiry"),
+                    cache_time=pub_opts.get("cache_time"),
+                    lifetime=pub_opts.get("lifetime"),
+                    retry_limit=pub_opts.get("retry_limit"),
+                    target=pub_opts.get("target"),
+                    ti_valid_algo=pub_opts.get("ti_valid_algo"),
+                    rd_valid_algo=pub_opts.get("rd_valid_algo"),
+                    port_num=pub_opts.get("port_num"),
+                    log_name=str(log_path),
                 )
             else:
-                down_label = "none"
-            log_path = str(
-                run_dir
-                / f"cefgetfile_seed{seed_label}_downhosts{down_label}_idx{idx}_h{consumer}.log"
+                run_cefputfile(
+                    net,
+                    host,
+                    uri,
+                    file_path=infile,
+                    rate=op.get("rate"),
+                    block_size=op.get("block_size"),
+                    expiry=op.get("expiry", 3000),
+                    cache_time=op.get("cache_time", 3000),
+                    valid_algo=op.get("valid_algo"),
+                    port_num=op.get("port_num"),
+                    log_name=str(log_path),
+                )
+            time.sleep(1)
+
+        ops_get = args.gets or []
+        if auto_config and not ops_get:
+            _, ops_get = generate_operations(auto_config, args.hosts, args.seed, run_dir)
+        if not ops_get:
+            base_uri = ops_put[0]["uri"]
+            for idx in range(1, 6):
+                candidates = [h for h in range(args.hosts) if h != ops_put[0]["host"]]
+                consumer = rng.choice(candidates)
+                ops_get.append(
+                    {
+                        "host": consumer,
+                        "uri": base_uri,
+                        "file": f"recvfile_at_h{consumer}",
+                    }
+                )
+
+        warmup_ops = _build_warmup_ops(args, run_dir, hot_uris, cache_nodes)
+        if warmup_ops:
+            run_get_ops(
+                warmup_ops,
+                "warmup",
+                getattr(args, "warmup_get_interval", 0),
+                cycle_idx=0,
             )
 
-        if op.get("mode") == "pubsub":
-            # optional wait before sub
-            wait_sec = op.get("wait") or op.get("sub_opts", {}).get("wait")
-            if wait_sec:
-                time.sleep(wait_sec)
-            sub_opts = op.get("sub_opts", {}) or {}
-            run_cefsubfile(
+        use_cli = not getattr(args, "no_cli", False)
+        if args.down_interval > 0 and args.down_duration > 0:
+            exclude_ids = parse_int_list(args.down_exclude)
+            if publisher_ids:
+                exclude_ids = list(set(exclude_ids) | publisher_ids)
+            stop_event = periodic_host_flap(
                 net,
-                consumer,
-                uri,
-                output_path=outfile,
-                pipeline=sub_opts.get("pipeline"),
-                ri_valid_algo=sub_opts.get("ri_valid_algo"),
-                td_valid_algo=sub_opts.get("td_valid_algo"),
-                port_num=sub_opts.get("port_num"),
-                log_name=log_path,
+                args.hosts,
+                args.down_interval,
+                args.down_duration,
+                rng,
+                exclude_ids,
+                flap_state,
+                args.down_count,
+                args.down_stagger,
+                quiet=use_cli,
             )
+
+        if use_cli:
+            run_get_ops(ops_get, "eval", args.get_interval, cycle_idx=0)
+            if log_context:
+                sys.stdout = log_context["original_stdout"]
+                sys.stderr = log_context["original_stderr"]
+            CLI(net)
+            if log_context:
+                sys.stdout = log_context["tee_stdout"]
+                sys.stderr = log_context["tee_stderr"]
         else:
-            run_cefgetfile(
-                net,
-                consumer,
-                uri,
-                outfile,
-                owner_only=op.get("owner_only", False),
-                chunk=op.get("chunk"),
-                pipeline=op.get("pipeline"),
-                valid_algo=op.get("valid_algo"),
-                port_num=op.get("port_num"),
-                sg=op.get("sg"),
-                log_name=log_path,
+            duration = max(0, int(getattr(args, "duration", 0)))
+            if duration == 0:
+                run_get_ops(ops_get, "eval", args.get_interval, cycle_idx=0)
+            else:
+                deadline = time.time() + duration
+                cycle_idx = 0
+                while time.time() < deadline:
+                    run_get_ops(ops_get, "eval", args.get_interval, cycle_idx=cycle_idx)
+                    cycle_idx += 1
+                    if time.time() >= deadline:
+                        break
+
+    finally:
+        if stop_event is not None:
+            stop_event.set()
+
+        if net is not None:
+            for idx in range(args.hosts):
+                stop_cefnetd(net, idx)
+            for idx in sorted(started_csmgrd_hosts):
+                stop_csmgrd(net, idx)
+            bridge_manager.cleanup()
+            cleanup_external_bridges()
+            net.stop()
+            mn_cleanup()
+
+        cleanup_node_dirs()
+
+        if results_path is not None:
+            results_path.write_text(
+                json.dumps(results, ensure_ascii=False, indent=2),
+                encoding="utf-8",
             )
-
-        if idx < len(ops_get) - 1 and args.get_interval > 0:
-            time.sleep(args.get_interval)
-
-    if use_cli:
-        if log_context:
-            sys.stdout = log_context["original_stdout"]
-            sys.stderr = log_context["original_stderr"]
-        CLI(net)
-        if log_context:
-            sys.stdout = log_context["tee_stdout"]
-            sys.stderr = log_context["tee_stderr"]
-
-    if stop_event is not None:
-        stop_event.set()
-
-    for idx in range(args.hosts):
-        stop_cefnetd(net, idx)
-
-    for idx in range(args.hosts):
-        if idx % 2 == 1:
-            stop_csmgrd(net, idx)
-
-    # Cleanup bridge routes before stopping network
-    bridge_manager.cleanup()
-    cleanup_external_bridges()
-    net.stop()
-    mn_cleanup()
-    cleanup_node_dirs()
 
 
 def main():
@@ -867,6 +977,60 @@ def main():
         action="store_true",
         help="skip interactive CLI (flap output visible on stdout)",
     )
+    parser.add_argument(
+        "--duration",
+        type=int,
+        default=0,
+        help="eval phase duration in seconds for --no-cli (0: single cycle)",
+    )
+    parser.add_argument(
+        "--results-json",
+        type=str,
+        default="",
+        help="write warmup/eval get results to JSON under output directory",
+    )
+    parser.add_argument(
+        "--warmup-get-interval",
+        type=int,
+        default=0,
+        help="seconds between warmup get operations",
+    )
+    parser.add_argument(
+        "--warmup-only-cache-nodes",
+        action="store_true",
+        default=True,
+        help="restrict warmup prefetch to selected cache nodes",
+    )
+    parser.add_argument(
+        "--warmup-all-hosts",
+        action="store_false",
+        dest="warmup_only_cache_nodes",
+        help="run warmup prefetch on all hosts instead of cache nodes only",
+    )
+    parser.add_argument(
+        "--cache-default-rct-ms",
+        type=int,
+        default=None,
+        help="override CACHE_DEFAULT_RCT(ms) for cache nodes",
+    )
+    parser.add_argument(
+        "--publisher-host",
+        type=int,
+        default=None,
+        help="explicit publisher host used for publisher-down metric",
+    )
+    parser.add_argument(
+        "--hot-uris",
+        type=str,
+        default="",
+        help="comma-separated hot URIs for warmup generation",
+    )
+    parser.add_argument(
+        "--warmup-gets",
+        type=str,
+        default="",
+        help="JSON list of warmup get ops (host,uri,file,log)",
+    )
     args = parser.parse_args()
 
     config_data = load_config(args.config)
@@ -877,8 +1041,19 @@ def main():
         sys.exit(1)
     merge_cli_and_config(args, config_data)
 
+    if args.legacy_layout:
+        sys.exit("--legacy is disabled for deterministic output isolation")
+
+    if isinstance(args.hot_uris, str) and args.hot_uris:
+        args.hot_uris = [u.strip() for u in args.hot_uris.split(",") if u.strip()]
+    if isinstance(args.warmup_gets, str) and args.warmup_gets:
+        args.warmup_gets = json.loads(args.warmup_gets)
+    if args.warmup_gets in ("", None):
+        args.warmup_gets = []
+
     # Resolve output directory
     run_dir = resolve_run_dir(args)
+    run_dir = run_dir.resolve()
 
     # Set dynamic default for topo_png
     seed_label = "none" if args.seed is None else str(args.seed)
@@ -886,23 +1061,26 @@ def main():
         args.topo_png = f"ex{args.hosts}_seed{seed_label}.png"
 
     # Write meta.json with experiment configuration
-    if run_dir != Path("."):
-        meta_data = {
-            "num": getattr(args, "num", None),
-            "hosts": args.hosts,
-            "switches": args.switches,
-            "seed": args.seed,
-            "k": args.k,
-            "down_interval": args.down_interval,
-            "down_duration": args.down_duration,
-            "down_count": args.down_count,
-            "down_stagger": args.down_stagger,
-            "down_exclude": args.down_exclude,
-            "cache_count": args.cache_count,
-            "get_interval": args.get_interval,
-        }
-        meta_path = run_dir / "meta.json"
-        meta_path.write_text(json.dumps(meta_data, indent=2), encoding="utf-8")
+    meta_data = {
+        "num": getattr(args, "num", None),
+        "hosts": args.hosts,
+        "switches": args.switches,
+        "seed": args.seed,
+        "k": args.k,
+        "down_interval": args.down_interval,
+        "down_duration": args.down_duration,
+        "down_count": args.down_count,
+        "down_stagger": args.down_stagger,
+        "down_exclude": args.down_exclude,
+        "cache_count": args.cache_count,
+        "cache_default_rct_ms": args.cache_default_rct_ms,
+        "get_interval": args.get_interval,
+        "warmup_get_interval": args.warmup_get_interval,
+        "duration": args.duration,
+        "output_dir": str(run_dir),
+    }
+    meta_path = _artifact_path(run_dir, "meta.json", "meta.json")
+    meta_path.write_text(json.dumps(meta_data, indent=2), encoding="utf-8")
 
     # Set up script logging
     log_fp = None
@@ -910,7 +1088,7 @@ def main():
     original_stderr = None
     if not args.no_script_log:
         log_name = args.script_log if args.script_log else "script.log"
-        log_path = run_dir / log_name
+        log_path = _artifact_path(run_dir, log_name, "script.log")
         log_fp = open(log_path, "w")
         original_stdout = sys.stdout
         original_stderr = sys.stderr

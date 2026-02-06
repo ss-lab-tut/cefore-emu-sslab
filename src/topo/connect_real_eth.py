@@ -37,8 +37,8 @@ from .graph_algos import select_k_centers
 from .links import pick_publish_link, set_node_links_state
 from .mesh_topo import MeshTopo
 from .net_config import set_fib, set_fib_for_uris, set_ip_addr
-from .paths import resolve_run_dir
-from .templates import cleanup_node_dirs, ensure_node_dirs
+from .paths import resolve_run_dir, resolve_run_path
+from .templates import apply_cache_node_settings, cleanup_node_dirs, ensure_node_dirs
 from .viz import build_host_graph, print_mesh_links, render_topology_png
 
 
@@ -297,7 +297,9 @@ def run_connect(args, run_dir: Path = None, log_context=None):
         log_context: Dict with original_stdout/stderr and tee_stdout/stderr for CLI.
     """
     if run_dir is None:
-        run_dir = Path(".")
+        run_dir = Path("logs")
+    run_dir = run_dir.resolve()
+    run_dir.mkdir(parents=True, exist_ok=True)
 
     rng = random.Random(args.seed) if args.seed is not None else None
 
@@ -336,9 +338,15 @@ def run_connect(args, run_dir: Path = None, log_context=None):
     for idx in range(args.hosts):
         info(net.hosts[idx].cmd("ifconfig"))
 
-    for idx in range(args.hosts):
-        if idx % 2 == 1:
-            start_csmgrd(net, idx)
+    host_graph, _ = build_host_graph(topo.mesh_links)
+    cache_count = args.cache_count if args.cache_count > 0 else args.down_count + 1
+    cache_nodes = select_k_centers(host_graph, cache_count)
+    if not cache_nodes and args.hosts > 0:
+        cache_nodes = [args.hosts - 1]
+    cache_node_set = set(cache_nodes)
+    apply_cache_node_settings(args.hosts, cache_node_set, None)
+    for idx in sorted(cache_node_set):
+        start_csmgrd(net, idx)
 
     for idx in range(args.hosts):
         start_cefnetd(net, idx)
@@ -367,7 +375,7 @@ def run_connect(args, run_dir: Path = None, log_context=None):
                 "host": publisher,
                 "uri": publish_uri,
                 "file": "./sample-putfile",
-                "log": str(run_dir / log_name),
+                "log": log_name,
             }
         ]
 
@@ -384,18 +392,19 @@ def run_connect(args, run_dir: Path = None, log_context=None):
     print_mesh_links(topo.mesh_links)
 
     # Resolve topology PNG path with run_dir
-    topo_png_path = args.topo_png
-    if topo_png_path:
-        topo_png_path = str(run_dir / Path(topo_png_path).name)
+    topo_png_path = str(
+        resolve_run_path(
+            run_dir,
+            args.topo_png,
+            f"ex{args.hosts}_seed{'none' if args.seed is None else args.seed}.png",
+        )
+    )
     render_topology_png(
         topo.mesh_links,
         topo_png_path,
         seed=args.seed,
         layout=args.topo_layout,
     )
-    host_graph, _ = build_host_graph(topo.mesh_links)
-    cache_count = args.cache_count if args.cache_count > 0 else args.down_count + 1
-    cache_nodes = select_k_centers(host_graph, cache_count)
     if cache_nodes:
         info("cache nodes: " + ", ".join(f"h{idx}" for idx in cache_nodes) + "\n")
     time.sleep(1)
@@ -410,14 +419,9 @@ def run_connect(args, run_dir: Path = None, log_context=None):
         host = op["host"]
         uri = op["uri"]
         infile = op.get("file", "./sample-putfile")
-        log_name = op.get("log", f"cefputfile_h{host}.log")
-        # If log_name doesn't already contain run_dir, prepend it
-        if not Path(log_name).is_absolute() and not str(log_name).startswith(
-            str(run_dir)
-        ):
-            log_path = str(run_dir / log_name)
-        else:
-            log_path = log_name
+        log_path = str(
+            resolve_run_path(run_dir, op.get("log"), f"cefputfile_h{host}.log")
+        )
         command = (
             f"cefputfile {uri} -f {shlex.quote(infile)} -t 3000 -e 3000 -d ./h{host} > {log_path}"
         )
@@ -426,6 +430,7 @@ def run_connect(args, run_dir: Path = None, log_context=None):
         time.sleep(1)
 
     use_cli = not getattr(args, "no_cli", False)
+    stop_event = None
 
     if use_cli:
         if log_context:
@@ -442,9 +447,8 @@ def run_connect(args, run_dir: Path = None, log_context=None):
     for idx in range(args.hosts):
         stop_cefnetd(net, idx)
 
-    for idx in range(args.hosts):
-        if idx % 2 == 1:
-            stop_csmgrd(net, idx)
+    for idx in sorted(cache_node_set):
+        stop_csmgrd(net, idx)
 
     # Cleanup bridge routes before stopping network
     bridge_manager.cleanup()
@@ -630,8 +634,12 @@ def main():
         sys.exit(1)
     merge_cli_and_config(args, config_data)
 
+    if args.legacy_layout:
+        sys.exit("--legacy is disabled for deterministic output isolation")
+
     # Resolve output directory
     run_dir = resolve_run_dir(args)
+    run_dir = run_dir.resolve()
 
     # Set dynamic default for topo_png
     seed_label = "none" if args.seed is None else str(args.seed)
@@ -639,23 +647,23 @@ def main():
         args.topo_png = f"ex{args.hosts}_seed{seed_label}.png"
 
     # Write meta.json with experiment configuration
-    if run_dir != Path("."):
-        meta_data = {
-            "num": getattr(args, "num", None),
-            "hosts": args.hosts,
-            "switches": args.switches,
-            "seed": args.seed,
-            "k": args.k,
-            "down_interval": args.down_interval,
-            "down_duration": args.down_duration,
-            "down_count": args.down_count,
-            "down_stagger": args.down_stagger,
-            "down_exclude": args.down_exclude,
-            "cache_count": args.cache_count,
-            "get_interval": args.get_interval,
-        }
-        meta_path = run_dir / "meta.json"
-        meta_path.write_text(json.dumps(meta_data, indent=2), encoding="utf-8")
+    meta_data = {
+        "num": getattr(args, "num", None),
+        "hosts": args.hosts,
+        "switches": args.switches,
+        "seed": args.seed,
+        "k": args.k,
+        "down_interval": args.down_interval,
+        "down_duration": args.down_duration,
+        "down_count": args.down_count,
+        "down_stagger": args.down_stagger,
+        "down_exclude": args.down_exclude,
+        "cache_count": args.cache_count,
+        "get_interval": args.get_interval,
+        "output_dir": str(run_dir),
+    }
+    meta_path = resolve_run_path(run_dir, "meta.json", "meta.json")
+    meta_path.write_text(json.dumps(meta_data, indent=2), encoding="utf-8")
 
     # Set up script logging
     log_fp = None
@@ -663,7 +671,7 @@ def main():
     original_stderr = None
     if not args.no_script_log:
         log_name = args.script_log if args.script_log else "script.log"
-        log_path = run_dir / log_name
+        log_path = resolve_run_path(run_dir, log_name, "script.log")
         log_fp = open(log_path, "w")
         original_stdout = sys.stdout
         original_stderr = sys.stderr

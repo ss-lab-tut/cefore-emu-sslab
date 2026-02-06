@@ -101,6 +101,12 @@ def validate_config(config: dict[str, Any]) -> list[str]:
         if not isinstance(config["output_dir"], str):
             errors.append("output_dir must be a string")
 
+    if "results_json" in config:
+        if config["results_json"] is not None and not isinstance(
+            config["results_json"], str
+        ):
+            errors.append("results_json must be a string or null")
+
     if "timestamp" in config:
         if not isinstance(config["timestamp"], bool):
             errors.append("timestamp must be a boolean")
@@ -112,6 +118,53 @@ def validate_config(config: dict[str, Any]) -> list[str]:
     if "no_cli" in config:
         if not isinstance(config["no_cli"], bool):
             errors.append("no_cli must be a boolean")
+
+    if "duration" in config:
+        if not isinstance(config["duration"], int) or config["duration"] < 0:
+            errors.append("duration must be an integer >= 0")
+
+    if "warmup_get_interval" in config:
+        if (
+            not isinstance(config["warmup_get_interval"], int)
+            or config["warmup_get_interval"] < 0
+        ):
+            errors.append("warmup_get_interval must be an integer >= 0")
+
+    if "warmup_only_cache_nodes" in config:
+        if not isinstance(config["warmup_only_cache_nodes"], bool):
+            errors.append("warmup_only_cache_nodes must be a boolean")
+
+    if "cache_default_rct_ms" in config:
+        if (
+            not isinstance(config["cache_default_rct_ms"], int)
+            or config["cache_default_rct_ms"] < 1000
+        ):
+            errors.append("cache_default_rct_ms must be an integer >= 1000")
+
+    if "publisher_host" in config:
+        if config["publisher_host"] is not None and not isinstance(
+            config["publisher_host"], int
+        ):
+            errors.append("publisher_host must be an integer or null")
+
+    if "hot_uris" in config:
+        if not isinstance(config["hot_uris"], list) or not all(
+            isinstance(uri, str) for uri in config["hot_uris"]
+        ):
+            errors.append("hot_uris must be a list of strings")
+
+    if "warmup_gets" in config:
+        if not isinstance(config["warmup_gets"], list):
+            errors.append("warmup_gets must be a list")
+        else:
+            for idx, op in enumerate(config["warmup_gets"]):
+                if not isinstance(op, dict):
+                    errors.append(f"warmup_gets[{idx}] must be a dict")
+                    continue
+                if "host" not in op:
+                    errors.append(f"warmup_gets[{idx}] missing required field 'host'")
+                if "uri" not in op:
+                    errors.append(f"warmup_gets[{idx}] missing required field 'uri'")
 
     if "puts" in config:
         if not isinstance(config["puts"], list):
@@ -227,6 +280,14 @@ def merge_cli_and_config(args: Any, config: dict[str, Any]) -> None:
         "gets",
         "auto",
         "no_cli",
+        "duration",
+        "results_json",
+        "warmup_get_interval",
+        "warmup_only_cache_nodes",
+        "warmup_gets",
+        "cache_default_rct_ms",
+        "publisher_host",
+        "hot_uris",
         "num",
         "output_dir",
         "timestamp",
