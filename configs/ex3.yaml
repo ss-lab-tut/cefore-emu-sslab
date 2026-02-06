@@ -64,6 +64,6 @@ bridges:
     external_routes: "default"
     nat: true
     proxy_arp: true
-    hosts: [4]
+    hosts: [4, 9]
     nat_out: "eno1"
 
