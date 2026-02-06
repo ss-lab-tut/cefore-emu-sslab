@@ -1,0 +1,741 @@
+
+Mesh topology (per-host tree view):
+h0
+|-- h4 (via s1)
+|   |-- h5 (via s8)
+|   `-- h9 (via s8)
+|-- h8 (via s0)
+|   |-- h1 (via s4)
+|   `-- h17 (via s4)
+|-- h10 (via s0)
+|   |-- h6 (via s3)
+|   `-- h19 (via s3)
+|-- h12 (via s1)
+|-- h14 (via s0)
+|   |-- h11 (via s2)
+|   `-- h13 (via s2)
+|-- h15 (via s0)
+|   |-- h2 (via s5)
+|   `-- h7 (via s5)
+|-- h16 (via s1)
+|   `-- h3 (via s6)
+`-- h18 (via s1)
+
+h1
+|-- h8 (via s4)
+|   |-- h0 (via s0)
+|   |   |-- h4 (via s1)
+|   |   |-- h12 (via s1)
+|   |   `-- h16 (via s1)
+|   |       `-- h3 (via s6)
+|   |-- h10 (via s0)
+|   |   |-- h5 (via s3)
+|   |   `-- h6 (via s3)
+|   |-- h14 (via s0)
+|   |   `-- h9 (via s2)
+|   `-- h15 (via s0)
+|       `-- h2 (via s5)
+`-- h17 (via s4)
+    |-- h7 (via s7)
+    |-- h11 (via s7)
+    |-- h13 (via s7)
+    |-- h18 (via s7)
+    `-- h19 (via s7)
+
+h2
+|-- h7 (via s5)
+|   |-- h11 (via s7)
+|   |   `-- h9 (via s2)
+|   |-- h13 (via s7)
+|   |-- h17 (via s7)
+|   |   `-- h1 (via s4)
+|   |-- h18 (via s7)
+|   |   |-- h4 (via s1)
+|   |   |-- h12 (via s1)
+|   |   `-- h16 (via s1)
+|   |       `-- h3 (via s6)
+|   `-- h19 (via s7)
+|       |-- h5 (via s3)
+|       `-- h6 (via s3)
+`-- h15 (via s5)
+    |-- h0 (via s0)
+    |-- h8 (via s0)
+    |-- h10 (via s0)
+    `-- h14 (via s0)
+
+h3
+`-- h16 (via s6)
+    |-- h0 (via s1)
+    |   |-- h8 (via s0)
+    |   |   `-- h1 (via s4)
+    |   |-- h10 (via s0)
+    |   |   `-- h6 (via s3)
+    |   |-- h14 (via s0)
+    |   `-- h15 (via s0)
+    |       `-- h2 (via s5)
+    |-- h4 (via s1)
+    |   |-- h5 (via s8)
+    |   `-- h9 (via s8)
+    |-- h12 (via s1)
+    `-- h18 (via s1)
+        |-- h7 (via s7)
+        |-- h11 (via s7)
+        |-- h13 (via s7)
+        |-- h17 (via s7)
+        `-- h19 (via s7)
+
+h4
+|-- h0 (via s1)
+|   |-- h8 (via s0)
+|   |   `-- h1 (via s4)
+|   |-- h10 (via s0)
+|   |-- h14 (via s0)
+|   `-- h15 (via s0)
+|       `-- h2 (via s5)
+|-- h5 (via s8)
+|   |-- h6 (via s3)
+|   `-- h19 (via s3)
+|-- h9 (via s8)
+|   |-- h11 (via s2)
+|   `-- h13 (via s2)
+|-- h12 (via s1)
+|-- h16 (via s1)
+|   `-- h3 (via s6)
+`-- h18 (via s1)
+    |-- h7 (via s7)
+    `-- h17 (via s7)
+
+h5
+|-- h4 (via s8)
+|   |-- h0 (via s1)
+|   |-- h12 (via s1)
+|   |-- h16 (via s1)
+|   |   `-- h3 (via s6)
+|   `-- h18 (via s1)
+|-- h6 (via s3)
+|-- h9 (via s8)
+|   |-- h11 (via s2)
+|   |-- h13 (via s2)
+|   `-- h14 (via s2)
+|-- h10 (via s3)
+|   |-- h8 (via s0)
+|   |   `-- h1 (via s4)
+|   `-- h15 (via s0)
+|       `-- h2 (via s5)
+`-- h19 (via s3)
+    |-- h7 (via s7)
+    `-- h17 (via s7)
+
+h6
+|-- h5 (via s3)
+|   |-- h4 (via s8)
+|   |   |-- h12 (via s1)
+|   |   `-- h16 (via s1)
+|   |       `-- h3 (via s6)
+|   `-- h9 (via s8)
+|-- h10 (via s3)
+|   |-- h0 (via s0)
+|   |-- h8 (via s0)
+|   |   `-- h1 (via s4)
+|   |-- h14 (via s0)
+|   `-- h15 (via s0)
+|       `-- h2 (via s5)
+`-- h19 (via s3)
+    |-- h7 (via s7)
+    |-- h11 (via s7)
+    |-- h13 (via s7)
+    |-- h17 (via s7)
+    `-- h18 (via s7)
+
+h7
+|-- h2 (via s5)
+|-- h11 (via s7)
+|   |-- h9 (via s2)
+|   `-- h14 (via s2)
+|-- h13 (via s7)
+|-- h15 (via s5)
+|   |-- h0 (via s0)
+|   |-- h8 (via s0)
+|   `-- h10 (via s0)
+|-- h17 (via s7)
+|   `-- h1 (via s4)
+|-- h18 (via s7)
+|   |-- h4 (via s1)
+|   |-- h12 (via s1)
+|   `-- h16 (via s1)
+|       `-- h3 (via s6)
+`-- h19 (via s7)
+    |-- h5 (via s3)
+    `-- h6 (via s3)
+
+h8
+|-- h0 (via s0)
+|   |-- h4 (via s1)
+|   |-- h12 (via s1)
+|   |-- h16 (via s1)
+|   |   `-- h3 (via s6)
+|   `-- h18 (via s1)
+|-- h1 (via s4)
+|-- h10 (via s0)
+|   |-- h5 (via s3)
+|   |-- h6 (via s3)
+|   `-- h19 (via s3)
+|-- h14 (via s0)
+|   |-- h9 (via s2)
+|   |-- h11 (via s2)
+|   `-- h13 (via s2)
+|-- h15 (via s0)
+|   |-- h2 (via s5)
+|   `-- h7 (via s5)
+`-- h17 (via s4)
+
+h9
+|-- h4 (via s8)
+|   |-- h0 (via s1)
+|   |-- h12 (via s1)
+|   |-- h16 (via s1)
+|   |   `-- h3 (via s6)
+|   `-- h18 (via s1)
+|-- h5 (via s8)
+|   |-- h6 (via s3)
+|   |-- h10 (via s3)
+|   `-- h19 (via s3)
+|-- h11 (via s2)
+|   |-- h7 (via s7)
+|   |   `-- h2 (via s5)
+|   `-- h17 (via s7)
+|       `-- h1 (via s4)
+|-- h13 (via s2)
+`-- h14 (via s2)
+    |-- h8 (via s0)
+    `-- h15 (via s0)
+
+h10
+|-- h0 (via s0)
+|   |-- h4 (via s1)
+|   |-- h12 (via s1)
+|   |-- h16 (via s1)
+|   |   `-- h3 (via s6)
+|   `-- h18 (via s1)
+|-- h5 (via s3)
+|   `-- h9 (via s8)
+|-- h6 (via s3)
+|-- h8 (via s0)
+|   |-- h1 (via s4)
+|   `-- h17 (via s4)
+|-- h14 (via s0)
+|   |-- h11 (via s2)
+|   `-- h13 (via s2)
+|-- h15 (via s0)
+|   |-- h2 (via s5)
+|   `-- h7 (via s5)
+`-- h19 (via s3)
+
+h11
+|-- h7 (via s7)
+|   |-- h2 (via s5)
+|   `-- h15 (via s5)
+|-- h9 (via s2)
+|   |-- h4 (via s8)
+|   `-- h5 (via s8)
+|-- h13 (via s7)
+|-- h14 (via s2)
+|   |-- h0 (via s0)
+|   |-- h8 (via s0)
+|   `-- h10 (via s0)
+|-- h17 (via s7)
+|   `-- h1 (via s4)
+|-- h18 (via s7)
+|   |-- h12 (via s1)
+|   `-- h16 (via s1)
+|       `-- h3 (via s6)
+`-- h19 (via s7)
+    `-- h6 (via s3)
+
+h12
+|-- h0 (via s1)
+|   |-- h8 (via s0)
+|   |   `-- h1 (via s4)
+|   |-- h10 (via s0)
+|   |   `-- h6 (via s3)
+|   |-- h14 (via s0)
+|   `-- h15 (via s0)
+|       `-- h2 (via s5)
+|-- h4 (via s1)
+|   |-- h5 (via s8)
+|   `-- h9 (via s8)
+|-- h16 (via s1)
+|   `-- h3 (via s6)
+`-- h18 (via s1)
+    |-- h7 (via s7)
+    |-- h11 (via s7)
+    |-- h13 (via s7)
+    |-- h17 (via s7)
+    `-- h19 (via s7)
+
+h13
+|-- h7 (via s7)
+|   |-- h2 (via s5)
+|   `-- h15 (via s5)
+|-- h9 (via s2)
+|   |-- h4 (via s8)
+|   `-- h5 (via s8)
+|-- h11 (via s7)
+|-- h14 (via s2)
+|   |-- h0 (via s0)
+|   |-- h8 (via s0)
+|   `-- h10 (via s0)
+|-- h17 (via s7)
+|   `-- h1 (via s4)
+|-- h18 (via s7)
+|   |-- h12 (via s1)
+|   `-- h16 (via s1)
+|       `-- h3 (via s6)
+`-- h19 (via s7)
+    `-- h6 (via s3)
+
+h14
+|-- h0 (via s0)
+|   |-- h4 (via s1)
+|   |-- h12 (via s1)
+|   |-- h16 (via s1)
+|   |   `-- h3 (via s6)
+|   `-- h18 (via s1)
+|-- h8 (via s0)
+|   |-- h1 (via s4)
+|   `-- h17 (via s4)
+|-- h9 (via s2)
+|   `-- h5 (via s8)
+|-- h10 (via s0)
+|   |-- h6 (via s3)
+|   `-- h19 (via s3)
+|-- h11 (via s2)
+|   `-- h7 (via s7)
+|-- h13 (via s2)
+`-- h15 (via s0)
+    `-- h2 (via s5)
+
+h15
+|-- h0 (via s0)
+|   |-- h4 (via s1)
+|   |-- h12 (via s1)
+|   |-- h16 (via s1)
+|   |   `-- h3 (via s6)
+|   `-- h18 (via s1)
+|-- h2 (via s5)
+|-- h7 (via s5)
+|   |-- h11 (via s7)
+|   |-- h13 (via s7)
+|   |-- h17 (via s7)
+|   `-- h19 (via s7)
+|-- h8 (via s0)
+|   `-- h1 (via s4)
+|-- h10 (via s0)
+|   |-- h5 (via s3)
+|   `-- h6 (via s3)
+`-- h14 (via s0)
+    `-- h9 (via s2)
+
+h16
+|-- h0 (via s1)
+|   |-- h8 (via s0)
+|   |   `-- h1 (via s4)
+|   |-- h10 (via s0)
+|   |   `-- h6 (via s3)
+|   |-- h14 (via s0)
+|   `-- h15 (via s0)
+|       `-- h2 (via s5)
+|-- h3 (via s6)
+|-- h4 (via s1)
+|   |-- h5 (via s8)
+|   `-- h9 (via s8)
+|-- h12 (via s1)
+`-- h18 (via s1)
+    |-- h7 (via s7)
+    |-- h11 (via s7)
+    |-- h13 (via s7)
+    |-- h17 (via s7)
+    `-- h19 (via s7)
+
+h17
+|-- h1 (via s4)
+|-- h7 (via s7)
+|   |-- h2 (via s5)
+|   `-- h15 (via s5)
+|-- h8 (via s4)
+|   |-- h0 (via s0)
+|   |-- h10 (via s0)
+|   `-- h14 (via s0)
+|-- h11 (via s7)
+|   `-- h9 (via s2)
+|-- h13 (via s7)
+|-- h18 (via s7)
+|   |-- h4 (via s1)
+|   |-- h12 (via s1)
+|   `-- h16 (via s1)
+|       `-- h3 (via s6)
+`-- h19 (via s7)
+    |-- h5 (via s3)
+    `-- h6 (via s3)
+
+h18
+|-- h0 (via s1)
+|   |-- h8 (via s0)
+|   |-- h10 (via s0)
+|   |-- h14 (via s0)
+|   `-- h15 (via s0)
+|-- h4 (via s1)
+|   |-- h5 (via s8)
+|   `-- h9 (via s8)
+|-- h7 (via s7)
+|   `-- h2 (via s5)
+|-- h11 (via s7)
+|-- h12 (via s1)
+|-- h13 (via s7)
+|-- h16 (via s1)
+|   `-- h3 (via s6)
+|-- h17 (via s7)
+|   `-- h1 (via s4)
+`-- h19 (via s7)
+    `-- h6 (via s3)
+
+h19
+|-- h5 (via s3)
+|   |-- h4 (via s8)
+|   `-- h9 (via s8)
+|-- h6 (via s3)
+|-- h7 (via s7)
+|   |-- h2 (via s5)
+|   `-- h15 (via s5)
+|-- h10 (via s3)
+|   |-- h0 (via s0)
+|   |-- h8 (via s0)
+|   `-- h14 (via s0)
+|-- h11 (via s7)
+|-- h13 (via s7)
+|-- h17 (via s7)
+|   `-- h1 (via s4)
+`-- h18 (via s7)
+    |-- h12 (via s1)
+    `-- h16 (via s1)
+        `-- h3 (via s6)
+
+> - Topology view as a single figure (adjacency matrix)
+Mesh topology (adjacency matrix; cell = switch):
+    h0  h1  h2  h3  h4  h5  h6  h7  h8  h9  h10 h11 h12 h13 h14 h15 h16 h17 h18 h19
+h0  .   .   .   .   s1  .   .   .   s0  .   s0  .   s1  .   s0  s0  s1  .   s1  .
+h1  .   .   .   .   .   .   .   .   s4  .   .   .   .   .   .   .   .   s4  .   .
+h2  .   .   .   .   .   .   .   s5  .   .   .   .   .   .   .   s5  .   .   .   .
+h3  .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   s6  .   .   .
+h4  s1  .   .   .   .   s8  .   .   .   s8  .   .   s1  .   .   .   s1  .   s1  .
+h5  .   .   .   .   s8  .   s3  .   .   s8  s3  .   .   .   .   .   .   .   .   s3
+h6  .   .   .   .   .   s3  .   .   .   .   s3  .   .   .   .   .   .   .   .   s3
+h7  .   .   s5  .   .   .   .   .   .   .   .   s7  .   s7  .   s5  .   s7  s7  s7
+h8  s0  s4  .   .   .   .   .   .   .   .   s0  .   .   .   s0  s0  .   s4  .   .
+h9  .   .   .   .   s8  s8  .   .   .   .   .   s2  .   s2  s2  .   .   .   .   .
+h10 s0  .   .   .   .   s3  s3  .   s0  .   .   .   .   .   s0  s0  .   .   .   s3
+h11 .   .   .   .   .   .   .   s7  .   s2  .   .   .   s7  s2  .   .   s7  s7  s7
+h12 s1  .   .   .   s1  .   .   .   .   .   .   .   .   .   .   .   s1  .   s1  .
+h13 .   .   .   .   .   .   .   s7  .   s2  .   s7  .   .   s2  .   .   s7  s7  s7
+h14 s0  .   .   .   .   .   .   .   s0  s2  s0  s2  .   s2  .   s0  .   .   .   .
+h15 s0  .   s5  .   .   .   .   s5  s0  .   s0  .   .   .   s0  .   .   .   .   .
+h16 s1  .   .   s6  s1  .   .   .   .   .   .   .   s1  .   .   .   .   .   s1  .
+h17 .   s4  .   .   .   .   .   s7  s4  .   .   s7  .   s7  .   .   .   .   s7  s7
+h18 s1  .   .   .   s1  .   .   s7  .   .   .   s7  s1  s7  .   .   s1  s7  .   s7
+h19 .   .   .   .   .   s3  s3  s7  .   .   s3  s7  .   s7  .   .   .   s7  s7  .
+
+topology PNG saved to logs/ex3_seed42_20260206-1040/ex20_seed42.png
+cache nodes: h0, h1, h2
+h2 command: cefputfile ccnx:/emergency/test -f ./style.css -r 10 -e 5000 -t 5000 -d ./h2 > logs/ex3_seed42_20260206-1040/cefputfile_h2.log
+h9 command: cefputfile ccnx:/test/data1 -f './disk IO.png' -e 3000 -t 3000 -d ./h9 > logs/ex3_seed42_20260206-1040/cefputfile_h9.log
+h3 command: cefputfile ccnx:/emergency/test2 -f ./SN7100andSN770.jpg -r 4 -e 5000 -t 3000 -d ./h3 > logs/ex3_seed42_20260206-1040/cefputfile_h3.log
+h0 command: cefputfile ccnx:/test/data2 -f ./link-audio.sh -e 3000 -t 3000 -d ./h0 > logs/ex3_seed42_20260206-1040/cefputfile_h0.log
+h0 command: cefgetfile ccnx:/emergency/test2 -f logs/ex3_seed42_20260206-1040/recvfile_at_h0 -s 4 -d ./h0 > logs/ex3_seed42_20260206-1040/cefgetfile_seed42_downhosts12_idx0_h0.log
+h6 command: cefgetfile ccnx:/test/data1 -f logs/ex3_seed42_20260206-1040/recvfile_at_h6 -o -d ./h6 > logs/ex3_seed42_20260206-1040/cefgetfile_seed42_downhosts11,12_idx1_h6.log
+h11 command: cefgetfile ccnx:/emergency/test -f logs/ex3_seed42_20260206-1040/recvfile_at_h11 -d ./h11 > logs/ex3_seed42_20260206-1040/cefgetfile_seed42_downhosts11,12,16_idx2_h11.log
+h16 command: cefgetfile ccnx:/emergency/test -f logs/ex3_seed42_20260206-1040/recvfile_at_h16 -d ./h16 > logs/ex3_seed42_20260206-1040/cefgetfile_seed42_downhosts5,8,16_idx3_h16.log
+*** Starting CLI:
+mininet> h4 ping google.com
+ping: google.com: Temporary failure in name resolution
+mininet> s8 ping google.com
+PING google.com (172.217.221.101) 56(84) bytes of data.
+64 bytes from yunrtaa-in-f101.1e100.net (172.217.221.101): icmp_seq=1 ttl=111 time=2.42 ms
+64 bytes from yunrtaa-in-f101.1e100.net (172.217.221.101): icmp_seq=2 ttl=111 time=2.36 ms
+64 bytes from yunrtaa-in-f101.1e100.net (172.217.221.101): icmp_seq=3 ttl=111 time=2.38 ms
+^C
+--- google.com ping statistics ---
+3 packets transmitted, 3 received, 0% packet loss, time 2003ms
+rtt min/avg/max/mdev = 2.363/2.389/2.420/0.023 ms
+mininet> h4 ip a
+1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN group default qlen 1000
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+    inet 127.0.0.1/8 scope host lo
+       valid_lft forever preferred_lft forever
+    inet6 ::1/128 scope host
+       valid_lft forever preferred_lft forever
+2: h4-eth0@if19: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP group default qlen 1000
+    link/ether 72:1e:54:b3:61:17 brd ff:ff:ff:ff:ff:ff link-netnsid 0
+    inet 192.168.2.5/24 brd 192.168.2.255 scope global h4-eth0
+       valid_lft forever preferred_lft forever
+    inet6 fe80::701e:54ff:feb3:6117/64 scope link
+       valid_lft forever preferred_lft forever
+3: h4-eth1@if20: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP group default qlen 1000
+    link/ether 56:73:2c:13:a8:1e brd ff:ff:ff:ff:ff:ff link-netnsid 0
+    inet 192.168.9.5/24 brd 192.168.9.255 scope global h4-eth1
+       valid_lft forever preferred_lft forever
+    inet6 fe80::5473:2cff:fe13:a81e/64 scope link
+       valid_lft forever preferred_lft forever
+mininet> s8 ip a
+1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN group default qlen 1000
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+    inet 127.0.0.1/8 scope host lo
+       valid_lft forever preferred_lft forever
+    inet6 ::1/128 scope host noprefixroute
+       valid_lft forever preferred_lft forever
+2: enp9s0f0np0: <NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc mq state DOWN group default qlen 1000
+    link/ether 9c:7b:ef:40:b8:72 brd ff:ff:ff:ff:ff:ff
+3: enp9s0f1np1: <NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc mq state DOWN group default qlen 1000
+    link/ether 9c:7b:ef:40:b8:73 brd ff:ff:ff:ff:ff:ff
+4: eno1: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc fq_codel state UP group default qlen 1000
+    link/ether 9c:7b:ef:40:b8:71 brd ff:ff:ff:ff:ff:ff
+    altname enp0s31f6
+    inet 133.243.146.210/24 brd 133.243.146.255 scope global dynamic noprefixroute eno1
+       valid_lft 84831sec preferred_lft 84831sec
+    inet6 fe80::9e7b:efff:fe40:b871/64 scope link
+       valid_lft forever preferred_lft forever
+5: enp9s0f2np2: <NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc mq state DOWN group default qlen 1000
+    link/ether 9c:7b:ef:40:b8:74 brd ff:ff:ff:ff:ff:ff
+6: enp153s0f0np0: <NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc mq state DOWN group default qlen 1000
+    link/ether 64:9d:99:b1:4f:ea brd ff:ff:ff:ff:ff:ff
+7: enp153s0f1np1: <NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc mq state DOWN group default qlen 1000
+    link/ether 64:9d:99:b1:4f:eb brd ff:ff:ff:ff:ff:ff
+8: enp33s0f0: <NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc mq state DOWN group default qlen 1000
+    link/ether 90:e2:ba:02:96:20 brd ff:ff:ff:ff:ff:ff
+9: enp153s0f2np2: <NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc mq state DOWN group default qlen 1000
+    link/ether 64:9d:99:b1:4f:ec brd ff:ff:ff:ff:ff:ff
+10: enp33s0f1: <NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc mq state DOWN group default qlen 1000
+    link/ether 90:e2:ba:02:96:21 brd ff:ff:ff:ff:ff:ff
+11: enp153s0f3np3: <NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc mq state DOWN group default qlen 1000
+    link/ether 64:9d:99:b1:4f:ed brd ff:ff:ff:ff:ff:ff
+12: wlxcce1d53e941f: <BROADCAST,MULTICAST> mtu 1500 qdisc noop state DOWN group default qlen 1000
+    link/ether cc:e1:d5:3e:94:1f brd ff:ff:ff:ff:ff:ff
+14: s0-eth1@if2: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master ovs-system state UP group default qlen 1000
+    link/ether ae:6b:08:02:ab:b6 brd ff:ff:ff:ff:ff:ff link-netnsid 0
+    inet6 fe80::ac6b:8ff:fe02:abb6/64 scope link
+       valid_lft forever preferred_lft forever
+15: s1-eth1@if3: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master ovs-system state UP group default qlen 1000
+    link/ether b2:34:ff:d6:92:37 brd ff:ff:ff:ff:ff:ff link-netnsid 0
+    inet6 fe80::b034:ffff:fed6:9237/64 scope link
+       valid_lft forever preferred_lft forever
+16: s4-eth1@if2: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master ovs-system state UP group default qlen 1000
+    link/ether 5e:7e:7c:2e:7e:80 brd ff:ff:ff:ff:ff:ff link-netnsid 1
+    inet6 fe80::5c7e:7cff:fe2e:7e80/64 scope link
+       valid_lft forever preferred_lft forever
+17: s5-eth1@if2: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master ovs-system state UP group default qlen 1000
+    link/ether 1e:43:71:9d:cf:4d brd ff:ff:ff:ff:ff:ff link-netnsid 2
+    inet6 fe80::1c43:71ff:fe9d:cf4d/64 scope link
+       valid_lft forever preferred_lft forever
+18: s6-eth1@if2: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master ovs-system state UP group default qlen 1000
+    link/ether 0a:f4:73:49:d6:7b brd ff:ff:ff:ff:ff:ff link-netnsid 3
+    inet6 fe80::8f4:73ff:fe49:d67b/64 scope link
+       valid_lft forever preferred_lft forever
+19: s1-eth2@if2: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master ovs-system state UP group default qlen 1000
+    link/ether ce:09:9b:90:fd:11 brd ff:ff:ff:ff:ff:ff link-netnsid 4
+    inet6 fe80::cc09:9bff:fe90:fd11/64 scope link
+       valid_lft forever preferred_lft forever
+20: s8-eth1@if3: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master ovs-system state UP group default qlen 1000
+    link/ether ee:a4:0c:d2:43:9f brd ff:ff:ff:ff:ff:ff link-netnsid 4
+    inet6 fe80::eca4:cff:fed2:439f/64 scope link
+       valid_lft forever preferred_lft forever
+21: s3-eth1@if2: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master ovs-system state UP group default qlen 1000
+    link/ether 52:e4:6d:a4:a9:83 brd ff:ff:ff:ff:ff:ff link-netnsid 5
+    inet6 fe80::50e4:6dff:fea4:a983/64 scope link
+       valid_lft forever preferred_lft forever
+22: s8-eth2@if3: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master ovs-system state UP group default qlen 1000
+    link/ether 42:b6:b8:44:81:04 brd ff:ff:ff:ff:ff:ff link-netnsid 5
+    inet6 fe80::40b6:b8ff:fe44:8104/64 scope link
+       valid_lft forever preferred_lft forever
+23: s3-eth2@if2: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master ovs-system state UP group default qlen 1000
+    link/ether b2:af:2d:42:42:50 brd ff:ff:ff:ff:ff:ff link-netnsid 6
+    inet6 fe80::b0af:2dff:fe42:4250/64 scope link
+       valid_lft forever preferred_lft forever
+24: s5-eth2@if2: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master ovs-system state UP group default qlen 1000
+    link/ether 7e:c7:c6:f8:da:22 brd ff:ff:ff:ff:ff:ff link-netnsid 7
+    inet6 fe80::7cc7:c6ff:fef8:da22/64 scope link
+       valid_lft forever preferred_lft forever
+25: s7-eth1@if3: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master ovs-system state UP group default qlen 1000
+    link/ether ea:81:95:e9:1b:2a brd ff:ff:ff:ff:ff:ff link-netnsid 7
+    inet6 fe80::e881:95ff:fee9:1b2a/64 scope link
+       valid_lft forever preferred_lft forever
+26: s0-eth2@if2: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master ovs-system state UP group default qlen 1000
+    link/ether 1e:ea:47:33:5a:07 brd ff:ff:ff:ff:ff:ff link-netnsid 8
+    inet6 fe80::1cea:47ff:fe33:5a07/64 scope link
+       valid_lft forever preferred_lft forever
+27: s4-eth2@if3: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master ovs-system state UP group default qlen 1000
+    link/ether ae:ea:f9:3a:aa:c5 brd ff:ff:ff:ff:ff:ff link-netnsid 8
+    inet6 fe80::acea:f9ff:fe3a:aac5/64 scope link
+       valid_lft forever preferred_lft forever
+28: s2-eth1@if2: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master ovs-system state UP group default qlen 1000
+    link/ether 5a:96:88:7e:ad:99 brd ff:ff:ff:ff:ff:ff link-netnsid 9
+    inet6 fe80::5896:88ff:fe7e:ad99/64 scope link
+       valid_lft forever preferred_lft forever
+29: s8-eth3@if3: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master ovs-system state UP group default qlen 1000
+    link/ether a2:ee:a9:b4:19:11 brd ff:ff:ff:ff:ff:ff link-netnsid 9
+    inet6 fe80::a0ee:a9ff:feb4:1911/64 scope link
+       valid_lft forever preferred_lft forever
+30: s0-eth3@if2: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master ovs-system state UP group default qlen 1000
+    link/ether aa:7d:b4:20:56:17 brd ff:ff:ff:ff:ff:ff link-netnsid 10
+    inet6 fe80::a87d:b4ff:fe20:5617/64 scope link
+       valid_lft forever preferred_lft forever
+31: s3-eth3@if3: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master ovs-system state UP group default qlen 1000
+    link/ether ce:33:b2:be:86:da brd ff:ff:ff:ff:ff:ff link-netnsid 10
+    inet6 fe80::cc33:b2ff:febe:86da/64 scope link
+       valid_lft forever preferred_lft forever
+32: s2-eth2@if2: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master ovs-system state UP group default qlen 1000
+    link/ether 7e:e1:54:75:1c:75 brd ff:ff:ff:ff:ff:ff link-netnsid 11
+    inet6 fe80::7ce1:54ff:fe75:1c75/64 scope link
+       valid_lft forever preferred_lft forever
+33: s7-eth2@if3: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master ovs-system state UP group default qlen 1000
+    link/ether 22:34:fc:45:50:28 brd ff:ff:ff:ff:ff:ff link-netnsid 11
+    inet6 fe80::2034:fcff:fe45:5028/64 scope link
+       valid_lft forever preferred_lft forever
+34: s1-eth3@if2: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master ovs-system state UP group default qlen 1000
+    link/ether 9e:9b:55:e7:25:0d brd ff:ff:ff:ff:ff:ff link-netnsid 12
+    inet6 fe80::9c9b:55ff:fee7:250d/64 scope link
+       valid_lft forever preferred_lft forever
+35: s2-eth3@if2: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master ovs-system state UP group default qlen 1000
+    link/ether ee:62:19:63:a9:4a brd ff:ff:ff:ff:ff:ff link-netnsid 13
+    inet6 fe80::ec62:19ff:fe63:a94a/64 scope link
+       valid_lft forever preferred_lft forever
+36: s7-eth3@if3: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master ovs-system state UP group default qlen 1000
+    link/ether 56:5d:b5:04:ee:15 brd ff:ff:ff:ff:ff:ff link-netnsid 13
+    inet6 fe80::545d:b5ff:fe04:ee15/64 scope link
+       valid_lft forever preferred_lft forever
+37: s0-eth4@if2: <BROADCAST,MULTICAST> mtu 1500 qdisc noqueue master ovs-system state DOWN group default qlen 1000
+    link/ether e2:5b:d9:97:6c:fc brd ff:ff:ff:ff:ff:ff link-netnsid 14
+38: s2-eth4@if3: <BROADCAST,MULTICAST> mtu 1500 qdisc noqueue master ovs-system state DOWN group default qlen 1000
+    link/ether 2e:5f:06:33:39:99 brd ff:ff:ff:ff:ff:ff link-netnsid 14
+39: s0-eth5@if2: <BROADCAST,MULTICAST> mtu 1500 qdisc noqueue master ovs-system state DOWN group default qlen 1000
+    link/ether 96:fb:f5:c1:ce:a1 brd ff:ff:ff:ff:ff:ff link-netnsid 15
+40: s5-eth3@if3: <BROADCAST,MULTICAST> mtu 1500 qdisc noqueue master ovs-system state DOWN group default qlen 1000
+    link/ether 76:5f:d2:5e:62:76 brd ff:ff:ff:ff:ff:ff link-netnsid 15
+41: s1-eth4@if2: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master ovs-system state UP group default qlen 1000
+    link/ether de:b1:c5:61:53:2f brd ff:ff:ff:ff:ff:ff link-netnsid 16
+    inet6 fe80::dcb1:c5ff:fe61:532f/64 scope link
+       valid_lft forever preferred_lft forever
+42: s6-eth2@if3: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master ovs-system state UP group default qlen 1000
+    link/ether fa:f0:eb:ea:ed:4b brd ff:ff:ff:ff:ff:ff link-netnsid 16
+    inet6 fe80::f8f0:ebff:feea:ed4b/64 scope link
+       valid_lft forever preferred_lft forever
+43: s4-eth3@if2: <BROADCAST,MULTICAST> mtu 1500 qdisc noqueue master ovs-system state DOWN group default qlen 1000
+    link/ether fa:d8:d1:b3:58:00 brd ff:ff:ff:ff:ff:ff link-netnsid 17
+44: s7-eth4@if3: <BROADCAST,MULTICAST> mtu 1500 qdisc noqueue master ovs-system state DOWN group default qlen 1000
+    link/ether 0e:51:bc:b4:4a:a6 brd ff:ff:ff:ff:ff:ff link-netnsid 17
+45: s1-eth5@if2: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master ovs-system state UP group default qlen 1000
+    link/ether 52:9f:7b:8c:88:71 brd ff:ff:ff:ff:ff:ff link-netnsid 18
+    inet6 fe80::509f:7bff:fe8c:8871/64 scope link
+       valid_lft forever preferred_lft forever
+46: s7-eth5@if3: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master ovs-system state UP group default qlen 1000
+    link/ether ea:b8:92:b9:cd:38 brd ff:ff:ff:ff:ff:ff link-netnsid 18
+    inet6 fe80::e8b8:92ff:feb9:cd38/64 scope link
+       valid_lft forever preferred_lft forever
+47: s3-eth4@if2: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master ovs-system state UP group default qlen 1000
+    link/ether ae:34:01:90:fc:ef brd ff:ff:ff:ff:ff:ff link-netnsid 19
+    inet6 fe80::ac34:1ff:fe90:fcef/64 scope link
+       valid_lft forever preferred_lft forever
+48: s7-eth6@if3: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master ovs-system state UP group default qlen 1000
+    link/ether 2a:8f:21:fd:eb:90 brd ff:ff:ff:ff:ff:ff link-netnsid 19
+    inet6 fe80::288f:21ff:fefd:eb90/64 scope link
+       valid_lft forever preferred_lft forever
+49: ovs-system: <BROADCAST,MULTICAST> mtu 1500 qdisc noop state DOWN group default qlen 1000
+    link/ether c6:b3:52:46:c3:16 brd ff:ff:ff:ff:ff:ff
+50: s6: <BROADCAST,MULTICAST> mtu 1500 qdisc noop state DOWN group default qlen 1000
+    link/ether 2e:d5:15:30:79:42 brd ff:ff:ff:ff:ff:ff
+51: s1: <BROADCAST,MULTICAST> mtu 1500 qdisc noop state DOWN group default qlen 1000
+    link/ether 06:b1:5d:f2:42:46 brd ff:ff:ff:ff:ff:ff
+52: s0: <BROADCAST,MULTICAST> mtu 1500 qdisc noop state DOWN group default qlen 1000
+    link/ether fa:a6:17:1e:6a:47 brd ff:ff:ff:ff:ff:ff
+53: s3: <BROADCAST,MULTICAST> mtu 1500 qdisc noop state DOWN group default qlen 1000
+    link/ether 82:a5:e1:e9:5d:4c brd ff:ff:ff:ff:ff:ff
+54: s2: <BROADCAST,MULTICAST> mtu 1500 qdisc noop state DOWN group default qlen 1000
+    link/ether b6:9f:35:d2:39:4e brd ff:ff:ff:ff:ff:ff
+55: s8: <BROADCAST,MULTICAST> mtu 1500 qdisc noop state DOWN group default qlen 1000
+    link/ether 02:bb:de:e4:c4:4e brd ff:ff:ff:ff:ff:ff
+56: s7: <BROADCAST,MULTICAST> mtu 1500 qdisc noop state DOWN group default qlen 1000
+    link/ether aa:79:ae:aa:34:42 brd ff:ff:ff:ff:ff:ff
+57: s4: <BROADCAST,MULTICAST> mtu 1500 qdisc noop state DOWN group default qlen 1000
+    link/ether 32:6c:23:00:ab:47 brd ff:ff:ff:ff:ff:ff
+58: s5: <BROADCAST,MULTICAST> mtu 1500 qdisc noop state DOWN group default qlen 1000
+    link/ether f2:2a:38:27:ec:4d brd ff:ff:ff:ff:ff:ff
+59: s8-eth4@root-eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP group default qlen 1000
+    link/ether a6:96:6f:72:e2:4c brd ff:ff:ff:ff:ff:ff
+    inet6 fe80::a496:6fff:fe72:e24c/64 scope link
+       valid_lft forever preferred_lft forever
+60: root-eth0@s8-eth4: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP group default qlen 1000
+    link/ether 42:46:a9:58:63:df brd ff:ff:ff:ff:ff:ff
+    inet 192.168.10.254/24 brd 192.168.10.255 scope global root-eth0
+       valid_lft forever preferred_lft forever
+    inet6 fe80::4046:a9ff:fe58:63df/64 scope link
+       valid_lft forever preferred_lft forever
+mininet> exit
+hosts[ 0 ]: cefnetdstop -F -d ./h0
+hosts[ 1 ]: cefnetdstop -F -d ./h1
+hosts[ 2 ]: cefnetdstop -F -d ./h2
+hosts[ 3 ]: cefnetdstop -F -d ./h3
+hosts[ 4 ]: cefnetdstop -F -d ./h4
+hosts[ 5 ]: cefnetdstop -F -d ./h5
+hosts[ 6 ]: cefnetdstop -F -d ./h6
+hosts[ 7 ]: cefnetdstop -F -d ./h7
+hosts[ 8 ]: cefnetdstop -F -d ./h8
+hosts[ 9 ]: cefnetdstop -F -d ./h9
+hosts[ 10 ]: cefnetdstop -F -d ./h10
+hosts[ 11 ]: cefnetdstop -F -d ./h11
+hosts[ 12 ]: cefnetdstop -F -d ./h12
+hosts[ 13 ]: cefnetdstop -F -d ./h13
+hosts[ 14 ]: cefnetdstop -F -d ./h14
+hosts[ 15 ]: cefnetdstop -F -d ./h15
+hosts[ 16 ]: cefnetdstop -F -d ./h16
+hosts[ 17 ]: cefnetdstop -F -d ./h17
+hosts[ 18 ]: cefnetdstop -F -d ./h18
+hosts[ 19 ]: cefnetdstop -F -d ./h19
+hosts[ 1 ]: csmgrdstop -d ./h1
+hosts[ 3 ]: csmgrdstop -d ./h3
+hosts[ 5 ]: csmgrdstop -d ./h5
+hosts[ 7 ]: csmgrdstop -d ./h7
+hosts[ 9 ]: csmgrdstop -d ./h9
+hosts[ 11 ]: csmgrdstop -d ./h11
+hosts[ 13 ]: csmgrdstop -d ./h13
+hosts[ 15 ]: csmgrdstop -d ./h15
+hosts[ 17 ]: csmgrdstop -d ./h17
+hosts[ 19 ]: csmgrdstop -d ./h19
+*** Stopping 1 controllers
+c0
+*** Stopping 36 links
+....................................
+*** Stopping 9 switches
+s0 s1 s2 s3 s4 s5 s6 s7 s8
+*** Stopping 20 hosts
+h0 h1 h2 h3 h4 h5 h6 h7 h8 h9 h10 h11 h12 h13 h14 h15 h16 h17 h18 h19
+*** Done
+*** Removing excess controllers/ofprotocols/ofdatapaths/pings/noxes
+killall controller ofprotocol ofdatapath ping nox_corelt-nox_core ovs-openflowd ovs-controllerovs-testcontroller udpbwtest mnexec ivs ryu-manager 2> /dev/null
+killall -9 controller ofprotocol ofdatapath ping nox_corelt-nox_core ovs-openflowd ovs-controllerovs-testcontroller udpbwtest mnexec ivs ryu-manager 2> /dev/null
+pkill -9 -f "sudo mnexec"
+*** Removing junk from /tmp
+rm -f /tmp/vconn* /tmp/vlogs* /tmp/*.out /tmp/*.log
+*** Removing old X11 tunnels
+*** Removing excess kernel datapaths
+ps ax | egrep -o 'dp[0-9]+' | sed 's/dp/nl:/'
+***  Removing OVS datapaths
+ovs-vsctl --timeout=1 list-br
+ovs-vsctl --timeout=1 list-br
+*** Removing all links of the pattern foo-ethX
+ip link show | egrep -o '([-_.[:alnum:]]+-eth[[:digit:]]+)'
+ip link show
+*** Killing stale mininet node processes
+pkill -9 -f mininet:
+*** Shutting down stale tunnels
+pkill -9 -f Tunnel=Ethernet
+pkill -9 -f .ssh/mn
+rm -f ~/.ssh/mn/*
+*** Cleanup complete.
