@@ -59,8 +59,9 @@ def _run_one(
     config_path.write_text(json.dumps(cfg, ensure_ascii=False, indent=2), encoding="utf-8")
 
     run_log_path = run_root / "run.log"
+    py = sys.executable
     cmd = [
-        "python3",
+        py,
         "mesh-disaster-topology.py",
         "--config",
         str(config_path),
@@ -133,7 +134,7 @@ def main() -> None:
         result_paths.append(result_path)
 
     analyze_cmd = [
-        "python3",
+        sys.executable,
         str(ROOT / "tools" / "autotest" / "analyze.py"),
         "--inputs",
         *[str(p) for p in result_paths],
