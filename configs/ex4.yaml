@@ -40,14 +40,20 @@ gets:
   - host: 16
     uri: "ccnx:/emergency/test"
 
-auto:
-  uri: "ccnx:/emergency/test"
-  consumers: "random:5"
-  content_count: 5
+      #auto:
+      #  uri: "ccnx:/emergency/test"
+      #  consumers: "random:5"
+      #  content_count: 5
 
 output_dir: "logs"
 timestamp: true
 no_cli: false
+duration: 360
+results_json: "logs/json"
+warmup_get_interval: 5
+cache_default_rct_ms: 50000
+  # publisher_host:
+hot_uris: ["ccnx:/emergency"]
 
 down_interval: 10
 down_duration: 20
@@ -57,10 +63,3 @@ get_interval: 5
 topo_layout:
 bw: h3, s1, 1
 bw: h10, s5, 0.5
-bridges:
-  - switch: s1
-    root_ip: "192.168.100.1/24"
-    local_routes: "192.168.1.0/24"
-      #     external_routes: "192.168.201.0/24"  # Optional: VM host network
-      #     gateway: "192.168.201.62"            # Optional: Other VM IP
-    hosts: [4]

@@ -1,0 +1,5 @@
+uri,warmup_total,warmup_success,warmup_success_rate,eval_total,eval_success,eval_success_rate,eval_pubdown_total,eval_pubdown_success,eval_success_rate_when_publisher_down,fail_exit_code_nonzero,fail_missing_completed_log,fail_missing_output_file
+ccnx:/emergency,3,0,0.0,0,0,0.0,0,0,0.0,0,0,0
+ccnx:/emergency/test,0,0,0.0,16,0,0.0,0,0,0.0,16,16,16
+ccnx:/emergency/test2,0,0,0.0,8,0,0.0,0,0,0.0,8,8,8
+ccnx:/test/data1,0,0,0.0,8,0,0.0,0,0,0.0,8,8,8
