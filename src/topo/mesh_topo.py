@@ -308,6 +308,7 @@ def run_mesh_topology(
     apply_cache_node_settings(host_num, cache_node_set, None)
     if cache_nodes:
         info("cache nodes: " + ", ".join(f"h{idx}" for idx in cache_nodes) + "\n")
+    # Daemon startup phase: csmgrd -> cefnetd -> wait ready
     for idx in sorted(cache_node_set):
         start_csmgrd(net, idx)
 
@@ -317,6 +318,7 @@ def run_mesh_topology(
     for idx in range(host_num):
         wait_for_cefnetd(net, idx)
 
+    # FIB programming phase: run only after daemons are ready
     set_fib(net, topo.mesh_links, k_paths)
     run_cefstatus_all(net, host_num)
     print_mesh_links(topo.mesh_links)
@@ -350,6 +352,7 @@ def run_mesh_topology(
     if not no_cli:
         CLI(net)
 
+    # Teardown phase: cefnetd -> csmgrd
     for idx in range(host_num):
         stop_cefnetd(net, idx)
 

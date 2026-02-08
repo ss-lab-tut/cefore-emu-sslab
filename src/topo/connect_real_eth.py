@@ -345,6 +345,7 @@ def run_connect(args, run_dir: Path = None, log_context=None):
         cache_nodes = [args.hosts - 1]
     cache_node_set = set(cache_nodes)
     apply_cache_node_settings(args.hosts, cache_node_set, None)
+    # Daemon startup phase: csmgrd -> cefnetd -> wait ready
     for idx in sorted(cache_node_set):
         start_csmgrd(net, idx)
 
@@ -383,6 +384,7 @@ def run_connect(args, run_dir: Path = None, log_context=None):
     for op in ops_put:
         uri_publishers[op["uri"]] = op["host"]
 
+    # FIB programming phase: run only after daemons are ready
     if uri_publishers:
         set_fib_for_uris(net, topo.mesh_links, args.k, uri_publishers)
     else:
@@ -444,6 +446,7 @@ def run_connect(args, run_dir: Path = None, log_context=None):
     if stop_event is not None:
         stop_event.set()
 
+    # Teardown phase: cefnetd -> csmgrd
     for idx in range(args.hosts):
         stop_cefnetd(net, idx)
 
