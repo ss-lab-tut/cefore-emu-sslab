@@ -631,18 +631,6 @@ def run_disaster_topology(args, run_dir: Path = None, log_context=None):
         for host_name, intf_name, ip, mtu in parse_ext_args(args.ext):
             attach_external_interface(net, host_name, intf_name, ip, mtu)
 
-        uri_publishers = {}
-        for op in ops_put:
-            uri_publishers[op["uri"]] = op["host"]
-
-        if uri_publishers:
-            set_fib_for_uris(net, topo.mesh_links, args.k, uri_publishers)
-        else:
-            set_fib(net, topo.mesh_links, args.k)
-
-        run_cefstatus_all(net, args.hosts)
-        print_mesh_links(topo.mesh_links)
-
         topo_png = _artifact_path(
             run_dir,
             args.topo_png,
@@ -670,6 +658,7 @@ def run_disaster_topology(args, run_dir: Path = None, log_context=None):
             getattr(args, "cache_default_rct_ms", None),
         )
 
+        # Daemon startup phase: csmgrd -> cefnetd -> wait ready
         for idx in sorted(cache_node_set):
             start_csmgrd(net, idx)
             started_csmgrd_hosts.add(idx)
@@ -678,6 +667,19 @@ def run_disaster_topology(args, run_dir: Path = None, log_context=None):
             start_cefnetd(net, idx)
         for idx in range(args.hosts):
             wait_for_cefnetd(net, idx)
+
+        # FIB programming phase: run only after daemons are ready
+        uri_publishers = {}
+        for op in ops_put:
+            uri_publishers[op["uri"]] = op["host"]
+
+        if uri_publishers:
+            set_fib_for_uris(net, topo.mesh_links, args.k, uri_publishers)
+        else:
+            set_fib(net, topo.mesh_links, args.k)
+
+        run_cefstatus_all(net, args.hosts)
+        print_mesh_links(topo.mesh_links)
 
         for op in ops_put:
             host = int(op["host"])
@@ -793,6 +795,7 @@ def run_disaster_topology(args, run_dir: Path = None, log_context=None):
             stop_event.set()
 
         if net is not None:
+            # Teardown phase: cefnetd -> csmgrd
             for idx in range(args.hosts):
                 stop_cefnetd(net, idx)
             for idx in sorted(started_csmgrd_hosts):
