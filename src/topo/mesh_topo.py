@@ -303,8 +303,11 @@ def run_mesh_topology(
     host_graph, _ = build_host_graph(topo.mesh_links)
     effective_cache_count = cache_count if cache_count > 0 else max(1, host_num // 2)
     cache_nodes = select_k_centers(host_graph, effective_cache_count)
+    cache_nodes = [idx for idx in cache_nodes if idx not in publisher_ids]
     if not cache_nodes and host_num > 0:
-        cache_nodes = [host_num - 1]
+        candidates = [idx for idx in range(host_num) if idx not in publisher_ids]
+        if candidates:
+            cache_nodes = [candidates[-1]]
     cache_node_set = set(cache_nodes)
     apply_cache_node_settings(host_num, cache_node_set, None)
     if cache_nodes:

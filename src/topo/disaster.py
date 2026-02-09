@@ -31,8 +31,10 @@ from .cef_daemons import (
     run_cefsubfile,
     run_cefstatus_all,
     start_cefnetd,
+    start_conpubd,
     start_csmgrd,
     stop_cefnetd,
+    stop_conpubd,
     stop_csmgrd,
     wait_for_cefnetd,
 )
@@ -43,7 +45,12 @@ from .links import pick_publish_link, set_node_links_state
 from .mesh_topo import MeshTopo
 from .net_config import set_fib, set_fib_for_uris, set_ip_addr
 from .paths import resolve_run_dir, resolve_run_path
-from .templates import apply_cache_node_settings, cleanup_node_dirs, ensure_node_dirs
+from .templates import (
+    apply_cache_node_settings,
+    apply_pubsub_node_settings,
+    cleanup_node_dirs,
+    ensure_node_dirs,
+)
 from .viz import build_host_graph, print_mesh_links, render_topology_png
 
 
@@ -443,8 +450,8 @@ def _build_warmup_ops(args, run_dir: Path, hot_uris, cache_nodes):
         warmup_nodes = [idx for idx in range(args.hosts)]
 
     warmup_ops = []
-    for uri_idx, uri in enumerate(hot_uris):
-        for host_idx in warmup_nodes:
+    for host_idx in warmup_nodes:
+        for uri_idx, uri in enumerate(hot_uris):
             warmup_ops.append(
                 {
                     "host": host_idx,
@@ -481,6 +488,7 @@ def run_disaster_topology(args, run_dir: Path = None, log_context=None):
     bridge_manager = BridgeManager()
     stop_event = None
     started_csmgrd_hosts = set()
+    started_conpubd_hosts = set()
 
     bridge_configs = getattr(args, "bridges", None) or []
     if not bridge_configs:
@@ -510,6 +518,9 @@ def run_disaster_topology(args, run_dir: Path = None, log_context=None):
         ]
 
     publisher_ids = set(op["host"] for op in ops_put)
+    pubsub_publisher_ids = {
+        int(op["host"]) for op in ops_put if op.get("mode") == "pubsub"
+    }
     hot_uris = list(dict.fromkeys(getattr(args, "hot_uris", []) or [op["uri"] for op in ops_put]))
 
     ensure_node_dirs(args.hosts, rng, publisher_ids)
@@ -646,8 +657,15 @@ def run_disaster_topology(args, run_dir: Path = None, log_context=None):
         host_graph, _ = build_host_graph(topo.mesh_links)
         cache_count = args.cache_count if args.cache_count > 0 else args.down_count + 1
         cache_nodes = select_k_centers(host_graph, cache_count)
+        cache_nodes = [
+            idx
+            for idx in cache_nodes
+            if idx not in publisher_ids and idx not in pubsub_publisher_ids
+        ]
         if not cache_nodes and args.hosts > 0:
-            cache_nodes = [args.hosts - 1]
+            candidates = [idx for idx in range(args.hosts) if idx not in publisher_ids]
+            if candidates:
+                cache_nodes = [candidates[-1]]
         cache_node_set = set(cache_nodes)
         if cache_nodes:
             info("cache nodes: " + ", ".join(f"h{idx}" for idx in cache_nodes) + "\n")
@@ -657,11 +675,17 @@ def run_disaster_topology(args, run_dir: Path = None, log_context=None):
             cache_node_set,
             getattr(args, "cache_default_rct_ms", None),
         )
+        if pubsub_publisher_ids:
+            apply_pubsub_node_settings(args.hosts, pubsub_publisher_ids)
 
-        # Daemon startup phase: csmgrd -> cefnetd -> wait ready
+        # Daemon startup phase: csmgrd -> conpubd -> cefnetd -> wait ready
         for idx in sorted(cache_node_set):
             start_csmgrd(net, idx)
             started_csmgrd_hosts.add(idx)
+
+        for idx in sorted(pubsub_publisher_ids):
+            start_conpubd(net, idx)
+            started_conpubd_hosts.add(idx)
 
         for idx in range(args.hosts):
             start_cefnetd(net, idx)
@@ -795,9 +819,11 @@ def run_disaster_topology(args, run_dir: Path = None, log_context=None):
             stop_event.set()
 
         if net is not None:
-            # Teardown phase: cefnetd -> csmgrd
+            # Teardown phase: cefnetd -> conpubd -> csmgrd
             for idx in range(args.hosts):
                 stop_cefnetd(net, idx)
+            for idx in sorted(started_conpubd_hosts):
+                stop_conpubd(net, idx)
             for idx in sorted(started_csmgrd_hosts):
                 stop_csmgrd(net, idx)
             bridge_manager.cleanup()

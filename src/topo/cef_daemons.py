@@ -59,6 +59,32 @@ def stop_csmgrd(net, idx):
     net.hosts[idx].cmd(command)
 
 
+def start_conpubd(net, idx):
+    """Start conpubd daemon for a host.
+
+    Args:
+        net: Mininet network instance.
+        idx: Host index.
+    """
+    node_name = f"h{idx}"
+    command = f"conpubdstart -d ./{node_name} > /dev/null 2>&1"
+    print(node_name, "command:", command)
+    info(net.hosts[idx].cmd(command))
+    time.sleep(1)
+
+
+def stop_conpubd(net, idx):
+    """Stop conpubd daemon for a host.
+
+    Args:
+        net: Mininet network instance.
+        idx: Host index.
+    """
+    command = f"conpubdstop -d ./h{idx}"
+    info("hosts[", idx, "]:", command, "\n")
+    net.hosts[idx].cmd(command)
+
+
 def start_cefnetd(net, idx):
     """Start cefnetd forwarding daemon for a host.
 

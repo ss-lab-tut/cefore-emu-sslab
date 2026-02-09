@@ -8,8 +8,10 @@ from .cef_daemons import (
     run_cefstatus_all,
     run_cefsubfile,
     start_cefnetd,
+    start_conpubd,
     start_csmgrd,
     stop_cefnetd,
+    stop_conpubd,
     stop_csmgrd,
     wait_for_cefnetd,
 )
@@ -45,7 +47,12 @@ from .links import (
 from .mesh_topo import MeshTopo, min_required_switches, run_mesh_topology
 from .net_config import set_fib, set_fib_for_uris, set_ip_addr
 from .paths import ROOT_DIR, TEMPLATE_ROOT, resolve_run_dir
-from .templates import cleanup_node_dirs, ensure_node_dirs, select_template
+from .templates import (
+    apply_pubsub_node_settings,
+    cleanup_node_dirs,
+    ensure_node_dirs,
+    select_template,
+)
 from .viz import build_host_graph, build_tree, print_mesh_links, render_topology_png
 
 __all__ = [
@@ -57,6 +64,7 @@ __all__ = [
     "select_template",
     "ensure_node_dirs",
     "cleanup_node_dirs",
+    "apply_pubsub_node_settings",
     # config_io
     "update_local_sock_id",
     "update_node_name",
@@ -83,7 +91,9 @@ __all__ = [
     # cef_daemons
     "wait_for_cefnetd",
     "start_csmgrd",
+    "start_conpubd",
     "stop_csmgrd",
+    "stop_conpubd",
     "start_cefnetd",
     "stop_cefnetd",
     "run_cefputfile",

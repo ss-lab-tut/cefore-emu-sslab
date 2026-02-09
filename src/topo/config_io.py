@@ -6,13 +6,13 @@ from mininet.log import info
 
 
 def update_local_sock_id(node_dir, idx):
-    """Update LOCAL_SOCK_ID in cefnetd.conf and csmgrd.conf.
+    """Update LOCAL_SOCK_ID in daemon config files.
 
     Args:
         node_dir: Path to node configuration directory.
         idx: Host index to set as LOCAL_SOCK_ID.
     """
-    for conf_name in ("cefnetd.conf", "csmgrd.conf"):
+    for conf_name in ("cefnetd.conf", "csmgrd.conf", "conpubd.conf"):
         conf_path = os.path.join(node_dir, conf_name)
         if not os.path.isfile(conf_path):
             continue
