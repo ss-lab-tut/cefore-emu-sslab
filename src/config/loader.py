@@ -242,19 +242,131 @@ def validate_config(config: dict[str, Any]) -> list[str]:
                 if "nat_out" in bridge and not isinstance(bridge["nat_out"], str):
                     errors.append(f"bridges[{idx}].nat_out must be a string")
 
+    if "failure_scenarios" in config:
+        fs = config["failure_scenarios"]
+        if not isinstance(fs, dict):
+            errors.append("failure_scenarios must be a dict")
+        else:
+            strategy = fs.get("strategy", "simple")
+            if strategy not in ("simple", "cyclic", "random", "manual"):
+                errors.append(
+                    f"failure_scenarios.strategy must be one of: simple, cyclic, random, manual"
+                )
+
+            if strategy == "simple":
+                if "simple" not in fs:
+                    errors.append(
+                        "failure_scenarios with strategy 'simple' requires 'simple' block"
+                    )
+                else:
+                    simple = fs["simple"]
+                    if not isinstance(simple, dict):
+                        errors.append("failure_scenarios.simple must be a dict")
+                    else:
+                        for field in ("interval", "duration", "count", "stagger"):
+                            if field in simple and not isinstance(simple[field], int):
+                                errors.append(
+                                    f"failure_scenarios.simple.{field} must be an integer"
+                                )
+                        if (
+                            "count" in simple
+                            and isinstance(simple["count"], int)
+                            and simple["count"] < 0
+                        ):
+                            errors.append(
+                                "failure_scenarios.simple.count must be an integer >= 0"
+                            )
+                        if (
+                            "stagger" in simple
+                            and isinstance(simple["stagger"], int)
+                            and simple["stagger"] < 0
+                        ):
+                            errors.append(
+                                "failure_scenarios.simple.stagger must be an integer >= 0"
+                            )
+                        if "exclude" in simple:
+                            if not isinstance(simple["exclude"], list) or not all(
+                                isinstance(x, int) for x in simple["exclude"]
+                            ):
+                                errors.append(
+                                    "failure_scenarios.simple.exclude must be a list of integers"
+                                )
+            else:
+                if "cycles" not in fs:
+                    errors.append(
+                        f"failure_scenarios with strategy '{strategy}' requires 'cycles' list"
+                    )
+                elif not isinstance(fs["cycles"], list):
+                    errors.append("failure_scenarios.cycles must be a list")
+                else:
+                    if len(fs["cycles"]) == 0:
+                        errors.append(
+                            f"failure_scenarios with strategy '{strategy}' requires at least one cycle"
+                        )
+                    for idx, cycle in enumerate(fs["cycles"]):
+                        if not isinstance(cycle, dict):
+                            errors.append(f"failure_scenarios.cycles[{idx}] must be a dict")
+                            continue
+                        for field in ("interval", "duration", "count", "stagger"):
+                            if field in cycle and not isinstance(cycle[field], int):
+                                errors.append(
+                                    f"failure_scenarios.cycles[{idx}].{field} must be an integer"
+                                )
+                        if (
+                            "count" in cycle
+                            and isinstance(cycle["count"], int)
+                            and cycle["count"] < 0
+                        ):
+                            errors.append(
+                                f"failure_scenarios.cycles[{idx}].count must be an integer >= 0"
+                            )
+                        if (
+                            "stagger" in cycle
+                            and isinstance(cycle["stagger"], int)
+                            and cycle["stagger"] < 0
+                        ):
+                            errors.append(
+                                f"failure_scenarios.cycles[{idx}].stagger must be an integer >= 0"
+                            )
+                        if "exclude" in cycle:
+                            if not isinstance(cycle["exclude"], list) or not all(
+                                isinstance(x, int) for x in cycle["exclude"]
+                            ):
+                                errors.append(
+                                    f"failure_scenarios.cycles[{idx}].exclude must be a list of integers"
+                                )
+                        if "target" in cycle:
+                            if not isinstance(cycle["target"], list) or not all(
+                                isinstance(x, int) for x in cycle["target"]
+                            ):
+                                errors.append(
+                                    f"failure_scenarios.cycles[{idx}].target must be a list of integers"
+                                )
+                        if "allow_publishers" in cycle:
+                            if not isinstance(cycle["allow_publishers"], bool):
+                                errors.append(
+                                    f"failure_scenarios.cycles[{idx}].allow_publishers must be a boolean"
+                                )
+
     return errors
 
 
 def merge_cli_and_config(args: Any, config: dict[str, Any]) -> None:
-    """Merge config file values into argparse args, respecting CLI precedence.
+    """Merge config file values into argparse args.
 
-    Config values are applied only if the corresponding CLI arg uses its default.
     The args object is modified in place.
 
     Args:
         args: argparse.Namespace with CLI arguments.
         config: Configuration dictionary from load_config().
     """
+    # NOTE:
+    # argparse.Namespace does not tell us whether a value came from an explicit CLI
+    # flag or from the parser default, so we cannot reliably enforce "CLI always wins"
+    # in this shared helper. For backward compatibility with disaster.py and related
+    # scripts, legacy fields below keep the historical behavior: config overwrites args.
+    # flexible_disaster.py uses failure_scenarios for failure control, so that field is
+    # merged separately only when it exists in the config.
     config_keys = (
         "hosts",
         "switches",
@@ -297,6 +409,9 @@ def merge_cli_and_config(args: Any, config: dict[str, Any]) -> None:
     for key in config_keys:
         if key in config:
             setattr(args, key, config[key])
+
+    if "failure_scenarios" in config:
+        setattr(args, "failure_scenarios", config["failure_scenarios"])
 
     # Parse puts/gets if passed as JSON strings
     if isinstance(args.puts, str) and args.puts:

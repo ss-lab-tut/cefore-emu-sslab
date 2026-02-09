@@ -1,0 +1,44 @@
+# Flexible disaster topology with simple failure scenario
+# Backward compatibility test: Uses simple mode (single configuration)
+
+hosts: 10
+switches: 15
+seed: 42
+k: 2
+
+# Simple failure scenario (backward compatible)
+failure_scenarios:
+  strategy: simple
+
+  simple:
+    interval: 30
+    duration: 10
+    count: 2
+    stagger: 1
+    exclude: []  # Publishers automatically excluded
+
+# Content operations
+puts:
+  - host: 9
+    uri: "ccnx:/test/content1"
+    file: "./sample-putfile"
+    expiry: 3000
+    cache_time: 3000
+
+gets:
+  - host: 0
+    uri: "ccnx:/test/content1"
+  - host: 1
+    uri: "ccnx:/test/content1"
+  - host: 2
+    uri: "ccnx:/test/content1"
+
+# Cache configuration
+cache_count: 5
+get_interval: 10
+
+# Output configuration
+num: 1
+output_dir: "logs"
+no_cli: true
+duration: 90

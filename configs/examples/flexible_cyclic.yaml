@@ -1,0 +1,59 @@
+# Flexible disaster topology with cyclic failure scenarios
+# Phase 1 test configuration: Demonstrates gradual failure escalation
+
+hosts: 10
+switches: 15
+seed: 42
+k: 2
+
+# Flexible failure scenarios with per-cycle configuration
+failure_scenarios:
+  strategy: cyclic  # cyclic | random | manual
+
+  # Gradual escalation: 1 host -> 3 hosts -> 5 hosts
+  cycles:
+    - interval: 30      # Wait 30s before first cycle
+      duration: 10      # Keep hosts down for 10s
+      count: 1          # Down 1 host
+      stagger: 0        # No stagger for single host
+      exclude: []       # No exclusions (publishers auto-excluded)
+
+    - interval: 30      # Wait 30s before second cycle
+      duration: 15      # Keep hosts down for 15s
+      count: 3          # Down 3 hosts
+      stagger: 1        # 1s between each host down
+
+    - interval: 30      # Wait 30s before third cycle
+      duration: 20      # Keep hosts down for 20s
+      count: 5          # Down 5 hosts
+      stagger: 2        # 2s between each host down
+
+# Content operations
+puts:
+  - host: 9
+    uri: "ccnx:/test/content1"
+    file: "./sample-putfile"
+    expiry: 3000
+    cache_time: 3000
+
+gets:
+  - host: 0
+    uri: "ccnx:/test/content1"
+  - host: 1
+    uri: "ccnx:/test/content1"
+  - host: 2
+    uri: "ccnx:/test/content1"
+  - host: 3
+    uri: "ccnx:/test/content1"
+  - host: 4
+    uri: "ccnx:/test/content1"
+
+# Cache configuration
+cache_count: 5
+get_interval: 10
+
+# Output configuration
+num: 1
+output_dir: "logs"
+no_cli: true
+duration: 120  # Run for 120 seconds

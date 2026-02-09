@@ -1,0 +1,60 @@
+# Flexible disaster topology with manual failure scenario
+# Manual host selection for precise failure simulation
+
+hosts: 10
+switches: 15
+seed: 42
+k: 2
+
+# Manual failure scenario with explicit host targeting
+failure_scenarios:
+  strategy: manual
+
+  cycles:
+    # Cycle 1: Down consumer hosts 0, 1, 2
+    - interval: 30
+      duration: 15
+      target: [0, 1, 2]  # Explicit host selection
+      stagger: 2
+
+    # Cycle 2: Down intermediate hosts 5, 6
+    - interval: 30
+      duration: 20
+      target: [5, 6]
+      stagger: 1
+
+    # Cycle 3: Down publisher host 9 (requires allow_publishers)
+    - interval: 30
+      duration: 10
+      target: [9]
+      allow_publishers: true  # Enable publisher failure
+
+# Content operations
+puts:
+  - host: 9
+    uri: "ccnx:/test/content1"
+    file: "./sample-putfile"
+    expiry: 3000
+    cache_time: 3000
+
+gets:
+  - host: 0
+    uri: "ccnx:/test/content1"
+  - host: 1
+    uri: "ccnx:/test/content1"
+  - host: 2
+    uri: "ccnx:/test/content1"
+  - host: 3
+    uri: "ccnx:/test/content1"
+  - host: 4
+    uri: "ccnx:/test/content1"
+
+# Cache configuration
+cache_count: 5
+get_interval: 10
+
+# Output configuration
+num: 1
+output_dir: "logs"
+no_cli: true
+duration: 120

@@ -39,6 +39,7 @@ from .cef_daemons import (
     wait_for_cefnetd,
 )
 from .external_bridge import BridgeManager, parse_bridge_args, setup_bridges
+from .failure_manager import FlexibleFailureManager
 from .flap_state import FlapState
 from .graph_algos import select_k_centers
 from .links import pick_publish_link, set_node_links_state
@@ -506,6 +507,34 @@ def _default_transfer_log_name(
     return f"cefputfile_h{host_idx}.log"
 
 
+def normalize_config(args):
+    """Normalize legacy CLI failure args into failure_scenarios format."""
+    if getattr(args, "failure_scenarios", None):
+        return
+
+    down_interval = int(getattr(args, "down_interval", 0))
+    down_duration = int(getattr(args, "down_duration", 0))
+    down_count = int(getattr(args, "down_count", 1))
+    down_stagger = int(getattr(args, "down_stagger", 0))
+    down_exclude = []
+    if down_interval > 0 and down_duration > 0:
+        try:
+            down_exclude = parse_int_list(getattr(args, "down_exclude", ""))
+        except ValueError as exc:
+            sys.exit(f"config error: invalid --down-exclude value: {exc}")
+
+    args.failure_scenarios = {
+        "strategy": "simple",
+        "simple": {
+            "interval": down_interval,
+            "duration": down_duration,
+            "count": down_count,
+            "stagger": down_stagger,
+            "exclude": down_exclude,
+        },
+    }
+
+
 def run_disaster_topology(args, run_dir: Path = None, log_context=None):
     """Run disaster topology simulation.
 
@@ -530,6 +559,12 @@ def run_disaster_topology(args, run_dir: Path = None, log_context=None):
     bridge_configs = getattr(args, "bridges", None) or []
     if not bridge_configs:
         bridge_configs = parse_bridge_args(getattr(args, "bridge", None))
+
+    config_data = load_config(getattr(args, "config", ""))
+    if "failure_scenarios" not in config_data and not getattr(
+        args, "failure_scenarios", None
+    ):
+        normalize_config(args)
 
     results_path = _resolve_results_path(args, run_dir)
     autotest_mode = bool(getattr(args, "no_cli", False) and results_path is not None)
@@ -826,22 +861,21 @@ def run_disaster_topology(args, run_dir: Path = None, log_context=None):
             )
 
         use_cli = not getattr(args, "no_cli", False)
-        if args.down_interval > 0 and args.down_duration > 0:
-            exclude_ids = parse_int_list(args.down_exclude)
-            if publisher_ids:
-                exclude_ids = list(set(exclude_ids) | publisher_ids)
-            stop_event = periodic_host_flap(
-                net,
-                args.hosts,
-                args.down_interval,
-                args.down_duration,
-                rng,
-                exclude_ids,
-                flap_state,
-                args.down_count,
-                args.down_stagger,
-                quiet=use_cli,
-            )
+        scenario_config = getattr(args, "failure_scenarios", None)
+        if scenario_config:
+            should_start_failure = True
+            if scenario_config.get("strategy", "simple") == "simple":
+                simple = scenario_config.get("simple", {}) or {}
+                if simple.get("interval", 0) <= 0 or simple.get("duration", 0) <= 0:
+                    should_start_failure = False
+            if should_start_failure:
+                failure_manager = FlexibleFailureManager(
+                    scenario_config=scenario_config,
+                    host_count=args.hosts,
+                    rng=rng,
+                    publisher_ids=publisher_ids,
+                )
+                stop_event = failure_manager.start(net, flap_state, quiet=use_cli)
 
         if use_cli:
             run_get_ops(ops_get, "eval", args.get_interval, cycle_idx=0)

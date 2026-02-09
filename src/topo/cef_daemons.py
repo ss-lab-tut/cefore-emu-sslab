@@ -299,7 +299,7 @@ def run_cefsubfile(
 
     command = " ".join(cmd_parts)
     print(node_name, "command:", command)
-    net.get(node_name).cmd(command)
+    net.hosts[host_idx].cmd(command)
 
 
 def run_cefpubfile(
@@ -370,4 +370,4 @@ def run_cefpubfile(
 
     command = " ".join(cmd_parts)
     print(node_name, "command:", command)
-    net.get(node_name).cmd(command)
+    net.hosts[host_idx].cmd(command)
