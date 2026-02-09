@@ -1,0 +1,22 @@
+#!/bin/bash
+
+# アプリケーション名（起動するアプリケーション）
+APP_COMMAND="osu"
+
+# リンク先の出力ノード名（物理デバイスまたは仮想デバイス）
+TARGET_NODE="my-sink"
+
+# アプリケーションのオーディオノードを待機して取得
+#echo "Waiting for application audio node to appear..."
+
+# ノード情報を検索
+NODE_ID=$(pw-cli list-objects |grep "node.name" | grep "$APP_COMMAND" | grep "ALSA" | awk '!seen[$3, $4, $5]++ {print $3, $4, $5}' | sed 's/"//g')
+
+# pw-link でリンクを作成
+echo "Linking node $NODE_ID to $TARGET_NODE..."
+pw-link "$NODE_ID" "$TARGET_NODE"
+
+#pw-link 'ALSA plug-in [osu!]' 'my-sink'
+
+#debug output
+echo pw-link "$NODE_ID" "$TARGET_NODE" 

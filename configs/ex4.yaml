@@ -39,6 +39,23 @@ gets:
     uri: "ccnx:/emergency/test"
   - host: 16
     uri: "ccnx:/emergency/test"
+  - host: 3
+    uri: "ccnx:/emergency/test"
+  - host: 17
+    uri: "ccnx:/test/data1"
+  - host: 13
+    uri: "ccnx:/test/data1"
+  - host: 19
+    uri: "ccnx:/test/data2"
+  - host: 8
+    uri: "ccnx:/test/data1"
+  - host: 0
+    uri: "ccnx:/emergency/test2"
+  - host: 7
+    uri: "ccnx:/emergency/test2"
+  - host: 14
+    uri: "ccnx:/emergency/test2"
+
 
 auto:
   uri: "ccnx:/emergency/test"
@@ -48,7 +65,7 @@ auto:
 num: 1
 output_dir: "logs"
 timestamp: true
-no_cli: false
+no_cli: true
   # duration: 360
   # results_json: "logs/json"
   # warmup_get_interval: 5
