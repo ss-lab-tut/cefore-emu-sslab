@@ -469,6 +469,43 @@ def _resolve_results_path(args, run_dir: Path):
     return _artifact_path(run_dir, raw, "results.json")
 
 
+def _default_transfer_log_name(
+    kind: str,
+    seed_label: str,
+    phase: str,
+    cycle_idx: int,
+    idx: int,
+    host_idx: int,
+    down_hosts=None,
+) -> str:
+    """Build default operation log file names.
+
+    Args:
+        kind: "get", "sub", "put", or "pub".
+        seed_label: Seed label string.
+        phase: Operation phase label.
+        cycle_idx: Evaluation cycle index.
+        idx: Operation index in the phase.
+        host_idx: Host index executing the operation.
+        down_hosts: Optional iterable of down hosts.
+    """
+    if kind in ("get", "sub"):
+        down_label = "none" if not down_hosts else ",".join(
+            str(h) for h in sorted(down_hosts)
+        )
+        tool = "cefgetfile" if kind == "get" else "cefsubfile"
+        return (
+            f"{tool}_seed{seed_label}_downhosts{down_label}_"
+            f"phase{phase}_cycle{cycle_idx}_idx{idx}_h{host_idx}.log"
+        )
+    if kind == "pub":
+        return (
+            f"cefpubfile_seed{seed_label}_downhostsnone_"
+            f"phase{phase}_cycle{cycle_idx}_idx{idx}_h{host_idx}.log"
+        )
+    return f"cefputfile_h{host_idx}.log"
+
+
 def run_disaster_topology(args, run_dir: Path = None, log_context=None):
     """Run disaster topology simulation.
 
@@ -554,15 +591,18 @@ def run_disaster_topology(args, run_dir: Path = None, log_context=None):
                     f"{phase}_cefgetfile_h{consumer}_idx{idx}.log",
                 )
             else:
-                down_label = "none" if not down_hosts else ",".join(
-                    str(h) for h in sorted(down_hosts)
-                )
+                log_kind = "sub" if op.get("mode") == "pubsub" else "get"
                 log_path = _artifact_path(
                     run_dir,
                     None,
-                    (
-                        f"cefgetfile_seed{seed_label}_downhosts{down_label}_"
-                        f"phase{phase}_cycle{cycle_idx}_idx{idx}_h{consumer}.log"
+                    _default_transfer_log_name(
+                        log_kind,
+                        seed_label,
+                        phase,
+                        cycle_idx,
+                        idx,
+                        consumer,
+                        down_hosts=down_hosts,
                     ),
                 )
 
@@ -705,14 +745,22 @@ def run_disaster_topology(args, run_dir: Path = None, log_context=None):
         run_cefstatus_all(net, args.hosts)
         print_mesh_links(topo.mesh_links)
 
-        for op in ops_put:
+        for put_idx, op in enumerate(ops_put):
             host = int(op["host"])
             uri = op["uri"]
             infile = op.get("file", "./sample-putfile")
+            default_log = _default_transfer_log_name(
+                "pub" if op.get("mode") == "pubsub" else "put",
+                seed_label,
+                "publish",
+                0,
+                put_idx,
+                host,
+            )
             log_path = _artifact_path(
                 run_dir,
                 op.get("log"),
-                f"cefputfile_h{host}.log",
+                default_log,
             )
             if op.get("mode") == "pubsub":
                 pub_opts = op.get("pub_opts", {}) or {}
