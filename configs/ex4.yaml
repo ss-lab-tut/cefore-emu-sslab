@@ -45,9 +45,10 @@ auto:
   consumers: "random:5"
   content_count: 5
 
+num: 1
 output_dir: "logs"
 timestamp: true
-no_cli: true
+no_cli: false
   # duration: 360
   # results_json: "logs/json"
   # warmup_get_interval: 5

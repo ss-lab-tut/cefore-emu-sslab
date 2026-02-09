@@ -1,0 +1,168 @@
+body, html {
+  margin: 0;
+  padding: 0;
+  max-width: flex;
+  background-color: #222;
+}
+#Overall {
+  max-width: flex;
+  margin: 0 auto;
+  background-color: #222
+}
+#BannerHeader {
+  height: 200px;
+  width: 100%;
+}
+
+#ContentContainer {
+  display: flex;
+  width: 100%;
+  flex-direction: row;
+  gap: 2rem;
+  align-items: flex-start;
+  margin: auto;
+}
+
+#BannerHeader {
+  background-color: #121820;
+  border-radius: 2px;
+  color: #eee;
+}
+#BannerHeader h1 {
+  font-size: 2.1rem;
+  text-align: center;
+  position: relative;
+  top: calc(50% - 1em);
+}
+#BannerHeader h2 {
+  font-size: 1.2rem;
+  text-align: center;
+  position: relative;
+  top: 1.25em;
+}
+
+#NavigationColumn ul {
+  list-style: none;
+  list-style-type: none;
+  list-style-position: outside;
+  margin: 0;
+  padding: 0;
+  text-align: center;
+}
+#NavigationColumn li {
+  background-color: #393b63;
+  border: 2px solid #232538;
+  color: #eee;
+  border-radius: 6px;
+  margin: 3px 1px;
+  padding: 2px;
+  overflow: hidden;
+}
+#NavigationColumn a {
+  display: block;
+  padding: 0.75rem 1rem;
+  background-color: #2a2a2a;
+  color: #8dc2ff;
+  text-decoration: none;
+  transition: background-color 0.2s ease;
+}
+#NavigationColumn a:hover {
+  background-color: #3e5c8b;
+  color: #ffffff;
+}
+/*
+#MainContainer {
+  display: flex;
+  flex-direction: row;
+  gap: 2rem;
+  align-items: flex-start;
+  max-width: 1200px;
+  margin: auto;
+}
+*/
+#MainArticle {
+  color: #eee;
+  padding: 8px;
+  flex: 1;
+  min-width: 0; 
+  /* 長いコンテンツをはみ出させないために重要 */
+}
+#MainArticle h1, #MainArticle h2, #MainArticle h3, #MainArticle h4, #MainArticle h5, #MainArticle h6 {
+  color: #eee;
+}
+#PBSimply {
+  padding: 8px;
+  text-align: right;
+  border-top: 2px solid #6b84df;
+}
+#SideBar {
+  width: 240px;
+  background-color: #1e1e1e;
+  color: #eee;
+  padding: 1rem;
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+
+#SideBar a {
+  color: #a8c4ff;
+  text-decoration: none;
+}
+
+#SideBar a:hover {
+  text-decoration: underline;
+}
+
+.menu-toggle {
+  display: none;
+  background-color: #444;
+  color: #fff;
+  border: none;
+  padding: 0.75rem 1.25rem;
+  font-size: 1rem;
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+}
+@media screen and (min-width: 800px) {
+  #ContentContainer {
+    flex-direction: row;
+  }
+  #MainArticle {
+    order: 1;
+    width: 100%;
+  }
+  #SideBar {
+    order: 2;
+}
+@media screen and (max-width: 799px) {
+  #ContentContainer { 
+    flex-direction: row; 
+  }
+  #MainArticle {
+    order: 1;
+    width: 100%;
+  }
+  #SideBar {
+    order: 2;
+    display: none; /* 初期は非表示 */
+  }
+  #SideBar.open {
+    display: block;
+  }
+  .menu-toggle {
+    display: block;
+  }
+}
+
+  /* light mode scheme */
+
+@media (prefers-color-scheme: light) {
+  body {
+    background-color: #f0f0f0;
+  }
+
+  p {
+    color: #1d1d1d;
+  }
+}

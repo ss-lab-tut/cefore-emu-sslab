@@ -1,0 +1,22 @@
+[cefputfile] Start
+[cefputfile] Parsing parameters ... OK
+2026-02-09 13:06:14.888 [cefputfile] INFO: [client] Config directory is ./h0
+2026-02-09 13:06:14.888 [cefputfile] INFO: [client] Local Socket Name is /tmp/cef_9695.0
+2026-02-09 13:06:14.888 [cefputfile] INFO: [client] Listen Port is 9695
+[cefputfile] Init Cefore Client package ... OK
+[cefputfile] Conversion from URI into Name ... OK
+[cefputfile] Checking the input file ... OK
+[cefputfile] Connect to cefnetd ... OK
+[cefputfile] URI         = ccnx:/test/data2
+[cefputfile] File        = ./link-audio.sh
+[cefputfile] Rate        = 5.000 Mbps
+[cefputfile] Block Size  = 1024 Bytes
+[cefputfile] Cache Time  = 3000 sec
+[cefputfile] Expiration  = 3000 sec
+[cefputfile] Start creating Content Objects
+[cefputfile] Unconnect to cefnetd ... OK
+[cefputfile] Terminate
+[cefputfile] Tx Frames  = 1
+[cefputfile] Tx Bytes   = 732
+[cefputfile] Duration   = 0.004 sec
+[cefputfile] Throughput = 1815251 bps

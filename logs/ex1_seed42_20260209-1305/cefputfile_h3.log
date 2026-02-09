@@ -1,0 +1,22 @@
+[cefputfile] Start
+[cefputfile] Parsing parameters ... OK
+2026-02-09 13:06:11.683 [cefputfile] INFO: [client] Config directory is ./h3
+2026-02-09 13:06:11.683 [cefputfile] INFO: [client] Local Socket Name is /tmp/cef_9695.3
+2026-02-09 13:06:11.683 [cefputfile] INFO: [client] Listen Port is 9695
+[cefputfile] Init Cefore Client package ... OK
+[cefputfile] Conversion from URI into Name ... OK
+[cefputfile] Checking the input file ... OK
+[cefputfile] Connect to cefnetd ... OK
+[cefputfile] URI         = ccnx:/emergency/test2
+[cefputfile] File        = ./SN7100andSN770.jpg
+[cefputfile] Rate        = 4.000 Mbps
+[cefputfile] Block Size  = 1024 Bytes
+[cefputfile] Cache Time  = 3000 sec
+[cefputfile] Expiration  = 5000 sec
+[cefputfile] Start creating Content Objects
+[cefputfile] Unconnect to cefnetd ... OK
+[cefputfile] Terminate
+[cefputfile] Tx Frames  = 581
+[cefputfile] Tx Bytes   = 594774
+[cefputfile] Duration   = 1.199 sec
+[cefputfile] Throughput = 3973053 bps
