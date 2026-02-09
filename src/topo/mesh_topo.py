@@ -278,7 +278,8 @@ def run_mesh_topology(
         )
 
     rng = random.Random(seed)
-    ensure_node_dirs(host_num, rng)
+    publisher_ids = {host_num - 1}
+    ensure_node_dirs(host_num, rng, publisher_ids)
 
     topo = MeshTopo(
         hosts=host_num,

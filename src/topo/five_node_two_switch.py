@@ -130,15 +130,23 @@ def stop_cefnetd(net, idx):
 
 
 def cleanup_node_dirs():
+    template_root = TEMPLATE_ROOT.resolve()
     for name in os.listdir("."):
         if not name.startswith("h"):
             continue
         suffix = name[1:]
         if not suffix.isdigit():
             continue
-        idx = int(suffix)
-        if idx >= 3 and os.path.isdir(name):
-            shutil.rmtree(name)
+        path = Path(name)
+        if not path.is_dir():
+            continue
+        try:
+            resolved = path.resolve()
+        except FileNotFoundError:
+            continue
+        if resolved == template_root or template_root in resolved.parents:
+            continue
+        shutil.rmtree(path)
 
 
 def run_line_topology(host_num, no_cli=False):

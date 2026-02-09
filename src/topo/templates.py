@@ -20,16 +20,10 @@ def select_template(idx, host_num, rng, publishers=None):
         publishers: Set of host IDs designated as publishers.
 
     Returns:
-        Path to template directory (h0, h1, or h2).
+        Path to template directory (h0 or h2).
     """
     # パブリッシャーとして指定されている場合は h2 テンプレートを使用
     if publishers and idx in publishers:
-        return TEMPLATE_ROOT / "h2"
-    if idx < 3:
-        return TEMPLATE_ROOT / f"h{idx}"
-    if idx % 2 == 1:
-        return TEMPLATE_ROOT / "h1"
-    if idx == host_num - 1:
         return TEMPLATE_ROOT / "h2"
     return rng.choice([TEMPLATE_ROOT / "h0", TEMPLATE_ROOT / "h2"])
 
@@ -55,16 +49,24 @@ def ensure_node_dirs(host_num, rng, publishers=None):
 
 
 def cleanup_node_dirs():
-    """Remove dynamically created node directories (h3 and above)."""
+    """Remove dynamically created node directories (hN)."""
+    template_root = TEMPLATE_ROOT.resolve()
     for name in os.listdir("."):
         if not name.startswith("h"):
             continue
         suffix = name[1:]
         if not suffix.isdigit():
             continue
-        idx = int(suffix)
-        if idx >= 3 and os.path.isdir(name):
-            shutil.rmtree(name)
+        path = Path(name)
+        if not path.is_dir():
+            continue
+        try:
+            resolved = path.resolve()
+        except FileNotFoundError:
+            continue
+        if resolved == template_root or template_root in resolved.parents:
+            continue
+        shutil.rmtree(path)
 
 
 def _set_config_value(path: Path, key: str, value: str) -> None:
@@ -97,15 +99,20 @@ def apply_cache_node_settings(
 ) -> None:
     """Apply cache-related runtime overrides to generated host configs.
 
-    - Cache nodes only: force ``CS_MODE=2`` (external CS via csmgrd).
-    - Non-cache nodes: keep template-selected CS_MODE untouched.
+    - Cache nodes only: replace with ``h1`` template (external CS via csmgrd).
     - Optional RCT override applies only to cache nodes.
     """
+    template = TEMPLATE_ROOT / "h1"
+    if not template.exists():
+        sys.exit(f"missing template directory: {template}")
     for idx in sorted(cache_nodes):
         if idx < 0 or idx >= host_num:
             continue
         node_dir = Path(f"h{idx}")
-        _set_config_value(node_dir / "cefnetd.conf", "CS_MODE", "2")
+        if node_dir.exists():
+            shutil.rmtree(node_dir)
+        shutil.copytree(template, node_dir)
+        update_local_sock_id(str(node_dir), idx)
         if cache_default_rct_ms is not None:
             _set_config_value(
                 node_dir / "csmgrd.conf",

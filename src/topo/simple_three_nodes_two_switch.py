@@ -46,6 +46,26 @@ def ensure_node_dirs(hostNum):
             shutil.copytree(template, node_dir)
 
 
+def cleanup_node_dirs():
+    template_root = TEMPLATE_ROOT.resolve()
+    for name in os.listdir("."):
+        if not name.startswith("h"):
+            continue
+        suffix = name[1:]
+        if not suffix.isdigit():
+            continue
+        path = Path(name)
+        if not path.is_dir():
+            continue
+        try:
+            resolved = path.resolve()
+        except FileNotFoundError:
+            continue
+        if resolved == template_root or template_root in resolved.parents:
+            continue
+        shutil.rmtree(path)
+
+
 def setIpAddr(net, hostNum):
     # Set the ip addr of each host
     for id in irange(0, (hostNum - 1)):
@@ -166,6 +186,7 @@ def runSimpleLink():
     stopCsmgrd(net)
     net.stop()
     mn_cleanup()
+    cleanup_node_dirs()
 
 
 class simpleLinkTopo(Topo):
