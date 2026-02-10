@@ -1,0 +1,20 @@
+[cefpubfile] ERROR: [-z] has the invalid parameter.
+
+Usage: cefpubfile
+  cefpubfile uri -f path [-r rate] [-b block_size] [-e expiry] [-t cache_time] [-l lifetime] [-m retry_limit] [-z target] [-v_TI valid_algo] [-v_RD valid_algo] [-d config_file_dir] [-p port_num] 
+
+  uri                  Specify the URI.
+  -f path              Specify the file path of output. 
+  -r rate              Transfer rate to cefnetd (Mbps)
+  -b block_size        Specifies the max payload length (bytes) of the Content Object.
+  -e expiry            Specifies the lifetime (seconds) of the Content Object.
+  -t cache_time        Specifies the period (seconds) after which Content Objects are cached before they are deleted.
+  -l lifetime          Specify the Lifetime of Trigger Interest
+  -m retry_limit       Specify the retry limit of Trigger Interest
+  -z target            Use Long Life Interest for Trigger Interest or/and Reflexive Interest ( trg | ref | both )
+  -v_TI valid_algo     Specify the validation algorithm for Trigger Interest (crc32c | rsa-sha256)
+  -v_RD valid_algo     Specify the validation algorithm for Reflexive Data (crc32c | rsa-sha256)
+  -d config_file_dir   Configure file directory
+  -p port_num          Port Number
+
+[cefpubfile] Start

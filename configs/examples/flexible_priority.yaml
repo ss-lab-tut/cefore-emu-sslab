@@ -6,11 +6,11 @@
 # -----------------------------------------------------------------------------
 # Topology Basic Settings
 # -----------------------------------------------------------------------------
-hosts: 10                   # Number of hosts (min 3)
-switches: 15                # Maximum number of switches to create (0 = unlimited)
+hosts: 20                   # Number of hosts (min 3)
+switches: 100                # Maximum number of switches to create (0 = unlimited)
 node_per_switch: 2          # Max hosts per switch (0=unlimited, 2=one switch per link)
-host_degree_min: 1          # Minimum number of switches per host (>=1)
-host_degree_max: 2          # Maximum number of switches per host
+host_degree_min: 2          # Minimum number of switches per host (>=1)
+host_degree_max: 9          # Maximum number of switches per host
 switch_use_all: false       # Create switches up to --switches and distribute extra links evenly
 seed: 42                    # Random seed for deterministic topology generation (null = random)
 k: 2                        # k shortest paths for multipath routing
@@ -123,7 +123,7 @@ failure_scenarios:
 # Cache Configuration
 # -----------------------------------------------------------------------------
 cache_count: 5               # Number of cache nodes (0 = down-count + 1)
-cache_default_rct_ms: null   # Override CACHE_DEFAULT_RCT(ms) for cache nodes (null = use default)
+cache_default_rct_ms: 5000   # Override CACHE_DEFAULT_RCT(ms) for cache nodes (cache_default_rct_ms must be an integer >= 1000)
 
 # -----------------------------------------------------------------------------
 # Warmup Configuration

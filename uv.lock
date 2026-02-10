@@ -32,6 +32,7 @@ name = "cefore-emu"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
+    { name = "config" },
     { name = "iranges" },
     { name = "matplotlib" },
     { name = "mininet" },
@@ -44,6 +45,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
+    { name = "config", specifier = ">=0.5.1" },
     { name = "iranges", specifier = ">=0.7.1" },
     { name = "matplotlib", specifier = ">=3.10.8" },
     { name = "mininet", specifier = ">=2.3.0.dev6" },
@@ -66,6 +68,15 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/86/fd/67563cf7bd8b2e9a432d57029081f6ad96a6b73ca61aa2b50c9553d7abdf/compressed_lists-0.4.4.tar.gz", hash = "sha256:f4e55978d9b7247ccfc6c98ef37cee757083325a9a6cdc5c8e98e0e23481fe06", size = 37877, upload-time = "2026-01-04T04:47:59.421Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/f3/ca/69ba3f7d44498ed702c65fcebf246d91dfcc89990dd894f054be2261ac40/compressed_lists-0.4.4-py3-none-any.whl", hash = "sha256:91f63a19ced64b954c7023b28e29f1c7577e04d3b71247af2ae2e7b578ca043e", size = 20176, upload-time = "2026-01-04T04:47:58.203Z" },
+]
+
+[[package]]
+name = "config"
+version = "0.5.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/b3/a9/c44e131d60a97a7615e5d6b4f998e373df51a8e385d89fb37232d7b7e5ec/config-0.5.1.zip", hash = "sha256:2dd4a03aa383d30711d5a3325a1858de225328d61950a85be5b74c100f63016d", size = 90284, upload-time = "2021-09-11T08:10:17.462Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/59/3c/0dba475f1833b475e292d7c6b19464a206a18498979c2d5bfb37ca5ed27c/config-0.5.1-py2.py3-none-any.whl", hash = "sha256:79ffa009ff2663cc8ca29e56bcec031c044609d4bafaa4f884132a413101ce84", size = 20316, upload-time = "2021-09-11T08:10:15.149Z" },
 ]
 
 [[package]]

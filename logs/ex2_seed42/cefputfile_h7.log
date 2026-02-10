@@ -1,0 +1,10 @@
+[cefputfile] ERROR: cefnetd is not running.
+[cefputfile] Start
+[cefputfile] Parsing parameters ... OK
+2026-02-10 11:49:41.301 [cefputfile] INFO: [client] Config directory is ./h7
+2026-02-10 11:49:41.301 [cefputfile] INFO: [client] Local Socket Name is /tmp/cef_9896.7
+2026-02-10 11:49:41.301 [cefputfile] INFO: [client] Listen Port is 9896
+[cefputfile] Init Cefore Client package ... OK
+[cefputfile] Conversion from URI into Name ... OK
+[cefputfile] Checking the input file ... OK
+2026-02-10 11:49:41.309 [cefputfile] ERROR: cef_client_connect (connect:No such file or directory)
