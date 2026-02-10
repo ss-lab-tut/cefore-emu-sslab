@@ -36,7 +36,7 @@ priority_uris:
     td_valid_algo: "crc32c"  # Transfer Data validation algorithm
     target: "both"           # Target for Long Life Interest (trg | ref | both)
     pipeline: 32             # Pipeline count for pubsub subscriber
-    port_num: 9896           # Port number
+    port_num: 9695           # Port number
 
   medium:
     patterns: ["ccnx:/video/*", "ccnx:/data/*"]
@@ -47,7 +47,7 @@ priority_uris:
     block_size: 1024         # 1KB blocks
     valid_algo: "crc32c"     # Validation algorithm for putget
     pipeline: 16             # Pipeline count for getfile
-    port_num: 9896
+    port_num: 9695
 
   low:
     patterns: ["ccnx:/test/*"]
@@ -58,7 +58,7 @@ priority_uris:
     block_size: 512          # 512B blocks
     valid_algo: "crc32c"
     pipeline: 4
-    port_num: 9896
+    port_num: 9695
 
 # -----------------------------------------------------------------------------
 # Auto-generation with Priority-based Configuration
@@ -149,11 +149,11 @@ get_interval: 10             # Seconds between cefgetfile runs in eval phase
 # -----------------------------------------------------------------------------
 # Output Configuration
 # -----------------------------------------------------------------------------
-num: 2                       # Experiment number (enables log directory output)
+num: 5                       # Experiment number (enables log directory output)
 output_dir: "logs"           # Base output directory
 timestamp: false             # Add timestamp to output directory name
 legacy_layout: false         # Use legacy layout (output to current directory) - DEPRECATED
-no_cli: true                 # Skip interactive CLI (flap output visible on stdout)
+no_cli: false                # Skip interactive CLI (flap output visible on stdout)
 duration: 90                 # Eval phase duration in seconds for --no-cli (0: single cycle)
 results_json: null           # Write warmup/eval get results to JSON (null = no JSON output)
 topo_png: null               # Write topology PNG to this path (null = auto-generate)

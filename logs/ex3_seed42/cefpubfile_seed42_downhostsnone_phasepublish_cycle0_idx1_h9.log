@@ -1,0 +1,14 @@
+[cefpubfile] ERROR: cefnetd is not running.
+[cefpubfile] Start
+[cefpubfile] Parsing parameters ... OK
+[cefpubfile] URI         = ccnx:/emergency/alert/content2
+[cefpubfile] File        = ./sample-putfile
+[cefpubfile] Rate        = 100.000 Mbps
+[cefpubfile] Block Size  = 2048 Bytes
+[cefpubfile] Cache Time  = 10000 sec
+[cefpubfile] Expiration  = 10000 sec
+2026-02-10 13:13:20.989 [cefpubfile] INFO: [client] Config directory is ./h9
+2026-02-10 13:13:20.989 [cefpubfile] INFO: [client] Local Socket Name is /tmp/cef_9695.9
+2026-02-10 13:13:20.989 [cefpubfile] INFO: [client] Listen Port is 9695
+[cefpubfile] Init Cefore Client package ... OK
+2026-02-10 13:13:20.989 [cefpubfile] ERROR: cef_client_connect (connect:No such file or directory)
