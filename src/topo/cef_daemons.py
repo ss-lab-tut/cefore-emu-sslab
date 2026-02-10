@@ -277,6 +277,9 @@ def run_cefsubfile(
         td_valid_algo: Validation algorithm for Trigger Data (crc32c or rsa-sha256).
         port_num: Port number.
         log_name: Name of the log file.
+
+    Returns:
+        Popen: Process object (caller must wait).
     """
     node_name = f"h{host_idx}"
     cmd_parts = [f"cefsubfile {uri}"]
@@ -306,7 +309,10 @@ def run_cefsubfile(
 
     command = " ".join(cmd_parts)
     print(node_name, "command:", command)
-    net.hosts[host_idx].cmd(command)
+
+    # Changed from cmd() to popen() to allow background execution
+    proc = net.hosts[host_idx].popen(command, shell=True)
+    return proc
 
 
 def run_cefpubfile(

@@ -620,7 +620,22 @@ def run_disaster_topology(args, run_dir: Path = None, log_context=None):
     flap_state = FlapState()
     seed_label = "none" if args.seed is None else str(args.seed)
 
-    def run_get_ops(ops, phase, per_get_interval, cycle_idx=0):
+    def run_get_ops(ops, phase, per_get_interval, cycle_idx=0, return_procs=False):
+        """Run get operations.
+
+        Args:
+            ops: List of get operation dictionaries.
+            phase: Phase name (e.g., "warmup", "eval").
+            per_get_interval: Interval between get operations.
+            cycle_idx: Cycle index for logging.
+            return_procs: If True, return list of (proc, op, metadata) tuples
+                         for pubsub operations instead of waiting.
+
+        Returns:
+            List of process tuples if return_procs=True, None otherwise.
+        """
+        pubsub_procs = [] if return_procs else None
+
         for idx, op in enumerate(ops):
             consumer = int(op["host"])
             uri = op["uri"]
@@ -657,7 +672,7 @@ def run_disaster_topology(args, run_dir: Path = None, log_context=None):
 
             if mode == "pubsub":
                 sub_opts = op.get("sub_opts", {}) or {}
-                run_cefsubfile(
+                proc = run_cefsubfile(
                     net,
                     consumer,
                     uri,
@@ -668,7 +683,40 @@ def run_disaster_topology(args, run_dir: Path = None, log_context=None):
                     port_num=sub_opts.get("port_num"),
                     log_name=str(log_path),
                 )
-                exit_code = 0
+
+                if return_procs:
+                    # Store process for later wait
+                    pubsub_procs.append((proc, op, log_path, outfile_path, idx, consumer, uri, down_hosts))
+                    info(f"Started subscriber h{consumer} for {uri}\n")
+                else:
+                    # Wait immediately (warmup compatibility)
+                    exit_code = proc.wait()
+                    verdict = _detect_get_success(log_path, outfile_path, exit_code)
+                    publisher_host = op.get("publisher_host")
+                    if publisher_host is None:
+                        publisher_host = getattr(args, "publisher_host", None)
+                    if publisher_host is None:
+                        publisher_host = uri_publishers.get(uri)
+                    publisher_down = (
+                        publisher_host in down_hosts if publisher_host is not None else False
+                    )
+                    results.append(
+                        {
+                            "ts": _timestamp_utc(),
+                            "phase": phase,
+                            "host": consumer,
+                            "uri": uri,
+                            "out_file": str(outfile_path),
+                            "log_file": str(log_path),
+                            "exit_code": exit_code,
+                            "down_hosts": down_hosts,
+                            "publisher_host": publisher_host,
+                            "publisher_down": publisher_down,
+                            "success": verdict["success"],
+                            "has_completed_log": verdict["has_completed_log"],
+                            "has_output_file": verdict["has_output_file"],
+                        }
+                    )
             else:
                 exit_code = run_cefgetfile(
                     net,
@@ -684,6 +732,67 @@ def run_disaster_topology(args, run_dir: Path = None, log_context=None):
                     log_name=str(log_path),
                 )
 
+                verdict = _detect_get_success(log_path, outfile_path, exit_code)
+                publisher_host = op.get("publisher_host")
+                if publisher_host is None:
+                    publisher_host = getattr(args, "publisher_host", None)
+                if publisher_host is None:
+                    publisher_host = uri_publishers.get(uri)
+                publisher_down = (
+                    publisher_host in down_hosts if publisher_host is not None else False
+                )
+                results.append(
+                    {
+                        "ts": _timestamp_utc(),
+                        "phase": phase,
+                        "host": consumer,
+                        "uri": uri,
+                        "out_file": str(outfile_path),
+                        "log_file": str(log_path),
+                        "exit_code": exit_code,
+                        "down_hosts": down_hosts,
+                        "publisher_host": publisher_host,
+                        "publisher_down": publisher_down,
+                        "success": verdict["success"],
+                        "has_completed_log": verdict["has_completed_log"],
+                        "has_output_file": verdict["has_output_file"],
+                    }
+                )
+
+            if idx < len(ops) - 1 and per_get_interval > 0:
+                time.sleep(per_get_interval)
+
+        if return_procs:
+            return pubsub_procs
+
+    def wait_pubsub_procs(pubsub_procs, timeout_per_proc=60):
+        """Wait for pubsub subscriber processes to complete.
+
+        Args:
+            pubsub_procs: List of (proc, op, log_path, outfile_path,
+                          idx, consumer, uri, down_hosts) tuples.
+            timeout_per_proc: Timeout in seconds per process.
+        """
+        info(f"\n=== Waiting for {len(pubsub_procs)} pubsub subscribers ===\n")
+
+        for proc, op, log_path, outfile_path, idx, consumer, uri, down_hosts in pubsub_procs:
+            try:
+                exit_code = proc.wait(timeout=timeout_per_proc)
+            except Exception as e:
+                info(f"WARNING: Subscriber h{consumer} timeout: {e}\n")
+                proc.terminate()
+                try:
+                    exit_code = proc.wait(timeout=5)  # Wait for graceful termination
+                except Exception:
+                    info(f"WARNING: Subscriber h{consumer} force killing\n")
+                    proc.kill()
+                    try:
+                        proc.wait(timeout=5)  # Reap zombie process
+                    except Exception:
+                        pass
+                    exit_code = -1
+
+            # Collect results
             verdict = _detect_get_success(log_path, outfile_path, exit_code)
             publisher_host = op.get("publisher_host")
             if publisher_host is None:
@@ -693,10 +802,11 @@ def run_disaster_topology(args, run_dir: Path = None, log_context=None):
             publisher_down = (
                 publisher_host in down_hosts if publisher_host is not None else False
             )
+
             results.append(
                 {
                     "ts": _timestamp_utc(),
-                    "phase": phase,
+                    "phase": "eval",
                     "host": consumer,
                     "uri": uri,
                     "out_file": str(outfile_path),
@@ -711,8 +821,7 @@ def run_disaster_topology(args, run_dir: Path = None, log_context=None):
                 }
             )
 
-            if idx < len(ops) - 1 and per_get_interval > 0:
-                time.sleep(per_get_interval)
+            info(f"Subscriber h{consumer} completed (exit={exit_code})\n")
 
     try:
         net = Mininet(topo=topo, link=TCLink, waitConnected=True)
@@ -794,12 +903,69 @@ def run_disaster_topology(args, run_dir: Path = None, log_context=None):
         run_cefstatus_all(net, args.hosts)
         print_mesh_links(topo.mesh_links)
 
-        # Health check before put operations (publishers only)
+        # Health check before operations (publishers only)
         publisher_ids = set(op["host"] for op in ops_put)
         for idx in sorted(publisher_ids):
             if not wait_for_cefnetd(net, idx, timeout=5):
-                info(f"*** WARNING: h{idx} cefnetd not running before put operations\n")
+                info(f"*** WARNING: h{idx} cefnetd not running before operations\n")
 
+        # Generate and split get operations
+        ops_get = args.gets or []
+        if priority_manager:
+            ops_get = [priority_manager.apply_to_get(op) for op in ops_get]
+        if auto_config and not ops_get:
+            _, ops_get = generate_operations_with_priority(
+                auto_config, args.hosts, args.seed, run_dir, priority_manager
+            )
+        if not ops_get:
+            base_uri = ops_put[0]["uri"]
+            base_mode = ops_put[0].get("mode")
+            for idx in range(1, 6):
+                candidates = [h for h in range(args.hosts) if h != ops_put[0]["host"]]
+                consumer = rng.choice(candidates)
+                get_op = {
+                    "host": consumer,
+                    "uri": base_uri,
+                    "file": f"recvfile_at_h{consumer}",
+                }
+                if base_mode:
+                    get_op["mode"] = base_mode
+                ops_get.append(get_op)
+
+        # Split ops_get into pubsub and putget
+        ops_get_pubsub = [op for op in ops_get if op.get("mode") == "pubsub"]
+        ops_get_putget = [op for op in ops_get if op.get("mode") != "pubsub"]
+        info(f"\n=== Get operations: {len(ops_get_pubsub)} pubsub, {len(ops_get_putget)} putget ===\n")
+
+        # Filter hot_uris for warmup
+        if priority_manager:
+            hot_uris = [uri for uri in hot_uris if priority_manager.should_prefetch(uri)]
+        else:
+            # Keep all URIs if no priority manager
+            pass
+
+        # Warmup phase
+        warmup_ops = _build_warmup_ops(args, run_dir, hot_uris, cache_nodes)
+        if warmup_ops:
+            run_get_ops(
+                warmup_ops,
+                "warmup",
+                getattr(args, "warmup_get_interval", 0),
+                cycle_idx=0,
+            )
+
+        # Phase 1: Start pubsub subscribers
+        pubsub_procs = []
+        if ops_get_pubsub:
+            info(f"\n=== Phase 1: Starting {len(ops_get_pubsub)} pubsub subscribers ===\n")
+            pubsub_procs = run_get_ops(
+                ops_get_pubsub, "eval", args.get_interval,
+                cycle_idx=0, return_procs=True
+            )
+            time.sleep(2)  # Brief delay for subscribers to initialize
+
+        # Phase 2: Put phase
+        info(f"\n=== Phase 2: Running {len(ops_put)} put/pub operations ===\n")
         for put_idx, op in enumerate(ops_put):
             host = int(op["host"])
             uri = op["uri"]
@@ -855,43 +1021,16 @@ def run_disaster_topology(args, run_dir: Path = None, log_context=None):
                 )
             time.sleep(1)
 
-        ops_get = args.gets or []
-        if priority_manager:
-            ops_get = [priority_manager.apply_to_get(op) for op in ops_get]
-        if auto_config and not ops_get:
-            _, ops_get = generate_operations_with_priority(
-                auto_config, args.hosts, args.seed, run_dir, priority_manager
-            )
-        if not ops_get:
-            base_uri = ops_put[0]["uri"]
-            base_mode = ops_put[0].get("mode")
-            for idx in range(1, 6):
-                candidates = [h for h in range(args.hosts) if h != ops_put[0]["host"]]
-                consumer = rng.choice(candidates)
-                get_op = {
-                    "host": consumer,
-                    "uri": base_uri,
-                    "file": f"recvfile_at_h{consumer}",
-                }
-                if base_mode:
-                    get_op["mode"] = base_mode
-                ops_get.append(get_op)
+        # Phase 3: Run putget consumers
+        if ops_get_putget:
+            info(f"\n=== Phase 3: Running {len(ops_get_putget)} putget consumers ===\n")
+            run_get_ops(ops_get_putget, "eval", args.get_interval, cycle_idx=0)
 
-        if priority_manager:
-            hot_uris = [uri for uri in hot_uris if priority_manager.should_prefetch(uri)]
-        else:
-            # Keep all URIs if no priority manager
-            pass
+        # Phase 4: Wait for pubsub subscribers
+        if pubsub_procs:
+            wait_pubsub_procs(pubsub_procs, timeout_per_proc=60)
 
-        warmup_ops = _build_warmup_ops(args, run_dir, hot_uris, cache_nodes)
-        if warmup_ops:
-            run_get_ops(
-                warmup_ops,
-                "warmup",
-                getattr(args, "warmup_get_interval", 0),
-                cycle_idx=0,
-            )
-
+        # Failure phase startup
         use_cli = not getattr(args, "no_cli", False)
         scenario_config = getattr(args, "failure_scenarios", None)
         if scenario_config:
@@ -909,8 +1048,8 @@ def run_disaster_topology(args, run_dir: Path = None, log_context=None):
                 )
                 stop_event = failure_manager.start(net, flap_state, quiet=use_cli)
 
+        # CLI or duration mode
         if use_cli:
-            run_get_ops(ops_get, "eval", args.get_interval, cycle_idx=0)
             if log_context:
                 sys.stdout = log_context["original_stdout"]
                 sys.stderr = log_context["original_stderr"]
@@ -920,13 +1059,15 @@ def run_disaster_topology(args, run_dir: Path = None, log_context=None):
                 sys.stderr = log_context["tee_stderr"]
         else:
             duration = max(0, int(getattr(args, "duration", 0)))
-            if duration == 0:
-                run_get_ops(ops_get, "eval", args.get_interval, cycle_idx=0)
-            else:
+            if duration > 0:
+                # Warn only if pubsub operations exist
+                if ops_get_pubsub or any(op.get("mode") == "pubsub" for op in ops_put):
+                    info("WARNING: duration mode with pubsub is not yet supported\n")
                 deadline = time.time() + duration
                 cycle_idx = 0
                 while time.time() < deadline:
-                    run_get_ops(ops_get, "eval", args.get_interval, cycle_idx=cycle_idx)
+                    # Original duration mode logic for putget only
+                    run_get_ops(ops_get_putget, "eval", args.get_interval, cycle_idx=cycle_idx)
                     cycle_idx += 1
                     if time.time() >= deadline:
                         break
