@@ -21,8 +21,9 @@ from mininet.log import info, setLogLevel
 from mininet.net import Mininet
 from mininet.node import Node
 
-from config.auto_generator import generate_operations
+from config.flexible_generator import generate_operations_with_priority
 from config.loader import load_config, merge_cli_and_config, validate_config
+from config.priority_resolver import PriorityConfigManager
 
 from .cef_daemons import (
     run_cefgetfile,
@@ -42,7 +43,7 @@ from .external_bridge import BridgeManager, parse_bridge_args, setup_bridges
 from .failure_manager import FlexibleFailureManager
 from .flap_state import FlapState
 from .graph_algos import select_k_centers
-from .links import pick_publish_link, set_node_links_state
+from .links import set_node_links_state
 from .mesh_topo import MeshTopo
 from .net_config import set_fib, set_fib_for_uris, set_ip_addr
 from .paths import resolve_run_dir, resolve_run_path
@@ -561,6 +562,8 @@ def run_disaster_topology(args, run_dir: Path = None, log_context=None):
         bridge_configs = parse_bridge_args(getattr(args, "bridge", None))
 
     config_data = load_config(getattr(args, "config", ""))
+    priority_uris = config_data.get("priority_uris")
+    priority_manager = PriorityConfigManager(priority_uris) if priority_uris else None
     if "failure_scenarios" not in config_data and not getattr(
         args, "failure_scenarios", None
     ):
@@ -573,9 +576,13 @@ def run_disaster_topology(args, run_dir: Path = None, log_context=None):
 
     # ops_put から publishers を抽出（auto 設定も展開）
     ops_put = args.puts or []
+    if priority_manager:
+        ops_put = [priority_manager.apply_to_put(op) for op in ops_put]
     auto_config = getattr(args, "auto", None)
     if auto_config and not ops_put:
-        ops_put, _ = generate_operations(auto_config, args.hosts, args.seed, run_dir)
+        ops_put, _ = generate_operations_with_priority(
+            auto_config, args.hosts, args.seed, run_dir, priority_manager
+        )
 
     if not ops_put:
         publisher = args.hosts - 1
@@ -642,7 +649,10 @@ def run_disaster_topology(args, run_dir: Path = None, log_context=None):
                     ),
                 )
 
-            if op.get("mode") == "pubsub":
+            # Fallback to putget mode if mode is None
+            mode = op.get("mode") or "putget"
+
+            if mode == "pubsub":
                 sub_opts = op.get("sub_opts", {}) or {}
                 run_cefsubfile(
                     net,
@@ -798,7 +808,10 @@ def run_disaster_topology(args, run_dir: Path = None, log_context=None):
                 op.get("log"),
                 default_log,
             )
-            if op.get("mode") == "pubsub":
+            # Fallback to putget mode if mode is None
+            mode = op.get("mode") or "putget"
+
+            if mode == "pubsub":
                 pub_opts = op.get("pub_opts", {}) or {}
                 run_cefpubfile(
                     net,
@@ -834,8 +847,12 @@ def run_disaster_topology(args, run_dir: Path = None, log_context=None):
             time.sleep(1)
 
         ops_get = args.gets or []
+        if priority_manager:
+            ops_get = [priority_manager.apply_to_get(op) for op in ops_get]
         if auto_config and not ops_get:
-            _, ops_get = generate_operations(auto_config, args.hosts, args.seed, run_dir)
+            _, ops_get = generate_operations_with_priority(
+                auto_config, args.hosts, args.seed, run_dir, priority_manager
+            )
         if not ops_get:
             base_uri = ops_put[0]["uri"]
             base_mode = ops_put[0].get("mode")
@@ -850,6 +867,12 @@ def run_disaster_topology(args, run_dir: Path = None, log_context=None):
                 if base_mode:
                     get_op["mode"] = base_mode
                 ops_get.append(get_op)
+
+        if priority_manager:
+            hot_uris = [uri for uri in hot_uris if priority_manager.should_prefetch(uri)]
+        else:
+            # Keep all URIs if no priority manager
+            pass
 
         warmup_ops = _build_warmup_ops(args, run_dir, hot_uris, cache_nodes)
         if warmup_ops:

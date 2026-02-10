@@ -1,0 +1,74 @@
+# Flexible disaster topology with priority overrides
+# Tests that explicit configuration overrides priority defaults
+
+hosts: 10
+switches: 15
+seed: 42
+k: 2
+
+# Priority URI patterns
+priority_uris:
+  high:
+    patterns: ["ccnx:/emergency/*"]
+    mode: "pubsub"
+    expiry: 10000
+    cache_time: 10000
+    rate: 100
+
+  low:
+    patterns: ["ccnx:/test/*"]
+    mode: "putget"
+    expiry: 1000
+    cache_time: 1000
+    rate: 1
+
+# Auto configuration with explicit overrides
+auto:
+  - uri: "ccnx:/emergency/override"
+    publishers: [9]
+    consumers: "random:3"
+    content_count: 1
+    consumer_per_content: 2
+    # Explicit pub_opts override priority defaults
+    pub_opts:
+      expiry: 5000        # Override priority expiry (10000 -> 5000)
+      rate: 50            # Override priority rate (100 -> 50)
+      # cache_time will use priority default (10000)
+
+  - uri: "ccnx:/test/normal"
+    publishers: [8]
+    consumers: "random:3"
+    content_count: 1
+    consumer_per_content: 2
+    # No overrides, uses priority defaults: expiry=1000, cache_time=1000, rate=1
+
+# Manual puts/gets with priority application
+puts:
+  - host: 7
+    uri: "ccnx:/emergency/manual"
+    file: "./sample-putfile"
+    # Will automatically get: mode=pubsub, expiry=10000, cache_time=10000
+
+gets:
+  - host: 0
+    uri: "ccnx:/emergency/manual"
+    # Will automatically get: mode=pubsub
+
+  - host: 1
+    uri: "ccnx:/emergency/manual"
+
+# No failure scenario for this test
+failure_scenarios:
+  strategy: simple
+  simple:
+    interval: 0  # Disabled
+    duration: 0
+    count: 0
+
+cache_count: 5
+get_interval: 5
+
+num: 3
+output_dir: "logs"
+no_cli: true
+duration: 60

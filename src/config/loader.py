@@ -210,17 +210,33 @@ def validate_config(config: dict[str, Any]) -> list[str]:
 
     if "auto" in config:
         auto = config["auto"]
-        if not isinstance(auto, dict):
-            errors.append("auto must be a dict")
+        auto_entries: list[tuple[str, Any]] = []
+        if isinstance(auto, dict):
+            auto_entries.append(("auto", auto))
+        elif isinstance(auto, list):
+            for idx, auto_entry in enumerate(auto):
+                if not isinstance(auto_entry, dict):
+                    errors.append(f"auto[{idx}] must be a dict")
+                    continue
+                auto_entries.append((f"auto[{idx}]", auto_entry))
         else:
-            if "publishers" in auto:
-                if not isinstance(auto["publishers"], list):
-                    errors.append("auto.publishers must be a list of host IDs")
-            if "consumers" in auto:
-                val = auto["consumers"]
+            errors.append("auto must be a dict or list of dicts")
+
+        for entry_name, auto_entry in auto_entries:
+            if "publishers" in auto_entry:
+                val = auto_entry["publishers"]
+                if not (
+                    isinstance(val, list)
+                    or (isinstance(val, str) and val.startswith("random"))
+                ):
+                    errors.append(
+                        f"{entry_name}.publishers must be 'random:N' string or list of host IDs"
+                    )
+            if "consumers" in auto_entry:
+                val = auto_entry["consumers"]
                 if not isinstance(val, (str, list)):
                     errors.append(
-                        "auto.consumers must be 'random:N' string or list of host IDs"
+                        f"{entry_name}.consumers must be 'random:N' string or list of host IDs"
                     )
 
     if "bridges" in config:
@@ -348,6 +364,89 @@ def validate_config(config: dict[str, Any]) -> list[str]:
                                     f"failure_scenarios.cycles[{idx}].allow_publishers must be a boolean"
                                 )
 
+    if "priority_uris" in config:
+        priority_uris = config["priority_uris"]
+        if not isinstance(priority_uris, dict):
+            errors.append("priority_uris must be a dict")
+        else:
+            mode_values = ("putget", "pubsub")
+            string_fields = (
+                "valid_algo",
+                "target",
+                "ti_valid_algo",
+                "rd_valid_algo",
+                "ri_valid_algo",
+                "td_valid_algo",
+            )
+            number_fields = ("expiry", "cache_time", "rate", "lifetime")
+            integer_fields = ("block_size", "port_num", "retry_limit", "pipeline")
+
+            for level_name, level_cfg in priority_uris.items():
+                if not isinstance(level_cfg, dict):
+                    errors.append(f"priority_uris.{level_name} must be a dict")
+                    continue
+
+                patterns = level_cfg.get("patterns")
+                if isinstance(patterns, str):
+                    if not patterns.strip():
+                        errors.append(
+                            f"priority_uris.{level_name}.patterns must not be empty"
+                        )
+                elif isinstance(patterns, list):
+                    if not patterns:
+                        errors.append(
+                            f"priority_uris.{level_name}.patterns must not be empty"
+                        )
+                    elif not all(isinstance(pat, str) for pat in patterns):
+                        errors.append(
+                            f"priority_uris.{level_name}.patterns must be a list of strings or a string"
+                        )
+                    elif any(not pat.strip() for pat in patterns):
+                        errors.append(
+                            f"priority_uris.{level_name}.patterns must not contain empty strings"
+                        )
+                else:
+                    errors.append(
+                        f"priority_uris.{level_name}.patterns must be a list of strings or a string"
+                    )
+
+                if "mode" in level_cfg and level_cfg["mode"] not in mode_values:
+                    errors.append(
+                        f"priority_uris.{level_name}.mode must be 'putget' or 'pubsub'"
+                    )
+
+                if (
+                    "prefetch_to_cache" in level_cfg
+                    and not isinstance(level_cfg["prefetch_to_cache"], bool)
+                ):
+                    errors.append(
+                        f"priority_uris.{level_name}.prefetch_to_cache must be a boolean"
+                    )
+
+                for field in number_fields:
+                    if field in level_cfg and (
+                        not isinstance(level_cfg[field], (int, float))
+                        or isinstance(level_cfg[field], bool)
+                    ):
+                        errors.append(
+                            f"priority_uris.{level_name}.{field} must be a number"
+                        )
+
+                for field in integer_fields:
+                    if field in level_cfg and (
+                        not isinstance(level_cfg[field], int)
+                        or isinstance(level_cfg[field], bool)
+                    ):
+                        errors.append(
+                            f"priority_uris.{level_name}.{field} must be an integer"
+                        )
+
+                for field in string_fields:
+                    if field in level_cfg and not isinstance(level_cfg[field], str):
+                        errors.append(
+                            f"priority_uris.{level_name}.{field} must be a string"
+                        )
+
     return errors
 
 
@@ -400,6 +499,7 @@ def merge_cli_and_config(args: Any, config: dict[str, Any]) -> None:
         "cache_default_rct_ms",
         "publisher_host",
         "hot_uris",
+        "priority_uris",
         "num",
         "output_dir",
         "timestamp",
