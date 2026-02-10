@@ -508,7 +508,7 @@ def _default_transfer_log_name(
             f"cefpubfile_seed{seed_label}_downhostsnone_"
             f"phase{phase}_cycle{cycle_idx}_idx{idx}_h{host_idx}.log"
         )
-    return f"cefputfile_h{host_idx}.log"
+    return f"cefputfile_h{host_idx}_c{idx}.log"
 
 
 def normalize_config(args):
@@ -779,7 +779,7 @@ def run_disaster_topology(args, run_dir: Path = None, log_context=None):
         for idx in range(args.hosts):
             start_cefnetd(net, idx)
         for idx in range(args.hosts):
-            wait_for_cefnetd(net, idx)
+            wait_for_cefnetd(net, idx, timeout=10)
 
         # FIB programming phase: run only after daemons are ready
         uri_publishers = {}
@@ -793,6 +793,12 @@ def run_disaster_topology(args, run_dir: Path = None, log_context=None):
 
         run_cefstatus_all(net, args.hosts)
         print_mesh_links(topo.mesh_links)
+
+        # Health check before put operations (publishers only)
+        publisher_ids = set(op["host"] for op in ops_put)
+        for idx in sorted(publisher_ids):
+            if not wait_for_cefnetd(net, idx, timeout=5):
+                info(f"*** WARNING: h{idx} cefnetd not running before put operations\n")
 
         for put_idx, op in enumerate(ops_put):
             host = int(op["host"])

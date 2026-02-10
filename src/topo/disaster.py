@@ -503,7 +503,7 @@ def _default_transfer_log_name(
             f"cefpubfile_seed{seed_label}_downhostsnone_"
             f"phase{phase}_cycle{cycle_idx}_idx{idx}_h{host_idx}.log"
         )
-    return f"cefputfile_h{host_idx}.log"
+    return f"cefputfile_h{host_idx}_c{idx}.log"
 
 
 def run_disaster_topology(args, run_dir: Path = None, log_context=None):
@@ -731,7 +731,7 @@ def run_disaster_topology(args, run_dir: Path = None, log_context=None):
         for idx in range(args.hosts):
             start_cefnetd(net, idx)
         for idx in range(args.hosts):
-            wait_for_cefnetd(net, idx)
+            wait_for_cefnetd(net, idx, timeout=10)
 
         # FIB programming phase: run only after daemons are ready
         uri_publishers = {}
