@@ -34,7 +34,7 @@ priority_uris:
     rd_valid_algo: "crc32c"  # Request Data validation algorithm
     ri_valid_algo: "crc32c"  # Request Info validation algorithm
     td_valid_algo: "crc32c"  # Transfer Data validation algorithm
-    target: "all"            # Target for pubsub (all/group/single)
+    target: "both"           # Target for Long Life Interest (trg | ref | both)
     pipeline: 32             # Pipeline count for pubsub subscriber
     port_num: 9896           # Port number
 

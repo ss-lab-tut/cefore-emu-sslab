@@ -429,7 +429,10 @@ def _detect_get_success(log_path: Path, out_path: Path, exit_code: int) -> dict:
     if log_path.exists():
         log_text = log_path.read_text(encoding="utf-8", errors="replace")
     has_completed = "Completed to get all the chunks." in log_text
-    has_out = out_path.exists() and out_path.stat().st_size > 0
+    if out_path.is_dir():
+        has_out = any(out_path.iterdir())
+    else:
+        has_out = out_path.exists() and out_path.stat().st_size > 0
     success = exit_code == 0 and has_completed and has_out
     return {
         "success": success,

@@ -447,6 +447,13 @@ def validate_config(config: dict[str, Any]) -> list[str]:
                             f"priority_uris.{level_name}.{field} must be a string"
                         )
 
+                if "target" in level_cfg:
+                    if level_cfg["target"] not in ("trg", "ref", "both"):
+                        errors.append(
+                            f"priority_uris.{level_name}.target must be 'trg', 'ref', or 'both', "
+                            f"got {level_cfg['target']!r}"
+                        )
+
     return errors
 
 

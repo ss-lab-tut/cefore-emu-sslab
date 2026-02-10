@@ -2,6 +2,7 @@
 
 import shlex
 import time
+from pathlib import Path
 
 from mininet.log import info
 
@@ -281,7 +282,13 @@ def run_cefsubfile(
     cmd_parts = [f"cefsubfile {uri}"]
 
     if output_path is not None:
-        cmd_parts.append(f"-f {shlex.quote(output_path)}")
+        output_str = str(output_path)
+        if output_str == "-":
+            cmd_parts.append("-f -")
+        else:
+            out_dir = Path(output_str)
+            out_dir.mkdir(parents=True, exist_ok=True)
+            cmd_parts.append(f"-f {shlex.quote(str(out_dir))}")
     if pipeline is not None:
         cmd_parts.append(f"-s {pipeline}")
     if ri_valid_algo is not None:
@@ -354,6 +361,11 @@ def run_cefpubfile(
     if retry_limit is not None:
         cmd_parts.append(f"-m {retry_limit}")
     if target is not None:
+        _valid_targets = ("trg", "ref", "both")
+        if target not in _valid_targets:
+            raise ValueError(
+                f"cefpubfile -z accepts {_valid_targets}, got {target!r}"
+            )
         cmd_parts.append(f"-z {target}")
     if ti_valid_algo is not None:
         cmd_parts.append(f"-v_TI {ti_valid_algo}")
