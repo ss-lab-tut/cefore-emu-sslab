@@ -54,7 +54,7 @@ class MeshTopo(Topo):
         swhich_num=0,
         rng=None,
         node_per_switch=2,
-        host_degree_min=1,
+        host_degree_min=2,
         host_degree_max=2,
         switch_use_all=False,
         **_kwargs,
@@ -89,6 +89,16 @@ class MeshTopo(Topo):
         if any(d < 1 for d in degrees):
             raise ValueError("all hosts must have degree >=1")
 
+        # Check if total degree is sufficient for spanning tree
+        degree_sum = sum(degrees)
+        min_required = 2 * (hosts - 1)
+        if degree_sum < min_required:
+            raise ValueError(
+                f"Insufficient total degree for spanning tree: "
+                f"sum={degree_sum}, required={min_required}. "
+                f"Increase host_degree_min (current: {host_degree_min}) or host_degree_max (current: {host_degree_max})."
+            )
+
         # 2. 連結性を確保する spanning tree (ホスト間をスイッチ経由で接続)
         switch_hosts = {}  # switch_name -> set(host_id)
         switch_nodes = {}
@@ -119,7 +129,12 @@ class MeshTopo(Topo):
                     partner = cand
                     break
             if partner is None:
-                raise ValueError("failed to build spanning tree under degree constraints")
+                raise ValueError(
+                    f"Failed to build spanning tree under degree constraints. "
+                    f"Host h{host} (degree={degrees[host]}) cannot find a partner in connected hosts. "
+                    f"Connected hosts degrees: {[degrees[c] for c in connected]}. "
+                    f"This should not happen after degree sum check. Please report this as a bug."
+                )
             # choose switch with capacity or create new
             chosen_switch = None
             for sw, hs in switch_hosts.items():
@@ -238,7 +253,7 @@ def run_mesh_topology(
     topo_png=None,
     topo_layout="spring",
     node_per_switch=2,
-    host_degree_min=1,
+    host_degree_min=2,
     host_degree_max=2,
     switch_use_all=False,
     cache_count=0,
@@ -393,7 +408,7 @@ def main():
     parser.add_argument(
         "--host-degree-min",
         type=int,
-        default=1,
+        default=2,
         help="minimum number of switches per host (>=1)",
     )
     parser.add_argument(

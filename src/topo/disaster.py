@@ -912,7 +912,7 @@ def main():
     parser.add_argument(
         "--host-degree-min",
         type=int,
-        default=1,
+        default=2,
         help="minimum number of switches per host (>=1)",
     )
     parser.add_argument(
