@@ -124,7 +124,8 @@ def apply_cache_node_settings(
 def apply_pubsub_node_settings(host_num: int, pubsub_hosts: set[int]) -> None:
     """Apply pub/sub runtime overrides to generated host configs.
 
-    Pub/sub publishers must use CS_MODE=3 and provide a usable conpubd config.
+    Pub/sub publishers use CS_MODE=1 (local cache) since conpubd plugin
+    is not available in all environments.
     """
     for idx in sorted(pubsub_hosts):
         if idx < 0 or idx >= host_num:
@@ -132,7 +133,6 @@ def apply_pubsub_node_settings(host_num: int, pubsub_hosts: set[int]) -> None:
         node_dir = Path(f"h{idx}")
         if not node_dir.exists():
             continue
-        _set_config_value(node_dir / "cefnetd.conf", "CS_MODE", "3")
-        _set_config_value(node_dir / "conpubd.conf", "CEF_LOG_LEVEL", "2")
-        _set_config_value(node_dir / "conpubd.conf", "CACHE_TYPE", "memory")
+        # Use CS_MODE=1 (local cache) instead of CS_MODE=3 (conpubd)
+        _set_config_value(node_dir / "cefnetd.conf", "CS_MODE", "1")
         update_local_sock_id(str(node_dir), idx)

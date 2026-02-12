@@ -31,10 +31,8 @@ from .cef_daemons import (
     run_cefsubfile,
     run_cefstatus_all,
     start_cefnetd,
-    start_conpubd,
     start_csmgrd,
     stop_cefnetd,
-    stop_conpubd,
     stop_csmgrd,
     wait_for_cefnetd,
 )
@@ -525,7 +523,6 @@ def run_disaster_topology(args, run_dir: Path = None, log_context=None):
     bridge_manager = BridgeManager()
     stop_event = None
     started_csmgrd_hosts = set()
-    started_conpubd_hosts = set()
 
     bridge_configs = getattr(args, "bridges", None) or []
     if not bridge_configs:
@@ -555,7 +552,11 @@ def run_disaster_topology(args, run_dir: Path = None, log_context=None):
             }
         ]
 
-    publisher_ids = set(op["host"] for op in ops_put)
+    # Normalize host IDs to int to prevent type errors
+    for op in ops_put:
+        op["host"] = int(op["host"])
+
+    publisher_ids = {int(op["host"]) for op in ops_put}
     pubsub_publisher_ids = {
         int(op["host"]) for op in ops_put if op.get("mode") == "pubsub"
     }
@@ -828,19 +829,27 @@ def run_disaster_topology(args, run_dir: Path = None, log_context=None):
         if pubsub_publisher_ids:
             apply_pubsub_node_settings(args.hosts, pubsub_publisher_ids)
 
-        # Daemon startup phase: csmgrd -> conpubd -> cefnetd -> wait ready
+        # Daemon startup phase: csmgrd -> cefnetd -> wait ready
         for idx in sorted(cache_node_set):
             start_csmgrd(net, idx)
             started_csmgrd_hosts.add(idx)
 
-        for idx in sorted(pubsub_publisher_ids):
-            start_conpubd(net, idx)
-            started_conpubd_hosts.add(idx)
+        # NOTE: conpubd is NOT started - pubsub uses CS_MODE=1 (local cache)
 
         for idx in range(args.hosts):
             start_cefnetd(net, idx)
+
+        # Wait for cefnetd readiness - ENFORCE CHECK
+        failed_hosts = []
         for idx in range(args.hosts):
-            wait_for_cefnetd(net, idx, timeout=10)
+            if not wait_for_cefnetd(net, idx, timeout=10):
+                failed_hosts.append(idx)
+
+        if failed_hosts:
+            raise RuntimeError(
+                f"cefnetd failed to start on hosts: {failed_hosts}. "
+                f"Check daemon logs (hX-cefnetd-log) for details."
+            )
 
         # FIB programming phase: run only after daemons are ready
         uri_publishers = {}
@@ -854,6 +863,18 @@ def run_disaster_topology(args, run_dir: Path = None, log_context=None):
 
         run_cefstatus_all(net, args.hosts)
         print_mesh_links(topo.mesh_links)
+
+        # Health check before put operations (publishers only)
+        failed_publishers = []
+        for idx in sorted(publisher_ids):
+            if not wait_for_cefnetd(net, idx, timeout=5):
+                failed_publishers.append(idx)
+
+        if failed_publishers:
+            raise RuntimeError(
+                f"Publisher cefnetd not running on hosts: {failed_publishers}. "
+                f"Cannot proceed with put operations. Check hX-cefnetd-log."
+            )
 
         # Generate and split get operations
         ops_get = args.gets or []
@@ -1010,11 +1031,10 @@ def run_disaster_topology(args, run_dir: Path = None, log_context=None):
             stop_event.set()
 
         if net is not None:
-            # Teardown phase: cefnetd -> conpubd -> csmgrd
+            # Teardown phase: cefnetd -> csmgrd
             for idx in range(args.hosts):
                 stop_cefnetd(net, idx)
-            for idx in sorted(started_conpubd_hosts):
-                stop_conpubd(net, idx)
+            # NOTE: conpubd is not started, so no need to stop it
             for idx in sorted(started_csmgrd_hosts):
                 stop_csmgrd(net, idx)
             bridge_manager.cleanup()
