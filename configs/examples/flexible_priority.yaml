@@ -99,7 +99,7 @@ gets: []  # Manual get operations (empty = use auto)
 # Failure Scenario Configuration
 # -----------------------------------------------------------------------------
 failure_scenarios:
-  strategy: cyclic           # Strategy: simple, cyclic, random, manual
+  strategy: simple           # Strategy: simple, cyclic, random, manual
   simple:
     interval: 10             # Seconds between down events (0 to disable)
     duration: 15             # Seconds to keep hosts down
