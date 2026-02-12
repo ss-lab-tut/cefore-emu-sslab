@@ -8,7 +8,7 @@
 # -----------------------------------------------------------------------------
 hosts: 20                   # Number of hosts (min 3)
 switches: 100                # Maximum number of switches to create (0 = unlimited)
-node_per_switch: 2          # Max hosts per switch (0=unlimited, 2=one switch per link)
+node_per_switch: 5          # Max hosts per switch (0=unlimited, 2=one switch per link)
 host_degree_min: 2          # Minimum number of switches per host (>=1)
 host_degree_max: 9          # Maximum number of switches per host
 switch_use_all: false       # Create switches up to --switches and distribute extra links evenly
@@ -30,11 +30,11 @@ priority_uris:
     rate: 100                # Transfer rate (Mbps)
     block_size: 2048         # Max payload length (bytes)
     # Validation algorithms
-    ti_valid_algo: "crc32c"  # Title Info validation algorithm
-    rd_valid_algo: "crc32c"  # Request Data validation algorithm
-    ri_valid_algo: "crc32c"  # Request Info validation algorithm
-    td_valid_algo: "crc32c"  # Transfer Data validation algorithm
-    target: "both"           # Target for Long Life Interest (trg | ref | both)
+    #     ti_valid_algo: "crc32c"  # Title Info validation algorithm
+    #     rd_valid_algo: "crc32c"  # Request Data validation algorithm
+    #     ri_valid_algo: "crc32c"  # Request Info validation algorithm
+    #     td_valid_algo: "crc32c"  # Transfer Data validation algorithm
+    target: "ref"           # Target for Long Life Interest (trg | ref | both)
     pipeline: 32             # Pipeline count for pubsub subscriber
     port_num: 9695           # Port number
 
@@ -45,7 +45,7 @@ priority_uris:
     cache_time: 5000         # Medium cache time
     rate: 10                 # 10 Mbps rate limit
     block_size: 1024         # 1KB blocks
-    valid_algo: "crc32c"     # Validation algorithm for putget
+      #    valid_algo: "crc32c"     # Validation algorithm for putget
     pipeline: 16             # Pipeline count for getfile
     port_num: 9695
 
@@ -56,7 +56,7 @@ priority_uris:
     cache_time: 1000         # Short cache time
     rate: 1                  # 1 Mbps rate limit
     block_size: 512          # 512B blocks
-    valid_algo: "crc32c"
+      #    valid_algo: "crc32c"
     pipeline: 4
     port_num: 9695
 
@@ -99,11 +99,11 @@ gets: []  # Manual get operations (empty = use auto)
 # Failure Scenario Configuration
 # -----------------------------------------------------------------------------
 failure_scenarios:
-  strategy: simple           # Strategy: simple, cyclic, random, manual
+  strategy: cyclic           # Strategy: simple, cyclic, random, manual
   simple:
-    interval: 30             # Seconds between down events (0 to disable)
+    interval: 10             # Seconds between down events (0 to disable)
     duration: 15             # Seconds to keep hosts down
-    count: 2                 # Number of hosts to down per cycle
+    count: 5                 # Number of hosts to down per cycle
     stagger: 1               # Seconds to stagger down events within a cycle
     exclude: []              # Host IDs to exclude from flapping
 
@@ -149,7 +149,7 @@ get_interval: 10             # Seconds between cefgetfile runs in eval phase
 # -----------------------------------------------------------------------------
 # Output Configuration
 # -----------------------------------------------------------------------------
-num: 7                       # Experiment number (enables log directory output)
+num: 9                       # Experiment number (enables log directory output)
 output_dir: "logs"           # Base output directory
 timestamp: false             # Add timestamp to output directory name
 legacy_layout: false         # Use legacy layout (output to current directory) - DEPRECATED

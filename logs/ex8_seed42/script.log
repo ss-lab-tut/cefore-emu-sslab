@@ -1,0 +1,447 @@
+h1 command: ifconfig h1-eth0 192.168.1.2
+h19 command: ifconfig h19-eth0 192.168.1.20
+h1 command: ifconfig h1-eth1 192.168.2.2
+h5 command: ifconfig h5-eth0 192.168.2.6
+h13 command: ifconfig h13-eth0 192.168.3.14
+h19 command: ifconfig h19-eth1 192.168.3.20
+h1 command: ifconfig h1-eth2 192.168.4.2
+h6 command: ifconfig h6-eth0 192.168.4.7
+h16 command: ifconfig h16-eth0 192.168.5.17
+h19 command: ifconfig h19-eth2 192.168.5.20
+h5 command: ifconfig h5-eth1 192.168.6.6
+h15 command: ifconfig h15-eth0 192.168.6.16
+h10 command: ifconfig h10-eth0 192.168.7.11
+h13 command: ifconfig h13-eth1 192.168.7.14
+h1 command: ifconfig h1-eth3 192.168.8.2
+h7 command: ifconfig h7-eth0 192.168.8.8
+h2 command: ifconfig h2-eth0 192.168.9.3
+h19 command: ifconfig h19-eth3 192.168.9.20
+h5 command: ifconfig h5-eth2 192.168.10.6
+h17 command: ifconfig h17-eth0 192.168.10.18
+h0 command: ifconfig h0-eth0 192.168.11.1
+h13 command: ifconfig h13-eth2 192.168.11.14
+h6 command: ifconfig h6-eth1 192.168.12.7
+h9 command: ifconfig h9-eth0 192.168.12.10
+h4 command: ifconfig h4-eth0 192.168.13.5
+h16 command: ifconfig h16-eth1 192.168.13.17
+h8 command: ifconfig h8-eth0 192.168.14.9
+h15 command: ifconfig h15-eth1 192.168.14.16
+h10 command: ifconfig h10-eth1 192.168.15.11
+h14 command: ifconfig h14-eth0 192.168.15.15
+h1 command: ifconfig h1-eth4 192.168.16.2
+h11 command: ifconfig h11-eth0 192.168.16.12
+h12 command: ifconfig h12-eth0 192.168.17.13
+h19 command: ifconfig h19-eth4 192.168.17.20
+h5 command: ifconfig h5-eth3 192.168.18.6
+h18 command: ifconfig h18-eth0 192.168.18.19
+h3 command: ifconfig h3-eth0 192.168.19.4
+h13 command: ifconfig h13-eth3 192.168.19.14
+h0 command: ifconfig h0-eth1 192.168.20.1
+h6 command: ifconfig h6-eth2 192.168.20.7
+h6 command: ifconfig h6-eth3 192.168.21.7
+h16 command: ifconfig h16-eth2 192.168.21.17
+h1 command: ifconfig h1-eth5 192.168.22.2
+h15 command: ifconfig h15-eth2 192.168.22.16
+h4 command: ifconfig h4-eth1 192.168.23.5
+h6 command: ifconfig h6-eth4 192.168.23.7
+h9 command: ifconfig h9-eth1 192.168.24.10
+h15 command: ifconfig h15-eth3 192.168.24.16
+h3 command: ifconfig h3-eth1 192.168.25.4
+h4 command: ifconfig h4-eth2 192.168.25.5
+h16 command: ifconfig h16-eth3 192.168.26.17
+h18 command: ifconfig h18-eth1 192.168.26.19
+h7 command: ifconfig h7-eth1 192.168.27.8
+h14 command: ifconfig h14-eth1 192.168.27.15
+h1 command: ifconfig h1-eth6 192.168.28.2
+h11 command: ifconfig h11-eth1 192.168.28.12
+h4 command: ifconfig h4-eth3 192.168.29.5
+h7 command: ifconfig h7-eth2 192.168.29.8
+h2 command: ifconfig h2-eth1 192.168.30.3
+h11 command: ifconfig h11-eth2 192.168.30.12
+h8 command: ifconfig h8-eth1 192.168.31.9
+h12 command: ifconfig h12-eth1 192.168.31.13
+h5 command: ifconfig h5-eth4 192.168.32.6
+h12 command: ifconfig h12-eth2 192.168.32.13
+h9 command: ifconfig h9-eth2 192.168.33.10
+h13 command: ifconfig h13-eth4 192.168.33.14
+h5 command: ifconfig h5-eth5 192.168.34.6
+h7 command: ifconfig h7-eth3 192.168.34.8
+h8 command: ifconfig h8-eth2 192.168.35.9
+h13 command: ifconfig h13-eth5 192.168.35.14
+h8 command: ifconfig h8-eth3 192.168.36.9
+h14 command: ifconfig h14-eth2 192.168.36.15
+h5 command: ifconfig h5-eth6 192.168.37.6
+h19 command: ifconfig h19-eth5 192.168.37.20
+h1 command: ifconfig h1-eth7 192.168.38.2
+h5 command: ifconfig h5-eth7 192.168.38.6
+h13 command: ifconfig h13-eth6 192.168.39.14
+h19 command: ifconfig h19-eth6 192.168.39.20
+h7 command: ifconfig h7-eth4 192.168.40.8
+h9 command: ifconfig h9-eth3 192.168.40.10
+h13 command: ifconfig h13-eth7 192.168.41.14
+h16 command: ifconfig h16-eth4 192.168.41.17
+h9 command: ifconfig h9-eth4 192.168.42.10
+h17 command: ifconfig h17-eth1 192.168.42.18
+h1 command: ifconfig h1-eth8 192.168.43.2
+h15 command: ifconfig h15-eth4 192.168.43.16
+h10 command: ifconfig h10-eth2 192.168.44.11
+h16 command: ifconfig h16-eth5 192.168.44.17
+h2 command: ifconfig h2-eth2 192.168.45.3
+h19 command: ifconfig h19-eth7 192.168.45.20
+h0 command: ifconfig h0-eth2 192.168.46.1
+h2 command: ifconfig h2-eth3 192.168.46.3
+h7 command: ifconfig h7-eth5 192.168.47.8
+h10 command: ifconfig h10-eth3 192.168.47.11
+h15 command: ifconfig h15-eth5 192.168.48.16
+h19 command: ifconfig h19-eth8 192.168.48.20
+h2 command: ifconfig h2-eth4 192.168.49.3
+h10 command: ifconfig h10-eth4 192.168.49.11
+h10 command: ifconfig h10-eth5 192.168.50.11
+h17 command: ifconfig h17-eth2 192.168.50.18
+h15 command: ifconfig h15-eth6 192.168.51.16
+h17 command: ifconfig h17-eth3 192.168.51.18
+h2 command: ifconfig h2-eth5 192.168.52.3
+h6 command: ifconfig h6-eth5 192.168.52.7
+h6 command: ifconfig h6-eth6 192.168.53.7
+h16 command: ifconfig h16-eth6 192.168.53.17
+h0 command: ifconfig h0-eth3 192.168.54.1
+h10 command: ifconfig h10-eth6 192.168.54.11
+h0 command: ifconfig h0-eth4 192.168.55.1
+h17 command: ifconfig h17-eth4 192.168.55.18
+h17 command: ifconfig h17-eth5 192.168.56.18
+h0 command: csmgrdstart -d ./h0 > /dev/null 2>&1
+h1 command: csmgrdstart -d ./h1 > /dev/null 2>&1
+h3 command: csmgrdstart -d ./h3 > /dev/null 2>&1
+h12 command: csmgrdstart -d ./h12 > /dev/null 2>&1
+h0 command: cefnetdstart -d ./h0 > /dev/null 2>&1
+h1 command: cefnetdstart -d ./h1 > /dev/null 2>&1
+h2 command: cefnetdstart -d ./h2 > /dev/null 2>&1
+h3 command: cefnetdstart -d ./h3 > /dev/null 2>&1
+h4 command: cefnetdstart -d ./h4 > /dev/null 2>&1
+h5 command: cefnetdstart -d ./h5 > /dev/null 2>&1
+h6 command: cefnetdstart -d ./h6 > /dev/null 2>&1
+h7 command: cefnetdstart -d ./h7 > /dev/null 2>&1
+h8 command: cefnetdstart -d ./h8 > /dev/null 2>&1
+h9 command: cefnetdstart -d ./h9 > /dev/null 2>&1
+h10 command: cefnetdstart -d ./h10 > /dev/null 2>&1
+h11 command: cefnetdstart -d ./h11 > /dev/null 2>&1
+h12 command: cefnetdstart -d ./h12 > /dev/null 2>&1
+h13 command: cefnetdstart -d ./h13 > /dev/null 2>&1
+h14 command: cefnetdstart -d ./h14 > /dev/null 2>&1
+h15 command: cefnetdstart -d ./h15 > /dev/null 2>&1
+h16 command: cefnetdstart -d ./h16 > /dev/null 2>&1
+h17 command: cefnetdstart -d ./h17 > /dev/null 2>&1
+h18 command: cefnetdstart -d ./h18 > /dev/null 2>&1
+h19 command: cefnetdstart -d ./h19 > /dev/null 2>&1
+h0 command: cefroute add ccnx:/emergency/alert/content1 udp 192.168.20.7 -d ./h0
+h0 command: cefroute add ccnx:/emergency/alert/content1 udp 192.168.11.14 -d ./h0
+h1 command: cefroute add ccnx:/emergency/alert/content1 udp 192.168.4.7 -d ./h1
+h1 command: cefroute add ccnx:/emergency/alert/content1 udp 192.168.8.8 -d ./h1
+h2 command: cefroute add ccnx:/emergency/alert/content1 udp 192.168.52.7 -d ./h2
+h2 command: cefroute add ccnx:/emergency/alert/content1 udp 192.168.46.1 -d ./h2
+h3 command: cefroute add ccnx:/emergency/alert/content1 udp 192.168.19.14 -d ./h3
+h3 command: cefroute add ccnx:/emergency/alert/content1 udp 192.168.25.5 -d ./h3
+h4 command: cefroute add ccnx:/emergency/alert/content1 udp 192.168.23.7 -d ./h4
+h4 command: cefroute add ccnx:/emergency/alert/content1 udp 192.168.29.8 -d ./h4
+h5 command: cefroute add ccnx:/emergency/alert/content1 udp 192.168.34.8 -d ./h5
+h5 command: cefroute add ccnx:/emergency/alert/content1 udp 192.168.6.16 -d ./h5
+h6 command: cefroute add ccnx:/emergency/alert/content1 udp 192.168.12.10 -d ./h6
+h6 command: cefroute add ccnx:/emergency/alert/content1 udp 192.168.20.1 -d ./h6
+h7 command: cefroute add ccnx:/emergency/alert/content1 udp 192.168.40.10 -d ./h7
+h7 command: cefroute add ccnx:/emergency/alert/content1 udp 192.168.8.2 -d ./h7
+h8 command: cefroute add ccnx:/emergency/alert/content1 udp 192.168.35.14 -d ./h8
+h8 command: cefroute add ccnx:/emergency/alert/content1 udp 192.168.14.16 -d ./h8
+h10 command: cefroute add ccnx:/emergency/alert/content1 udp 192.168.47.8 -d ./h10
+h10 command: cefroute add ccnx:/emergency/alert/content1 udp 192.168.7.14 -d ./h10
+h11 command: cefroute add ccnx:/emergency/alert/content1 udp 192.168.28.2 -d ./h11
+h11 command: cefroute add ccnx:/emergency/alert/content1 udp 192.168.30.3 -d ./h11
+h12 command: cefroute add ccnx:/emergency/alert/content1 udp 192.168.32.6 -d ./h12
+h12 command: cefroute add ccnx:/emergency/alert/content1 udp 192.168.31.9 -d ./h12
+h13 command: cefroute add ccnx:/emergency/alert/content1 udp 192.168.33.10 -d ./h13
+h13 command: cefroute add ccnx:/emergency/alert/content1 udp 192.168.11.1 -d ./h13
+h14 command: cefroute add ccnx:/emergency/alert/content1 udp 192.168.27.8 -d ./h14
+h14 command: cefroute add ccnx:/emergency/alert/content1 udp 192.168.36.9 -d ./h14
+h15 command: cefroute add ccnx:/emergency/alert/content1 udp 192.168.24.10 -d ./h15
+h15 command: cefroute add ccnx:/emergency/alert/content1 udp 192.168.51.18 -d ./h15
+h16 command: cefroute add ccnx:/emergency/alert/content1 udp 192.168.53.7 -d ./h16
+h16 command: cefroute add ccnx:/emergency/alert/content1 udp 192.168.41.14 -d ./h16
+h17 command: cefroute add ccnx:/emergency/alert/content1 udp 192.168.42.10 -d ./h17
+h17 command: cefroute add ccnx:/emergency/alert/content1 udp 192.168.51.16 -d ./h17
+h18 command: cefroute add ccnx:/emergency/alert/content1 udp 192.168.18.6 -d ./h18
+h18 command: cefroute add ccnx:/emergency/alert/content1 udp 192.168.26.17 -d ./h18
+h19 command: cefroute add ccnx:/emergency/alert/content1 udp 192.168.39.14 -d ./h19
+h19 command: cefroute add ccnx:/emergency/alert/content1 udp 192.168.48.16 -d ./h19
+h0 command: cefroute add ccnx:/emergency/alert/content2 udp 192.168.20.7 -d ./h0
+h0 command: cefroute add ccnx:/emergency/alert/content2 udp 192.168.11.14 -d ./h0
+h1 command: cefroute add ccnx:/emergency/alert/content2 udp 192.168.4.7 -d ./h1
+h1 command: cefroute add ccnx:/emergency/alert/content2 udp 192.168.8.8 -d ./h1
+h2 command: cefroute add ccnx:/emergency/alert/content2 udp 192.168.52.7 -d ./h2
+h2 command: cefroute add ccnx:/emergency/alert/content2 udp 192.168.46.1 -d ./h2
+h3 command: cefroute add ccnx:/emergency/alert/content2 udp 192.168.19.14 -d ./h3
+h3 command: cefroute add ccnx:/emergency/alert/content2 udp 192.168.25.5 -d ./h3
+h4 command: cefroute add ccnx:/emergency/alert/content2 udp 192.168.23.7 -d ./h4
+h4 command: cefroute add ccnx:/emergency/alert/content2 udp 192.168.29.8 -d ./h4
+h5 command: cefroute add ccnx:/emergency/alert/content2 udp 192.168.34.8 -d ./h5
+h5 command: cefroute add ccnx:/emergency/alert/content2 udp 192.168.6.16 -d ./h5
+h6 command: cefroute add ccnx:/emergency/alert/content2 udp 192.168.12.10 -d ./h6
+h6 command: cefroute add ccnx:/emergency/alert/content2 udp 192.168.20.1 -d ./h6
+h7 command: cefroute add ccnx:/emergency/alert/content2 udp 192.168.40.10 -d ./h7
+h7 command: cefroute add ccnx:/emergency/alert/content2 udp 192.168.8.2 -d ./h7
+h8 command: cefroute add ccnx:/emergency/alert/content2 udp 192.168.35.14 -d ./h8
+h8 command: cefroute add ccnx:/emergency/alert/content2 udp 192.168.14.16 -d ./h8
+h10 command: cefroute add ccnx:/emergency/alert/content2 udp 192.168.47.8 -d ./h10
+h10 command: cefroute add ccnx:/emergency/alert/content2 udp 192.168.7.14 -d ./h10
+h11 command: cefroute add ccnx:/emergency/alert/content2 udp 192.168.28.2 -d ./h11
+h11 command: cefroute add ccnx:/emergency/alert/content2 udp 192.168.30.3 -d ./h11
+h12 command: cefroute add ccnx:/emergency/alert/content2 udp 192.168.32.6 -d ./h12
+h12 command: cefroute add ccnx:/emergency/alert/content2 udp 192.168.31.9 -d ./h12
+h13 command: cefroute add ccnx:/emergency/alert/content2 udp 192.168.33.10 -d ./h13
+h13 command: cefroute add ccnx:/emergency/alert/content2 udp 192.168.11.1 -d ./h13
+h14 command: cefroute add ccnx:/emergency/alert/content2 udp 192.168.27.8 -d ./h14
+h14 command: cefroute add ccnx:/emergency/alert/content2 udp 192.168.36.9 -d ./h14
+h15 command: cefroute add ccnx:/emergency/alert/content2 udp 192.168.24.10 -d ./h15
+h15 command: cefroute add ccnx:/emergency/alert/content2 udp 192.168.51.18 -d ./h15
+h16 command: cefroute add ccnx:/emergency/alert/content2 udp 192.168.53.7 -d ./h16
+h16 command: cefroute add ccnx:/emergency/alert/content2 udp 192.168.41.14 -d ./h16
+h17 command: cefroute add ccnx:/emergency/alert/content2 udp 192.168.42.10 -d ./h17
+h17 command: cefroute add ccnx:/emergency/alert/content2 udp 192.168.51.16 -d ./h17
+h18 command: cefroute add ccnx:/emergency/alert/content2 udp 192.168.18.6 -d ./h18
+h18 command: cefroute add ccnx:/emergency/alert/content2 udp 192.168.26.17 -d ./h18
+h19 command: cefroute add ccnx:/emergency/alert/content2 udp 192.168.39.14 -d ./h19
+h19 command: cefroute add ccnx:/emergency/alert/content2 udp 192.168.48.16 -d ./h19
+h0 command: cefroute add ccnx:/video/stream/content1 udp 192.168.11.14 -d ./h0
+h0 command: cefroute add ccnx:/video/stream/content1 udp 192.168.54.11 -d ./h0
+h1 command: cefroute add ccnx:/video/stream/content1 udp 192.168.43.16 -d ./h1
+h1 command: cefroute add ccnx:/video/stream/content1 udp 192.168.38.6 -d ./h1
+h2 command: cefroute add ccnx:/video/stream/content1 udp 192.168.46.1 -d ./h2
+h2 command: cefroute add ccnx:/video/stream/content1 udp 192.168.49.11 -d ./h2
+h3 command: cefroute add ccnx:/video/stream/content1 udp 192.168.19.14 -d ./h3
+h3 command: cefroute add ccnx:/video/stream/content1 udp 192.168.25.5 -d ./h3
+h4 command: cefroute add ccnx:/video/stream/content1 udp 192.168.25.4 -d ./h4
+h4 command: cefroute add ccnx:/video/stream/content1 udp 192.168.29.8 -d ./h4
+h5 command: cefroute add ccnx:/video/stream/content1 udp 192.168.32.13 -d ./h5
+h5 command: cefroute add ccnx:/video/stream/content1 udp 192.168.6.16 -d ./h5
+h6 command: cefroute add ccnx:/video/stream/content1 udp 192.168.20.1 -d ./h6
+h6 command: cefroute add ccnx:/video/stream/content1 udp 192.168.4.2 -d ./h6
+h7 command: cefroute add ccnx:/video/stream/content1 udp 192.168.27.15 -d ./h7
+h7 command: cefroute add ccnx:/video/stream/content1 udp 192.168.8.2 -d ./h7
+h9 command: cefroute add ccnx:/video/stream/content1 udp 192.168.33.14 -d ./h9
+h9 command: cefroute add ccnx:/video/stream/content1 udp 192.168.24.16 -d ./h9
+h10 command: cefroute add ccnx:/video/stream/content1 udp 192.168.7.14 -d ./h10
+h10 command: cefroute add ccnx:/video/stream/content1 udp 192.168.15.15 -d ./h10
+h11 command: cefroute add ccnx:/video/stream/content1 udp 192.168.28.2 -d ./h11
+h11 command: cefroute add ccnx:/video/stream/content1 udp 192.168.30.3 -d ./h11
+h12 command: cefroute add ccnx:/video/stream/content1 udp 192.168.31.9 -d ./h12
+h12 command: cefroute add ccnx:/video/stream/content1 udp 192.168.32.6 -d ./h12
+h13 command: cefroute add ccnx:/video/stream/content1 udp 192.168.35.9 -d ./h13
+h13 command: cefroute add ccnx:/video/stream/content1 udp 192.168.11.1 -d ./h13
+h14 command: cefroute add ccnx:/video/stream/content1 udp 192.168.36.9 -d ./h14
+h14 command: cefroute add ccnx:/video/stream/content1 udp 192.168.27.8 -d ./h14
+h15 command: cefroute add ccnx:/video/stream/content1 udp 192.168.14.9 -d ./h15
+h15 command: cefroute add ccnx:/video/stream/content1 udp 192.168.43.2 -d ./h15
+h16 command: cefroute add ccnx:/video/stream/content1 udp 192.168.41.14 -d ./h16
+h16 command: cefroute add ccnx:/video/stream/content1 udp 192.168.44.11 -d ./h16
+h17 command: cefroute add ccnx:/video/stream/content1 udp 192.168.51.16 -d ./h17
+h17 command: cefroute add ccnx:/video/stream/content1 udp 192.168.55.1 -d ./h17
+h18 command: cefroute add ccnx:/video/stream/content1 udp 192.168.18.6 -d ./h18
+h18 command: cefroute add ccnx:/video/stream/content1 udp 192.168.26.17 -d ./h18
+h19 command: cefroute add ccnx:/video/stream/content1 udp 192.168.17.13 -d ./h19
+h19 command: cefroute add ccnx:/video/stream/content1 udp 192.168.39.14 -d ./h19
+h0 command: cefroute add ccnx:/video/stream/content2 udp 192.168.11.14 -d ./h0
+h0 command: cefroute add ccnx:/video/stream/content2 udp 192.168.54.11 -d ./h0
+h1 command: cefroute add ccnx:/video/stream/content2 udp 192.168.43.16 -d ./h1
+h1 command: cefroute add ccnx:/video/stream/content2 udp 192.168.38.6 -d ./h1
+h2 command: cefroute add ccnx:/video/stream/content2 udp 192.168.46.1 -d ./h2
+h2 command: cefroute add ccnx:/video/stream/content2 udp 192.168.49.11 -d ./h2
+h3 command: cefroute add ccnx:/video/stream/content2 udp 192.168.19.14 -d ./h3
+h3 command: cefroute add ccnx:/video/stream/content2 udp 192.168.25.5 -d ./h3
+h4 command: cefroute add ccnx:/video/stream/content2 udp 192.168.25.4 -d ./h4
+h4 command: cefroute add ccnx:/video/stream/content2 udp 192.168.29.8 -d ./h4
+h5 command: cefroute add ccnx:/video/stream/content2 udp 192.168.32.13 -d ./h5
+h5 command: cefroute add ccnx:/video/stream/content2 udp 192.168.6.16 -d ./h5
+h6 command: cefroute add ccnx:/video/stream/content2 udp 192.168.20.1 -d ./h6
+h6 command: cefroute add ccnx:/video/stream/content2 udp 192.168.4.2 -d ./h6
+h7 command: cefroute add ccnx:/video/stream/content2 udp 192.168.27.15 -d ./h7
+h7 command: cefroute add ccnx:/video/stream/content2 udp 192.168.8.2 -d ./h7
+h9 command: cefroute add ccnx:/video/stream/content2 udp 192.168.33.14 -d ./h9
+h9 command: cefroute add ccnx:/video/stream/content2 udp 192.168.24.16 -d ./h9
+h10 command: cefroute add ccnx:/video/stream/content2 udp 192.168.7.14 -d ./h10
+h10 command: cefroute add ccnx:/video/stream/content2 udp 192.168.15.15 -d ./h10
+h11 command: cefroute add ccnx:/video/stream/content2 udp 192.168.28.2 -d ./h11
+h11 command: cefroute add ccnx:/video/stream/content2 udp 192.168.30.3 -d ./h11
+h12 command: cefroute add ccnx:/video/stream/content2 udp 192.168.31.9 -d ./h12
+h12 command: cefroute add ccnx:/video/stream/content2 udp 192.168.32.6 -d ./h12
+h13 command: cefroute add ccnx:/video/stream/content2 udp 192.168.35.9 -d ./h13
+h13 command: cefroute add ccnx:/video/stream/content2 udp 192.168.11.1 -d ./h13
+h14 command: cefroute add ccnx:/video/stream/content2 udp 192.168.36.9 -d ./h14
+h14 command: cefroute add ccnx:/video/stream/content2 udp 192.168.27.8 -d ./h14
+h15 command: cefroute add ccnx:/video/stream/content2 udp 192.168.14.9 -d ./h15
+h15 command: cefroute add ccnx:/video/stream/content2 udp 192.168.43.2 -d ./h15
+h16 command: cefroute add ccnx:/video/stream/content2 udp 192.168.41.14 -d ./h16
+h16 command: cefroute add ccnx:/video/stream/content2 udp 192.168.44.11 -d ./h16
+h17 command: cefroute add ccnx:/video/stream/content2 udp 192.168.51.16 -d ./h17
+h17 command: cefroute add ccnx:/video/stream/content2 udp 192.168.55.1 -d ./h17
+h18 command: cefroute add ccnx:/video/stream/content2 udp 192.168.18.6 -d ./h18
+h18 command: cefroute add ccnx:/video/stream/content2 udp 192.168.26.17 -d ./h18
+h19 command: cefroute add ccnx:/video/stream/content2 udp 192.168.17.13 -d ./h19
+h19 command: cefroute add ccnx:/video/stream/content2 udp 192.168.39.14 -d ./h19
+h0 command: cefroute add ccnx:/video/stream/content3 udp 192.168.11.14 -d ./h0
+h0 command: cefroute add ccnx:/video/stream/content3 udp 192.168.54.11 -d ./h0
+h1 command: cefroute add ccnx:/video/stream/content3 udp 192.168.43.16 -d ./h1
+h1 command: cefroute add ccnx:/video/stream/content3 udp 192.168.38.6 -d ./h1
+h2 command: cefroute add ccnx:/video/stream/content3 udp 192.168.46.1 -d ./h2
+h2 command: cefroute add ccnx:/video/stream/content3 udp 192.168.49.11 -d ./h2
+h3 command: cefroute add ccnx:/video/stream/content3 udp 192.168.19.14 -d ./h3
+h3 command: cefroute add ccnx:/video/stream/content3 udp 192.168.25.5 -d ./h3
+h4 command: cefroute add ccnx:/video/stream/content3 udp 192.168.25.4 -d ./h4
+h4 command: cefroute add ccnx:/video/stream/content3 udp 192.168.29.8 -d ./h4
+h5 command: cefroute add ccnx:/video/stream/content3 udp 192.168.32.13 -d ./h5
+h5 command: cefroute add ccnx:/video/stream/content3 udp 192.168.6.16 -d ./h5
+h6 command: cefroute add ccnx:/video/stream/content3 udp 192.168.20.1 -d ./h6
+h6 command: cefroute add ccnx:/video/stream/content3 udp 192.168.4.2 -d ./h6
+h7 command: cefroute add ccnx:/video/stream/content3 udp 192.168.27.15 -d ./h7
+h7 command: cefroute add ccnx:/video/stream/content3 udp 192.168.8.2 -d ./h7
+h9 command: cefroute add ccnx:/video/stream/content3 udp 192.168.33.14 -d ./h9
+h9 command: cefroute add ccnx:/video/stream/content3 udp 192.168.24.16 -d ./h9
+h10 command: cefroute add ccnx:/video/stream/content3 udp 192.168.7.14 -d ./h10
+h10 command: cefroute add ccnx:/video/stream/content3 udp 192.168.15.15 -d ./h10
+h11 command: cefroute add ccnx:/video/stream/content3 udp 192.168.28.2 -d ./h11
+h11 command: cefroute add ccnx:/video/stream/content3 udp 192.168.30.3 -d ./h11
+h12 command: cefroute add ccnx:/video/stream/content3 udp 192.168.31.9 -d ./h12
+h12 command: cefroute add ccnx:/video/stream/content3 udp 192.168.32.6 -d ./h12
+h13 command: cefroute add ccnx:/video/stream/content3 udp 192.168.35.9 -d ./h13
+h13 command: cefroute add ccnx:/video/stream/content3 udp 192.168.11.1 -d ./h13
+h14 command: cefroute add ccnx:/video/stream/content3 udp 192.168.36.9 -d ./h14
+h14 command: cefroute add ccnx:/video/stream/content3 udp 192.168.27.8 -d ./h14
+h15 command: cefroute add ccnx:/video/stream/content3 udp 192.168.14.9 -d ./h15
+h15 command: cefroute add ccnx:/video/stream/content3 udp 192.168.43.2 -d ./h15
+h16 command: cefroute add ccnx:/video/stream/content3 udp 192.168.41.14 -d ./h16
+h16 command: cefroute add ccnx:/video/stream/content3 udp 192.168.44.11 -d ./h16
+h17 command: cefroute add ccnx:/video/stream/content3 udp 192.168.51.16 -d ./h17
+h17 command: cefroute add ccnx:/video/stream/content3 udp 192.168.55.1 -d ./h17
+h18 command: cefroute add ccnx:/video/stream/content3 udp 192.168.18.6 -d ./h18
+h18 command: cefroute add ccnx:/video/stream/content3 udp 192.168.26.17 -d ./h18
+h19 command: cefroute add ccnx:/video/stream/content3 udp 192.168.17.13 -d ./h19
+h19 command: cefroute add ccnx:/video/stream/content3 udp 192.168.39.14 -d ./h19
+h0 command: cefroute add ccnx:/test/data/content1 udp 192.168.54.11 -d ./h0
+h0 command: cefroute add ccnx:/test/data/content1 udp 192.168.46.3 -d ./h0
+h1 command: cefroute add ccnx:/test/data/content1 udp 192.168.8.8 -d ./h1
+h1 command: cefroute add ccnx:/test/data/content1 udp 192.168.38.6 -d ./h1
+h2 command: cefroute add ccnx:/test/data/content1 udp 192.168.49.11 -d ./h2
+h2 command: cefroute add ccnx:/test/data/content1 udp 192.168.46.1 -d ./h2
+h3 command: cefroute add ccnx:/test/data/content1 udp 192.168.25.5 -d ./h3
+h3 command: cefroute add ccnx:/test/data/content1 udp 192.168.19.14 -d ./h3
+h4 command: cefroute add ccnx:/test/data/content1 udp 192.168.29.8 -d ./h4
+h4 command: cefroute add ccnx:/test/data/content1 udp 192.168.25.4 -d ./h4
+h5 command: cefroute add ccnx:/test/data/content1 udp 192.168.34.8 -d ./h5
+h5 command: cefroute add ccnx:/test/data/content1 udp 192.168.38.2 -d ./h5
+h6 command: cefroute add ccnx:/test/data/content1 udp 192.168.4.2 -d ./h6
+h6 command: cefroute add ccnx:/test/data/content1 udp 192.168.23.5 -d ./h6
+h8 command: cefroute add ccnx:/test/data/content1 udp 192.168.36.15 -d ./h8
+h8 command: cefroute add ccnx:/test/data/content1 udp 192.168.31.13 -d ./h8
+h9 command: cefroute add ccnx:/test/data/content1 udp 192.168.40.8 -d ./h9
+h9 command: cefroute add ccnx:/test/data/content1 udp 192.168.12.7 -d ./h9
+h10 command: cefroute add ccnx:/test/data/content1 udp 192.168.47.8 -d ./h10
+h10 command: cefroute add ccnx:/test/data/content1 udp 192.168.15.15 -d ./h10
+h11 command: cefroute add ccnx:/test/data/content1 udp 192.168.28.2 -d ./h11
+h11 command: cefroute add ccnx:/test/data/content1 udp 192.168.30.3 -d ./h11
+h12 command: cefroute add ccnx:/test/data/content1 udp 192.168.32.6 -d ./h12
+h12 command: cefroute add ccnx:/test/data/content1 udp 192.168.31.9 -d ./h12
+h13 command: cefroute add ccnx:/test/data/content1 udp 192.168.33.10 -d ./h13
+h13 command: cefroute add ccnx:/test/data/content1 udp 192.168.7.11 -d ./h13
+h14 command: cefroute add ccnx:/test/data/content1 udp 192.168.27.8 -d ./h14
+h14 command: cefroute add ccnx:/test/data/content1 udp 192.168.15.11 -d ./h14
+h15 command: cefroute add ccnx:/test/data/content1 udp 192.168.43.2 -d ./h15
+h15 command: cefroute add ccnx:/test/data/content1 udp 192.168.6.6 -d ./h15
+h16 command: cefroute add ccnx:/test/data/content1 udp 192.168.13.5 -d ./h16
+h16 command: cefroute add ccnx:/test/data/content1 udp 192.168.44.11 -d ./h16
+h17 command: cefroute add ccnx:/test/data/content1 udp 192.168.10.6 -d ./h17
+h17 command: cefroute add ccnx:/test/data/content1 udp 192.168.42.10 -d ./h17
+h18 command: cefroute add ccnx:/test/data/content1 udp 192.168.18.6 -d ./h18
+h18 command: cefroute add ccnx:/test/data/content1 udp 192.168.26.17 -d ./h18
+h19 command: cefroute add ccnx:/test/data/content1 udp 192.168.1.2 -d ./h19
+h19 command: cefroute add ccnx:/test/data/content1 udp 192.168.37.6 -d ./h19
+h0 command: cefroute add ccnx:/test/data/content2 udp 192.168.54.11 -d ./h0
+h0 command: cefroute add ccnx:/test/data/content2 udp 192.168.46.3 -d ./h0
+h1 command: cefroute add ccnx:/test/data/content2 udp 192.168.8.8 -d ./h1
+h1 command: cefroute add ccnx:/test/data/content2 udp 192.168.38.6 -d ./h1
+h2 command: cefroute add ccnx:/test/data/content2 udp 192.168.49.11 -d ./h2
+h2 command: cefroute add ccnx:/test/data/content2 udp 192.168.46.1 -d ./h2
+h3 command: cefroute add ccnx:/test/data/content2 udp 192.168.25.5 -d ./h3
+h3 command: cefroute add ccnx:/test/data/content2 udp 192.168.19.14 -d ./h3
+h4 command: cefroute add ccnx:/test/data/content2 udp 192.168.29.8 -d ./h4
+h4 command: cefroute add ccnx:/test/data/content2 udp 192.168.25.4 -d ./h4
+h5 command: cefroute add ccnx:/test/data/content2 udp 192.168.34.8 -d ./h5
+h5 command: cefroute add ccnx:/test/data/content2 udp 192.168.38.2 -d ./h5
+h6 command: cefroute add ccnx:/test/data/content2 udp 192.168.4.2 -d ./h6
+h6 command: cefroute add ccnx:/test/data/content2 udp 192.168.23.5 -d ./h6
+h8 command: cefroute add ccnx:/test/data/content2 udp 192.168.36.15 -d ./h8
+h8 command: cefroute add ccnx:/test/data/content2 udp 192.168.31.13 -d ./h8
+h9 command: cefroute add ccnx:/test/data/content2 udp 192.168.40.8 -d ./h9
+h9 command: cefroute add ccnx:/test/data/content2 udp 192.168.12.7 -d ./h9
+h10 command: cefroute add ccnx:/test/data/content2 udp 192.168.47.8 -d ./h10
+h10 command: cefroute add ccnx:/test/data/content2 udp 192.168.15.15 -d ./h10
+h11 command: cefroute add ccnx:/test/data/content2 udp 192.168.28.2 -d ./h11
+h11 command: cefroute add ccnx:/test/data/content2 udp 192.168.30.3 -d ./h11
+h12 command: cefroute add ccnx:/test/data/content2 udp 192.168.32.6 -d ./h12
+h12 command: cefroute add ccnx:/test/data/content2 udp 192.168.31.9 -d ./h12
+h13 command: cefroute add ccnx:/test/data/content2 udp 192.168.33.10 -d ./h13
+h13 command: cefroute add ccnx:/test/data/content2 udp 192.168.7.11 -d ./h13
+h14 command: cefroute add ccnx:/test/data/content2 udp 192.168.27.8 -d ./h14
+h14 command: cefroute add ccnx:/test/data/content2 udp 192.168.15.11 -d ./h14
+h15 command: cefroute add ccnx:/test/data/content2 udp 192.168.43.2 -d ./h15
+h15 command: cefroute add ccnx:/test/data/content2 udp 192.168.6.6 -d ./h15
+h16 command: cefroute add ccnx:/test/data/content2 udp 192.168.13.5 -d ./h16
+h16 command: cefroute add ccnx:/test/data/content2 udp 192.168.44.11 -d ./h16
+h17 command: cefroute add ccnx:/test/data/content2 udp 192.168.10.6 -d ./h17
+h17 command: cefroute add ccnx:/test/data/content2 udp 192.168.42.10 -d ./h17
+h18 command: cefroute add ccnx:/test/data/content2 udp 192.168.18.6 -d ./h18
+h18 command: cefroute add ccnx:/test/data/content2 udp 192.168.26.17 -d ./h18
+h19 command: cefroute add ccnx:/test/data/content2 udp 192.168.1.2 -d ./h19
+h19 command: cefroute add ccnx:/test/data/content2 udp 192.168.37.6 -d ./h19
+h0 command: cefstatus -d ./h0
+h1 command: cefstatus -d ./h1
+h2 command: cefstatus -d ./h2
+h3 command: cefstatus -d ./h3
+h4 command: cefstatus -d ./h4
+h5 command: cefstatus -d ./h5
+h6 command: cefstatus -d ./h6
+h7 command: cefstatus -d ./h7
+h8 command: cefstatus -d ./h8
+h9 command: cefstatus -d ./h9
+h10 command: cefstatus -d ./h10
+h11 command: cefstatus -d ./h11
+h12 command: cefstatus -d ./h12
+h13 command: cefstatus -d ./h13
+h14 command: cefstatus -d ./h14
+h15 command: cefstatus -d ./h15
+h16 command: cefstatus -d ./h16
+h17 command: cefstatus -d ./h17
+h18 command: cefstatus -d ./h18
+h19 command: cefstatus -d ./h19
+h0 command: cefgetfile ccnx:/emergency/alert/content1 -f /home/yamakawa/Development/github/cefore-emu-koh11235813/logs/ex8_seed42/warmup_recv_h0_u0 -d ./h0 > /home/yamakawa/Development/github/cefore-emu-koh11235813/logs/ex8_seed42/cefgetfile_seed42_downhostsnone_phasewarmup_cycle0_idx0_h0.log 2>&1
+h0 command: cefgetfile ccnx:/emergency/alert/content2 -f /home/yamakawa/Development/github/cefore-emu-koh11235813/logs/ex8_seed42/warmup_recv_h0_u1 -d ./h0 > /home/yamakawa/Development/github/cefore-emu-koh11235813/logs/ex8_seed42/cefgetfile_seed42_downhostsnone_phasewarmup_cycle0_idx1_h0.log 2>&1
+h12 command: cefgetfile ccnx:/emergency/alert/content1 -f /home/yamakawa/Development/github/cefore-emu-koh11235813/logs/ex8_seed42/warmup_recv_h12_u0 -d ./h12 > /home/yamakawa/Development/github/cefore-emu-koh11235813/logs/ex8_seed42/cefgetfile_seed42_downhostsnone_phasewarmup_cycle0_idx2_h12.log 2>&1
+h12 command: cefgetfile ccnx:/emergency/alert/content2 -f /home/yamakawa/Development/github/cefore-emu-koh11235813/logs/ex8_seed42/warmup_recv_h12_u1 -d ./h12 > /home/yamakawa/Development/github/cefore-emu-koh11235813/logs/ex8_seed42/cefgetfile_seed42_downhostsnone_phasewarmup_cycle0_idx3_h12.log 2>&1
+h1 command: cefgetfile ccnx:/emergency/alert/content1 -f /home/yamakawa/Development/github/cefore-emu-koh11235813/logs/ex8_seed42/warmup_recv_h1_u0 -d ./h1 > /home/yamakawa/Development/github/cefore-emu-koh11235813/logs/ex8_seed42/cefgetfile_seed42_downhostsnone_phasewarmup_cycle0_idx4_h1.log 2>&1
+h1 command: cefgetfile ccnx:/emergency/alert/content2 -f /home/yamakawa/Development/github/cefore-emu-koh11235813/logs/ex8_seed42/warmup_recv_h1_u1 -d ./h1 > /home/yamakawa/Development/github/cefore-emu-koh11235813/logs/ex8_seed42/cefgetfile_seed42_downhostsnone_phasewarmup_cycle0_idx5_h1.log 2>&1
+h3 command: cefgetfile ccnx:/emergency/alert/content1 -f /home/yamakawa/Development/github/cefore-emu-koh11235813/logs/ex8_seed42/warmup_recv_h3_u0 -d ./h3 > /home/yamakawa/Development/github/cefore-emu-koh11235813/logs/ex8_seed42/cefgetfile_seed42_downhostsnone_phasewarmup_cycle0_idx6_h3.log 2>&1
+h3 command: cefgetfile ccnx:/emergency/alert/content2 -f /home/yamakawa/Development/github/cefore-emu-koh11235813/logs/ex8_seed42/warmup_recv_h3_u1 -d ./h3 > /home/yamakawa/Development/github/cefore-emu-koh11235813/logs/ex8_seed42/cefgetfile_seed42_downhostsnone_phasewarmup_cycle0_idx7_h3.log 2>&1
+h8 command: cefputfile ccnx:/video/stream/content1 -f ./sample-putfile -r 10 -b 1024 -e 5000 -t 5000 -v crc32c -p 9695 -d ./h8 > /home/yamakawa/Development/github/cefore-emu-koh11235813/logs/ex8_seed42/cefputfile_h8_c0.log 2>&1
+h8 command: cefputfile ccnx:/video/stream/content2 -f ./sample-putfile -r 10 -b 1024 -e 5000 -t 5000 -v crc32c -p 9695 -d ./h8 > /home/yamakawa/Development/github/cefore-emu-koh11235813/logs/ex8_seed42/cefputfile_h8_c1.log 2>&1
+h8 command: cefputfile ccnx:/video/stream/content3 -f ./sample-putfile -r 10 -b 1024 -e 5000 -t 5000 -v crc32c -p 9695 -d ./h8 > /home/yamakawa/Development/github/cefore-emu-koh11235813/logs/ex8_seed42/cefputfile_h8_c2.log 2>&1
+h7 command: cefputfile ccnx:/test/data/content1 -f ./sample-putfile -r 1 -b 512 -e 1000 -t 1000 -v crc32c -p 9695 -d ./h7 > /home/yamakawa/Development/github/cefore-emu-koh11235813/logs/ex8_seed42/cefputfile_h7_c3.log 2>&1
+h7 command: cefputfile ccnx:/test/data/content2 -f ./sample-putfile -r 1 -b 512 -e 1000 -t 1000 -v crc32c -p 9695 -d ./h7 > /home/yamakawa/Development/github/cefore-emu-koh11235813/logs/ex8_seed42/cefputfile_h7_c4.log 2>&1
+h3 command: cefsubfile ccnx:/emergency/alert/content1 -f /home/yamakawa/Development/github/cefore-emu-koh11235813/logs/ex8_seed42/recv_3_content1 -s 32 -v_RI crc32c -v_TD crc32c -p 9695 -d ./h3 > /home/yamakawa/Development/github/cefore-emu-koh11235813/logs/ex8_seed42/cefsubfile_seed42_downhostsnone_phaseeval_cycle0_idx0_h3.log 2>&1
+h16 command: cefsubfile ccnx:/emergency/alert/content1 -f /home/yamakawa/Development/github/cefore-emu-koh11235813/logs/ex8_seed42/recv_16_content1 -s 32 -v_RI crc32c -v_TD crc32c -p 9695 -d ./h16 > /home/yamakawa/Development/github/cefore-emu-koh11235813/logs/ex8_seed42/cefsubfile_seed42_downhostsnone_phaseeval_cycle0_idx1_h16.log 2>&1
+h16 command: cefsubfile ccnx:/emergency/alert/content2 -f /home/yamakawa/Development/github/cefore-emu-koh11235813/logs/ex8_seed42/recv_16_content2 -s 32 -v_RI crc32c -v_TD crc32c -p 9695 -d ./h16 > /home/yamakawa/Development/github/cefore-emu-koh11235813/logs/ex8_seed42/cefsubfile_seed42_downhostsnone_phaseeval_cycle0_idx2_h16.log 2>&1
+h7 command: cefsubfile ccnx:/emergency/alert/content2 -f /home/yamakawa/Development/github/cefore-emu-koh11235813/logs/ex8_seed42/recv_7_content2 -s 32 -v_RI crc32c -v_TD crc32c -p 9695 -d ./h7 > /home/yamakawa/Development/github/cefore-emu-koh11235813/logs/ex8_seed42/cefsubfile_seed42_downhostsnone_phaseeval_cycle0_idx3_h7.log 2>&1
+h9 command: cefpubfile ccnx:/emergency/alert/content1 -f ./sample-putfile -r 100 -b 2048 -e 10000 -t 10000 -l 5000 -m 5 -z both -v_TI crc32c -v_RD crc32c -p 9695 -d ./h9 > /home/yamakawa/Development/github/cefore-emu-koh11235813/logs/ex8_seed42/cefpubfile_seed42_downhostsnone_phasepublish_cycle0_idx0_h9.log 2>&1
+h9 command: cefpubfile ccnx:/emergency/alert/content2 -f ./sample-putfile -r 100 -b 2048 -e 10000 -t 10000 -l 5000 -m 5 -z both -v_TI crc32c -v_RD crc32c -p 9695 -d ./h9 > /home/yamakawa/Development/github/cefore-emu-koh11235813/logs/ex8_seed42/cefpubfile_seed42_downhostsnone_phasepublish_cycle0_idx1_h9.log 2>&1
+h1 command: cefgetfile ccnx:/video/stream/content1 -f /home/yamakawa/Development/github/cefore-emu-koh11235813/logs/ex8_seed42/recv_1_content1 -s 16 -v crc32c -p 9695 -d ./h1 > /home/yamakawa/Development/github/cefore-emu-koh11235813/logs/ex8_seed42/cefgetfile_seed42_downhostsnone_phaseeval_cycle0_idx0_h1.log 2>&1
+h6 command: cefgetfile ccnx:/video/stream/content2 -f /home/yamakawa/Development/github/cefore-emu-koh11235813/logs/ex8_seed42/recv_6_content2 -s 16 -v crc32c -p 9695 -d ./h6 > /home/yamakawa/Development/github/cefore-emu-koh11235813/logs/ex8_seed42/cefgetfile_seed42_downhostsnone_phaseeval_cycle0_idx1_h6.log 2>&1
+h6 command: cefgetfile ccnx:/video/stream/content3 -f /home/yamakawa/Development/github/cefore-emu-koh11235813/logs/ex8_seed42/recv_6_content3 -s 16 -v crc32c -p 9695 -d ./h6 > /home/yamakawa/Development/github/cefore-emu-koh11235813/logs/ex8_seed42/cefgetfile_seed42_downhostsnone_phaseeval_cycle0_idx2_h6.log 2>&1
+h0 command: cefgetfile ccnx:/test/data/content1 -f /home/yamakawa/Development/github/cefore-emu-koh11235813/logs/ex8_seed42/recv_0_content1 -s 4 -v crc32c -p 9695 -d ./h0 > /home/yamakawa/Development/github/cefore-emu-koh11235813/logs/ex8_seed42/cefgetfile_seed42_downhostsnone_phaseeval_cycle0_idx3_h0.log 2>&1
+h8 command: cefgetfile ccnx:/test/data/content1 -f /home/yamakawa/Development/github/cefore-emu-koh11235813/logs/ex8_seed42/recv_8_content1 -s 4 -v crc32c -p 9695 -d ./h8 > /home/yamakawa/Development/github/cefore-emu-koh11235813/logs/ex8_seed42/cefgetfile_seed42_downhostsnone_phaseeval_cycle0_idx4_h8.log 2>&1
+h8 command: cefgetfile ccnx:/test/data/content2 -f /home/yamakawa/Development/github/cefore-emu-koh11235813/logs/ex8_seed42/recv_8_content2 -s 4 -v crc32c -p 9695 -d ./h8 > /home/yamakawa/Development/github/cefore-emu-koh11235813/logs/ex8_seed42/cefgetfile_seed42_downhostsnone_phaseeval_cycle0_idx5_h8.log 2>&1
+h18 command: cefgetfile ccnx:/test/data/content2 -f /home/yamakawa/Development/github/cefore-emu-koh11235813/logs/ex8_seed42/recv_18_content2 -s 4 -v crc32c -p 9695 -d ./h18 > /home/yamakawa/Development/github/cefore-emu-koh11235813/logs/ex8_seed42/cefgetfile_seed42_downhostsnone_phaseeval_cycle0_idx6_h18.log 2>&1
