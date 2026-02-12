@@ -1,0 +1,121 @@
+[
+  {
+    "ts": "2026-02-08T03:37:19.788853+00:00",
+    "phase": "warmup",
+    "host": 0,
+    "uri": "ccnx:/emergency",
+    "out_file": "/home/kinoko/development/github/cefore-emu-koh11235813/logs/ex1_seed42_20260208-1235/warmup_recv_h0_u0",
+    "log_file": "/home/kinoko/development/github/cefore-emu-koh11235813/logs/ex1_seed42_20260208-1235/cefgetfile_seed42_downhostsnone_phasewarmup_cycle0_idx0_h0.log",
+    "exit_code": 1,
+    "down_hosts": [],
+    "publisher_host": null,
+    "publisher_down": false,
+    "success": false,
+    "has_completed_log": false,
+    "has_output_file": false
+  },
+  {
+    "ts": "2026-02-08T03:37:35.112178+00:00",
+    "phase": "warmup",
+    "host": 1,
+    "uri": "ccnx:/emergency",
+    "out_file": "/home/kinoko/development/github/cefore-emu-koh11235813/logs/ex1_seed42_20260208-1235/warmup_recv_h1_u0",
+    "log_file": "/home/kinoko/development/github/cefore-emu-koh11235813/logs/ex1_seed42_20260208-1235/cefgetfile_seed42_downhostsnone_phasewarmup_cycle0_idx1_h1.log",
+    "exit_code": 1,
+    "down_hosts": [],
+    "publisher_host": null,
+    "publisher_down": false,
+    "success": false,
+    "has_completed_log": false,
+    "has_output_file": false
+  },
+  {
+    "ts": "2026-02-08T03:37:50.437560+00:00",
+    "phase": "warmup",
+    "host": 2,
+    "uri": "ccnx:/emergency",
+    "out_file": "/home/kinoko/development/github/cefore-emu-koh11235813/logs/ex1_seed42_20260208-1235/warmup_recv_h2_u0",
+    "log_file": "/home/kinoko/development/github/cefore-emu-koh11235813/logs/ex1_seed42_20260208-1235/cefgetfile_seed42_downhostsnone_phasewarmup_cycle0_idx2_h2.log",
+    "exit_code": 1,
+    "down_hosts": [],
+    "publisher_host": null,
+    "publisher_down": false,
+    "success": false,
+    "has_completed_log": false,
+    "has_output_file": false
+  },
+  {
+    "ts": "2026-02-08T03:38:00.760735+00:00",
+    "phase": "eval",
+    "host": 0,
+    "uri": "ccnx:/emergency/test2",
+    "out_file": "/home/kinoko/development/github/cefore-emu-koh11235813/logs/ex1_seed42_20260208-1235/eval_recvfile_h0_idx0",
+    "log_file": "/home/kinoko/development/github/cefore-emu-koh11235813/logs/ex1_seed42_20260208-1235/cefgetfile_seed42_downhosts12_phaseeval_cycle0_idx0_h0.log",
+    "exit_code": 1,
+    "down_hosts": [
+      12
+    ],
+    "publisher_host": 3,
+    "publisher_down": false,
+    "success": false,
+    "has_completed_log": false,
+    "has_output_file": false
+  },
+  {
+    "ts": "2026-02-08T03:38:16.118925+00:00",
+    "phase": "eval",
+    "host": 6,
+    "uri": "ccnx:/test/data1",
+    "out_file": "/home/kinoko/development/github/cefore-emu-koh11235813/logs/ex1_seed42_20260208-1235/eval_recvfile_h6_idx1",
+    "log_file": "/home/kinoko/development/github/cefore-emu-koh11235813/logs/ex1_seed42_20260208-1235/cefgetfile_seed42_downhosts11,12,16_phaseeval_cycle0_idx1_h6.log",
+    "exit_code": 1,
+    "down_hosts": [
+      11,
+      12,
+      16
+    ],
+    "publisher_host": 9,
+    "publisher_down": false,
+    "success": false,
+    "has_completed_log": false,
+    "has_output_file": false
+  },
+  {
+    "ts": "2026-02-08T03:38:21.136345+00:00",
+    "phase": "eval",
+    "host": 11,
+    "uri": "ccnx:/emergency/test",
+    "out_file": "/home/kinoko/development/github/cefore-emu-koh11235813/logs/ex1_seed42_20260208-1235/eval_recvfile_h11_idx2",
+    "log_file": "/home/kinoko/development/github/cefore-emu-koh11235813/logs/ex1_seed42_20260208-1235/cefgetfile_seed42_downhosts5,8,16_phaseeval_cycle0_idx2_h11.log",
+    "exit_code": 1,
+    "down_hosts": [
+      5,
+      8,
+      16
+    ],
+    "publisher_host": 2,
+    "publisher_down": false,
+    "success": false,
+    "has_completed_log": false,
+    "has_output_file": false
+  },
+  {
+    "ts": "2026-02-08T03:38:36.461498+00:00",
+    "phase": "eval",
+    "host": 16,
+    "uri": "ccnx:/emergency/test",
+    "out_file": "/home/kinoko/development/github/cefore-emu-koh11235813/logs/ex1_seed42_20260208-1235/eval_recvfile_h16_idx3",
+    "log_file": "/home/kinoko/development/github/cefore-emu-koh11235813/logs/ex1_seed42_20260208-1235/cefgetfile_seed42_downhosts5,8,10_phaseeval_cycle0_idx3_h16.log",
+    "exit_code": 1,
+    "down_hosts": [
+      5,
+      8,
+      10
+    ],
+    "publisher_host": 2,
+    "publisher_down": false,
+    "success": false,
+    "has_completed_log": false,
+    "has_output_file": false
+  }
+]

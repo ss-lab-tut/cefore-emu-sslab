@@ -1,0 +1,7 @@
+[cefputfile] Start
+[cefputfile] Parsing parameters ... OK
+2026-02-05 13:02:28.286 [cefputfile] INFO: [client] Config directory is ./h2
+2026-02-05 13:02:28.286 [cefputfile] INFO: [client] Local Socket Name is /tmp/cef_9695.2
+2026-02-05 13:02:28.286 [cefputfile] INFO: [client] Listen Port is 9695
+[cefputfile] Init Cefore Client package ... OK
+[cefputfile] Conversion from URI into Name ... OK
