@@ -900,6 +900,11 @@ def run_disaster_topology(args, run_dir: Path = None, log_context=None):
         ops_get_putget = [op for op in ops_get if op.get("mode") != "pubsub"]
         info(f"\n=== Get operations: {len(ops_get_pubsub)} pubsub, {len(ops_get_putget)} putget ===\n")
 
+        # Split ops_put into pubsub and putget
+        ops_put_putget = [op for op in ops_put if op.get("mode") != "pubsub"]
+        ops_put_pubsub = [op for op in ops_put if op.get("mode") == "pubsub"]
+        info(f"\n=== Put operations: {len(ops_put_pubsub)} pubsub, {len(ops_put_putget)} putget ===\n")
+
         # Warmup phase
         warmup_ops = _build_warmup_ops(args, run_dir, hot_uris, cache_nodes)
         if warmup_ops:
@@ -910,38 +915,63 @@ def run_disaster_topology(args, run_dir: Path = None, log_context=None):
                 cycle_idx=0,
             )
 
-        # Phase 1: Start pubsub subscribers
-        pubsub_procs = []
+        # Track pubsub processes for final wait
+        pubsub_sub_procs = []
+        pubsub_pub_procs = []
+
+        # Phase 1: Run putget puts (SYNC)
+        if ops_put_putget:
+            info(f"\n=== Phase 1: Running {len(ops_put_putget)} putget publishers ===\n")
+            for put_idx, op in enumerate(ops_put_putget):
+                host = int(op["host"])
+                uri = op["uri"]
+                infile = op.get("file", "./sample-putfile")
+                log_path = _artifact_path(
+                    run_dir,
+                    op.get("log"),
+                    _default_transfer_log_name("put", seed_label, "publish", 0, put_idx, host),
+                )
+
+                run_cefputfile(
+                    net,
+                    host,
+                    uri,
+                    file_path=infile,
+                    rate=op.get("rate"),
+                    block_size=op.get("block_size"),
+                    expiry=op.get("expiry", 3000),
+                    cache_time=op.get("cache_time", 3000),
+                    valid_algo=op.get("valid_algo"),
+                    port_num=op.get("port_num"),
+                    log_name=str(log_path),
+                )
+                time.sleep(1)
+
+        # Phase 2: Start pubsub subscribers (ASYNC - wait for Interest)
         if ops_get_pubsub:
-            info(f"\n=== Phase 1: Starting {len(ops_get_pubsub)} pubsub subscribers ===\n")
-            pubsub_procs = run_get_ops(
+            info(f"\n=== Phase 2: Starting {len(ops_get_pubsub)} pubsub subscribers ===\n")
+            pubsub_sub_procs = run_get_ops(
                 ops_get_pubsub, "eval", args.get_interval,
                 cycle_idx=0, return_procs=True
             )
-            time.sleep(2)  # Brief delay for subscribers to initialize
+            info(f"Waiting 3 seconds for subscriber FIB registration...\n")
+            time.sleep(3)  # Wait for FIB registration
 
-        # Phase 2: Put phase
-        info(f"\n=== Phase 2: Running {len(ops_put)} put/pub operations ===\n")
-        for put_idx, op in enumerate(ops_put):
-            host = int(op["host"])
-            uri = op["uri"]
-            infile = op.get("file", "./sample-putfile")
-            default_log = _default_transfer_log_name(
-                "pub" if op.get("mode") == "pubsub" else "put",
-                seed_label,
-                "publish",
-                0,
-                put_idx,
-                host,
-            )
-            log_path = _artifact_path(
-                run_dir,
-                op.get("log"),
-                default_log,
-            )
-            if op.get("mode") == "pubsub":
+        # Phase 3: Start pubsub publishers (ASYNC - send Interest)
+        if ops_put_pubsub:
+            info(f"\n=== Phase 3: Starting {len(ops_put_pubsub)} pubsub publishers ===\n")
+            for put_idx, op in enumerate(ops_put_pubsub):
+                host = int(op["host"])
+                uri = op["uri"]
+                infile = op.get("file", "./sample-putfile")
                 pub_opts = op.get("pub_opts", {}) or {}
-                run_cefpubfile(
+                log_path = _artifact_path(
+                    run_dir,
+                    op.get("log"),
+                    _default_transfer_log_name("pub", seed_label, "publish", 0, put_idx, host),
+                )
+
+                proc = run_cefpubfile(
                     net,
                     host,
                     uri,
@@ -957,31 +987,38 @@ def run_disaster_topology(args, run_dir: Path = None, log_context=None):
                     rd_valid_algo=pub_opts.get("rd_valid_algo"),
                     port_num=pub_opts.get("port_num"),
                     log_name=str(log_path),
+                    async_mode=True,
                 )
-            else:
-                run_cefputfile(
-                    net,
-                    host,
-                    uri,
-                    file_path=infile,
-                    rate=op.get("rate"),
-                    block_size=op.get("block_size"),
-                    expiry=op.get("expiry", 3000),
-                    cache_time=op.get("cache_time", 3000),
-                    valid_algo=op.get("valid_algo"),
-                    port_num=op.get("port_num"),
-                    log_name=str(log_path),
-                )
-            time.sleep(1)
+                pubsub_pub_procs.append(proc)
+                time.sleep(1)
 
-        # Phase 3: Run putget consumers
+        # Phase 4: Run putget consumers (SYNC)
         if ops_get_putget:
-            info(f"\n=== Phase 3: Running {len(ops_get_putget)} putget consumers ===\n")
+            info(f"\n=== Phase 4: Running {len(ops_get_putget)} putget consumers ===\n")
             run_get_ops(ops_get_putget, "eval", args.get_interval, cycle_idx=0)
 
-        # Phase 4: Wait for pubsub subscribers
-        if pubsub_procs:
-            wait_pubsub_procs(pubsub_procs, timeout_per_proc=60)
+        # Phase 5: Wait for all pubsub processes (subscribers + publishers)
+        if pubsub_sub_procs:
+            wait_pubsub_procs(pubsub_sub_procs, timeout_per_proc=60)
+
+        if pubsub_pub_procs:
+            info(f"\n=== Waiting for {len(pubsub_pub_procs)} pubsub publishers ===\n")
+            for proc in pubsub_pub_procs:
+                try:
+                    exit_code = proc.wait(timeout=60)
+                    if exit_code != 0:
+                        info(f"WARNING: Publisher exited with code {exit_code}\n")
+                except subprocess.TimeoutExpired as e:
+                    info(f"WARNING: Publisher timeout: {e}\n")
+                    proc.terminate()
+                    try:
+                        proc.wait(timeout=5)
+                    except Exception:
+                        proc.kill()
+                        try:
+                            proc.wait(timeout=5)
+                        except Exception:
+                            pass
 
         # Failure phase startup
         use_cli = not getattr(args, "no_cli", False)

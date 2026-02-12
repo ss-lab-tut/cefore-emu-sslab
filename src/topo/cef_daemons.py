@@ -331,6 +331,7 @@ def run_cefpubfile(
     rd_valid_algo=None,
     port_num=None,
     log_name=None,
+    async_mode=False,
 ):
     """Run cefpubfile to publish content.
 
@@ -350,6 +351,10 @@ def run_cefpubfile(
         rd_valid_algo: Validation algorithm for Reflexive Data (crc32c or rsa-sha256).
         port_num: Port number.
         log_name: Name of the log file.
+        async_mode: If True, return Popen process. If False, block until completion.
+
+    Returns:
+        Popen process if async_mode=True, None otherwise.
     """
     node_name = f"h{host_idx}"
     cmd_parts = [f"cefpubfile {uri} -f {shlex.quote(file_path)}"]
@@ -388,4 +393,9 @@ def run_cefpubfile(
 
     command = " ".join(cmd_parts)
     print(node_name, "command:", command)
-    net.hosts[host_idx].cmd(command)
+
+    if async_mode:
+        return net.hosts[host_idx].popen(command, shell=True)
+    else:
+        net.hosts[host_idx].cmd(command)
+        return None
