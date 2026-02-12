@@ -7,6 +7,7 @@ from .cef_daemons import (
     run_cefstatus,
     run_cefstatus_all,
     run_cefsubfile,
+    run_host_command,
     start_cefnetd,
     start_conpubd,
     start_csmgrd,
@@ -21,12 +22,16 @@ from .config_io import (
     update_local_sock_id,
     update_node_name,
 )
-from .disaster import (
-    Tee,
+from .disaster import run_disaster_topology
+from .external_bridge import (
+    BridgeManager,
     attach_external_via_bridge,
     cleanup_external_bridges,
-    run_disaster_topology,
+    parse_bridge_args,
+    parse_ext_args,
+    setup_bridges,
 )
+from .failure_manager import FlexibleFailureManager, periodic_host_flap
 from .flap_state import FlapState
 from .graph_algos import (
     compute_distances,
@@ -45,8 +50,15 @@ from .links import (
     set_node_links_state,
 )
 from .mesh_topo import MeshTopo, min_required_switches, run_mesh_topology
-from .net_config import set_fib, set_fib_for_uris, set_ip_addr
-from .paths import ROOT_DIR, TEMPLATE_ROOT, resolve_run_dir
+from .net_config import (
+    parse_bw_args,
+    parse_int_list,
+    set_fib,
+    set_fib_for_uris,
+    set_ip_addr,
+    set_link_bandwidth,
+)
+from .paths import ROOT_DIR, TEMPLATE_ROOT, Tee, resolve_run_dir
 from .templates import (
     apply_pubsub_node_settings,
     cleanup_node_dirs,
@@ -59,6 +71,7 @@ __all__ = [
     # paths
     "ROOT_DIR",
     "TEMPLATE_ROOT",
+    "Tee",
     "resolve_run_dir",
     # templates
     "select_template",
@@ -81,6 +94,9 @@ __all__ = [
     "set_ip_addr",
     "set_fib",
     "set_fib_for_uris",
+    "set_link_bandwidth",
+    "parse_bw_args",
+    "parse_int_list",
     # links
     "find_link",
     "set_link_state",
@@ -102,6 +118,17 @@ __all__ = [
     "run_cefsubfile",
     "run_cefstatus",
     "run_cefstatus_all",
+    "run_host_command",
+    # external_bridge
+    "BridgeManager",
+    "attach_external_via_bridge",
+    "cleanup_external_bridges",
+    "parse_bridge_args",
+    "parse_ext_args",
+    "setup_bridges",
+    # failure_manager
+    "periodic_host_flap",
+    "FlexibleFailureManager",
     # viz
     "build_host_graph",
     "build_tree",
@@ -112,10 +139,7 @@ __all__ = [
     "min_required_switches",
     "run_mesh_topology",
     # disaster
-    "Tee",
     "run_disaster_topology",
-    "attach_external_via_bridge",
-    "cleanup_external_bridges",
     # flap_state
     "FlapState",
 ]

@@ -1,4 +1,4 @@
-"""Common path constants for the topo package."""
+"""Common path constants and I/O utilities for the topo package."""
 
 from datetime import datetime
 from pathlib import Path
@@ -6,6 +6,33 @@ from typing import Any
 
 ROOT_DIR = Path(__file__).resolve().parent.parent.parent
 TEMPLATE_ROOT = ROOT_DIR / "configs" / "templates"
+
+
+class Tee:
+    """Write to multiple streams simultaneously."""
+
+    def __init__(self, *streams):
+        self.streams = streams
+
+    def write(self, data):
+        for s in self.streams:
+            s.write(data)
+            s.flush()
+        return len(data)
+
+    def flush(self):
+        for s in self.streams:
+            s.flush()
+
+    def fileno(self):
+        return self.streams[0].fileno()
+
+    def isatty(self):
+        return self.streams[0].isatty()
+
+    @property
+    def encoding(self):
+        return self.streams[0].encoding
 
 
 def resolve_run_dir(args: Any) -> Path:

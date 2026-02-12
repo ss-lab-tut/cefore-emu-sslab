@@ -1,6 +1,7 @@
-"""Flexible failure scenario manager for disaster topology.
+"""Failure scenario managers for disaster topology.
 
-This module implements flexible host failure scenarios with per-cycle configuration.
+This module implements both simple periodic host flapping and
+flexible host failure scenarios with per-cycle configuration.
 """
 
 import threading
@@ -11,6 +12,110 @@ from mininet.log import info
 
 from .flap_state import FlapState
 from .links import set_node_links_state
+
+
+def periodic_host_flap(
+    net,
+    host_num,
+    interval,
+    down_time,
+    rng,
+    exclude,
+    state,
+    down_count,
+    stagger,
+    quiet=False,
+):
+    """Start periodic host flapping in background thread.
+
+    Args:
+        net: Mininet network instance.
+        host_num: Total number of hosts.
+        interval: Seconds between down events.
+        down_time: Seconds to keep hosts down.
+        rng: Random number generator (None for round-robin).
+        exclude: Set of host IDs to exclude from flapping.
+        state: FlapState instance or dict to track current down hosts.
+        down_count: Number of hosts to down per cycle.
+        stagger: Seconds between individual host downs.
+
+    Returns:
+        threading.Event to stop flapping.
+    """
+    host_ids = [idx for idx in range(host_num) if idx not in exclude]
+    if not host_ids:
+        info("no hosts available for flapping\n")
+        return threading.Event()
+    stop_event = threading.Event()
+
+    use_flap_state = hasattr(state, "update") and hasattr(state, "snapshot")
+
+    def worker():
+        position = 0
+        active_down = set()
+
+        def update_state(last_down=None):
+            if use_flap_state:
+                state.update(active_down, last_down)
+            else:
+                state["down_hosts"] = sorted(active_down)
+                if last_down is not None:
+                    state["last_down_host"] = last_down
+
+        def schedule_up(host_idx):
+            def do_up():
+                if stop_event.is_set():
+                    return
+                host_name = f"h{host_idx}"
+                if not quiet:
+                    info(f"\n[flap] up {host_name}\n")
+                try:
+                    set_node_links_state(net, host_name, "up")
+                except (AssertionError, OSError) as exc:
+                    if not quiet:
+                        info(f"\n[flap] failed to up {host_name}: {exc}\n")
+                active_down.discard(host_idx)
+                update_state()
+
+            timer = threading.Timer(down_time, do_up)
+            timer.daemon = True
+            timer.start()
+
+        while not stop_event.is_set():
+            available = [idx for idx in host_ids if idx not in active_down]
+            if not available:
+                stop_event.wait(interval)
+                continue
+            count = min(down_count, len(available))
+            if rng is not None:
+                chosen = rng.sample(available, count)
+            else:
+                chosen = [
+                    available[(position + offset) % len(available)]
+                    for offset in range(count)
+                ]
+                position += count
+
+            for offset, host_idx in enumerate(chosen):
+                if stop_event.wait(stagger if offset > 0 else 0):
+                    return
+                host_name = f"h{host_idx}"
+                active_down.add(host_idx)
+                update_state(last_down=host_idx)
+                if not quiet:
+                    info(f"\n[flap] down {host_name}\n")
+                try:
+                    set_node_links_state(net, host_name, "down")
+                except (AssertionError, OSError) as exc:
+                    if not quiet:
+                        info(f"\n[flap] failed to down {host_name}: {exc}\n")
+                schedule_up(host_idx)
+
+            stop_event.wait(interval)
+
+    thread = threading.Thread(target=worker, daemon=True)
+    thread.start()
+    return stop_event
 
 
 class FlexibleFailureManager:

@@ -399,3 +399,18 @@ def run_cefpubfile(
     else:
         net.hosts[host_idx].cmd(command)
         return None
+
+
+def run_host_command(net, host_idx, command):
+    """Run command on host and wait for completion.
+
+    Args:
+        net: Mininet network instance.
+        host_idx: Host index.
+        command: Shell command string.
+
+    Returns:
+        Exit code.
+    """
+    proc = net.hosts[host_idx].popen(command, shell=True)
+    return proc.wait()
