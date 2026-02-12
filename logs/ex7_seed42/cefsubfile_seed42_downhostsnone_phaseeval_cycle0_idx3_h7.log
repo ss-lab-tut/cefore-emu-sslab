@@ -1,0 +1,5 @@
+[cefsubfile] Start
+[cefsubfile] Parsing parameters ...OK
+[cefsubfile] Init Cefore Client package ... OK
+[cefsubfile] Connect to cefnetd ... OK
+[cefsubfile] Register fib entry to cefnetd ... OK (URI=ccnx:/emergency/alert/content2)
