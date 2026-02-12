@@ -149,7 +149,7 @@ get_interval: 10             # Seconds between cefgetfile runs in eval phase
 # -----------------------------------------------------------------------------
 # Output Configuration
 # -----------------------------------------------------------------------------
-num: 5                       # Experiment number (enables log directory output)
+num: 6                       # Experiment number (enables log directory output)
 output_dir: "logs"           # Base output directory
 timestamp: false             # Add timestamp to output directory name
 legacy_layout: false         # Use legacy layout (output to current directory) - DEPRECATED
