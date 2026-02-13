@@ -1,0 +1,3 @@
+experiment_dir,num,hosts,switches,seed,k,down_interval,down_duration,down_count,down_stagger,down_exclude,cache_count,get_interval,filename,host_id,content_id,file_seed,down_hosts,get_idx,phase,cycle,timestamp,uri,file,rate,block_size,cache_time,expiration,success
+ex10_seed42,10,20,100,42,2,30,10,5,2,,5,10,cefpubfile_seed42_downhostsnone_phasepublish_cycle0_idx0_h9.log,9,,42,none,0,publish,0,,ccnx:/emergency/alert/content1,./sample-putfile,100.0,2048,10000,10000,True
+ex10_seed42,10,20,100,42,2,30,10,5,2,,5,10,cefpubfile_seed42_downhostsnone_phasepublish_cycle0_idx1_h9.log,9,,42,none,1,publish,0,,ccnx:/emergency/alert/content2,./sample-putfile,100.0,2048,10000,10000,True

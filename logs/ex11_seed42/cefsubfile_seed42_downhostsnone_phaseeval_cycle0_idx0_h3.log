@@ -1,0 +1,50 @@
+[cefsubfile] Start
+[cefsubfile] Parsing parameters ...OK
+[cefsubfile] Init Cefore Client package ... OK
+[cefsubfile] Connect to cefnetd ... OK
+[cefsubfile] Register fib entry to cefnetd ... OK (URI=ccnx:/emergency/alert/content1)
+[cefsubfile] RNP=0xb12ec993797c88c96e1eb71a09e0e9a5
+[cefsubfile] Outputfile: /home/yamakawa/Development/github/cefore-emu-koh11235813/logs/ex11_seed42/recv_3_content1/RNP0xb12ec993797c88c96e1eb71a09e0e9a5.out
+[cefsubfile] Rx Frames (All)           = 0
+[cefsubfile] Rx Frames (ContentObject) = 0
+
+[cefsubfile] RNP=0xb12ec993797c88c96e1eb71a09e0e9a5
+[cefsubfile] Outputfile: /home/yamakawa/Development/github/cefore-emu-koh11235813/logs/ex11_seed42/recv_3_content1/RNP0xb12ec993797c88c96e1eb71a09e0e9a5.out
+[cefsubfile] Rx Frames (All)           = 0
+[cefsubfile] Rx Frames (ContentObject) = 0
+
+[cefsubfile] RNP=0xb12ec993797c88c96e1eb71a09e0e9a5
+[cefsubfile] Outputfile: /home/yamakawa/Development/github/cefore-emu-koh11235813/logs/ex11_seed42/recv_3_content1/RNP0xb12ec993797c88c96e1eb71a09e0e9a5.out
+[cefsubfile] Rx Frames (All)           = 0
+[cefsubfile] Rx Frames (ContentObject) = 0
+
+[cefsubfile] RNP=0xb12ec993797c88c96e1eb71a09e0e9a5
+[cefsubfile] Outputfile: /home/yamakawa/Development/github/cefore-emu-koh11235813/logs/ex11_seed42/recv_3_content1/RNP0xb12ec993797c88c96e1eb71a09e0e9a5.out
+[cefsubfile] Rx Frames (All)           = 0
+[cefsubfile] Rx Frames (ContentObject) = 0
+
+[cefsubfile] RNP=0xb12ec993797c88c96e1eb71a09e0e9a5
+[cefsubfile] Outputfile: /home/yamakawa/Development/github/cefore-emu-koh11235813/logs/ex11_seed42/recv_3_content1/RNP0xb12ec993797c88c96e1eb71a09e0e9a5.out
+[cefsubfile] Rx Frames (All)           = 0
+[cefsubfile] Rx Frames (ContentObject) = 0
+
+[cefsubfile] RNP=0xb12ec993797c88c96e1eb71a09e0e9a5
+[cefsubfile] Outputfile: /home/yamakawa/Development/github/cefore-emu-koh11235813/logs/ex11_seed42/recv_3_content1/RNP0xb12ec993797c88c96e1eb71a09e0e9a5.out
+[cefsubfile] Rx Frames (All)           = 0
+[cefsubfile] Rx Frames (ContentObject) = 0
+
+[cefsubfile] RNP=0xb12ec993797c88c96e1eb71a09e0e9a5
+[cefsubfile] Outputfile: /home/yamakawa/Development/github/cefore-emu-koh11235813/logs/ex11_seed42/recv_3_content1/RNP0xb12ec993797c88c96e1eb71a09e0e9a5.out
+[cefsubfile] Rx Frames (All)           = 0
+[cefsubfile] Rx Frames (ContentObject) = 0
+
+[cefsubfile] RNP=0xb12ec993797c88c96e1eb71a09e0e9a5
+[cefsubfile] Outputfile: /home/yamakawa/Development/github/cefore-emu-koh11235813/logs/ex11_seed42/recv_3_content1/RNP0xb12ec993797c88c96e1eb71a09e0e9a5.out
+[cefsubfile] Rx Frames (All)           = 0
+[cefsubfile] Rx Frames (ContentObject) = 0
+
+[cefsubfile] RNP=0xb12ec993797c88c96e1eb71a09e0e9a5
+[cefsubfile] Outputfile: /home/yamakawa/Development/github/cefore-emu-koh11235813/logs/ex11_seed42/recv_3_content1/RNP0xb12ec993797c88c96e1eb71a09e0e9a5.out
+[cefsubfile] Rx Frames (All)           = 0
+[cefsubfile] Rx Frames (ContentObject) = 0
+
