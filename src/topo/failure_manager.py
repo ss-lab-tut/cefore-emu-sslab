@@ -177,11 +177,11 @@ class FlexibleFailureManager:
             info("[failure] simple mode requires 'simple' config section\n")
             return threading.Event(), None
 
-        interval = self.simple.get("interval", 30)
-        duration = self.simple.get("duration", 10)
-        count = self.simple.get("count", 2)
-        stagger = self.simple.get("stagger", 0)
-        exclude_list = self.simple.get("exclude", [])
+        interval = self.simple.get("interval") or 30
+        duration = self.simple.get("duration") or 10
+        count = self.simple.get("count") if self.simple.get("count") is not None else 2
+        stagger = self.simple.get("stagger") if self.simple.get("stagger") is not None else 0
+        exclude_list = self.simple.get("exclude") or []
 
         if interval <= 0 or duration <= 0:
             info("[failure] simple mode: interval/duration must be > 0\n")
@@ -217,11 +217,11 @@ class FlexibleFailureManager:
                 if stop_event.is_set():
                     break
 
-                interval = cycle_config.get("interval", 30)
-                duration = cycle_config.get("duration", 10)
-                count = cycle_config.get("count", 2)
-                stagger = cycle_config.get("stagger", 0)
-                exclude_list = cycle_config.get("exclude", [])
+                interval = cycle_config.get("interval") or 30
+                duration = cycle_config.get("duration") or 10
+                count = cycle_config.get("count") if cycle_config.get("count") is not None else 2
+                stagger = cycle_config.get("stagger") if cycle_config.get("stagger") is not None else 0
+                exclude_list = cycle_config.get("exclude") or []
                 target_list = cycle_config.get("target")
                 allow_publishers = cycle_config.get("allow_publishers", False)
 

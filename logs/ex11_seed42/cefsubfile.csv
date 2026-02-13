@@ -1,0 +1,5 @@
+experiment_dir,num,hosts,switches,seed,k,down_interval,down_duration,down_count,down_stagger,down_exclude,cache_count,get_interval,filename,host_id,content_id,file_seed,down_hosts,get_idx,phase,cycle,timestamp,uri,rnp,rx_frames_all,rx_frames_contentobject,success,rx_bytes_all,rx_bytes_contentobject,duration,jitter_ave,jitter_max,jitter_var,throughput,goodput
+ex11_seed42,11,20,100,42,2,30,10,5,2,,5,10,cefsubfile_seed42_downhostsnone_phaseeval_cycle0_idx0_h3.log,3,,42,none,0,eval,0,,,0xb12ec993797c88c96e1eb71a09e0e9a5,0,0,True,,,,,,,,
+ex11_seed42,11,20,100,42,2,30,10,5,2,,5,10,cefsubfile_seed42_downhostsnone_phaseeval_cycle0_idx1_h16.log,16,,42,none,1,eval,0,,,0xb12ec993797c88c96e1eb71a09e0e9a5,0,0,True,1316,1262,0.0,0,0,0,,
+ex11_seed42,11,20,100,42,2,30,10,5,2,,5,10,cefsubfile_seed42_downhostsnone_phaseeval_cycle0_idx2_h16.log,16,,42,none,2,eval,0,,,0xceee7c73b348eee62a6f445a6a4c4d9c,0,0,True,1316,1262,0.0,0,0,0,,
+ex11_seed42,11,20,100,42,2,30,10,5,2,,5,10,cefsubfile_seed42_downhostsnone_phaseeval_cycle0_idx3_h7.log,7,,42,none,3,eval,0,,,0xceee7c73b348eee62a6f445a6a4c4d9c,0,0,True,3418,3310,0.017,8157,16314,66536649,1676106,1623145

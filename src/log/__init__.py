@@ -21,4 +21,13 @@ __all__ = [
     "collect_records",
     "summarize",
     "write_csv",
+    "plot_all",
 ]
+
+
+def __getattr__(name: str):
+    if name == "plot_all":
+        from .plotter import plot_all
+
+        return plot_all
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

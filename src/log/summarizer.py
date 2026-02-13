@@ -208,7 +208,7 @@ def summarize(
     directories: list[Path],
     output_dir: Path | None = None,
     stdout: bool = False,
-) -> list[Path]:
+) -> tuple[list[Path], dict[str, list[dict[str, Any]]]]:
     """Main entry: collect records and write per-command CSVs.
 
     Args:
@@ -217,13 +217,13 @@ def summarize(
         stdout: If True, write all CSVs to stdout (separated by blank line).
 
     Returns:
-        List of written CSV paths (empty if stdout).
+        Tuple of (written CSV paths, grouped records by command).
     """
     grouped = collect_records(directories)
 
     if not grouped:
         print("No log files found.", file=sys.stderr)
-        return []
+        return [], {}
 
     if output_dir is None and not stdout:
         output_dir = directories[0].parent
@@ -243,4 +243,4 @@ def summarize(
                 written.append(result)
                 print(f"{result}  ({len(records)} records)")
 
-    return written
+    return written, grouped

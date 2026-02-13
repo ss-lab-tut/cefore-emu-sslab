@@ -153,10 +153,12 @@ def render_topology_png(mesh_links, output_path, seed=None, layout="spring"):
     if not output_path:
         return
     if not _ensure_topo_deps():
-        info(f"topology PNG skipped (missing deps): {TOPO_DEPS_ERROR}\n")
+        import sys
+        print(f"warning: topology PNG skipped (missing deps): {TOPO_DEPS_ERROR}", file=sys.stderr)
         return
     if not mesh_links:
-        info("topology PNG skipped (no links)\n")
+        import sys
+        print("warning: topology PNG skipped (no links)", file=sys.stderr)
         return
 
     nx = _nx

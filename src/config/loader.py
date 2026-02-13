@@ -280,7 +280,7 @@ def validate_config(config: dict[str, Any]) -> list[str]:
                         errors.append("failure_scenarios.simple must be a dict")
                     else:
                         for field in ("interval", "duration", "count", "stagger"):
-                            if field in simple and not isinstance(simple[field], int):
+                            if field in simple and simple[field] is not None and not isinstance(simple[field], int):
                                 errors.append(
                                     f"failure_scenarios.simple.{field} must be an integer"
                                 )
@@ -300,7 +300,7 @@ def validate_config(config: dict[str, Any]) -> list[str]:
                             errors.append(
                                 "failure_scenarios.simple.stagger must be an integer >= 0"
                             )
-                        if "exclude" in simple:
+                        if "exclude" in simple and simple["exclude"] is not None:
                             if not isinstance(simple["exclude"], list) or not all(
                                 isinstance(x, int) for x in simple["exclude"]
                             ):
@@ -324,7 +324,7 @@ def validate_config(config: dict[str, Any]) -> list[str]:
                             errors.append(f"failure_scenarios.cycles[{idx}] must be a dict")
                             continue
                         for field in ("interval", "duration", "count", "stagger"):
-                            if field in cycle and not isinstance(cycle[field], int):
+                            if field in cycle and cycle[field] is not None and not isinstance(cycle[field], int):
                                 errors.append(
                                     f"failure_scenarios.cycles[{idx}].{field} must be an integer"
                                 )
@@ -344,14 +344,14 @@ def validate_config(config: dict[str, Any]) -> list[str]:
                             errors.append(
                                 f"failure_scenarios.cycles[{idx}].stagger must be an integer >= 0"
                             )
-                        if "exclude" in cycle:
+                        if "exclude" in cycle and cycle["exclude"] is not None:
                             if not isinstance(cycle["exclude"], list) or not all(
                                 isinstance(x, int) for x in cycle["exclude"]
                             ):
                                 errors.append(
                                     f"failure_scenarios.cycles[{idx}].exclude must be a list of integers"
                                 )
-                        if "target" in cycle:
+                        if "target" in cycle and cycle["target"] is not None:
                             if not isinstance(cycle["target"], list) or not all(
                                 isinstance(x, int) for x in cycle["target"]
                             ):
@@ -513,8 +513,19 @@ def merge_cli_and_config(args: Any, config: dict[str, Any]) -> None:
         "legacy_layout",
     )
 
+    # Keys where null means "use default" — skip merge so argparse default wins.
+    _NULL_MEANS_DEFAULT = frozenset({
+        "topo_png",
+        "topo_layout",
+        "results_json",
+        "publisher_host",
+        "seed",
+    })
+
     for key in config_keys:
         if key in config:
+            if config[key] is None and key in _NULL_MEANS_DEFAULT:
+                continue
             setattr(args, key, config[key])
 
     if "failure_scenarios" in config:
