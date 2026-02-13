@@ -108,8 +108,16 @@ def set_node_links_state(net, node_name, state):
         state: "up" or "down".
     """
     node = net.get(node_name)
+    if node is None:
+        return
     for link in net.links:
-        if link.intf1.node == node:
-            net.configLinkStatus(node.name, link.intf2.node.name, state)
-        elif link.intf2.node == node:
-            net.configLinkStatus(node.name, link.intf1.node.name, state)
+        intf1 = link.intf1
+        intf2 = link.intf2
+        if intf1 is None or intf2 is None:
+            continue
+        if getattr(intf1, "node", None) is None or getattr(intf2, "node", None) is None:
+            continue
+        if intf1.node == node:
+            net.configLinkStatus(node.name, intf2.node.name, state)
+        elif intf2.node == node:
+            net.configLinkStatus(node.name, intf1.node.name, state)

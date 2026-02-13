@@ -558,12 +558,14 @@ def run_cli_or_duration(net, args, log_context, ops_get_putget, ops_put,
 
 
 def cleanup_all(net, args, started_csmgrd_hosts, bridge_manager, stop_event,
-                results, results_path):
+                results, results_path, stop_thread=None):
     """Clean up daemons, bridges, and network; write results."""
     import json
 
     if stop_event is not None:
         stop_event.set()
+    if stop_thread is not None:
+        stop_thread.join(timeout=10)
 
     if net is not None:
         for idx in range(args.hosts):

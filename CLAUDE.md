@@ -357,6 +357,15 @@ uv sync              # Install dependencies
 uv run python3 ...   # Run with managed environment
 ```
 
+**Python execution on Mac (development host):**
+Mac のシステム Python はバージョンが古く依存パッケージも入っていないため、`python3` を直接実行してはいけない。
+必ず `uv run` または `.venv/bin/python3` を使用すること。
+
+```bash
+uv run python3 -m py_compile src/log/filename.py   # syntax check
+.venv/bin/python3 -c "import networkx"              # direct venv python
+```
+
 **Dependencies:**
 - mininet>=2.3.0
 - networkx>=3.6.1 (for topology algorithms and PNG output)

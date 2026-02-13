@@ -40,12 +40,12 @@ def periodic_host_flap(
         stagger: Seconds between individual host downs.
 
     Returns:
-        threading.Event to stop flapping.
+        Tuple of (threading.Event, threading.Thread or None).
     """
     host_ids = [idx for idx in range(host_num) if idx not in exclude]
     if not host_ids:
         info("no hosts available for flapping\n")
-        return threading.Event()
+        return threading.Event(), None
     stop_event = threading.Event()
 
     use_flap_state = hasattr(state, "update") and hasattr(state, "snapshot")
@@ -115,7 +115,7 @@ def periodic_host_flap(
 
     thread = threading.Thread(target=worker, daemon=True)
     thread.start()
-    return stop_event
+    return stop_event, thread
 
 
 class FlexibleFailureManager:
@@ -159,7 +159,7 @@ class FlexibleFailureManager:
             quiet: Suppress flap log output.
 
         Returns:
-            threading.Event to stop the failure scenario.
+            Tuple of (threading.Event, threading.Thread or None).
         """
         if self.strategy == "simple":
             return self._start_simple_mode(net, state, quiet)
@@ -167,7 +167,7 @@ class FlexibleFailureManager:
             return self._start_cycle_mode(net, state, quiet)
         else:
             info(f"[failure] unknown strategy '{self.strategy}', no flapping\n")
-            return threading.Event()
+            return threading.Event(), None
 
     def _start_simple_mode(
         self, net, state: FlapState, quiet: bool
@@ -175,7 +175,7 @@ class FlexibleFailureManager:
         """Start simple mode (backward compatible single configuration)."""
         if not self.simple:
             info("[failure] simple mode requires 'simple' config section\n")
-            return threading.Event()
+            return threading.Event(), None
 
         interval = self.simple.get("interval", 30)
         duration = self.simple.get("duration", 10)
@@ -185,7 +185,7 @@ class FlexibleFailureManager:
 
         if interval <= 0 or duration <= 0:
             info("[failure] simple mode: interval/duration must be > 0\n")
-            return threading.Event()
+            return threading.Event(), None
 
         exclude_set = set(exclude_list) | self.publisher_ids
         return self._periodic_flap(
@@ -205,7 +205,7 @@ class FlexibleFailureManager:
         """Start cycle mode with per-cycle configurations."""
         if not self.cycles:
             info("[failure] cycle mode requires 'cycles' list\n")
-            return threading.Event()
+            return threading.Event(), None
 
         stop_event = threading.Event()
         state_lock = threading.Lock()
@@ -351,7 +351,7 @@ class FlexibleFailureManager:
 
         thread = threading.Thread(target=worker, daemon=True)
         thread.start()
-        return stop_event
+        return stop_event, thread
 
     def _periodic_flap(
         self,
@@ -377,12 +377,12 @@ class FlexibleFailureManager:
             quiet: Suppress log output.
 
         Returns:
-            threading.Event to stop flapping.
+            Tuple of (threading.Event, threading.Thread or None).
         """
         host_ids = [idx for idx in range(self.host_count) if idx not in exclude]
         if not host_ids:
             info("[failure] no hosts available for flapping\n")
-            return threading.Event()
+            return threading.Event(), None
 
         stop_event = threading.Event()
 
@@ -460,4 +460,4 @@ class FlexibleFailureManager:
 
         thread = threading.Thread(target=worker, daemon=True)
         thread.start()
-        return stop_event
+        return stop_event, thread

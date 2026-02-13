@@ -92,6 +92,7 @@ def run_disaster_topology(args, run_dir: Path = None, log_context=None):
     net = None
     bridge_manager = BridgeManager()
     stop_event = None
+    stop_thread = None
     started_csmgrd_hosts = set()
 
     bridge_configs = getattr(args, "bridges", None) or []
@@ -220,7 +221,10 @@ def run_disaster_topology(args, run_dir: Path = None, log_context=None):
         if priority_manager:
             hot_uris = [uri for uri in hot_uris if priority_manager.should_prefetch(uri)]
 
-        # Warmup
+        # Phase 1: putget puts (SYNC)
+        run_put_phase(net, run_dir, ops_put_putget, seed_label)
+
+        # Warmup (after puts so content exists in caches)
         warmup_ops = build_warmup_ops(args, run_dir, hot_uris, cache_nodes)
         if warmup_ops:
             run_get_ops(
@@ -229,9 +233,6 @@ def run_disaster_topology(args, run_dir: Path = None, log_context=None):
                 seed_label, flap_state, uri_publishers, args, results,
                 cycle_idx=0,
             )
-
-        # Phase 1: putget puts (SYNC)
-        run_put_phase(net, run_dir, ops_put_putget, seed_label)
 
         # Phase 2: pubsub subscribers (ASYNC)
         pubsub_sub_procs = []
@@ -278,7 +279,7 @@ def run_disaster_topology(args, run_dir: Path = None, log_context=None):
                     rng=rng,
                     publisher_ids=publisher_ids,
                 )
-                stop_event = failure_manager.start(net, flap_state, quiet=use_cli)
+                stop_event, stop_thread = failure_manager.start(net, flap_state, quiet=use_cli)
 
         # CLI or duration mode
         run_cli_or_duration(
@@ -290,7 +291,7 @@ def run_disaster_topology(args, run_dir: Path = None, log_context=None):
     finally:
         cleanup_all(
             net, args, started_csmgrd_hosts, bridge_manager,
-            stop_event, results, results_path,
+            stop_event, results, results_path, stop_thread=stop_thread,
         )
 
 

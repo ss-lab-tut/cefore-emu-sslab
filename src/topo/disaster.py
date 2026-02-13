@@ -62,6 +62,7 @@ def run_disaster_topology(args, run_dir: Path = None, log_context=None):
     net = None
     bridge_manager = BridgeManager()
     stop_event = None
+    stop_thread = None
     started_csmgrd_hosts = set()
 
     bridge_configs = getattr(args, "bridges", None) or []
@@ -169,7 +170,10 @@ def run_disaster_topology(args, run_dir: Path = None, log_context=None):
         ops_put_pubsub = [op for op in ops_put if op.get("mode") == "pubsub"]
         info(f"\n=== Put operations: {len(ops_put_pubsub)} pubsub, {len(ops_put_putget)} putget ===\n")
 
-        # Warmup
+        # Phase 1: putget puts (SYNC)
+        run_put_phase(net, run_dir, ops_put_putget, seed_label)
+
+        # Warmup (after puts so content exists in caches)
         warmup_ops = build_warmup_ops(args, run_dir, hot_uris, cache_nodes)
         if warmup_ops:
             run_get_ops(
@@ -178,9 +182,6 @@ def run_disaster_topology(args, run_dir: Path = None, log_context=None):
                 seed_label, flap_state, uri_publishers, args, results,
                 cycle_idx=0,
             )
-
-        # Phase 1: putget puts (SYNC)
-        run_put_phase(net, run_dir, ops_put_putget, seed_label)
 
         # Phase 2: pubsub subscribers (ASYNC)
         pubsub_sub_procs = []
@@ -216,7 +217,7 @@ def run_disaster_topology(args, run_dir: Path = None, log_context=None):
             exclude_ids = parse_int_list(args.down_exclude)
             if publisher_ids:
                 exclude_ids = list(set(exclude_ids) | publisher_ids)
-            stop_event = periodic_host_flap(
+            stop_event, stop_thread = periodic_host_flap(
                 net, args.hosts, args.down_interval, args.down_duration,
                 rng, exclude_ids, flap_state, args.down_count,
                 args.down_stagger, quiet=not getattr(args, "no_cli", False),
@@ -232,7 +233,7 @@ def run_disaster_topology(args, run_dir: Path = None, log_context=None):
     finally:
         cleanup_all(
             net, args, started_csmgrd_hosts, bridge_manager,
-            stop_event, results, results_path,
+            stop_event, results, results_path, stop_thread=stop_thread,
         )
 
 
