@@ -10,7 +10,10 @@ auto:
   uri_prefix: "ccnx:/test/experiment"
   consumer_per_content: 2
 
-down_interval: 30
-down_duration: 10
-down_count: 2
+failure_scenarios:
+  strategy: simple
+  simple:
+    interval: 30
+    duration: 10
+    count: 2
 get_interval: 5

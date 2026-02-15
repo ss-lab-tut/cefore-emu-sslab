@@ -44,6 +44,28 @@ from .viz import build_host_graph, print_mesh_links, render_topology_png
 # ---------------------------------------------------------------------------
 
 
+def _effective_down_count(args):
+    """Extract effective down_count from failure_scenarios.
+
+    Args:
+        args: Parsed arguments with optional failure_scenarios attribute.
+
+    Returns:
+        Integer count of hosts to down per cycle.
+    """
+    fs = getattr(args, "failure_scenarios", None)
+    if not fs:
+        return 0
+    strategy = fs.get("strategy", "simple")
+    if strategy == "simple":
+        simple = fs.get("simple", {}) or {}
+        return simple.get("count") if simple.get("count") is not None else 0
+    cycles = fs.get("cycles", []) or []
+    if cycles:
+        return max((c.get("count") or 0 for c in cycles), default=0)
+    return 0
+
+
 def artifact_path(run_dir, raw_path, default_name):
     """Resolve output file path under run_dir."""
     return resolve_run_path(run_dir, raw_path, default_name)
@@ -454,7 +476,7 @@ def setup_cache_nodes(args, topo, publisher_ids, pubsub_publisher_ids):
         (cache_node_set, cache_nodes list)
     """
     host_graph, _ = build_host_graph(topo.mesh_links)
-    cache_count = args.cache_count if args.cache_count > 0 else args.down_count + 1
+    cache_count = args.cache_count if args.cache_count > 0 else _effective_down_count(args) + 1
     cache_nodes = select_k_centers(host_graph, cache_count)
     cache_nodes = [
         idx for idx in cache_nodes

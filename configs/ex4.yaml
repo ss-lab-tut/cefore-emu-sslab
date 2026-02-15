@@ -73,10 +73,13 @@ no_cli: true
   #   # publisher_host:
   # hot_uris: ["ccnx:/emergency"]
 
-down_interval: 10
-down_duration: 20
-down_stagger: 5
-down_count: 5
+failure_scenarios:
+  strategy: simple
+  simple:
+    interval: 10
+    duration: 20
+    stagger: 5
+    count: 5
 get_interval: 5
 topo_layout:
 bw: h3, s1, 1

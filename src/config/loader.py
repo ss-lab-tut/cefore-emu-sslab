@@ -111,10 +111,6 @@ def validate_config(config: dict[str, Any]) -> list[str]:
         if not isinstance(config["timestamp"], bool):
             errors.append("timestamp must be a boolean")
 
-    if "legacy_layout" in config:
-        if not isinstance(config["legacy_layout"], bool):
-            errors.append("legacy_layout must be a boolean")
-
     if "no_cli" in config:
         if not isinstance(config["no_cli"], bool):
             errors.append("no_cli must be a boolean")
@@ -469,20 +465,13 @@ def merge_cli_and_config(args: Any, config: dict[str, Any]) -> None:
     # NOTE:
     # argparse.Namespace does not tell us whether a value came from an explicit CLI
     # flag or from the parser default, so we cannot reliably enforce "CLI always wins"
-    # in this shared helper. For backward compatibility with disaster.py and related
-    # scripts, legacy fields below keep the historical behavior: config overwrites args.
-    # flexible_disaster.py uses failure_scenarios for failure control, so that field is
-    # merged separately only when it exists in the config.
+    # in this shared helper. Config values overwrite args for keys listed below.
+    # failure_scenarios is merged separately only when it exists in the config.
     config_keys = (
         "hosts",
         "switches",
         "seed",
         "k",
-        "down_interval",
-        "down_duration",
-        "down_exclude",
-        "down_count",
-        "down_stagger",
         "cache_count",
         "bw",
         "ext",
@@ -510,7 +499,6 @@ def merge_cli_and_config(args: Any, config: dict[str, Any]) -> None:
         "num",
         "output_dir",
         "timestamp",
-        "legacy_layout",
     )
 
     # Keys where null means "use default" — skip merge so argparse default wins.

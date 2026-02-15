@@ -470,20 +470,11 @@ def main():
         help="add timestamp to output directory name",
     )
     parser.add_argument(
-        "--legacy",
-        action="store_true",
-        dest="legacy_layout",
-        help="use legacy layout (output to current directory)",
-    )
-    parser.add_argument(
         "--no-cli",
         action="store_true",
         help="skip interactive CLI (flap output visible on stdout)",
     )
     args = parser.parse_args()
-
-    if args.legacy_layout:
-        sys.exit("--legacy is disabled for deterministic output isolation")
 
     # Resolve output directory
     run_dir = resolve_run_dir(args)

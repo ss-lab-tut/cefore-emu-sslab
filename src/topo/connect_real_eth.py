@@ -9,7 +9,6 @@ import json
 import random
 import shlex
 import sys
-import threading
 import time
 from pathlib import Path
 
@@ -32,9 +31,8 @@ from .cef_daemons import (
     wait_for_cefnetd,
 )
 from .external_bridge import BridgeManager, parse_bridge_args, setup_bridges
-from .flap_state import FlapState
 from .graph_algos import select_k_centers
-from .links import pick_publish_link, set_node_links_state
+from .links import pick_publish_link
 from .mesh_topo import MeshTopo
 from .net_config import set_fib, set_fib_for_uris, set_ip_addr
 from .paths import resolve_run_dir, resolve_run_path
@@ -100,103 +98,6 @@ def parse_int_list(value):
         raise ValueError(
             f"expected list of ints or comma-separated string, got {value!r}"
         ) from exc
-
-
-def periodic_host_flap(
-    net, host_num, interval, down_time, rng, exclude, state, down_count, stagger,
-    quiet=False,
-):
-    """Start periodic host flapping in background thread.
-
-    Args:
-        net: Mininet network instance.
-        host_num: Total number of hosts.
-        interval: Seconds between down events.
-        down_time: Seconds to keep hosts down.
-        rng: Random number generator (None for round-robin).
-        exclude: Set of host IDs to exclude from flapping.
-        state: FlapState instance or dict to track current down hosts.
-        down_count: Number of hosts to down per cycle.
-        stagger: Seconds between individual host downs.
-
-    Returns:
-        threading.Event to stop flapping.
-    """
-    host_ids = [idx for idx in range(host_num) if idx not in exclude]
-    if not host_ids:
-        info("no hosts available for flapping\n")
-        return threading.Event()
-    stop_event = threading.Event()
-
-    # Check if state is a FlapState object or legacy dict
-    use_flap_state = hasattr(state, "update") and hasattr(state, "snapshot")
-
-    def worker():
-        position = 0
-        active_down = set()
-
-        def update_state(last_down=None):
-            if use_flap_state:
-                state.update(active_down, last_down)
-            else:
-                state["down_hosts"] = sorted(active_down)
-                if last_down is not None:
-                    state["last_down_host"] = last_down
-
-        def schedule_up(host_idx):
-            def do_up():
-                if stop_event.is_set():
-                    return
-                host_name = f"h{host_idx}"
-                if not quiet:
-                    info(f"\n[flap] up {host_name}\n")
-                try:
-                    set_node_links_state(net, host_name, "up")
-                except (AssertionError, OSError) as exc:
-                    if not quiet:
-                        info(f"\n[flap] failed to up {host_name}: {exc}\n")
-                active_down.discard(host_idx)
-                update_state()
-
-            timer = threading.Timer(down_time, do_up)
-            timer.daemon = True
-            timer.start()
-
-        while not stop_event.is_set():
-            available = [idx for idx in host_ids if idx not in active_down]
-            if not available:
-                stop_event.wait(interval)
-                continue
-            count = min(down_count, len(available))
-            if rng is not None:
-                chosen = rng.sample(available, count)
-            else:
-                chosen = [
-                    available[(position + offset) % len(available)]
-                    for offset in range(count)
-                ]
-                position += count
-
-            for offset, host_idx in enumerate(chosen):
-                if stop_event.wait(stagger if offset > 0 else 0):
-                    return
-                host_name = f"h{host_idx}"
-                active_down.add(host_idx)
-                update_state(last_down=host_idx)
-                if not quiet:
-                    info(f"\n[flap] down {host_name}\n")
-                try:
-                    set_node_links_state(net, host_name, "down")
-                except (AssertionError, OSError) as exc:
-                    if not quiet:
-                        info(f"\n[flap] failed to down {host_name}: {exc}\n")
-                schedule_up(host_idx)
-
-            stop_event.wait(interval)
-
-    thread = threading.Thread(target=worker, daemon=True)
-    thread.start()
-    return stop_event
 
 
 def set_link_bandwidth(net, node_a, node_b, bandwidth):
@@ -338,8 +239,9 @@ def run_connect(args, run_dir: Path = None, log_context=None):
     for idx in range(args.hosts):
         info(net.hosts[idx].cmd("ifconfig"))
 
+    from .simulation import _effective_down_count
     host_graph, _ = build_host_graph(topo.mesh_links)
-    cache_count = args.cache_count if args.cache_count > 0 else args.down_count + 1
+    cache_count = args.cache_count if args.cache_count > 0 else _effective_down_count(args) + 1
     cache_nodes = select_k_centers(host_graph, cache_count)
     if not cache_nodes and args.hosts > 0:
         cache_nodes = [args.hosts - 1]
@@ -366,11 +268,7 @@ def run_connect(args, run_dir: Path = None, log_context=None):
         publish_link = pick_publish_link(topo.mesh_links, publisher)
         publish_uri = f"ccnx:/test/example{publisher + 1}/test.py"
         seed_label = "none" if args.seed is None else str(args.seed)
-        down_host_label = "none"
-        log_name = (
-            f"cefputfile_{args.hosts}_{args.switches}_{seed_label}_"
-            f"{args.down_interval}_{args.down_duration}_{down_host_label}.log"
-        )
+        log_name = f"cefputfile_{args.hosts}_{args.switches}_{seed_label}.log"
         ops_put = [
             {
                 "host": publisher,
@@ -499,36 +397,6 @@ def main():
     parser.add_argument("--seed", type=int, default=None, help="random seed")
     parser.add_argument("--k", type=int, default=2, help="k shortest paths")
     parser.add_argument(
-        "--down-interval",
-        type=int,
-        default=30,
-        help="seconds between down events (0 to disable)",
-    )
-    parser.add_argument(
-        "--down-duration",
-        type=int,
-        default=10,
-        help="seconds to keep host down",
-    )
-    parser.add_argument(
-        "--down-exclude",
-        type=str,
-        default="",
-        help="comma-separated host ids to exclude from flapping (config can use list)",
-    )
-    parser.add_argument(
-        "--down-count",
-        type=int,
-        default=5,
-        help="number of hosts to keep down per cycle",
-    )
-    parser.add_argument(
-        "--down-stagger",
-        type=int,
-        default=2,
-        help="seconds to stagger down events within a cycle",
-    )
-    parser.add_argument(
         "--cache-count",
         type=int,
         default=0,
@@ -617,12 +485,6 @@ def main():
         help="add timestamp to output directory name",
     )
     parser.add_argument(
-        "--legacy",
-        action="store_true",
-        dest="legacy_layout",
-        help="use legacy layout (output to current directory)",
-    )
-    parser.add_argument(
         "--no-cli",
         action="store_true",
         help="skip interactive CLI (flap output visible on stdout)",
@@ -637,9 +499,6 @@ def main():
         sys.exit(1)
     merge_cli_and_config(args, config_data)
 
-    if args.legacy_layout:
-        sys.exit("--legacy is disabled for deterministic output isolation")
-
     # Resolve output directory
     run_dir = resolve_run_dir(args)
     run_dir = run_dir.resolve()
@@ -650,17 +509,19 @@ def main():
         args.topo_png = f"ex{args.hosts}_seed{seed_label}.png"
 
     # Write meta.json with experiment configuration
+    _fs = getattr(args, "failure_scenarios", None) or {}
+    _simple = _fs.get("simple", {}) or {}
     meta_data = {
         "num": getattr(args, "num", None),
         "hosts": args.hosts,
         "switches": args.switches,
         "seed": args.seed,
         "k": args.k,
-        "down_interval": args.down_interval,
-        "down_duration": args.down_duration,
-        "down_count": args.down_count,
-        "down_stagger": args.down_stagger,
-        "down_exclude": args.down_exclude,
+        "down_interval": _simple.get("interval", 0),
+        "down_duration": _simple.get("duration", 0),
+        "down_count": _simple.get("count", 0),
+        "down_stagger": _simple.get("stagger", 0),
+        "down_exclude": ",".join(str(x) for x in (_simple.get("exclude") or [])),
         "cache_count": args.cache_count,
         "get_interval": args.get_interval,
         "output_dir": str(run_dir),

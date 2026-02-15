@@ -6,16 +6,18 @@ k: 2
 num: 1
 output_dir: logs
 timestamp: false
-legacy_layout: false
 
 no_cli: true
 duration: 120
 results_json: results.json
 
-down_interval: 30
-down_duration: 10
-down_count: 2
-down_stagger: 2
+failure_scenarios:
+  strategy: simple
+  simple:
+    interval: 30
+    duration: 10
+    count: 2
+    stagger: 2
 get_interval: 5
 warmup_get_interval: 0
 warmup_only_cache_nodes: true

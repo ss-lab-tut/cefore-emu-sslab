@@ -152,7 +152,6 @@ get_interval: 10             # Seconds between cefgetfile runs in eval phase
 num: 11                       # Experiment number (enables log directory output)
 output_dir: "logs"           # Base output directory
 timestamp: false             # Add timestamp to output directory name
-legacy_layout: false         # Use legacy layout (output to current directory) - DEPRECATED
 no_cli: true                 # Skip interactive CLI (flap output visible on stdout)
 duration: 360                 # Eval phase duration in seconds for --no-cli (0: single cycle)
 results_json: null           # Write warmup/eval get results to JSON (null = no JSON output)

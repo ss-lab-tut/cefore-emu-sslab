@@ -26,7 +26,10 @@ gets:
   - host: 3
     uri: "ccnx:/test/data1"
 
-down_interval: 30
-down_duration: 10
-down_count: 2
+failure_scenarios:
+  strategy: simple
+  simple:
+    interval: 30
+    duration: 10
+    count: 2
 get_interval: 5

@@ -19,10 +19,9 @@ from config.auto_generator import generate_operations
 from config.loader import load_config, merge_cli_and_config, validate_config
 
 from .external_bridge import BridgeManager, parse_bridge_args
-from .failure_manager import periodic_host_flap
+from .failure_manager import FlexibleFailureManager
 from .flap_state import FlapState
 from .mesh_topo import MeshTopo
-from .net_config import parse_int_list
 from .paths import Tee, resolve_run_dir
 from .simulation import (
     artifact_path,
@@ -212,16 +211,24 @@ def run_disaster_topology(args, run_dir: Path = None, log_context=None):
             wait_pubsub_procs(pubsub_sub_procs, uri_publishers, args, results)
         wait_pub_procs(pubsub_pub_procs)
 
-        # Failure phase startup (disaster.py uses periodic_host_flap directly)
-        if args.down_interval > 0 and args.down_duration > 0:
-            exclude_ids = parse_int_list(args.down_exclude)
-            if publisher_ids:
-                exclude_ids = list(set(exclude_ids) | publisher_ids)
-            stop_event, stop_thread = periodic_host_flap(
-                net, args.hosts, args.down_interval, args.down_duration,
-                rng, exclude_ids, flap_state, args.down_count,
-                args.down_stagger, quiet=not getattr(args, "no_cli", False),
-            )
+        # Failure phase startup (uses FlexibleFailureManager)
+        scenario_config = getattr(args, "failure_scenarios", None)
+        if scenario_config:
+            should_start_failure = True
+            if scenario_config.get("strategy", "simple") == "simple":
+                simple = scenario_config.get("simple", {}) or {}
+                if (simple.get("interval") or 0) <= 0 or (simple.get("duration") or 0) <= 0:
+                    should_start_failure = False
+            if should_start_failure:
+                failure_manager = FlexibleFailureManager(
+                    scenario_config=scenario_config,
+                    host_count=args.hosts,
+                    rng=rng,
+                    publisher_ids=publisher_ids,
+                )
+                stop_event, stop_thread = failure_manager.start(
+                    net, flap_state, quiet=not getattr(args, "no_cli", False),
+                )
 
         # CLI or duration mode
         run_cli_or_duration(
@@ -266,25 +273,6 @@ def main():
     parser.add_argument("--seed", type=int, default=None, help="random seed")
     parser.add_argument("--k", type=int, default=2, help="k shortest paths")
     parser.add_argument(
-        "--down-interval", type=int, default=30,
-        help="seconds between down events (0 to disable)",
-    )
-    parser.add_argument(
-        "--down-duration", type=int, default=10, help="seconds to keep host down",
-    )
-    parser.add_argument(
-        "--down-exclude", type=str, default="",
-        help="comma-separated host ids to exclude from flapping",
-    )
-    parser.add_argument(
-        "--down-count", type=int, default=5,
-        help="number of hosts to keep down per cycle",
-    )
-    parser.add_argument(
-        "--down-stagger", type=int, default=2,
-        help="seconds to stagger down events within a cycle",
-    )
-    parser.add_argument(
         "--cache-count", type=int, default=0,
         help="number of cache nodes (0 = down-count + 1)",
     )
@@ -317,10 +305,6 @@ def main():
     parser.add_argument("--num", type=int, default=None, help="experiment number")
     parser.add_argument("--output-dir", type=str, default="logs", help="base output directory")
     parser.add_argument("--timestamp", action="store_true", help="add timestamp to dir name")
-    parser.add_argument(
-        "--legacy", action="store_true", dest="legacy_layout",
-        help="use legacy layout (output to current directory)",
-    )
     parser.add_argument("--no-cli", action="store_true", help="skip interactive CLI")
     parser.add_argument("--duration", type=int, default=0, help="eval phase duration (sec)")
     parser.add_argument("--results-json", type=str, default="", help="results JSON path")
@@ -346,9 +330,6 @@ def main():
         sys.exit(1)
     merge_cli_and_config(args, config_data)
 
-    if args.legacy_layout:
-        sys.exit("--legacy is disabled for deterministic output isolation")
-
     if isinstance(args.hot_uris, str) and args.hot_uris:
         args.hot_uris = [u.strip() for u in args.hot_uris.split(",") if u.strip()]
     if isinstance(args.warmup_gets, str) and args.warmup_gets:
@@ -362,17 +343,19 @@ def main():
     if args.topo_png is None:
         args.topo_png = f"ex{args.hosts}_seed{seed_label}.png"
 
+    _fs = getattr(args, "failure_scenarios", None) or {}
+    _simple = _fs.get("simple", {}) or {}
     meta_data = {
         "num": getattr(args, "num", None),
         "hosts": args.hosts,
         "switches": args.switches,
         "seed": args.seed,
         "k": args.k,
-        "down_interval": args.down_interval,
-        "down_duration": args.down_duration,
-        "down_count": args.down_count,
-        "down_stagger": args.down_stagger,
-        "down_exclude": args.down_exclude,
+        "down_interval": _simple.get("interval", 0),
+        "down_duration": _simple.get("duration", 0),
+        "down_count": _simple.get("count", 0),
+        "down_stagger": _simple.get("stagger", 0),
+        "down_exclude": ",".join(str(x) for x in (_simple.get("exclude") or [])),
         "cache_count": args.cache_count,
         "cache_default_rct_ms": args.cache_default_rct_ms,
         "get_interval": args.get_interval,

@@ -46,10 +46,13 @@ timestamp: true
 no_cli: true
 
 
-down_interval: 10
-down_duration: 20
-down_stagger: 5
-down_count: 2
+failure_scenarios:
+  strategy: simple
+  simple:
+    interval: 10
+    duration: 20
+    stagger: 5
+    count: 2
 get_interval: 5
 
 
