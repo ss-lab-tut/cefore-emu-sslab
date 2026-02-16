@@ -580,14 +580,44 @@ def run_cli_or_duration(net, args, log_context, ops_get_putget, ops_put,
 
 
 def cleanup_all(net, args, started_csmgrd_hosts, bridge_manager, stop_event,
-                results, results_path, stop_thread=None):
+                results, results_path, stop_thread=None,
+                pubsub_sub_procs=None, pubsub_pub_procs=None):
     """Clean up daemons, bridges, and network; write results."""
     import json
+    import signal
 
     if stop_event is not None:
         stop_event.set()
     if stop_thread is not None:
         stop_thread.join(timeout=10)
+
+    # Kill remaining pubsub processes with SIGINT
+    for proc_list in (pubsub_sub_procs, pubsub_pub_procs):
+        if not proc_list:
+            continue
+        for item in proc_list:
+            try:
+                proc = item[0] if isinstance(item, tuple) else item
+                if hasattr(proc, "poll") and proc.poll() is None:
+                    proc.send_signal(signal.SIGINT)
+            except OSError:
+                pass
+    # Wait briefly for graceful exit
+    for proc_list in (pubsub_sub_procs, pubsub_pub_procs):
+        if not proc_list:
+            continue
+        for item in proc_list:
+            try:
+                proc = item[0] if isinstance(item, tuple) else item
+                if not hasattr(proc, "wait"):
+                    continue
+                proc.wait(timeout=5)
+            except Exception:
+                try:
+                    proc.kill()
+                    proc.wait(timeout=3)
+                except Exception:
+                    pass
 
     if net is not None:
         for idx in range(args.hosts):

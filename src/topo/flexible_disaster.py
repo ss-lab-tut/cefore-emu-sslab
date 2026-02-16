@@ -65,6 +65,8 @@ def run_disaster_topology(args, run_dir: Path = None, log_context=None):
     stop_event = None
     stop_thread = None
     started_csmgrd_hosts = set()
+    pubsub_sub_procs = []
+    pubsub_pub_procs = []
 
     bridge_configs = getattr(args, "bridges", None) or []
     if not bridge_configs:
@@ -259,6 +261,8 @@ def run_disaster_topology(args, run_dir: Path = None, log_context=None):
         cleanup_all(
             net, args, started_csmgrd_hosts, bridge_manager,
             stop_event, results, results_path, stop_thread=stop_thread,
+            pubsub_sub_procs=pubsub_sub_procs,
+            pubsub_pub_procs=pubsub_pub_procs,
         )
 
 
