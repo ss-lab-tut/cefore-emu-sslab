@@ -1,0 +1,200 @@
+991 yamakawa@HP-Z8-G4-Workstation:~/Development/github/cefore-emu-koh11235813 $ sudo .venv/bin/python3 simple-three-nodes-wifi.py --wifi-intf wlxcce1d53e941f --wifi-peer-ip 192.168.201.147 --wifi-uri "ccnx:/test/wifi"                                            [feature/test]
+[sudo] password for yamakawa:
+*** Creating network
+*** Adding controller
+*** Adding hosts:
+h0 h1 h2
+*** Adding switches:
+s0 s1
+*** Adding links:
+(s0, h0) (s0, h1) (s1, h1) (s1, h2)
+*** Configuring hosts
+h0 h1 h2
+*** Starting controller
+c0
+*** Starting 2 switches
+s0 s1 ...
+*** Waiting for switches to connect
+s0 s1
+h0 command: ifconfig h0-eth0 192.168.0.1
+h1 command: ifconfig h1-eth0 192.168.0.2
+h1 command: ifconfig h1-eth1 192.168.1.2
+h2 command: ifconfig h2-eth0 192.168.1.3
+h0 command: ifconfig
+h0-eth0: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.0.1  netmask 255.255.255.0  broadcast 192.168.0.255
+        inet6 fe80::d40e:7cff:feb9:cf24  prefixlen 64  scopeid 0x20<link>
+        ether d6:0e:7c:b9:cf:24  txqueuelen 1000  (Ethernet)
+        RX packets 19  bytes 2393 (2.3 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 6  bytes 516 (516.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+lo: flags=73<UP,LOOPBACK,RUNNING>  mtu 65536
+        inet 127.0.0.1  netmask 255.0.0.0
+        inet6 ::1  prefixlen 128  scopeid 0x10<host>
+        loop  txqueuelen 1000  (Local Loopback)
+        RX packets 0  bytes 0 (0.0 B)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 0  bytes 0 (0.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+h1 command: ifconfig
+h1-eth0: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.0.2  netmask 255.255.255.0  broadcast 192.168.0.255
+        inet6 fe80::3856:9cff:fe68:6784  prefixlen 64  scopeid 0x20<link>
+        ether 3a:56:9c:68:67:84  txqueuelen 1000  (Ethernet)
+        RX packets 21  bytes 2677 (2.6 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 6  bytes 516 (516.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+h1-eth1: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.1.2  netmask 255.255.255.0  broadcast 192.168.1.255
+        inet6 fe80::a4bf:24ff:fe4e:c5af  prefixlen 64  scopeid 0x20<link>
+        ether a6:bf:24:4e:c5:af  txqueuelen 1000  (Ethernet)
+        RX packets 20  bytes 2483 (2.4 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 7  bytes 586 (586.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+lo: flags=73<UP,LOOPBACK,RUNNING>  mtu 65536
+        inet 127.0.0.1  netmask 255.0.0.0
+        inet6 ::1  prefixlen 128  scopeid 0x10<host>
+        loop  txqueuelen 1000  (Local Loopback)
+        RX packets 0  bytes 0 (0.0 B)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 0  bytes 0 (0.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+h2 command: ifconfig
+h2-eth0: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.1.3  netmask 255.255.255.0  broadcast 192.168.1.255
+        inet6 fe80::608a:adff:fe13:a12b  prefixlen 64  scopeid 0x20<link>
+        ether 62:8a:ad:13:a1:2b  txqueuelen 1000  (Ethernet)
+        RX packets 23  bytes 2837 (2.8 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 6  bytes 516 (516.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+lo: flags=73<UP,LOOPBACK,RUNNING>  mtu 65536
+        inet 127.0.0.1  netmask 255.0.0.0
+        inet6 ::1  prefixlen 128  scopeid 0x10<host>
+        loop  txqueuelen 1000  (Local Loopback)
+        RX packets 0  bytes 0 (0.0 B)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 0  bytes 0 (0.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+h1 command: csmgrdstart -d ./h1 > h1-csmgrd-log
+h0 command: cefnetdstart -d ./h0 > h0-cefnetd-log
+h1 command: cefnetdstart -d ./h1 > h1-cefnetd-log
+h2 command: cefnetdstart -d ./h2 > h2-cefnetd-log
+*** Adding route in root ns: route add -net 192.168.0.0/24 dev root-eth0
+*** NAT: iptables -t nat -A POSTROUTING -s 192.168.0.0/24 -o wlxcce1d53e941f -j MASQUERADE
+*** NAT: iptables -A FORWARD -i root-eth0 -o wlxcce1d53e941f -s 192.168.0.0/24 -j ACCEPT
+*** NAT: iptables -A FORWARD -i wlxcce1d53e941f -o root-eth0 -d 192.168.0.0/24 -m state --state RELATED,ESTABLISHED -j ACCEPT
+*** Proxy ARP: sysctl -w net.ipv4.conf.root-eth0.proxy_arp=1
+*** Proxy ARP: sysctl -w net.ipv4.conf.all.proxy_arp=1
+*** Adding route in h0: route add -net 192.168.201.0/24 gw 192.168.0.254
+*** Adding route in h1: route add -net 192.168.201.0/24 gw 192.168.0.254
+h0 command: cefroute add ccnx:/test udp 192.168.0.2 -d ./h0
+2026-02-16 15:56:19.898 [cefctrl] INFO: [client] Config directory is ./h0
+2026-02-16 15:56:19.898 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.0
+2026-02-16 15:56:19.898 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+h1 command: cefroute add ccnx:/test udp 192.168.1.3 -d ./h1
+2026-02-16 15:56:19.904 [cefctrl] INFO: [client] Config directory is ./h1
+2026-02-16 15:56:19.904 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.1
+2026-02-16 15:56:19.904 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+h0 command: cefroute add ccnx:/test/wifi udp 192.168.201.147 -d ./h0
+2026-02-16 15:56:19.911 [cefctrl] INFO: [client] Config directory is ./h0
+2026-02-16 15:56:19.911 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.0
+2026-02-16 15:56:19.911 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+h2 command: cefputfile ccnx:/test -f ./sample-putfile -t 3000 -e 3000 -d ./h2 > cefputfile-log
+h0 command: cefgetfile ccnx:/test -f ./recvfile_at_h0 -d ./h0 > cefgetfile-log
+*** Starting CLI:
+mininet> h0 ping 8.8.8.8
+ping: connect: Network is unreachable
+mininet> h0 ping 192.168.201.0
+PING 192.168.201.0 (192.168.201.0) 56(84) bytes of data.
+From 192.168.0.1 icmp_seq=1 Destination Host Unreachable
+From 192.168.0.1 icmp_seq=2 Destination Host Unreachable
+From 192.168.0.1 icmp_seq=3 Destination Host Unreachable
+From 192.168.0.1 icmp_seq=4 Destination Host Unreachable
+From 192.168.0.1 icmp_seq=5 Destination Host Unreachable
+From 192.168.0.1 icmp_seq=6 Destination Host Unreachable
+^C
+--- 192.168.201.0 ping statistics ---
+7 packets transmitted, 0 received, +6 errors, 100% packet loss, time 6182ms
+pipe 4
+mininet> h0 ping 192.168.201.1
+PING 192.168.201.1 (192.168.201.1) 56(84) bytes of data.
+^[[AFrom 192.168.0.1 icmp_seq=1 Destination Host Unreachable
+From 192.168.0.1 icmp_seq=2 Destination Host Unreachable
+From 192.168.0.1 icmp_seq=3 Destination Host Unreachable
+^C
+--- 192.168.201.1 ping statistics ---
+5 packets transmitted, 0 received, +3 errors, 100% packet loss, time 4078ms
+pipe 4
+mininet> h0 ping 192.168.201.147
+PING 192.168.201.147 (192.168.201.147) 56(84) bytes of data.
+From 192.168.0.1 icmp_seq=1 Destination Host Unreachable
+From 192.168.0.1 icmp_seq=2 Destination Host Unreachable
+From 192.168.0.1 icmp_seq=3 Destination Host Unreachable
+From 192.168.0.1 icmp_seq=4 Destination Host Unreachable
+From 192.168.0.1 icmp_seq=5 Destination Host Unreachable
+From 192.168.0.1 icmp_seq=6 Destination Host Unreachable
+^C
+--- 192.168.201.147 ping statistics ---
+7 packets transmitted, 0 received, +6 errors, 100% packet loss, time 6140ms
+pipe 4
+mininet> h1 ping 192.168.201.147
+PING 192.168.201.147 (192.168.201.147) 56(84) bytes of data.
+From 192.168.0.2 icmp_seq=1 Destination Host Unreachable
+From 192.168.0.2 icmp_seq=2 Destination Host Unreachable
+From 192.168.0.2 icmp_seq=3 Destination Host Unreachable
+^C
+--- 192.168.201.147 ping statistics ---
+5 packets transmitted, 0 received, +3 errors, 100% packet loss, time 4118ms
+pipe 4
+mininet> exit
+*** Removing route: route del -net 192.168.201.0/24
+*** Removing route: route del -net 192.168.201.0/24
+*** Removing route: sysctl -w net.ipv4.conf.all.proxy_arp=0
+*** Removing route: sysctl -w net.ipv4.conf.root-eth0.proxy_arp=0
+*** Removing route: iptables -D FORWARD -i wlxcce1d53e941f -o root-eth0 -d 192.168.0.0/24 -m state --state RELATED,ESTABLISHED -j ACCEPT
+*** Removing route: iptables -D FORWARD -i root-eth0 -o wlxcce1d53e941f -s 192.168.0.0/24 -j ACCEPT
+*** Removing route: iptables -t nat -D POSTROUTING -s 192.168.0.0/24 -o wlxcce1d53e941f -j MASQUERADE
+*** Removing route: ovs-ofctl del-flows s0 --strict priority=0
+*** Removing route: route del -net 192.168.0.0/24
+hosts[ 0 ]: cefnetdstop -d ./h0
+hosts[ 1 ]: cefnetdstop -d ./h1
+hosts[ 2 ]: cefnetdstop -d ./h2
+hosts[ 1 ]: csmgrdstop -d ./h1
+*** Stopping 1 controllers
+c0
+*** Stopping 5 links
+.....
+*** Stopping 2 switches
+s0 s1
+*** Stopping 3 hosts
+h0 h1 h2
+*** Done
+*** Removing excess controllers/ofprotocols/ofdatapaths/pings/noxes
+killall controller ofprotocol ofdatapath ping nox_corelt-nox_core ovs-openflowd ovs-controllerovs-testcontroller udpbwtest mnexec ivs ryu-manager 2> /dev/null
+killall -9 controller ofprotocol ofdatapath ping nox_corelt-nox_core ovs-openflowd ovs-controllerovs-testcontroller udpbwtest mnexec ivs ryu-manager 2> /dev/null
+pkill -9 -f "sudo mnexec"
+*** Removing junk from /tmp
+rm -f /tmp/vconn* /tmp/vlogs* /tmp/*.out /tmp/*.log
+*** Removing old X11 tunnels
+*** Removing excess kernel datapaths
+ps ax | egrep -o 'dp[0-9]+' | sed 's/dp/nl:/'
+***  Removing OVS datapaths
+ovs-vsctl --timeout=1 list-br
+ovs-vsctl --timeout=1 list-br
+*** Removing all links of the pattern foo-ethX
+ip link show | egrep -o '([-_.[:alnum:]]+-eth[[:digit:]]+)'
+ip link show
