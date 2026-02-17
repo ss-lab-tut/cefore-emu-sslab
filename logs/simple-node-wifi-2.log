@@ -1,0 +1,317 @@
+1041 yamakawa@HP-Z8-G4-Workstation:~/Development/github/cefore-emu-koh11235813 $ sudo .venv/bin/python3 simple-three-nodes-wifi.py --wifi-intf wlxcce1d53e941f --wifi-peer-ip 192.168.201.147 --wifi-uri "ccnx:/test/wifi"                                           [feature/test]
+[sudo] password for yamakawa:
+*** Creating network
+*** Adding controller
+*** Adding hosts:
+h0 h1 h2
+*** Adding switches:
+s0 s1
+*** Adding links:
+(s0, h0) (s0, h1) (s1, h1) (s1, h2)
+*** Configuring hosts
+h0 h1 h2
+*** Starting controller
+c0
+*** Starting 2 switches
+s0 s1 ...
+*** Waiting for switches to connect
+s0 s1
+h0 command: ifconfig h0-eth0 192.168.0.1
+h1 command: ifconfig h1-eth0 192.168.0.2
+h1 command: ifconfig h1-eth1 192.168.1.2
+h2 command: ifconfig h2-eth0 192.168.1.3
+h0 command: ifconfig
+h0-eth0: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.0.1  netmask 255.255.255.0  broadcast 192.168.0.255
+        inet6 fe80::ac15:3cff:fea4:4e9f  prefixlen 64  scopeid 0x20<link>
+        ether ae:15:3c:a4:4e:9f  txqueuelen 1000  (Ethernet)
+        RX packets 20  bytes 2479 (2.4 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 6  bytes 516 (516.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+lo: flags=73<UP,LOOPBACK,RUNNING>  mtu 65536
+        inet 127.0.0.1  netmask 255.0.0.0
+        inet6 ::1  prefixlen 128  scopeid 0x10<host>
+        loop  txqueuelen 1000  (Local Loopback)
+        RX packets 0  bytes 0 (0.0 B)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 0  bytes 0 (0.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+h1 command: ifconfig
+h1-eth0: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.0.2  netmask 255.255.255.0  broadcast 192.168.0.255
+        inet6 fe80::90db:f7ff:feb0:c40  prefixlen 64  scopeid 0x20<link>
+        ether 92:db:f7:b0:0c:40  txqueuelen 1000  (Ethernet)
+        RX packets 19  bytes 2393 (2.3 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 6  bytes 516 (516.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+h1-eth1: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.1.2  netmask 255.255.255.0  broadcast 192.168.1.255
+        inet6 fe80::f893:bbff:fe81:14b0  prefixlen 64  scopeid 0x20<link>
+        ether fa:93:bb:81:14:b0  txqueuelen 1000  (Ethernet)
+        RX packets 21  bytes 2569 (2.5 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 6  bytes 516 (516.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+lo: flags=73<UP,LOOPBACK,RUNNING>  mtu 65536
+        inet 127.0.0.1  netmask 255.0.0.0
+        inet6 ::1  prefixlen 128  scopeid 0x10<host>
+        loop  txqueuelen 1000  (Local Loopback)
+        RX packets 0  bytes 0 (0.0 B)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 0  bytes 0 (0.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+h2 command: ifconfig
+h2-eth0: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.1.3  netmask 255.255.255.0  broadcast 192.168.1.255
+        inet6 fe80::9cd0:bbff:fef7:ecb8  prefixlen 64  scopeid 0x20<link>
+        ether 9e:d0:bb:f7:ec:b8  txqueuelen 1000  (Ethernet)
+        RX packets 21  bytes 2569 (2.5 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 6  bytes 516 (516.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+lo: flags=73<UP,LOOPBACK,RUNNING>  mtu 65536
+        inet 127.0.0.1  netmask 255.0.0.0
+        inet6 ::1  prefixlen 128  scopeid 0x10<host>
+        loop  txqueuelen 1000  (Local Loopback)
+        RX packets 0  bytes 0 (0.0 B)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 0  bytes 0 (0.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+h1 command: csmgrdstart -d ./h1 > h1-csmgrd-log
+h0 command: cefnetdstart -d ./h0 > h0-cefnetd-log
+h1 command: cefnetdstart -d ./h1 > h1-cefnetd-log
+h2 command: cefnetdstart -d ./h2 > h2-cefnetd-log
+*** Adding route in root ns: route add -net 192.168.0.0/24 dev root-eth0
+*** NAT: iptables -t nat -A POSTROUTING -s 192.168.0.0/24 -o wlxcce1d53e941f -j MASQUERADE
+*** NAT: iptables -A FORWARD -i root-eth0 -o wlxcce1d53e941f -s 192.168.0.0/24 -j ACCEPT
+*** NAT: iptables -A FORWARD -i wlxcce1d53e941f -o root-eth0 -d 192.168.0.0/24 -m state --state RELATED,ESTABLISHED -j ACCEPT
+*** Proxy ARP: sysctl -w net.ipv4.conf.root-eth0.proxy_arp=1
+*** Proxy ARP: sysctl -w net.ipv4.conf.all.proxy_arp=1
+*** Adding route in h0: route add -net 192.168.201.0/24 gw 192.168.0.254
+*** Adding route in h1: route add -net 192.168.201.0/24 gw 192.168.0.254
+h0 command: cefroute add ccnx:/test udp 192.168.0.2 -d ./h0
+2026-02-17 15:09:12.227 [cefctrl] INFO: [client] Config directory is ./h0
+2026-02-17 15:09:12.227 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.0
+2026-02-17 15:09:12.227 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+h1 command: cefroute add ccnx:/test udp 192.168.1.3 -d ./h1
+2026-02-17 15:09:12.233 [cefctrl] INFO: [client] Config directory is ./h1
+2026-02-17 15:09:12.233 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.1
+2026-02-17 15:09:12.233 [cefctrl] INFO: [client] Listen Port is 9695
+2026-02-17 15:09:12.289 [cefctrl] ERROR: cef_client_connect (connect:Connection refused)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.
+h0 command: cefroute add ccnx:/test/wifi udp 192.168.201.147 -d ./h0
+2026-02-17 15:09:12.295 [cefctrl] INFO: [client] Config directory is ./h0
+2026-02-17 15:09:12.295 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.0
+2026-02-17 15:09:12.295 [cefctrl] INFO: [client] Listen Port is 9695
+done. (cefroute)
+h2 command: cefputfile ccnx:/test -f ./sample-putfile -t 3000 -e 3000 -d ./h2 > cefputfile-log
+h0 command: cefgetfile ccnx:/test -f ./recvfile_at_h0 -d ./h0 > cefgetfile-log
+*** Starting CLI:
+mininet> h0 ping -c 4 192.168.0.254
+PING 192.168.0.254 (192.168.0.254) 56(84) bytes of data.
+From 192.168.0.1 icmp_seq=1 Destination Host Unreachable
+From 192.168.0.1 icmp_seq=2 Destination Host Unreachable
+From 192.168.0.1 icmp_seq=3 Destination Host Unreachable
+From 192.168.0.1 icmp_seq=4 Destination Host Unreachable
+
+--- 192.168.0.254 ping statistics ---
+4 packets transmitted, 0 received, +4 errors, 100% packet loss, time 3057ms
+pipe 4
+mininet> sh ovs-ofctl dump-flows s0
+ cookie=0x0, duration=57.051s, table=0, n_packets=76, n_bytes=5831, priority=0 actions=NORMAL
+mininet> s0 ping 192.168.201.159
+PING 192.168.201.159 (192.168.201.159) 56(84) bytes of data.
+64 bytes from 192.168.201.159: icmp_seq=1 ttl=64 time=0.061 ms
+64 bytes from 192.168.201.159: icmp_seq=2 ttl=64 time=0.041 ms
+^C
+--- 192.168.201.159 ping statistics ---
+2 packets transmitted, 2 received, 0% packet loss, time 1034ms
+rtt min/avg/max/mdev = 0.041/0.051/0.061/0.010 ms
+mininet> s0 ping 192.168.201.147
+PING 192.168.201.147 (192.168.201.147) 56(84) bytes of data.
+64 bytes from 192.168.201.147: icmp_seq=1 ttl=64 time=68.0 ms
+64 bytes from 192.168.201.147: icmp_seq=2 ttl=64 time=5.58 ms
+^C
+--- 192.168.201.147 ping statistics ---
+2 packets transmitted, 2 received, 0% packet loss, time 1000ms
+rtt min/avg/max/mdev = 5.575/36.801/68.028/31.226 ms
+mininet> h0 ping -c 4 192.168.0.2
+PING 192.168.0.2 (192.168.0.2) 56(84) bytes of data.
+64 bytes from 192.168.0.2: icmp_seq=1 ttl=64 time=0.610 ms
+64 bytes from 192.168.0.2: icmp_seq=2 ttl=64 time=0.062 ms
+64 bytes from 192.168.0.2: icmp_seq=3 ttl=64 time=0.050 ms
+64 bytes from 192.168.0.2: icmp_seq=4 ttl=64 time=0.050 ms
+
+--- 192.168.0.2 ping statistics ---
+4 packets transmitted, 4 received, 0% packet loss, time 3068ms
+rtt min/avg/max/mdev = 0.050/0.193/0.610/0.240 ms
+mininet> sh ovs-ofctl show s0
+OFPT_FEATURES_REPLY (xid=0x2): dpid:0000aee8514f034f
+n_tables:254, n_buffers:0
+capabilities: FLOW_STATS TABLE_STATS PORT_STATS QUEUE_STATS ARP_MATCH_IP
+actions: output enqueue set_vlan_vid set_vlan_pcp strip_vlan mod_dl_src mod_dl_dst mod_nw_src mod_nw_dst mod_nw_tos mod_tp_src mod_tp_dst
+ 1(s0-eth1): addr:ee:19:1a:a1:c6:87
+     config:     0
+     state:      0
+     current:    10GB-FD COPPER
+     speed: 10000 Mbps now, 0 Mbps max
+ 2(s0-eth2): addr:be:1d:e8:62:53:48
+     config:     0
+     state:      0
+     current:    10GB-FD COPPER
+     speed: 10000 Mbps now, 0 Mbps max
+ LOCAL(s0): addr:ae:e8:51:4f:03:4f
+     config:     PORT_DOWN
+     state:      LINK_DOWN
+     speed: 0 Mbps now, 0 Mbps max
+OFPT_GET_CONFIG_REPLY (xid=0x4): frags=normal miss_send_len=0
+mininet> sh ping -c 2 192.168.201.147
+PING 192.168.201.147 (192.168.201.147) 56(84) bytes of data.
+64 bytes from 192.168.201.147: icmp_seq=1 ttl=64 time=95.6 ms
+64 bytes from 192.168.201.147: icmp_seq=2 ttl=64 time=329 ms
+
+--- 192.168.201.147 ping statistics ---
+2 packets transmitted, 2 received, 0% packet loss, time 1002ms
+rtt min/avg/max/mdev = 95.615/212.310/329.005/116.695 ms
+mininet> h0 arp -a
+? (192.168.0.2) at 92:db:f7:b0:0c:40 [ether] on h0-eth0
+? (192.168.0.254) at <incomplete> on h0-eth0
+mininet> sh ip route
+default via 192.168.201.1 dev wlxcce1d53e941f proto dhcp src 192.168.201.159 metric 600
+192.168.0.0/24 dev root-eth0 scope link
+192.168.0.0/24 dev root-eth0 proto kernel scope link src 192.168.0.254
+192.168.201.0/24 dev wlxcce1d53e941f proto kernel scope link src 192.168.201.159 metric 600
+mininet> h0 ip a
+1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN group default qlen 1000
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+    inet 127.0.0.1/8 scope host lo
+       valid_lft forever preferred_lft forever
+    inet6 ::1/128 scope host
+       valid_lft forever preferred_lft forever
+2: h0-eth0@if43: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP group default qlen 1000
+    link/ether ae:15:3c:a4:4e:9f brd ff:ff:ff:ff:ff:ff link-netnsid 0
+    inet 192.168.0.1/24 brd 192.168.0.255 scope global h0-eth0
+       valid_lft forever preferred_lft forever
+    inet6 fe80::ac15:3cff:fea4:4e9f/64 scope link
+       valid_lft forever preferred_lft forever
+mininet> s0 ip a
+1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN group default qlen 1000
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+    inet 127.0.0.1/8 scope host lo
+       valid_lft forever preferred_lft forever
+    inet6 ::1/128 scope host noprefixroute
+       valid_lft forever preferred_lft forever
+2: enp9s0f0np0: <NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc mq state DOWN group default qlen 1000
+    link/ether 9c:7b:ef:40:b8:72 brd ff:ff:ff:ff:ff:ff
+3: enp9s0f1np1: <NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc mq state DOWN group default qlen 1000
+    link/ether 9c:7b:ef:40:b8:73 brd ff:ff:ff:ff:ff:ff
+4: enp9s0f2np2: <NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc mq state DOWN group default qlen 1000
+    link/ether 9c:7b:ef:40:b8:74 brd ff:ff:ff:ff:ff:ff
+5: eno1: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc fq_codel state UP group default qlen 1000
+    link/ether 9c:7b:ef:40:b8:71 brd ff:ff:ff:ff:ff:ff
+    altname enp0s31f6
+6: enp33s0f0: <NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc mq state DOWN group default qlen 1000
+    link/ether 90:e2:ba:02:96:20 brd ff:ff:ff:ff:ff:ff
+7: enp153s0f0np0: <NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc mq state DOWN group default qlen 1000
+    link/ether 64:9d:99:b1:4f:ea brd ff:ff:ff:ff:ff:ff
+8: enp33s0f1: <NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc mq state DOWN group default qlen 1000
+    link/ether 90:e2:ba:02:96:21 brd ff:ff:ff:ff:ff:ff
+9: enp153s0f1np1: <NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc mq state DOWN group default qlen 1000
+    link/ether 64:9d:99:b1:4f:eb brd ff:ff:ff:ff:ff:ff
+10: enp153s0f2np2: <NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc mq state DOWN group default qlen 1000
+    link/ether 64:9d:99:b1:4f:ec brd ff:ff:ff:ff:ff:ff
+11: enp153s0f3np3: <NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc mq state DOWN group default qlen 1000
+    link/ether 64:9d:99:b1:4f:ed brd ff:ff:ff:ff:ff:ff
+12: wlxcce1d53e941f: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP group default qlen 1000
+    link/ether cc:e1:d5:3e:94:1f brd ff:ff:ff:ff:ff:ff
+    inet 192.168.201.159/24 brd 192.168.201.255 scope global dynamic noprefixroute wlxcce1d53e941f
+       valid_lft 11326sec preferred_lft 11326sec
+    inet6 fe80::bad9:2e9f:b499:f81f/64 scope link noprefixroute
+       valid_lft forever preferred_lft forever
+43: s0-eth1@if2: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master ovs-system state UP group default qlen 1000
+    link/ether ee:19:1a:a1:c6:87 brd ff:ff:ff:ff:ff:ff link-netnsid 0
+    inet6 fe80::ec19:1aff:fea1:c687/64 scope link
+       valid_lft forever preferred_lft forever
+44: s0-eth2@if2: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master ovs-system state UP group default qlen 1000
+    link/ether be:1d:e8:62:53:48 brd ff:ff:ff:ff:ff:ff link-netnsid 1
+    inet6 fe80::bc1d:e8ff:fe62:5348/64 scope link
+       valid_lft forever preferred_lft forever
+45: s1-eth1@if3: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master ovs-system state UP group default qlen 1000
+    link/ether 86:a7:88:a8:82:52 brd ff:ff:ff:ff:ff:ff link-netnsid 1
+    inet6 fe80::84a7:88ff:fea8:8252/64 scope link
+       valid_lft forever preferred_lft forever
+46: s1-eth2@if2: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master ovs-system state UP group default qlen 1000
+    link/ether c6:78:8c:21:6a:d2 brd ff:ff:ff:ff:ff:ff link-netnsid 2
+    inet6 fe80::c478:8cff:fe21:6ad2/64 scope link
+       valid_lft forever preferred_lft forever
+47: ovs-system: <BROADCAST,MULTICAST> mtu 1500 qdisc noop state DOWN group default qlen 1000
+    link/ether c6:b3:52:46:c3:16 brd ff:ff:ff:ff:ff:ff
+48: s1: <BROADCAST,MULTICAST> mtu 1500 qdisc noop state DOWN group default qlen 1000
+    link/ether ba:f7:5f:10:89:40 brd ff:ff:ff:ff:ff:ff
+49: s0: <BROADCAST,MULTICAST> mtu 1500 qdisc noop state DOWN group default qlen 1000
+    link/ether ae:e8:51:4f:03:4f brd ff:ff:ff:ff:ff:ff
+50: s0-eth3@root-eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP group default qlen 1000
+    link/ether 1a:e3:f8:64:aa:99 brd ff:ff:ff:ff:ff:ff
+    inet6 fe80::18e3:f8ff:fe64:aa99/64 scope link
+       valid_lft forever preferred_lft forever
+51: root-eth0@s0-eth3: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP group default qlen 1000
+    link/ether fe:bd:9d:da:2e:3e brd ff:ff:ff:ff:ff:ff
+    inet 192.168.0.254/24 brd 192.168.0.255 scope global root-eth0
+       valid_lft forever preferred_lft forever
+    inet6 fe80::fcbd:9dff:feda:2e3e/64 scope link
+       valid_lft forever preferred_lft forever
+mininet> exit
+*** Removing route: route del -net 192.168.201.0/24
+*** Removing route: route del -net 192.168.201.0/24
+*** Removing route: sysctl -w net.ipv4.conf.all.proxy_arp=0
+*** Removing route: sysctl -w net.ipv4.conf.root-eth0.proxy_arp=0
+*** Removing route: iptables -D FORWARD -i wlxcce1d53e941f -o root-eth0 -d 192.168.0.0/24 -m state --state RELATED,ESTABLISHED -j ACCEPT
+*** Removing route: iptables -D FORWARD -i root-eth0 -o wlxcce1d53e941f -s 192.168.0.0/24 -j ACCEPT
+*** Removing route: iptables -t nat -D POSTROUTING -s 192.168.0.0/24 -o wlxcce1d53e941f -j MASQUERADE
+*** Removing route: ovs-ofctl del-flows s0 --strict priority=0
+*** Removing route: route del -net 192.168.0.0/24
+hosts[ 0 ]: cefnetdstop -d ./h0
+hosts[ 1 ]: cefnetdstop -d ./h1
+hosts[ 2 ]: cefnetdstop -d ./h2
+hosts[ 1 ]: csmgrdstop -d ./h1
+*** Stopping 1 controllers
+c0
+*** Stopping 5 links
+.....
+*** Stopping 2 switches
+s0 s1
+*** Stopping 3 hosts
+h0 h1 h2
+*** Done
+*** Removing excess controllers/ofprotocols/ofdatapaths/pings/noxes
+killall controller ofprotocol ofdatapath ping nox_corelt-nox_core ovs-openflowd ovs-controllerovs-testcontroller udpbwtest mnexec ivs ryu-manager 2> /dev/null
+killall -9 controller ofprotocol ofdatapath ping nox_corelt-nox_core ovs-openflowd ovs-controllerovs-testcontroller udpbwtest mnexec ivs ryu-manager 2> /dev/null
+pkill -9 -f "sudo mnexec"
+*** Removing junk from /tmp
+rm -f /tmp/vconn* /tmp/vlogs* /tmp/*.out /tmp/*.log
+*** Removing old X11 tunnels
+*** Removing excess kernel datapaths
+ps ax | egrep -o 'dp[0-9]+' | sed 's/dp/nl:/'
+***  Removing OVS datapaths
+ovs-vsctl --timeout=1 list-br
+ovs-vsctl --timeout=1 list-br
+*** Removing all links of the pattern foo-ethX
+ip link show | egrep -o '([-_.[:alnum:]]+-eth[[:digit:]]+)'
+ip link show
+*** Killing stale mininet node processes
+pkill -9 -f mininet:
+*** Shutting down stale tunnels
+pkill -9 -f Tunnel=Ethernet
+pkill -9 -f .ssh/mn
+rm -f ~/.ssh/mn/*
+*** Cleanup complete.
