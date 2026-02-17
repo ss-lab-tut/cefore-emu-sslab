@@ -174,6 +174,9 @@ class BridgeManager:
         link = net.addLink(root, switch)
         self.root_intf = link.intf1
 
+        # net.start() 後の addLink では OVS にポートが自動追加されない
+        switch.attach(link.intf2)
+
         # Set IP on root interface
         root.setIP(root_ip, intf=self.root_intf)
 
