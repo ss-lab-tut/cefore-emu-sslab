@@ -15,27 +15,27 @@ from mininet.util import irange
 
 ### Topology and ip addrs
 # h0 <---s0---> h1 <---s1---> h2
-# h0-ip: 192.168.0.1/24
-# h1-ip: 192.168.0.2/24
-# h1-ip: 192.168.1.2/24
-# h2-ip: 192.168.1.3/24
+# h0-ip: 10.0.0.1/24
+# h1-ip: 10.0.0.2/24
+# h1-ip: 10.1.0.2/24
+# h2-ip: 10.1.0.3/24
 def setIpAddr( net, hostNum ):
     # Set the ip addr of each host
     for id in irange( 0, (hostNum-1) ):
       nodeName = "h" + str(id)
       if nodeName == "h0":
-        command = "ifconfig " + nodeName + "-eth0 " + "192.168.0.1"
+        command = "ifconfig " + nodeName + "-eth0 10.0.0.1 netmask 255.255.255.0"
         print(nodeName, "command:", command)
         net.hosts[id].cmd(command)
       elif nodeName == "h1":
-        command = "ifconfig " + nodeName + "-eth0 " + "192.168.0.2"
+        command = "ifconfig " + nodeName + "-eth0 10.0.0.2 netmask 255.255.255.0"
         print(nodeName, "command:", command)
         net.hosts[id].cmd(command)
-        command = "ifconfig " + nodeName + "-eth1 " + "192.168.1.2"
+        command = "ifconfig " + nodeName + "-eth1 10.1.0.2 netmask 255.255.255.0"
         print(nodeName, "command:", command)
         net.hosts[id].cmd(command)
       else : # h2
-        command = "ifconfig " + nodeName + "-eth0 " + "192.168.1.3"
+        command = "ifconfig " + nodeName + "-eth0 10.1.0.3 netmask 255.255.255.0"
         print(nodeName, "command:", command)
         net.hosts[id].cmd(command)
 
@@ -44,19 +44,19 @@ def setFib( net, hostNum):
     for id in irange( 0, (hostNum-2) ):
       nodeName = "h" + str(id)
       if nodeName == "h0":
-        command = "cefroute add ccnx:/test1 udp 192.168.0.2 -d ./" + nodeName
+        command = "cefroute add ccnx:/test1 udp 10.0.0.2 -d ./" + nodeName
         print(nodeName, "command:", command)
         info( net.hosts[id].cmd(command) )
         time.sleep(1)
-        command = "cefroute add ccnx:/test2 udp 192.168.0.2 -d ./" + nodeName
+        command = "cefroute add ccnx:/test2 udp 10.0.0.2 -d ./" + nodeName
         print(nodeName, "command:", command)
         info( net.hosts[id].cmd(command) )
       else: # h1
-        command = "cefroute add ccnx:/test1 udp 192.168.1.3 -d ./" + nodeName
+        command = "cefroute add ccnx:/test1 udp 10.1.0.3 -d ./" + nodeName
         print(nodeName, "command:", command)
         info( net.hosts[id].cmd(command) )
         time.sleep(1)
-        command = "cefroute add ccnx:/test2 udp 192.168.1.3 -d ./" + nodeName
+        command = "cefroute add ccnx:/test2 udp 10.1.0.3 -d ./" + nodeName
         print(nodeName, "command:", command)
         info( net.hosts[id].cmd(command) )
 

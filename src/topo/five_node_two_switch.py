@@ -79,14 +79,14 @@ def set_ip_addr(net, host_num):
     for idx in irange(0, host_num - 1):
         node_name = f"h{idx}"
         if idx > 0:
-            left_ip = f"192.168.{idx - 1}.{idx + 1}"
-            command = f"ifconfig {node_name}-eth0 {left_ip}"
+            left_ip = f"10.{idx - 1}.0.{idx + 1}"
+            command = f"ifconfig {node_name}-eth0 {left_ip} netmask 255.255.255.0"
             print(node_name, "command:", command)
             net.hosts[idx].cmd(command)
         if idx < host_num - 1:
-            right_ip = f"192.168.{idx}.{idx + 1}"
+            right_ip = f"10.{idx}.0.{idx + 1}"
             eth_name = "eth1" if idx > 0 else "eth0"
-            command = f"ifconfig {node_name}-{eth_name} {right_ip}"
+            command = f"ifconfig {node_name}-{eth_name} {right_ip} netmask 255.255.255.0"
             print(node_name, "command:", command)
             net.hosts[idx].cmd(command)
 
@@ -95,7 +95,7 @@ def set_fib(net, host_num):
     # Forward Interests along the line toward the publisher.
     for idx in irange(0, host_num - 2):
         node_name = f"h{idx}"
-        next_hop_ip = f"192.168.{idx}.{idx + 2}"
+        next_hop_ip = f"10.{idx}.0.{idx + 2}"
         command = f"cefroute add ccnx:/test udp {next_hop_ip} -d ./{node_name}"
         print(node_name, "command:", command)
         info(net.hosts[idx].cmd(command))

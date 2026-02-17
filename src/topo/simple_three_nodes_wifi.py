@@ -5,11 +5,11 @@ Simple 3-node topology with WiFi bridge to external Cefore node.
 
 Topology:
   h0 (consumer) --s0-- h1 (router) --s1-- h2 (publisher)
-  192.168.0.1         192.168.0.2          192.168.1.3
-                      192.168.1.2
+  10.0.0.1            10.0.0.2             10.1.0.3
+                      10.1.0.2
          |
          s0 -- root (root ns)
-                192.168.0.254
+                10.0.0.254
                 |
            WiFi NIC (e.g. wlan0)
                 |
@@ -69,15 +69,15 @@ def wifi_subnet_from_ip(ip):
 
 def setup_wifi_bridge(net, bridge_manager, wifi_intf, wifi_peer_ip):
     """Set up root namespace bridge, NAT, routing for WiFi access."""
-    bridge_manager.connect_to_root_ns(net, "s0", "192.168.0.254/24", "192.168.0.0/24")
+    bridge_manager.connect_to_root_ns(net, "s0", "10.0.0.254/24", "10.0.0.0/24")
     bridge_manager.enable_normal_flow(net, "s0")
     bridge_manager.enable_ip_forwarding()
-    bridge_manager.enable_nat("192.168.0.0/24", wifi_intf)
+    bridge_manager.enable_nat("10.0.0.0/24", wifi_intf)
     bridge_manager.enable_proxy_arp()
 
     wifi_subnet = wifi_subnet_from_ip(wifi_peer_ip)
-    bridge_manager.add_host_route(net, "h0", wifi_subnet, "192.168.0.254")
-    bridge_manager.add_host_route(net, "h1", wifi_subnet, "192.168.0.254")
+    bridge_manager.add_host_route(net, "h0", wifi_subnet, "10.0.0.254")
+    bridge_manager.add_host_route(net, "h1", wifi_subnet, "10.0.0.254")
 
 
 def setFib(net, hostNum, wifi_peer_ip, wifi_uri):
@@ -86,11 +86,11 @@ def setFib(net, hostNum, wifi_peer_ip, wifi_uri):
     for id in irange(0, (hostNum - 2)):
         nodeName = "h" + str(id)
         if nodeName == "h0":
-            command = "cefroute add ccnx:/test udp 192.168.0.2 -d ./" + nodeName
+            command = "cefroute add ccnx:/test udp 10.0.0.2 -d ./" + nodeName
             print(nodeName, "command:", command)
             info(net.hosts[id].cmd(command))
         else:  # h1
-            command = "cefroute add ccnx:/test udp 192.168.1.3 -d ./" + nodeName
+            command = "cefroute add ccnx:/test udp 10.1.0.3 -d ./" + nodeName
             print(nodeName, "command:", command)
             info(net.hosts[id].cmd(command))
 

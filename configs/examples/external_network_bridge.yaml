@@ -42,7 +42,7 @@ gets:
 #   proxy_arp:       Enable Proxy ARP for cross-subnet L2 resolution
 #   hosts:           List of host indices to configure routes for
 #
-# Note: root_ip "auto" picks 192.168.<subnet>.254/24 from the first
+# Note: root_ip "auto" picks 10.<subnet>.0.254/24 from the first
 # mesh link on the switch, so it shares the same subnet as attached hosts.
 #
 # Note: proxy_arp is required when root_ip subnet differs from
@@ -52,7 +52,7 @@ gets:
 bridges:
   - switch: s8
     root_ip: "auto"
-    local_routes: "192.168.0.0/16"
+    local_routes: "10.0.0.0/8"
     external_routes: "default"
     nat: true
     nat_out: "eno1"

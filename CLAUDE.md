@@ -110,7 +110,7 @@ mininet> exit
 All topology scripts follow a common pattern:
 
 1. **Topology Definition** - Mininet Topo subclass defines network structure
-2. **IP Address Assignment** - Each link gets a /24 subnet (192.168.X.Y)
+2. **IP Address Assignment** - Each link gets a /24 subnet (10.X.0.Y)
 3. **Cefore Daemon Startup** - Start csmgrd (cache managers) and cefnetd (forwarding daemons)
 4. **FIB Configuration** - Set forwarding rules using `cefroute add`
 5. **Content Operations** - Publisher runs `cefputfile`, consumer runs `cefgetfile`
@@ -144,7 +144,7 @@ For topologies with >3 hosts, additional directories (h3, h4, ...) are generated
 ### Key Functions
 
 **IP Address Assignment:**
-- Linear topologies: Sequential /24 subnets (192.168.0.x, 192.168.1.x, ...)
+- Linear topologies: Sequential /24 subnets (10.0.0.x, 10.1.0.x, ...)
 - Mesh topologies: One /24 per link, host ID determines last octet
 
 **FIB Configuration:**

@@ -85,8 +85,8 @@ def set_ip_addr(net, mesh_links):
             for host_idx in link["hosts"]:
                 eth_idx = link["host_eth"][host_idx]
                 node_name = f"h{host_idx}"
-                ip = f"192.168.{subnet}.{host_idx + 1}"
-                command = f"ifconfig {node_name}-eth{eth_idx} {ip}"
+                ip = f"10.{subnet}.0.{host_idx + 1}"
+                command = f"ifconfig {node_name}-eth{eth_idx} {ip} netmask 255.255.255.0"
                 print(node_name, "command:", command)
                 net.hosts[host_idx].cmd(command)
             continue
@@ -95,8 +95,8 @@ def set_ip_addr(net, mesh_links):
             (link["host_b"], link["host_b_eth"]),
         ):
             node_name = f"h{host_idx}"
-            ip = f"192.168.{subnet}.{host_idx + 1}"
-            command = f"ifconfig {node_name}-eth{eth_idx} {ip}"
+            ip = f"10.{subnet}.0.{host_idx + 1}"
+            command = f"ifconfig {node_name}-eth{eth_idx} {ip} netmask 255.255.255.0"
             print(node_name, "command:", command)
             net.hosts[host_idx].cmd(command)
 
@@ -174,7 +174,7 @@ def set_fib(net, mesh_links, k_paths):
             for next_hop in next_hops:
                 link_key = tuple(sorted((src, next_hop)))
                 subnet = link_subnets[link_key]
-                next_hop_ip = f"192.168.{subnet}.{next_hop + 1}"
+                next_hop_ip = f"10.{subnet}.0.{next_hop + 1}"
                 command = f"cefroute add {prefix} udp {next_hop_ip} -d ./{node_name}"
                 print(node_name, "command:", command)
                 info(net.hosts[src].cmd(command))
@@ -214,7 +214,7 @@ def _add_fib_entries(net, graph, all_dist, link_subnets, host_num, k_paths,
         for next_hop in next_hops:
             link_key = tuple(sorted((src, next_hop)))
             subnet = link_subnets[link_key]
-            next_hop_ip = f"192.168.{subnet}.{next_hop + 1}"
+            next_hop_ip = f"10.{subnet}.0.{next_hop + 1}"
             command = f"cefroute add {uri_prefix} udp {next_hop_ip} -d ./{node_name}"
             print(node_name, "command:", command)
             info(net.hosts[src].cmd(command))

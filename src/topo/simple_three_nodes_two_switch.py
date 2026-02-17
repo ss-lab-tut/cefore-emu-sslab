@@ -71,18 +71,18 @@ def setIpAddr(net, hostNum):
     for id in irange(0, (hostNum - 1)):
         nodeName = "h" + str(id)
         if nodeName == "h0":
-            command = "ifconfig " + nodeName + "-eth0 " + "192.168.0.1"
+            command = "ifconfig " + nodeName + "-eth0 10.0.0.1 netmask 255.255.255.0"
             print(nodeName, "command:", command)
             net.hosts[id].cmd(command)
         elif nodeName == "h1":
-            command = "ifconfig " + nodeName + "-eth0 " + "192.168.0.2"
+            command = "ifconfig " + nodeName + "-eth0 10.0.0.2 netmask 255.255.255.0"
             print(nodeName, "command:", command)
             net.hosts[id].cmd(command)
-            command = "ifconfig " + nodeName + "-eth1 " + "192.168.1.2"
+            command = "ifconfig " + nodeName + "-eth1 10.1.0.2 netmask 255.255.255.0"
             print(nodeName, "command:", command)
             net.hosts[id].cmd(command)
         else:  # h2
-            command = "ifconfig " + nodeName + "-eth0 " + "192.168.1.3"
+            command = "ifconfig " + nodeName + "-eth0 10.1.0.3 netmask 255.255.255.0"
             print(nodeName, "command:", command)
             net.hosts[id].cmd(command)
 
@@ -92,11 +92,11 @@ def setFib(net, hostNum):
     for id in irange(0, (hostNum - 2)):
         nodeName = "h" + str(id)
         if nodeName == "h0":
-            command = "cefroute add ccnx:/test udp 192.168.0.2 -d ./" + nodeName
+            command = "cefroute add ccnx:/test udp 10.0.0.2 -d ./" + nodeName
             print(nodeName, "command:", command)
             info(net.hosts[id].cmd(command))
         else:  # h1
-            command = "cefroute add ccnx:/test udp 192.168.1.3 -d ./" + nodeName
+            command = "cefroute add ccnx:/test udp 10.1.0.3 -d ./" + nodeName
             print(nodeName, "command:", command)
             info(net.hosts[id].cmd(command))
 

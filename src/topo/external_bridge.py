@@ -161,8 +161,8 @@ class BridgeManager:
         Args:
             net: Mininet network instance.
             switch_name: Switch name to connect to root namespace.
-            root_ip: IP address for root namespace node (e.g., "192.168.100.1/24").
-            local_routes: Local Mininet host networks to route to (e.g., "192.168.1.0/24").
+            root_ip: IP address for root namespace node (e.g., "10.100.0.1/24").
+            local_routes: Local Mininet host networks to route to (e.g., "10.1.0.0/24").
         """
         root = self.get_or_create_root()
         switch = net.get(switch_name)
@@ -240,7 +240,7 @@ class BridgeManager:
         """Enable NAT (masquerade) for local routes via outbound interface.
 
         Args:
-            local_routes: Source network to masquerade (e.g., "192.168.1.0/24").
+            local_routes: Source network to masquerade (e.g., "10.1.0.0/24").
             out_intf: Outbound interface name. If None, auto-detected from default route.
         """
         root = self.get_or_create_root()
@@ -321,10 +321,10 @@ class BridgeManager:
 def extract_gateway_from_ip(ip_with_prefix: str) -> str:
     """Extract gateway IP from IP/prefix notation.
 
-    For "192.168.100.1/24", returns "192.168.100.1".
+    For "10.100.0.1/24", returns "10.100.0.1".
 
     Args:
-        ip_with_prefix: IP address with optional prefix (e.g., "192.168.100.1/24").
+        ip_with_prefix: IP address with optional prefix (e.g., "10.100.0.1/24").
 
     Returns:
         IP address without prefix.
@@ -375,7 +375,7 @@ def _resolve_root_ip(
         if link.get("switch") == switch_name:
             subnet = link.get("subnet")
             if subnet is not None:
-                return f"192.168.{subnet}.254/24"
+                return f"10.{subnet}.0.254/24"
     return root_ip
 
 

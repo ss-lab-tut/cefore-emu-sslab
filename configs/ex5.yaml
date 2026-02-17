@@ -28,8 +28,8 @@ bw: h3, s1, 1
 bw: h10, s5, 0.5
 bridges:
   - switch: s3
-    root_ip: "192.168.100.1/24"
-    local_routes: "192.168.1.0/24"
+    root_ip: "10.100.0.1/24"
+    local_routes: "10.1.0.0/24"
       #     external_routes: "192.168.201.0/24"  # Optional: VM host network
       #     gateway: "192.168.201.62"            # Optional: Other VM IP
     hosts: [4]                     # Optional: Only configure these hosts

@@ -63,7 +63,7 @@ bw: h10, s5, 0.5
 bridges:
   - switch: s8
     root_ip: "auto"
-    local_routes: "192.168.0.0/16"
+    local_routes: "10.0.0.0/8"
     external_routes: "default"
     nat: true
     proxy_arp: true
