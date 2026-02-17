@@ -1,0 +1,226 @@
+1017 yamakawa@HP-Z8-G4-Workstation:~/Development/github/cefore-emu-koh11235813 $ sudo .venv/bin/python3 simple_external_common_mininet.py 10.0.1.8/24 192.168.201.0/24                                                                                               [feature/test]
+*** Arguments:
+h1's ip_addr is 10.0.1.8/24
+*** Creating network
+*** Adding controller
+*** Adding hosts:
+h1
+*** Adding switches:
+s0
+*** Adding links:
+(h1, s0)
+*** Configuring hosts
+h1
+*** Adding routes in h1: route add -net 192.168.201.0/24 gw 10.0.1.111
+*** Starting controller
+c0
+*** Starting 1 switches
+s0 ...
+*** Waiting for switches to connect
+s0
+*** Starting CLI:
+mininet> exit
+*** Stopping 1 controllers
+c0
+*** Stopping 2 links
+..
+*** Stopping 1 switches
+s0
+*** Stopping 1 hosts
+h1
+*** Done
+1018 yamakawa@HP-Z8-G4-Workstation:~/Development/github/cefore-emu-koh11235813 $ sudo .venv/bin/python3 simple_external_common_mininet.py 10.0.1.8/24 192.168.201.159/24                                                                                             [feature/test]
+[sudo] password for yamakawa:
+*** Arguments:
+h1's ip_addr is 10.0.1.8/24
+*** Creating network
+*** Adding controller
+*** Adding hosts:
+h1
+*** Adding switches:
+s0
+*** Adding links:
+(h1, s0)
+*** Configuring hosts
+h1
+*** Adding routes in h1: route add -net 192.168.201.159/24 gw 10.0.1.111
+*** Starting controller
+c0
+*** Starting 1 switches
+s0 ...
+*** Waiting for switches to connect
+s0
+*** Starting CLI:
+mininet> h1 ping 192.168.201.147
+ping: connect: Network is unreachable
+mininet> s0 ping 192.168.201.147
+PING 192.168.201.147 (192.168.201.147) 56(84) bytes of data.
+64 bytes from 192.168.201.147: icmp_seq=1 ttl=64 time=359 ms
+64 bytes from 192.168.201.147: icmp_seq=2 ttl=64 time=74.4 ms
+64 bytes from 192.168.201.147: icmp_seq=3 ttl=64 time=4.83 ms
+^C
+--- 192.168.201.147 ping statistics ---
+3 packets transmitted, 3 received, 0% packet loss, time 2003ms
+rtt min/avg/max/mdev = 4.828/146.123/359.098/153.254 ms
+mininet> h1 ip a
+1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN group default qlen 1000
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+    inet 127.0.0.1/8 scope host lo
+       valid_lft forever preferred_lft forever
+    inet6 ::1/128 scope host
+       valid_lft forever preferred_lft forever
+2: h1-eth0@if19: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP group default qlen 1000
+    link/ether 6e:a3:61:5a:06:f9 brd ff:ff:ff:ff:ff:ff link-netnsid 0
+    inet 10.0.1.8/24 brd 10.0.1.255 scope global h1-eth0
+       valid_lft forever preferred_lft forever
+    inet6 fe80::6ca3:61ff:fe5a:6f9/64 scope link
+       valid_lft forever preferred_lft forever
+mininet> s0 ip a
+1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN group default qlen 1000
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+    inet 127.0.0.1/8 scope host lo
+       valid_lft forever preferred_lft forever
+    inet6 ::1/128 scope host noprefixroute
+       valid_lft forever preferred_lft forever
+2: enp9s0f0np0: <NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc mq state DOWN group default qlen 1000
+    link/ether 9c:7b:ef:40:b8:72 brd ff:ff:ff:ff:ff:ff
+3: enp9s0f1np1: <NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc mq state DOWN group default qlen 1000
+    link/ether 9c:7b:ef:40:b8:73 brd ff:ff:ff:ff:ff:ff
+4: enp9s0f2np2: <NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc mq state DOWN group default qlen 1000
+    link/ether 9c:7b:ef:40:b8:74 brd ff:ff:ff:ff:ff:ff
+5: eno1: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc fq_codel state UP group default qlen 1000
+    link/ether 9c:7b:ef:40:b8:71 brd ff:ff:ff:ff:ff:ff
+    altname enp0s31f6
+6: enp33s0f0: <NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc mq state DOWN group default qlen 1000
+    link/ether 90:e2:ba:02:96:20 brd ff:ff:ff:ff:ff:ff
+7: enp153s0f0np0: <NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc mq state DOWN group default qlen 1000
+    link/ether 64:9d:99:b1:4f:ea brd ff:ff:ff:ff:ff:ff
+8: enp33s0f1: <NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc mq state DOWN group default qlen 1000
+    link/ether 90:e2:ba:02:96:21 brd ff:ff:ff:ff:ff:ff
+9: enp153s0f1np1: <NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc mq state DOWN group default qlen 1000
+    link/ether 64:9d:99:b1:4f:eb brd ff:ff:ff:ff:ff:ff
+10: enp153s0f2np2: <NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc mq state DOWN group default qlen 1000
+    link/ether 64:9d:99:b1:4f:ec brd ff:ff:ff:ff:ff:ff
+11: enp153s0f3np3: <NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc mq state DOWN group default qlen 1000
+    link/ether 64:9d:99:b1:4f:ed brd ff:ff:ff:ff:ff:ff
+12: wlxcce1d53e941f: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP group default qlen 1000
+    link/ether cc:e1:d5:3e:94:1f brd ff:ff:ff:ff:ff:ff
+    inet 192.168.201.159/24 brd 192.168.201.255 scope global dynamic noprefixroute wlxcce1d53e941f
+       valid_lft 13199sec preferred_lft 13199sec
+    inet6 fe80::bad9:2e9f:b499:f81f/64 scope link noprefixroute
+       valid_lft forever preferred_lft forever
+19: s0-eth1@if2: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master ovs-system state UP group default qlen 1000
+    link/ether 6e:2e:7f:82:64:07 brd ff:ff:ff:ff:ff:ff link-netnsid 0
+    inet6 fe80::6c2e:7fff:fe82:6407/64 scope link
+       valid_lft forever preferred_lft forever
+20: s0-eth2@root-eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master ovs-system state UP group default qlen 1000
+    link/ether e2:1a:79:ab:6b:f1 brd ff:ff:ff:ff:ff:ff
+    inet6 fe80::e01a:79ff:feab:6bf1/64 scope link
+       valid_lft forever preferred_lft forever
+21: root-eth0@s0-eth2: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP group default qlen 1000
+    link/ether ca:9d:f8:39:dd:f4 brd ff:ff:ff:ff:ff:ff
+    inet 10.0.1.111/8 brd 10.255.255.255 scope global root-eth0
+       valid_lft forever preferred_lft forever
+    inet6 fe80::c89d:f8ff:fe39:ddf4/64 scope link
+       valid_lft forever preferred_lft forever
+22: ovs-system: <BROADCAST,MULTICAST> mtu 1500 qdisc noop state DOWN group default qlen 1000
+    link/ether c6:b3:52:46:c3:16 brd ff:ff:ff:ff:ff:ff
+23: s0: <BROADCAST,MULTICAST> mtu 1500 qdisc noop state DOWN group default qlen 1000
+    link/ether 8a:61:22:7e:04:49 brd ff:ff:ff:ff:ff:ff
+mininet> h1 ping s0
+PING 127.0.0.1 (127.0.0.1) 56(84) bytes of data.
+64 bytes from 127.0.0.1: icmp_seq=1 ttl=64 time=0.048 ms
+64 bytes from 127.0.0.1: icmp_seq=2 ttl=64 time=0.028 ms
+^C
+--- 127.0.0.1 ping statistics ---
+2 packets transmitted, 2 received, 0% packet loss, time 1037ms
+rtt min/avg/max/mdev = 0.028/0.038/0.048/0.010 ms
+mininet> h1
+Interrupt
+mininet> exit
+*** Stopping 1 controllers
+c0
+*** Stopping 2 links
+..
+*** Stopping 1 switches
+s0
+*** Stopping 1 hosts
+h1
+*** Done
+1020 yamakawa@HP-Z8-G4-Workstation:~/Development/github/cefore-emu-koh11235813 $ sudo route add -net 10.0.1.0/24 192.168.201.159                                                                                                                                     [feature/test]
+SIOCADDRT: No such device
+1021 yamakawa@HP-Z8-G4-Workstation:~/Development/github/cefore-emu-koh11235813 $ sudo route add -net 10.0.1.0/24 192.168.201.110                                                                                                                                     [feature/test]
+SIOCADDRT: No such device
+1022 yamakawa@HP-Z8-G4-Workstation:~/Development/github/cefore-emu-koh11235813 $ sudo .venv/bin/python3 simple_external_common_mininet.py 10.0.1.8/24 192.168.201.0/24                                                                                               [feature/test]
+*** Arguments:
+h1's ip_addr is 10.0.1.8/24
+*** Creating network
+*** Adding controller
+*** Adding hosts:
+h1
+*** Adding switches:
+s0
+*** Adding links:
+(h1, s0)
+*** Configuring hosts
+h1
+*** Adding routes in h1: route add -net 192.168.201.0/24 gw 10.0.1.111
+*** Starting controller
+c0
+*** Starting 1 switches
+s0 ...
+*** Waiting for switches to connect
+s0
+*** Starting CLI:
+mininet> h1 ip a
+1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN group default qlen 1000
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+    inet 127.0.0.1/8 scope host lo
+       valid_lft forever preferred_lft forever
+    inet6 ::1/128 scope host
+       valid_lft forever preferred_lft forever
+2: h1-eth0@if24: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP group default qlen 1000
+    link/ether 86:22:db:77:ef:72 brd ff:ff:ff:ff:ff:ff link-netnsid 0
+    inet 10.0.1.8/24 brd 10.0.1.255 scope global h1-eth0
+       valid_lft forever preferred_lft forever
+    inet6 fe80::8422:dbff:fe77:ef72/64 scope link
+       valid_lft forever preferred_lft forever
+mininet> h1 ping s0
+PING 127.0.0.1 (127.0.0.1) 56(84) bytes of data.
+64 bytes from 127.0.0.1: icmp_seq=1 ttl=64 time=0.045 ms
+64 bytes from 127.0.0.1: icmp_seq=2 ttl=64 time=0.032 ms
+^C
+--- 127.0.0.1 ping statistics ---
+2 packets transmitted, 2 received, 0% packet loss, time 1046ms
+rtt min/avg/max/mdev = 0.032/0.038/0.045/0.006 ms
+mininet> h1 ping 192.168.201.147
+PING 192.168.201.147 (192.168.201.147) 56(84) bytes of data.
+^C
+--- 192.168.201.147 ping statistics ---
+15 packets transmitted, 0 received, 100% packet loss, time 14364ms
+
+mininet> h1 ping 192.168.201.0
+PING 192.168.201.0 (192.168.201.0) 56(84) bytes of data.
+^C
+--- 192.168.201.0 ping statistics ---
+5 packets transmitted, 0 received, 100% packet loss, time 4113ms
+
+mininet> h1 ping 192.168.201.159
+PING 192.168.201.159 (192.168.201.159) 56(84) bytes of data.
+64 bytes from 192.168.201.159: icmp_seq=1 ttl=64 time=6.50 ms
+64 bytes from 192.168.201.159: icmp_seq=2 ttl=64 time=0.624 ms
+64 bytes from 192.168.201.159: icmp_seq=3 ttl=64 time=0.051 ms
+^C
+--- 192.168.201.159 ping statistics ---
+3 packets transmitted, 3 received, 0% packet loss, time 2025ms
+rtt min/avg/max/mdev = 0.051/2.392/6.503/2.915 ms
+mininet> exit
+*** Stopping 1 controllers
+c0
+*** Stopping 2 links
+..
+*** Stopping 1 switches
+s0
+*** Stopping 1 hosts
+h1
+*** Done
