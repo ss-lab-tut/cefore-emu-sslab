@@ -98,26 +98,26 @@ gets: []  # Manual get operations (empty = use auto)
 # -----------------------------------------------------------------------------
 # Failure Scenario Configuration
 # -----------------------------------------------------------------------------
-failure_scenarios:
-  strategy: simple           # Strategy: simple, cyclic, random, manual
-  simple:
-    interval: 10             # Seconds between down events (0 to disable)
-    duration: 15             # Seconds to keep hosts down
-    count: 5                 # Number of hosts to down per cycle
-    stagger: 1               # Seconds to stagger down events within a cycle
-    exclude: []              # Host IDs to exclude from flapping
+# failure_scenarios:
+#   strategy: simple           # Strategy: simple, cyclic, random, manual
+#   simple:
+#     interval: 10             # Seconds between down events (0 to disable)
+#     duration: 15             # Seconds to keep hosts down
+#     count: 5                 # Number of hosts to down per cycle
+#     stagger: 1               # Seconds to stagger down events within a cycle
+#     exclude: []              # Host IDs to exclude from flapping
 
 # Alternative: Cyclic failure scenario (commented out)
-# failure_scenarios:
-#   strategy: cyclic
-#   cycles:
-#     - interval: 5
-#       duration: 20
-#       count: 10
-#       stagger: 4
-#       exclude: [0]
-#       target: null         # null = auto-select, or list of host IDs
-#       allow_publishers: false  # Allow publishers to be downed
+failure_scenarios:
+  strategy: cyclic
+  cycles:
+    - interval: 5
+      duration: 20
+      count: 10
+      stagger: 4
+      exclude: [0]
+      target: null         # null = auto-select, or list of host IDs
+      allow_publishers: true  # Allow publishers to be downed
 #
 # -----------------------------------------------------------------------------
 # Cache Configuration

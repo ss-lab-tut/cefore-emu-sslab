@@ -1,0 +1,169 @@
+# =============================================================================
+# Flexible disaster topology with priority-based URI configuration
+# Phase 2 comprehensive example: Demonstrates all available configuration options
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Topology Basic Settings
+# -----------------------------------------------------------------------------
+hosts: 20                   # Number of hosts (min 3)
+switches: 100                # Maximum number of switches to create (0 = unlimited)
+node_per_switch: 5          # Max hosts per switch (0=unlimited, 2=one switch per link)
+host_degree_min: 2          # Minimum number of switches per host (>=1)
+host_degree_max: 9          # Maximum number of switches per host
+switch_use_all: false       # Create switches up to --switches and distribute extra links evenly
+seed: 42                    # Random seed for deterministic topology generation (null = random)
+k: 2                        # k shortest paths for multipath routing
+
+# -----------------------------------------------------------------------------
+# Priority URI Patterns with Automatic Configuration
+# -----------------------------------------------------------------------------
+priority_uris:
+  high:
+    patterns: ["ccnx:/emergency/*", "ccnx:/critical/*"]
+    mode: "pubsub"           # High priority uses pub/sub for reliability
+    expiry: 10000            # Content Object lifetime (seconds)
+    cache_time: 10000        # Cache deletion period (seconds)
+    prefetch_to_cache: true  # Prefetch to cache nodes during warmup
+    lifetime: 5000           # Interest lifetime for pubsub (ms)
+    retry_limit: 5           # Retry limit for pubsub
+    rate: 100                # Transfer rate (Mbps)
+    block_size: 2048         # Max payload length (bytes)
+    # Validation algorithms
+    #     ti_valid_algo: "crc32c"  # Title Info validation algorithm
+    #     rd_valid_algo: "crc32c"  # Request Data validation algorithm
+    #     ri_valid_algo: "crc32c"  # Request Info validation algorithm
+    #     td_valid_algo: "crc32c"  # Transfer Data validation algorithm
+    target: "ref"           # Target for Long Life Interest (trg | ref | both)
+    pipeline: 32             # Pipeline count for pubsub subscriber
+    port_num: 9695           # Port number
+
+  medium:
+    patterns: ["ccnx:/video/*", "ccnx:/data/*"]
+    mode: "putget"           # Medium priority uses put/get
+    expiry: 5000             # Medium expiry
+    cache_time: 5000         # Medium cache time
+    rate: 10                 # 10 Mbps rate limit
+    block_size: 1024         # 1KB blocks
+      #    valid_algo: "crc32c"     # Validation algorithm for putget
+    pipeline: 16             # Pipeline count for getfile
+    port_num: 9695
+
+  low:
+    patterns: ["ccnx:/test/*"]
+    mode: "putget"           # Low priority uses put/get
+    expiry: 1000             # Short expiry
+    cache_time: 1000         # Short cache time
+    rate: 1                  # 1 Mbps rate limit
+    block_size: 512          # 512B blocks
+      #    valid_algo: "crc32c"
+    pipeline: 4
+    port_num: 9695
+
+# -----------------------------------------------------------------------------
+# Auto-generation with Priority-based Configuration
+# URIs will automatically match patterns and apply settings
+# -----------------------------------------------------------------------------
+auto:
+  - uri: "ccnx:/emergency/alert"
+    publishers: [9]
+    consumers: "random:5"
+    content_count: 2
+    consumer_per_content: 2
+    file: "./sample-putfile"
+    # Will automatically use: mode=pubsub, expiry=10000, cache_time=10000, etc.
+
+  - uri: "ccnx:/video/stream"
+    publishers: [8]
+    consumers: "random:4"
+    content_count: 3
+    consumer_per_content: 1
+    file: "./sample-putfile"
+    # Will automatically use: mode=putget, expiry=5000, cache_time=5000, rate=10
+
+  - uri: "ccnx:/test/data"
+    publishers: [7]
+    consumers: "random:3"
+    content_count: 2
+    consumer_per_content: 2
+    file: "./sample-putfile"
+    # Will automatically use: mode=putget, expiry=1000, cache_time=1000, rate=1
+
+# -----------------------------------------------------------------------------
+# Manual Puts/Gets Configuration (can coexist with auto)
+# -----------------------------------------------------------------------------
+puts: []  # Manual put operations (empty = use auto)
+gets: []  # Manual get operations (empty = use auto)
+
+# -----------------------------------------------------------------------------
+# Failure Scenario Configuration
+# -----------------------------------------------------------------------------
+# failure_scenarios:
+#   strategy: simple           # Strategy: simple, cyclic, random, manual
+#   simple:
+#     interval: 10             # Seconds between down events (0 to disable)
+#     duration: 15             # Seconds to keep hosts down
+#     count: 5                 # Number of hosts to down per cycle
+#     stagger: 1               # Seconds to stagger down events within a cycle
+#     exclude: []              # Host IDs to exclude from flapping
+
+# Alternative: Cyclic failure scenario (commented out)
+failure_scenarios:
+  strategy: cyclic
+  cycles:
+    - interval: 5
+      duration: 80
+      count: 10
+      stagger: 15
+      exclude: [0]
+      target: null         # null = auto-select, or list of host IDs
+      allow_publishers: true  # Allow publishers to be downed
+#
+# -----------------------------------------------------------------------------
+# Cache Configuration
+# -----------------------------------------------------------------------------
+cache_count: 0               # Number of cache nodes (0 = down-count + 1)
+cache_default_rct_ms: 5000   # Override CACHE_DEFAULT_RCT(ms) for cache nodes (cache_default_rct_ms must be an integer >= 1000)
+
+# -----------------------------------------------------------------------------
+# Warmup Configuration
+# -----------------------------------------------------------------------------
+warmup_get_interval: 0       # Seconds between warmup get operations (0 = no delay)
+warmup_only_cache_nodes: true  # Restrict warmup prefetch to selected cache nodes
+warmup_gets: []              # Manual warmup get operations (empty = auto-generate from hot_uris)
+hot_uris: ["ccnx:/emergency/*", "ccnx:/critical/*"]                 # Hot URIs for warmup generation (empty = use auto URIs)
+
+# -----------------------------------------------------------------------------
+# Publisher Configuration
+# -----------------------------------------------------------------------------
+publisher_host: null         # Explicit publisher host for publisher-down metric (null = auto-detect)
+
+# -----------------------------------------------------------------------------
+# Network Configuration
+# -----------------------------------------------------------------------------
+bw: []                     # Bandwidth settings: ["nodeA,nodeB,mbps"]
+ext: []                      # External interfaces: ["host,ifname[,ip][,mtu]"]
+bridges: []                  # Root namespace bridges (advanced)
+get_interval: 10             # Seconds between cefgetfile runs in eval phase
+
+# -----------------------------------------------------------------------------
+# Output Configuration
+# -----------------------------------------------------------------------------
+num: 16                      # Experiment number (enables log directory output)
+output_dir: "logs"           # Base output directory
+timestamp: false             # Add timestamp to output directory name
+no_cli: true                 # Skip interactive CLI (flap output visible on stdout)
+duration: 360                # Eval phase duration in seconds for --no-cli (0: single cycle)
+results_json: null           # Write warmup/eval get results to JSON (null = no JSON output)
+topo_png: null               # Write topology PNG to this path (null = auto-generate)
+topo_layout: "spring"        # Topology layout: spring, kamada_kawai, or circular
+
+# -----------------------------------------------------------------------------
+# Notes
+# -----------------------------------------------------------------------------
+# - priority_uris: URIs matching patterns will automatically get mode/expiry/cache_time
+# - auto: Auto-generates puts/gets based on publishers/consumers
+# - Explicit settings (pub_opts/sub_opts) override priority defaults
+# - mode defaults to "putget" if not specified and no pattern matches
+# - warmup is auto-generated from hot_uris or auto URIs if warmup_gets is empty
+# - Set warmup_gets: [] and hot_uris: [] to disable warmup completely

@@ -1,3 +1,4 @@
+[cefpubfile] ERROR: Timeout. (the number of Trigger Interest retransmission has reached its limit.)
 [cefpubfile] Start
 [cefpubfile] Parsing parameters ... OK
 [cefpubfile] URI         = ccnx:/emergency/alert/content2
@@ -6,13 +7,17 @@
 [cefpubfile] Block Size  = 2048 Bytes
 [cefpubfile] Cache Time  = 10000 sec
 [cefpubfile] Expiration  = 10000 sec
-2026-02-18 14:12:43.246 [cefpubfile] INFO: [client] Config directory is ./h9
-2026-02-18 14:12:43.246 [cefpubfile] INFO: [client] Local Socket Name is /tmp/cef_9695.9
-2026-02-18 14:12:43.246 [cefpubfile] INFO: [client] Listen Port is 9695
+2026-02-18 18:19:48.193 [cefpubfile] INFO: [client] Config directory is ./h9
+2026-02-18 18:19:48.193 [cefpubfile] INFO: [client] Local Socket Name is /tmp/cef_9695.9
+2026-02-18 18:19:48.193 [cefpubfile] INFO: [client] Listen Port is 9695
 [cefpubfile] Init Cefore Client package ... OK
 [cefpubfile] Connect to cefnetd ... OK
 [cefpubfile] Checking the input file ... OK
-[RNP=0x7af36a99274f97d6c3c0f5c19c51a453]
+[RNP=0xa5e44e136126728d849cb4643795a3f7]
 [cefpubfile] Upload push data to cefnetd ... OK
 [cefpubfile] Send Trigger Interest.
-[cefpubfile] Receive Trigger Data, finish application.
+[cefpubfile] Resend Trigger Interest.
+[cefpubfile] Resend Trigger Interest.
+[cefpubfile] Resend Trigger Interest.
+[cefpubfile] Resend Trigger Interest.
+[cefpubfile] Resend Trigger Interest.

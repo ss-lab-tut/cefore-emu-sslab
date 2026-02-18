@@ -1,0 +1,18 @@
+[cefpubfile] Start
+[cefpubfile] Parsing parameters ... OK
+[cefpubfile] URI         = ccnx:/emergency/alert/content2
+[cefpubfile] File        = ./sample-putfile
+[cefpubfile] Rate        = 100.000 Mbps
+[cefpubfile] Block Size  = 2048 Bytes
+[cefpubfile] Cache Time  = 10000 sec
+[cefpubfile] Expiration  = 10000 sec
+2026-02-18 18:46:25.409 [cefpubfile] INFO: [client] Config directory is ./h9
+2026-02-18 18:46:25.409 [cefpubfile] INFO: [client] Local Socket Name is /tmp/cef_9695.9
+2026-02-18 18:46:25.409 [cefpubfile] INFO: [client] Listen Port is 9695
+[cefpubfile] Init Cefore Client package ... OK
+[cefpubfile] Connect to cefnetd ... OK
+[cefpubfile] Checking the input file ... OK
+[RNP=0x27a3ad1964eb7f93bad19e97787dd41b]
+[cefpubfile] Upload push data to cefnetd ... OK
+[cefpubfile] Send Trigger Interest.
+[cefpubfile] Receive Trigger Data, finish application.

@@ -1,0 +1,22 @@
+[cefgetfile] ERROR: Invalid URI is specified.
+
+Usage: cefgetfile
+
+  cefgetfile uri -f file [-o] [-m chunk] [-s pipeline] [-v valid_algo] [-d config_file_dir] [-p port_num] [-z sg]
+
+  uri              Specify the URI.
+  file             Specify the file name of output. 
+  -o               Specify this option if content must be retrieved directly from content owner and not from intermediate cache
+  chunk            Specify the number of chunk that you want to obtain
+  pipeline         Number of pipeline
+  valid_algo       Specify the validation algorithm (crc32c or rsa-sha256)
+  config_file_dir  Configure file directory
+  port_num         Port Number
+  -z sg            Send Long Life Interest
+
+[cefgetfile] Start
+[cefgetfile] Parsing parameters ...OK
+2026-02-18 18:33:09.189 [cefgetfile] INFO: [client] Config directory is ./h2
+2026-02-18 18:33:09.189 [cefgetfile] INFO: [client] Local Socket Name is /tmp/cef_9695.2
+2026-02-18 18:33:09.189 [cefgetfile] INFO: [client] Listen Port is 9695
+[cefgetfile] Init Cefore Client package ... OK

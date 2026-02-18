@@ -1,0 +1,19 @@
+[cefsubfile] Start
+[cefsubfile] Parsing parameters ...OK
+[cefsubfile] Init Cefore Client package ... OK
+[cefsubfile] Connect to cefnetd ... OK
+[cefsubfile] Register fib entry to cefnetd ... OK (URI=ccnx:/emergency/alert/content1)
+[cefsubfile] Completed. Get end chunk.
+[cefsubfile] RNP=0xb2159c4eba60d85990d9f0e9bd3e5396
+[cefsubfile] Outputfile: /home/yamakawa/Development/github/cefore-emu-koh11235813/logs/ex16_seed42/recv_16_content1/RNP0xb2159c4eba60d85990d9f0e9bd3e5396.out
+[cefsubfile] Rx Frames (All)           = 160
+[cefsubfile] Rx Frames (ContentObject) = 160
+[cefsubfile] Rx Bytes (All)            = 335534
+[cefsubfile] Rx Bytes (ContentObject)  = 326894
+[cefsubfile] Duration                  = 0.038 sec
+[cefsubfile] Throughput                = 71773897 bps
+[cefsubfile] Goodput                   = 69925719 bps
+[cefsubfile] Jitter (Ave)              = 233 us
+[cefsubfile] Jitter (Max)              = 7442 us
+[cefsubfile] Jitter (Var)              = 328677 us
+
