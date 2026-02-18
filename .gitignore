@@ -8,8 +8,6 @@ csmgr_fsc_*
 __pycache__
 
 *.pdf
-*.png
-*.jpg
 h*/
 link-audio.sh
 style.css
