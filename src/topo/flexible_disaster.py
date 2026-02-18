@@ -177,6 +177,25 @@ def run_disaster_topology(args, run_dir: Path = None, log_context=None):
                      uri_subscribers=uri_subscribers if uri_subscribers else None)
         health_check_publishers(net, publisher_ids)
 
+        # Failure phase startup (flexible uses FlexibleFailureManager)
+        # Start BEFORE content operations so failures overlap with transfers
+        use_cli = not getattr(args, "no_cli", False)
+        scenario_config = getattr(args, "failure_scenarios", None)
+        if scenario_config:
+            should_start_failure = True
+            if scenario_config.get("strategy", "simple") == "simple":
+                simple = scenario_config.get("simple", {}) or {}
+                if simple.get("interval", 0) <= 0 or simple.get("duration", 0) <= 0:
+                    should_start_failure = False
+            if should_start_failure:
+                failure_manager = FlexibleFailureManager(
+                    scenario_config=scenario_config,
+                    host_count=args.hosts,
+                    rng=rng,
+                    publisher_ids=publisher_ids,
+                )
+                stop_event, stop_thread = failure_manager.start(net, flap_state, quiet=use_cli)
+
         # Split operations
         ops_get_pubsub = [op for op in ops_get if op.get("mode") == "pubsub"]
         ops_get_putget = [op for op in ops_get if op.get("mode") != "pubsub"]
@@ -231,24 +250,6 @@ def run_disaster_topology(args, run_dir: Path = None, log_context=None):
         if pubsub_sub_procs:
             wait_pubsub_procs(pubsub_sub_procs, uri_publishers, args, results)
         wait_pub_procs(pubsub_pub_procs)
-
-        # Failure phase startup (flexible uses FlexibleFailureManager)
-        use_cli = not getattr(args, "no_cli", False)
-        scenario_config = getattr(args, "failure_scenarios", None)
-        if scenario_config:
-            should_start_failure = True
-            if scenario_config.get("strategy", "simple") == "simple":
-                simple = scenario_config.get("simple", {}) or {}
-                if simple.get("interval", 0) <= 0 or simple.get("duration", 0) <= 0:
-                    should_start_failure = False
-            if should_start_failure:
-                failure_manager = FlexibleFailureManager(
-                    scenario_config=scenario_config,
-                    host_count=args.hosts,
-                    rng=rng,
-                    publisher_ids=publisher_ids,
-                )
-                stop_event, stop_thread = failure_manager.start(net, flap_state, quiet=use_cli)
 
         # CLI or duration mode
         run_cli_or_duration(

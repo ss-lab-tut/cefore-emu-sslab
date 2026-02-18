@@ -20,6 +20,7 @@ from .cef_daemons import (
     start_cefnetd,
     start_csmgrd,
     stop_cefnetd,
+    stop_conpubd,
     stop_csmgrd,
     wait_for_cefnetd,
 )
@@ -302,8 +303,11 @@ def run_get_ops(
 
 
 def wait_pubsub_procs(pubsub_procs, uri_publishers, args, results,
-                      timeout_per_proc=60):
-    """Wait for pubsub subscriber processes to complete.
+                      timeout_total=120):
+    """Wait for pubsub subscriber processes to complete (parallel).
+
+    All subscribers are waited on concurrently with a shared deadline,
+    rather than sequentially (which could block N * timeout seconds).
 
     Args:
         pubsub_procs: List of (proc, op, log_path, outfile_path,
@@ -311,13 +315,18 @@ def wait_pubsub_procs(pubsub_procs, uri_publishers, args, results,
         uri_publishers: Dict of uri→publisher host ID.
         args: Parsed CLI args.
         results: Mutable list to append results.
-        timeout_per_proc: Timeout in seconds per process.
+        timeout_total: Total timeout in seconds for all processes.
     """
-    info(f"\n=== Waiting for {len(pubsub_procs)} pubsub subscribers ===\n")
+    import concurrent.futures
 
-    for proc, op, log_path, outfile_path, idx, consumer, uri, down_hosts in pubsub_procs:
+    info(f"\n=== Waiting for {len(pubsub_procs)} pubsub subscribers ===\n")
+    deadline = time.time() + timeout_total
+
+    def _wait_one(item):
+        proc, op, log_path, outfile_path, idx, consumer, uri, down_hosts = item
+        remaining = max(1, deadline - time.time())
         try:
-            exit_code = proc.wait(timeout=timeout_per_proc)
+            exit_code = proc.wait(timeout=remaining)
         except Exception as e:
             info(f"WARNING: Subscriber h{consumer} timeout: {e}\n")
             proc.terminate()
@@ -331,13 +340,21 @@ def wait_pubsub_procs(pubsub_procs, uri_publishers, args, results,
                 except Exception:
                     pass
                 exit_code = -1
+        return item, exit_code
 
-        publisher_host = _resolve_publisher_host(op, args, uri_publishers, uri)
-        results.append(_build_result_entry(
-            "eval", consumer, uri, outfile_path, log_path,
-            exit_code, down_hosts, publisher_host,
-        ))
-        info(f"Subscriber h{consumer} completed (exit={exit_code})\n")
+    with concurrent.futures.ThreadPoolExecutor(
+        max_workers=max(1, len(pubsub_procs))
+    ) as pool:
+        futures = [pool.submit(_wait_one, item) for item in pubsub_procs]
+        for future in concurrent.futures.as_completed(futures):
+            item, exit_code = future.result()
+            _, op, log_path, outfile_path, idx, consumer, uri, down_hosts = item
+            publisher_host = _resolve_publisher_host(op, args, uri_publishers, uri)
+            results.append(_build_result_entry(
+                "eval", consumer, uri, outfile_path, log_path,
+                exit_code, down_hosts, publisher_host,
+            ))
+            info(f"Subscriber h{consumer} completed (exit={exit_code})\n")
 
 
 def wait_pub_procs(pubsub_pub_procs, timeout=60):
@@ -407,6 +424,11 @@ def run_pub_phase(net, run_dir, ops_put_pubsub, seed_label):
     if not ops_put_pubsub:
         return []
     info(f"\n=== Phase 3: Starting {len(ops_put_pubsub)} pubsub publishers ===\n")
+    # Health check publisher cefnetd before starting cefpubfile
+    for op in ops_put_pubsub:
+        host = int(op["host"])
+        if not wait_for_cefnetd(net, host, timeout=5):
+            info(f"WARNING: cefnetd not running on h{host} before cefpubfile\n")
     procs = []
     for put_idx, op in enumerate(ops_put_pubsub):
         host = int(op["host"])
@@ -577,11 +599,19 @@ def run_cli_or_duration(net, args, log_context, ops_get_putget, ops_put,
                 cycle_idx += 1
                 if time.time() >= deadline:
                     break
+        else:
+            # Single eval cycle when duration=0 and no-cli
+            run_get_ops(
+                net, run_dir, ops_get_putget, "eval", get_interval,
+                seed_label, flap_state, uri_publishers, args, results,
+                cycle_idx=0,
+            )
 
 
 def cleanup_all(net, args, started_csmgrd_hosts, bridge_manager, stop_event,
                 results, results_path, stop_thread=None,
-                pubsub_sub_procs=None, pubsub_pub_procs=None):
+                pubsub_sub_procs=None, pubsub_pub_procs=None,
+                started_conpubd_hosts=None):
     """Clean up daemons, bridges, and network; write results."""
     import json
     import signal
@@ -622,6 +652,8 @@ def cleanup_all(net, args, started_csmgrd_hosts, bridge_manager, stop_event,
     if net is not None:
         for idx in range(args.hosts):
             stop_cefnetd(net, idx)
+        for idx in sorted(started_conpubd_hosts or set()):
+            stop_conpubd(net, idx)
         for idx in sorted(started_csmgrd_hosts):
             stop_csmgrd(net, idx)
         bridge_manager.cleanup()
