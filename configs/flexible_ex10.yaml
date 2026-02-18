@@ -19,24 +19,24 @@ k: 2                        # k shortest paths for multipath routing
 # Priority URI Patterns with Automatic Configuration
 # -----------------------------------------------------------------------------
 priority_uris:
-  #  high:
-  #    patterns: ["ccnx:/emergency/*", "ccnx:/critical/*"]
-  #    mode: "pubsub"           # High priority uses pub/sub for reliability
-  #    expiry: 10000            # Content Object lifetime (seconds)
-  #    cache_time: 10000        # Cache deletion period (seconds)
-  #    prefetch_to_cache: true  # Prefetch to cache nodes during warmup
-  #    lifetime: 5000           # Interest lifetime for pubsub (ms)
-  #    retry_limit: 5           # Retry limit for pubsub
-  #    rate: 100                # Transfer rate (Mbps)
-  #    block_size: 2048         # Max payload length (bytes)
-  #    # Validation algorithms
-  #    #     ti_valid_algo: "crc32c"  # Title Info validation algorithm
-  #    #     rd_valid_algo: "crc32c"  # Request Data validation algorithm
-  #    #     ri_valid_algo: "crc32c"  # Request Info validation algorithm
-  #    #     td_valid_algo: "crc32c"  # Transfer Data validation algorithm
-  #    target: "ref"           # Target for Long Life Interest (trg | ref | both)
-  #    pipeline: 32             # Pipeline count for pubsub subscriber
-  #    port_num: 9695           # Port number
+  high:
+    patterns: ["ccnx:/emergency/*", "ccnx:/critical/*"]
+    mode: "pubsub"           # High priority uses pub/sub for reliability
+    expiry: 10000            # Content Object lifetime (seconds)
+    cache_time: 10000        # Cache deletion period (seconds)
+    prefetch_to_cache: true  # Prefetch to cache nodes during warmup
+    lifetime: 5000           # Interest lifetime for pubsub (ms)
+    retry_limit: 5           # Retry limit for pubsub
+    rate: 100                # Transfer rate (Mbps)
+    block_size: 2048         # Max payload length (bytes)
+    # Validation algorithms
+    #     ti_valid_algo: "crc32c"  # Title Info validation algorithm
+    #     rd_valid_algo: "crc32c"  # Request Data validation algorithm
+    #     ri_valid_algo: "crc32c"  # Request Info validation algorithm
+    #     td_valid_algo: "crc32c"  # Transfer Data validation algorithm
+    target: "ref"           # Target for Long Life Interest (trg | ref | both)
+    pipeline: 32             # Pipeline count for pubsub subscriber
+    port_num: 9695           # Port number
 
   medium:
     patterns: ["ccnx:/video/*", "ccnx:/data/*"]
@@ -65,12 +65,12 @@ priority_uris:
 # URIs will automatically match patterns and apply settings
 # -----------------------------------------------------------------------------
 auto:
-  #  - uri: "ccnx:/emergency/alert"
-  #    publishers: [9]
-  #    consumers: "random:5"
-  #    content_count: 2
-  #    consumer_per_content: 2
-  #    file: "./sample-putfile"
+  - uri: "ccnx:/emergency/alert"
+    publishers: [9]
+    consumers: "random:5"
+    content_count: 2
+    consumer_per_content: 2
+    file: "./disk IO.png"
     # Will automatically use: mode=pubsub, expiry=10000, cache_time=10000, etc.
 
   - uri: "ccnx:/video/stream"
@@ -78,7 +78,7 @@ auto:
     consumers: "random:4"
     content_count: 3
     consumer_per_content: 1
-    file: "./sample-putfile"
+    file: "./SN7100andSN770.jpg"
     # Will automatically use: mode=putget, expiry=5000, cache_time=5000, rate=10
 
   - uri: "ccnx:/test/data"
@@ -102,7 +102,7 @@ failure_scenarios:
   strategy: simple           # Strategy: simple, cyclic, random, manual
   simple:
     interval: 10             # Seconds between down events (0 to disable)
-    duration: 15             # Seconds to keep hosts down
+    duration: 40            # Seconds to keep hosts down
     count: 5                 # Number of hosts to down per cycle
     stagger: 1               # Seconds to stagger down events within a cycle
     exclude: []              # Host IDs to exclude from flapping
@@ -122,7 +122,7 @@ failure_scenarios:
 # -----------------------------------------------------------------------------
 # Cache Configuration
 # -----------------------------------------------------------------------------
-cache_count: 5               # Number of cache nodes (0 = down-count + 1)
+cache_count: 0               # Number of cache nodes (0 = down-count + 1)
 cache_default_rct_ms: 5000   # Override CACHE_DEFAULT_RCT(ms) for cache nodes (cache_default_rct_ms must be an integer >= 1000)
 
 # -----------------------------------------------------------------------------

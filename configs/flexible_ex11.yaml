@@ -6,7 +6,7 @@
 # -----------------------------------------------------------------------------
 # Topology Basic Settings
 # -----------------------------------------------------------------------------
-hosts: 20                   # Number of hosts (min 3)
+hosts: 15                   # Number of hosts (min 3)
 switches: 100                # Maximum number of switches to create (0 = unlimited)
 node_per_switch: 5          # Max hosts per switch (0=unlimited, 2=one switch per link)
 host_degree_min: 2          # Minimum number of switches per host (>=1)
@@ -70,7 +70,7 @@ auto:
     consumers: "random:5"
     content_count: 2
     consumer_per_content: 2
-    file: "./sample-putfile"
+    file: "./disk IO.png"
     # Will automatically use: mode=pubsub, expiry=10000, cache_time=10000, etc.
 
   - uri: "ccnx:/video/stream"
@@ -78,7 +78,7 @@ auto:
     consumers: "random:4"
     content_count: 3
     consumer_per_content: 1
-    file: "./sample-putfile"
+    file: "./SN7100andSN770.jpg"
     # Will automatically use: mode=putget, expiry=5000, cache_time=5000, rate=10
 
   - uri: "ccnx:/test/data"
@@ -102,8 +102,8 @@ failure_scenarios:
   strategy: simple           # Strategy: simple, cyclic, random, manual
   simple:
     interval: 10             # Seconds between down events (0 to disable)
-    duration: 15             # Seconds to keep hosts down
-    count: 5                 # Number of hosts to down per cycle
+    duration: 100            # Seconds to keep hosts down
+    count: 9                 # Number of hosts to down per cycle
     stagger: 1               # Seconds to stagger down events within a cycle
     exclude: []              # Host IDs to exclude from flapping
 
@@ -122,7 +122,7 @@ failure_scenarios:
 # -----------------------------------------------------------------------------
 # Cache Configuration
 # -----------------------------------------------------------------------------
-cache_count: 5               # Number of cache nodes (0 = down-count + 1)
+cache_count: 0               # Number of cache nodes (0 = down-count + 1)
 cache_default_rct_ms: 5000   # Override CACHE_DEFAULT_RCT(ms) for cache nodes (cache_default_rct_ms must be an integer >= 1000)
 
 # -----------------------------------------------------------------------------
@@ -152,8 +152,8 @@ get_interval: 10             # Seconds between cefgetfile runs in eval phase
 num: 11                       # Experiment number (enables log directory output)
 output_dir: "logs"           # Base output directory
 timestamp: false             # Add timestamp to output directory name
-no_cli: true                 # Skip interactive CLI (flap output visible on stdout)
-duration: 360                 # Eval phase duration in seconds for --no-cli (0: single cycle)
+no_cli: false                # Skip interactive CLI (flap output visible on stdout)
+duration: 120                 # Eval phase duration in seconds for --no-cli (0: single cycle)
 results_json: null           # Write warmup/eval get results to JSON (null = no JSON output)
 topo_png: null               # Write topology PNG to this path (null = auto-generate)
 topo_layout: "spring"        # Topology layout: spring, kamada_kawai, or circular

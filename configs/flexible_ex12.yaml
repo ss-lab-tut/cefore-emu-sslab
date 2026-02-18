@@ -6,7 +6,7 @@
 # -----------------------------------------------------------------------------
 # Topology Basic Settings
 # -----------------------------------------------------------------------------
-hosts: 20                   # Number of hosts (min 3)
+hosts: 15                   # Number of hosts (min 3)
 switches: 100                # Maximum number of switches to create (0 = unlimited)
 node_per_switch: 5          # Max hosts per switch (0=unlimited, 2=one switch per link)
 host_degree_min: 2          # Minimum number of switches per host (>=1)
@@ -70,7 +70,7 @@ auto:
     consumers: "random:5"
     content_count: 2
     consumer_per_content: 2
-    file: "./sample-putfile"
+    file: "./disk IO.png"
     # Will automatically use: mode=pubsub, expiry=10000, cache_time=10000, etc.
 
   - uri: "ccnx:/video/stream"
@@ -78,7 +78,7 @@ auto:
     consumers: "random:4"
     content_count: 3
     consumer_per_content: 1
-    file: "./sample-putfile"
+    file: "./SN7100andSN770.jpg"
     # Will automatically use: mode=putget, expiry=5000, cache_time=5000, rate=10
 
   - uri: "ccnx:/test/data"
@@ -98,31 +98,31 @@ gets: []  # Manual get operations (empty = use auto)
 # -----------------------------------------------------------------------------
 # Failure Scenario Configuration
 # -----------------------------------------------------------------------------
-# failure_scenarios:
-#   strategy: simple           # Strategy: simple, cyclic, random, manual
-#   simple:
-#     interval: 10             # Seconds between down events (0 to disable)
-#     duration: 15             # Seconds to keep hosts down
-#     count: 5                 # Number of hosts to down per cycle
-#     stagger: 1               # Seconds to stagger down events within a cycle
-#     exclude: []              # Host IDs to exclude from flapping
+failure_scenarios:
+  strategy: simple           # Strategy: simple, cyclic, random, manual
+  simple:
+    interval: 10             # Seconds between down events (0 to disable)
+    duration: 140            # Seconds to keep hosts down
+    count: 13                 # Number of hosts to down per cycle
+    stagger: 1               # Seconds to stagger down events within a cycle
+    exclude: []              # Host IDs to exclude from flapping
 
 # Alternative: Cyclic failure scenario (commented out)
-failure_scenarios:
-  strategy: cyclic
-  cycles:
-    - interval: 10
-      duration: 30
-      count: 5
-      stagger: 1
-      exclude: [0]
-      target: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]         # null = auto-select, or list of host IDs
-      allow_publishers: false  # Allow publishers to be downed
+# failure_scenarios:
+#   strategy: cyclic
+#   cycles:
+#     - interval: 20
+#       duration: 10
+#       count: 3
+#       stagger: 1
+#       exclude: [0, 9]
+#       target: null         # null = auto-select, or list of host IDs
+#       allow_publishers: false  # Allow publishers to be downed
 
 # -----------------------------------------------------------------------------
 # Cache Configuration
 # -----------------------------------------------------------------------------
-cache_count: 5               # Number of cache nodes (0 = down-count + 1)
+cache_count: 0               # Number of cache nodes (0 = down-count + 1)
 cache_default_rct_ms: 5000   # Override CACHE_DEFAULT_RCT(ms) for cache nodes (cache_default_rct_ms must be an integer >= 1000)
 
 # -----------------------------------------------------------------------------
@@ -149,14 +149,13 @@ get_interval: 10             # Seconds between cefgetfile runs in eval phase
 # -----------------------------------------------------------------------------
 # Output Configuration
 # -----------------------------------------------------------------------------
-num: 12                       # Experiment number (enables log directory output)
+num: 10                       # Experiment number (enables log directory output)
 output_dir: "logs"           # Base output directory
 timestamp: false             # Add timestamp to output directory name
-legacy_layout: false         # Use legacy layout (output to current directory) - DEPRECATED
-no_cli: true                 # Skip interactive CLI (flap output visible on stdout)
-duration: 360                 # Eval phase duration in seconds for --no-cli (0: single cycle)
+no_cli: false                # Skip interactive CLI (flap output visible on stdout)
+duration: 120                 # Eval phase duration in seconds for --no-cli (0: single cycle)
 results_json: null           # Write warmup/eval get results to JSON (null = no JSON output)
-topo_png: ex12_topology.png  # Write topology PNG to this path (null = auto-generate)
+topo_png: null               # Write topology PNG to this path (null = auto-generate)
 topo_layout: "spring"        # Topology layout: spring, kamada_kawai, or circular
 
 # -----------------------------------------------------------------------------
