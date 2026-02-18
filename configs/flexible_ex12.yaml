@@ -149,7 +149,7 @@ get_interval: 10             # Seconds between cefgetfile runs in eval phase
 # -----------------------------------------------------------------------------
 # Output Configuration
 # -----------------------------------------------------------------------------
-num: 10                       # Experiment number (enables log directory output)
+num: 12                       # Experiment number (enables log directory output)
 output_dir: "logs"           # Base output directory
 timestamp: false             # Add timestamp to output directory name
 no_cli: false                # Skip interactive CLI (flap output visible on stdout)

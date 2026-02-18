@@ -1,0 +1,11 @@
+experiment_dir,num,hosts,switches,seed,k,down_interval,down_duration,down_count,down_stagger,down_exclude,cache_count,get_interval,filename,host_id,content_id,file_seed,down_hosts,get_idx,phase,cycle,timestamp,uri,file,rate_mbps,block_size_bytes,cache_time_sec,expiration_sec,tx_frames,tx_bytes,duration_sec,throughput_bps,success
+ex11_seed42,11,15,100,42,2,10,100,9,1,,0,10,cefputfile_h7_c3.log,7,3,,,,,,,ccnx:/test/data/content1,./sample-putfile,1.0,512,1000,1000,847,433390,3.479,996842,True
+ex11_seed42,11,15,100,42,2,10,100,9,1,,0,10,cefputfile_h7_c4.log,7,4,,,,,,,ccnx:/test/data/content2,./sample-putfile,1.0,512,1000,1000,847,433390,3.479,996924,True
+ex11_seed42,11,15,100,42,2,10,100,9,1,,0,10,cefputfile_h8_c0.log,8,0,,,,,,,ccnx:/video/stream/content1,./SN7100andSN770.jpg,10.0,1024,5000,5000,581,594774,0.482,9899947,True
+ex11_seed42,11,15,100,42,2,10,100,9,1,,0,10,cefputfile_h8_c1.log,8,1,,,,,,,ccnx:/video/stream/content2,./SN7100andSN770.jpg,10.0,1024,5000,5000,581,594774,0.481,9906254,True
+ex11_seed42,11,15,100,42,2,10,100,9,1,,0,10,cefputfile_h8_c2.log,8,2,,,,,,,ccnx:/video/stream/content3,./SN7100andSN770.jpg,10.0,1024,5000,5000,581,594774,0.48,9924416,True
+ex11_seed42,11,15,100,42,2,10,100,9,1,,0,10,cefputfile_h7_c3.log,7,3,,,,,,,ccnx:/test/data/content1,./sample-putfile,1.0,512,1000,1000,847,433390,3.479,996842,True
+ex11_seed42,11,15,100,42,2,10,100,9,1,,0,10,cefputfile_h7_c4.log,7,4,,,,,,,ccnx:/test/data/content2,./sample-putfile,1.0,512,1000,1000,847,433390,3.479,996924,True
+ex11_seed42,11,15,100,42,2,10,100,9,1,,0,10,cefputfile_h8_c0.log,8,0,,,,,,,ccnx:/video/stream/content1,./SN7100andSN770.jpg,10.0,1024,5000,5000,581,594774,0.482,9899947,True
+ex11_seed42,11,15,100,42,2,10,100,9,1,,0,10,cefputfile_h8_c1.log,8,1,,,,,,,ccnx:/video/stream/content2,./SN7100andSN770.jpg,10.0,1024,5000,5000,581,594774,0.481,9906254,True
+ex11_seed42,11,15,100,42,2,10,100,9,1,,0,10,cefputfile_h8_c2.log,8,2,,,,,,,ccnx:/video/stream/content3,./SN7100andSN770.jpg,10.0,1024,5000,5000,581,594774,0.48,9924416,True

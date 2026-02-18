@@ -1,0 +1,18 @@
+{
+  "num": 12,
+  "hosts": 15,
+  "switches": 100,
+  "seed": 42,
+  "k": 2,
+  "down_interval": 10,
+  "down_duration": 140,
+  "down_count": 13,
+  "down_stagger": 1,
+  "down_exclude": "",
+  "cache_count": 0,
+  "cache_default_rct_ms": 5000,
+  "get_interval": 10,
+  "warmup_get_interval": 0,
+  "duration": 120,
+  "output_dir": "/home/yamakawa/Development/github/cefore-emu-koh11235813/logs/ex12_seed42"
+}
