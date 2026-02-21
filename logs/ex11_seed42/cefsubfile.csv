@@ -3,7 +3,3 @@ ex11_seed42,11,15,100,42,2,10,100,9,1,,0,10,"cefsubfile_seed42_downhosts0,1,2,3,
 ex11_seed42,11,15,100,42,2,10,100,9,1,,0,10,"cefsubfile_seed42_downhosts0,1,2,3,4,5,6,10,11,12,13,14_phaseeval_cycle0_idx1_h1.log",1,,42,"0,1,2,3,4,5,6,10,11,12,13,14",1,eval,0,,,True
 ex11_seed42,11,15,100,42,2,10,100,9,1,,0,10,"cefsubfile_seed42_downhosts0,1,2,3,4,5,6,10,11,12,13,14_phaseeval_cycle0_idx2_h4.log",4,,42,"0,1,2,3,4,5,6,10,11,12,13,14",2,eval,0,,,True
 ex11_seed42,11,15,100,42,2,10,100,9,1,,0,10,"cefsubfile_seed42_downhosts0,1,2,3,4,5,6,10,11,12,13,14_phaseeval_cycle0_idx3_h10.log",10,,42,"0,1,2,3,4,5,6,10,11,12,13,14",3,eval,0,,,True
-ex11_seed42,11,15,100,42,2,10,100,9,1,,0,10,"cefsubfile_seed42_downhosts0,1,2,3,4,5,6,10,11,12,13,14_phaseeval_cycle0_idx0_h1.log",1,,42,"0,1,2,3,4,5,6,10,11,12,13,14",0,eval,0,,,True
-ex11_seed42,11,15,100,42,2,10,100,9,1,,0,10,"cefsubfile_seed42_downhosts0,1,2,3,4,5,6,10,11,12,13,14_phaseeval_cycle0_idx1_h1.log",1,,42,"0,1,2,3,4,5,6,10,11,12,13,14",1,eval,0,,,True
-ex11_seed42,11,15,100,42,2,10,100,9,1,,0,10,"cefsubfile_seed42_downhosts0,1,2,3,4,5,6,10,11,12,13,14_phaseeval_cycle0_idx2_h4.log",4,,42,"0,1,2,3,4,5,6,10,11,12,13,14",2,eval,0,,,True
-ex11_seed42,11,15,100,42,2,10,100,9,1,,0,10,"cefsubfile_seed42_downhosts0,1,2,3,4,5,6,10,11,12,13,14_phaseeval_cycle0_idx3_h10.log",10,,42,"0,1,2,3,4,5,6,10,11,12,13,14",3,eval,0,,,True

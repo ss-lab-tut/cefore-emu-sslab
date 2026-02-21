@@ -1,0 +1,6 @@
+experiment_dir,num,hosts,switches,seed,k,down_interval,down_duration,down_count,down_stagger,down_exclude,cache_count,get_interval,filename,host_id,content_id,file_seed,down_hosts,get_idx,phase,cycle,timestamp,uri,file,rate_mbps,block_size_bytes,cache_time_sec,expiration_sec,tx_frames,tx_bytes,duration_sec,throughput_bps,success
+ex15_seed42,15,20,100,42,2,0,0,0,0,,0,10,cefputfile_h7_c3.log,7,3,,,,,,,ccnx:/test/data/content1,./sample-putfile,1.0,512,1000,1000,847,433390,3.477,997308,True
+ex15_seed42,15,20,100,42,2,0,0,0,0,,0,10,cefputfile_h7_c4.log,7,4,,,,,,,ccnx:/test/data/content2,./sample-putfile,1.0,512,1000,1000,847,433390,3.478,997117,True
+ex15_seed42,15,20,100,42,2,0,0,0,0,,0,10,cefputfile_h8_c0.log,8,0,,,,,,,ccnx:/video/stream/content1,./sample-putfile,10.0,1024,5000,5000,424,433390,0.351,9899071,True
+ex15_seed42,15,20,100,42,2,0,0,0,0,,0,10,cefputfile_h8_c1.log,8,1,,,,,,,ccnx:/video/stream/content2,./sample-putfile,10.0,1024,5000,5000,424,433390,0.35,9931225,True
+ex15_seed42,15,20,100,42,2,0,0,0,0,,0,10,cefputfile_h8_c2.log,8,2,,,,,,,ccnx:/video/stream/content3,./sample-putfile,10.0,1024,5000,5000,424,433390,0.35,9929433,True

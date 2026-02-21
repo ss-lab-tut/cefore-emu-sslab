@@ -1,0 +1,9 @@
+experiment_dir,num,hosts,switches,seed,k,down_interval,down_duration,down_count,down_stagger,down_exclude,cache_count,get_interval,filename,host_id,content_id,file_seed,down_hosts,get_idx,phase,cycle,timestamp,uri,success,rnp,rx_frames_all,rx_frames_contentobject,rx_bytes_all,rx_bytes_contentobject,duration,throughput,goodput,jitter_ave,jitter_max,jitter_var
+ex14_seed42,14,20,100,42,2,0,0,0,0,,0,10,"cefsubfile_seed42_downhosts0,1,11,14,15,17_phaseeval_cycle0_idx0_h3.log",3,,42,"0,1,11,14,15,17",0,eval,0,,,True,,,,,,,,,,,
+ex14_seed42,14,20,100,42,2,0,0,0,0,,0,10,"cefsubfile_seed42_downhosts0,1,14,17,18_phaseeval_cycle0_idx1_h16.log",16,,42,"0,1,14,17,18",1,eval,0,,,True,0xd4aff32c42f0158416fd6cc25b0737f0,212,212,445624,434176,0.058,62102464,60507063,270,17849,1481526
+ex14_seed42,14,20,100,42,2,0,0,0,0,,0,10,"cefsubfile_seed42_downhosts0,2,3,14,18_phaseeval_cycle0_idx3_h7.log",7,,42,"0,2,3,14,18",3,eval,0,,,True,0x7af36a99274f97d6c3c0f5c19c51a453,212,212,444838,433390,0.042,85632224,83428461,196,10043,463825
+ex14_seed42,14,20,100,42,2,0,0,0,0,,0,10,"cefsubfile_seed42_downhosts1,2,3,4,5,6,7,8,9,10_phaseeval_cycle0_idx3_h7.log",7,,42,"1,2,3,4,5,6,7,8,9,10",3,eval,0,,,True,,,,,,,,,,,
+ex14_seed42,14,20,100,42,2,0,0,0,0,,0,10,"cefsubfile_seed42_downhosts1,2,3,4,5,6,7,8,9_phaseeval_cycle0_idx2_h16.log",16,,42,"1,2,3,4,5,6,7,8,9",2,eval,0,,,True,,,,,,,,,,,
+ex14_seed42,14,20,100,42,2,0,0,0,0,,0,10,"cefsubfile_seed42_downhosts1,2,3,4,5,6_phaseeval_cycle0_idx1_h16.log",16,,42,"1,2,3,4,5,6",1,eval,0,,,True,,,,,,,,,,,
+ex14_seed42,14,20,100,42,2,0,0,0,0,,0,10,"cefsubfile_seed42_downhosts1,2,3,4_phaseeval_cycle0_idx0_h3.log",3,,42,"1,2,3,4",0,eval,0,,,True,,,,,,,,,,,
+ex14_seed42,14,20,100,42,2,0,0,0,0,,0,10,"cefsubfile_seed42_downhosts4,5,11,12,13_phaseeval_cycle0_idx2_h16.log",16,,42,"4,5,11,12,13",2,eval,0,,,True,,,,,,,,,,,
