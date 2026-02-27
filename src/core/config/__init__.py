@@ -1,6 +1,6 @@
-"""Configuration loading and generation utilities for cefore-emu."""
+"""Configuration loading and generation utilities."""
 
-from .auto_generator import generate_operations
+from .auto_gen import generate_operations
 from .loader import load_config, merge_cli_and_config, validate_config
 
 __all__ = [

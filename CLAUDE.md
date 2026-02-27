@@ -13,65 +13,92 @@ CeforeEmu is a network emulator based on Mininet for testing Cefore (Content-Cen
 
 ## Project Structure
 
+The project follows a **Ports and Adapters** architecture with four layers:
+
 ```
-cefore-emu/
-├── src/                           # Main source code
-│   ├── config/                    # Configuration utilities
-│   │   ├── __init__.py
-│   │   ├── loader.py              # JSON/YAML config loader
-│   │   └── auto_generator.py      # Auto put/get generation
-│   └── topo/                      # Topology implementations
-│       ├── simple_three_nodes_two_switch.py   # 3-node linear topology
-│       ├── five_node_two_switch.py            # Scalable linear topology
-│       ├── mesh_nodes_switches.py             # Random mesh topology
-│       └── mesh_disaster_topology.py          # Mesh with disaster simulation
+src/
+├── core/                          # Pure Python (no Mininet dependency, testable)
+│   ├── graph.py                   # Graph algorithms: dijkstra, k_shortest_paths, UnionFind
+│   ├── fib.py                     # Pure FIB computation (LinkSubnet, Route dataclasses)
+│   ├── roles.py                   # NodeRole dataclass and assign_roles()
+│   ├── flap_state.py              # Thread-safe FlapState for host failure tracking
+│   ├── paths.py                   # ROOT_DIR, TEMPLATE_ROOT, resolve_run_dir()
+│   └── config/                    # Configuration utilities
+│       ├── loader.py              # JSON/YAML config loader
+│       └── auto_gen.py            # Auto put/get operation generation
 │
-├── configs/                       # Configuration
-│   ├── templates/                 # Host templates
-│   │   ├── h0/                    # Consumer template (CS_MODE=0)
-│   │   ├── h1/                    # Router template (CS_MODE=2)
-│   │   └── h2/                    # Publisher template (CS_MODE=0)
-│   └── examples/                  # Example configurations
-│       ├── multi_publisher.json   # Multiple publisher example
-│       └── auto_experiment.yaml   # Auto-generation example
+├── runtime/                       # Mininet/Cefore integration (concrete implementations)
+│   ├── base.py                    # Runtime ABC, MininetRuntime, FakeRuntime
+│   ├── cefore.py                  # Daemon control: start/stop cefnetd, csmgrd
+│   ├── template.py                # Template copy, ensure_node_dirs(), cleanup_node_dirs()
+│   ├── net_config.py              # apply_ip_addr(), apply_fib(), apply_fib_for_uris()
+│   ├── topo.py                    # Topo subclasses: LineTopo, MeshTopo, SimpleLinkTopo
+│   ├── links.py                   # Link state operations: set_node_links_state()
+│   ├── bridge.py                  # External interface bridging (extracted from disaster)
+│   ├── bandwidth.py               # Link bandwidth control (extracted from disaster)
+│   └── viz.py                     # Topology visualization: render_topology_png()
 │
-├── *.py (root)                    # Entry point wrappers for src/topo/
-├── buffer.sh                      # UDP buffer configuration
-├── pyproject.toml                 # Package configuration
-└── CLAUDE.md                      # This file
+├── scenarios/                     # Experiment orchestration
+│   ├── base.py                    # BaseScenario ABC (SIGINT/exception teardown guarantee)
+│   ├── linear.py                  # LinearScenario (h0-s0-h1-s1-...-sN-hN)
+│   ├── mesh.py                    # MeshScenario (random mesh topology)
+│   └── disaster.py                # DisasterScenario (mesh + periodic host failures)
+│
+├── cli/                           # CLI entry point
+│   ├── main.py                    # Unified CLI with subcommands
+│   └── args.py                    # Common argparse definitions
+│
+└── __main__.py                    # Package entry point
+
+configs/
+├── templates/                     # Host templates
+│   ├── h0/                        # Consumer template (CS_MODE=0)
+│   ├── h1/                        # Router template (CS_MODE=2)
+│   └── h2/                        # Publisher template (CS_MODE=0)
+└── examples/                      # Example configurations
+    ├── multi_publisher.json       # Multiple publisher example
+    └── auto_experiment.yaml       # Auto-generation example
 ```
 
-## Running Topology Scripts
+### Layer Dependency Rules
 
-**Simple 3-node linear topology (consumer-router-publisher):**
-```bash
-sudo python3 simple-three-nodes-two-switch.py
+```
+cli/ → scenarios/ → runtime/ → core/
 ```
 
-**Configurable linear topology:**
+- **core/**: Pure Python only. No Mininet imports. Fully testable.
+- **runtime/**: Depends on core/ and Mininet. Contains all Mininet/Cefore operations.
+- **scenarios/**: Depends on runtime/ and core/. Orchestrates experiment lifecycle.
+- **cli/**: Depends on scenarios/ and core/. Parses arguments and dispatches.
+
+## Running Topology Scenarios
+
+All scenarios use a unified CLI:
+
+**Linear topology:**
 ```bash
-sudo python3 five-node-two-switch.py --hosts 7
+sudo python3 -m src linear --hosts 5
 ```
 
-**Configurable mesh topology:**
+**Mesh topology:**
 ```bash
-sudo python3 mesh-nodes-switches.py --hosts 8 --switches 12 --k 3 --seed 42
+sudo python3 -m src mesh --hosts 8 --switches 12 --k 3 --seed 42
 ```
 - `--hosts`: Number of hosts (min 3)
-- `--switches`: Number of random links (min 2, max n*(n-1)/2)
+- `--switches`: Number of switches/links (min 2, max n*(n-1)/2)
 - `--k`: Number of shortest paths per destination for multipath routing (default 2)
 - `--seed`: Random seed for deterministic topology generation
 
-**Mesh disaster topology with host failures:**
+**Disaster topology (mesh with host failures):**
 ```bash
-sudo python3 mesh-disaster-topology.py --hosts 10 --switches 15 --seed 42 \
+sudo python3 -m src disaster --hosts 10 --switches 15 --seed 42 \
     --down-interval 30 --down-duration 10 --down-count 2
 ```
 
 **Using JSON/YAML configuration:**
 ```bash
-sudo python3 mesh-disaster-topology.py --config configs/examples/multi_publisher.json
-sudo python3 mesh-disaster-topology.py --config configs/examples/auto_experiment.yaml
+sudo python3 -m src disaster --config configs/examples/multi_publisher.json
+sudo python3 -m src disaster --config configs/examples/auto_experiment.yaml
 ```
 
 **Exiting Mininet:**
@@ -86,22 +113,50 @@ mininet> exit
 
 ## Architecture
 
-### Topology Scripts Structure
+### BaseScenario Pattern
 
-All topology scripts follow a common pattern:
+All scenarios extend `BaseScenario` (src/scenarios/base.py) which guarantees teardown on SIGINT/exceptions:
 
-1. **Topology Definition** - Mininet Topo subclass defines network structure
-2. **IP Address Assignment** - Each link gets a /24 subnet (192.168.X.Y)
-3. **Cefore Daemon Startup** - Start csmgrd (cache managers) and cefnetd (forwarding daemons)
-4. **FIB Configuration** - Set forwarding rules using `cefroute add`
-5. **Content Operations** - Publisher runs `cefputfile`, consumer runs `cefgetfile`
-6. **Cleanup** - Stop daemons and remove temporary host directories
+```python
+class BaseScenario(ABC):
+    def execute(self):
+        net = None
+        try:
+            topo = self.build_topology()
+            net = self.create_mininet(topo)
+            net.start()
+            self.configure(net)
+            self.run_experiment(net)
+            CLI(net)
+        except KeyboardInterrupt:
+            pass
+        finally:
+            if net is not None:
+                self.teardown(net)
+                net.stop()
+```
+
+Subclasses implement: `build_topology()`, `configure(net)`, `run_experiment(net)`, `teardown(net)`.
+
+### Runtime Abstraction
+
+`runtime/base.py` defines a `Runtime` ABC with `MininetRuntime` (real) and `FakeRuntime` (for testing):
+- `link_down(node_a, node_b)` / `link_up(node_a, node_b)`
+- `run_cmd(node, cmd)` / `get_host(name)` / `get_links()`
 
 ### Node Role Assignment
 
-- **Consumer** (h0): Requests content via `cefgetfile`
-- **Router** (h1, odd-numbered hosts): Forwards interests/content, runs cache manager (csmgrd)
-- **Publisher** (h2, last host): Stores and serves content via `cefputfile`
+Roles are defined in `core/roles.py` via `NodeRole` dataclass:
+- **Consumer** (CS_MODE=0): Requests content via `cefgetfile`
+- **Router** (CS_MODE=2, odd-numbered hosts): Forwards interests/content, runs csmgrd
+- **Publisher** (CS_MODE=0): Stores and serves content via `cefputfile`
+
+`assign_roles(host_num, rng, publishers=None)` dynamically assigns roles based on experiment definition.
+
+### FIB Computation (Two-Phase)
+
+1. **Pure computation** in `core/fib.py`: `compute_fib()` / `compute_fib_for_uris()` return `Route` dataclass objects
+2. **Mininet application** in `runtime/net_config.py`: `apply_fib()` / `apply_fib_for_uris()` execute `cefroute add` commands
 
 ### Host Configuration Templates
 
@@ -111,7 +166,7 @@ Templates are located in `configs/templates/`:
 - `h1/` - Router template (CS_MODE=2, external cache manager)
 - `h2/` - Publisher template (CS_MODE=1, local cache mode)
 
-For topologies with >3 hosts, additional directories (h3, h4, ...) are generated dynamically by copying templates. Dynamic directories are cleaned up after script completion via `cleanup_node_dirs()`.
+For topologies with >3 hosts, additional directories (h3, h4, ...) are generated dynamically via `runtime/template.py:ensure_node_dirs()`. Cleaned up after script completion via `cleanup_node_dirs()`.
 
 **Configuration files per host:**
 - `cefnetd.conf` - Forwarding daemon config (includes LOCAL_SOCK_ID)
@@ -124,40 +179,27 @@ For topologies with >3 hosts, additional directories (h3, h4, ...) are generated
 
 ### Key Functions
 
-**IP Address Assignment:**
-- Linear topologies: Sequential /24 subnets (192.168.0.x, 192.168.1.x, ...)
-- Mesh topologies: One /24 per link, host ID determines last octet
+**Graph Algorithms (core/graph.py):**
+- `dijkstra_all()`: Computes shortest distances from a source to all destinations
+- `shortest_path()`: Dijkstra's with edge/node banning support
+- `k_shortest_paths()`: Yen's algorithm for k alternate paths
+- `select_k_centers()`: Greedy k-center selection for cache placement
 
-**FIB Configuration:**
-- Linear: Forward all interests toward publisher (next hop in line)
-- Mesh: Uses per-source Dijkstra for efficient multipath routing
-  - `dijkstra_all()`: Computes shortest distances from a source to all destinations
-  - For each source-destination pair, selects k best neighbors based on their precomputed distance to destination
-  - `shortest_path()`: Dijkstra's algorithm with edge/node banning support (used for constrained pathfinding)
-  - `k_shortest_paths()`: Yen's algorithm for finding k alternate paths (available but not used in main FIB setup)
-  - `set_fib()`: Sets FIB entries for all destinations with default URI pattern `ccnx:/test/exampleN`
-  - `set_fib_for_uris()`: Sets FIB entries for specific URI-to-publisher mappings (used with custom puts configuration)
+**FIB Computation (core/fib.py):**
+- `compute_fib()`: Pure FIB computation for all destinations with default URI pattern
+- `compute_fib_for_uris()`: FIB computation for specific URI-to-publisher mappings
+- `build_graph_and_subnets()`: Converts mesh_links to adjacency graph and LinkSubnet list
 
-**Dynamic Configuration:**
-- `update_local_sock_id()`: Modifies LOCAL_SOCK_ID in config files to avoid socket conflicts
-- `ensure_node_dirs()`: Creates host directories from templates based on role heuristics
-- `select_template()`: Determines which template (h0/h1/h2) to use for each host index
+**Network Configuration (runtime/net_config.py):**
+- `apply_ip_addr()`: Assigns /24 subnets per link
+- `apply_fib()` / `apply_fib_for_uris()`: Applies computed routes via Mininet
 
-### Mesh Topology Features
-
-The mesh topologies (`mesh-nodes-switches.py`, `mesh-disaster-topology.py`) implement advanced features:
-
-- **Multipath routing**: k-shortest paths per destination for redundancy
-- **Link control**: `link_up()` and `link_down()` functions to simulate failures
-- **Topology visualization**: `print_mesh_links()` renders ASCII tree view showing each host's connectivity
-- **Status inspection**: `run_cefstatus()` to view FIB state
-- **Deterministic generation**: `--seed` parameter for reproducible topologies
-- **Publisher-aware linking**: First link always connects to publisher for guaranteed connectivity
-- **PNG output**: `render_topology_png()` generates topology visualization images
+**Template Management (runtime/template.py):**
+- `ensure_node_dirs()`: Creates host directories from templates using `assign_roles()`
+- `cleanup_node_dirs()`: Removes dynamically generated host directories
+- `update_local_sock_id()`: Modifies LOCAL_SOCK_ID to avoid socket conflicts
 
 ### Disaster Topology Features
-
-The disaster topology (`mesh-disaster-topology.py`) adds:
 
 **Host Failure Simulation:**
 ```bash
@@ -168,19 +210,17 @@ The disaster topology (`mesh-disaster-topology.py`) adds:
 --down-exclude <ids>     # Host IDs to exclude (comma-separated)
 ```
 
-**Bandwidth Control:**
+**Bandwidth Control (runtime/bandwidth.py):**
 ```bash
 --bw nodeA,nodeB,mbps    # Set link bandwidth (repeatable)
 ```
 
-**External Interface:**
+**External Interface (runtime/bridge.py):**
 ```bash
 --ext host,ifname[,ip][,mtu]   # Attach external interface to host
 ```
 
 **JSON/YAML Configuration:**
-
-Configuration files support both JSON and YAML formats (YAML requires `pyyaml`).
 
 Basic JSON example with multiple publishers:
 ```json
@@ -205,19 +245,12 @@ hosts: 10
 switches: 15
 seed: 42
 auto:
-  publishers: [9]           # Publisher host IDs
-  consumers: "random:5"     # Random 5 consumers or list [0, 1, 2]
-  content_count: 3          # Contents per publisher
-  uri_prefix: "ccnx:/test"  # URI prefix for generated content
-  consumer_per_content: 2   # Get operations per content
+  publishers: [9]
+  consumers: "random:5"
+  content_count: 3
+  uri_prefix: "ccnx:/test"
+  consumer_per_content: 2
 ```
-
-The `auto` configuration automatically generates put/get operations:
-- `publishers`: List of host IDs that will publish content
-- `consumers`: Either `"random:N"` for N random consumers or a list of host IDs
-- `content_count`: Number of content items each publisher creates
-- `uri_prefix`: Base URI for generated content (default: `ccnx:/test`)
-- `consumer_per_content`: Number of consumers that request each content
 
 **Topology PNG Output:**
 ```bash
@@ -227,35 +260,40 @@ The `auto` configuration automatically generates put/get operations:
 
 ## Runtime Artifacts
 
-After running scripts, the following files appear in the root directory:
+After running scenarios, the following files appear:
 
 - `hN-cefnetd-log` - Forwarding daemon logs for host N
 - `hN-csmgrd-log` - Cache manager logs for router hosts
-- `cefputfile-log` / `cefputfile_*.log` - Publisher operation logs
-- `cefgetfile-log` / `cefgetfile_*.log` - Consumer operation logs
-- `recvfile_at_h0` / `recvfile_at_hN` - Retrieved content files
-- `ex-seed*.png` - Topology visualization images (when --topo-png used)
+- `cefputfile_*.log` - Publisher operation logs
+- `cefgetfile_*.log` - Consumer operation logs
+- `recvfile_at_hN` - Retrieved content files
+- `*.png` - Topology visualization images (when --topo-png used)
+- `meta.json` - Experiment metadata (disaster scenario with --run-dir)
+- `script.log` - Full script output log (disaster scenario)
 
 ## Common Modifications
 
 **Adding a new host role:**
-Modify `select_template()` in the topology script to return appropriate template (h0, h1, or h2) based on index and host count.
+Modify `assign_roles()` in `src/core/roles.py` to add new `NodeRole` constants and assignment logic.
 
 **Changing content URI:**
-Update the `ccnx:/test` prefix in `setFib()` or `set_fib()` and corresponding `cefputfile`/`cefgetfile` commands. For disaster topology, use `--config` JSON or `--puts`/`--gets` options.
+Update the `ccnx:/test` prefix in FIB computation (`core/fib.py`) or use `--config` with custom `puts`/`gets` in disaster topology.
 
 **Adjusting cache behavior:**
 Edit `configs/templates/h1/csmgrd.conf` template (applies to all router nodes).
 
 **Testing link failures:**
-- Basic: Use `link_down()` function in mesh scripts
-- Advanced: Use disaster topology with `--down-*` options for automated failure simulation
+- Use disaster topology with `--down-*` options for automated failure simulation
+- Programmatically use `runtime/links.py:set_node_links_state()`
+
+**Adding a new scenario:**
+1. Create a new class extending `BaseScenario` in `src/scenarios/`
+2. Implement `build_topology()`, `configure()`, `run_experiment()`, `teardown()`
+3. Add a subcommand in `src/cli/main.py`
 
 ## Development
 
 **Package management:**
-The project uses `pyproject.toml` with uv for dependency management.
-
 ```bash
 uv sync              # Install dependencies
 uv run python3 ...   # Run with managed environment

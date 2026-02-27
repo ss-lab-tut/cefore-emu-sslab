@@ -8,51 +8,19 @@ class UnionFind:
     """Union-Find data structure for connectivity tracking."""
 
     def __init__(self, n):
-        """Initialize Union-Find with n elements.
-
-        Args:
-            n: Number of elements (0 to n-1).
-        """
         self.parent = list(range(n))
         self.size = [1] * n
 
     def find(self, x):
-        """Find root of element with path compression.
-
-        Args:
-            x: Element to find root of.
-
-        Returns:
-            Root element.
-        """
         while x != self.parent[x]:
-            self.parent[x] = self.parent[self.parent[x]]  # path compression
+            self.parent[x] = self.parent[self.parent[x]]
             x = self.parent[x]
         return x
 
     def connected(self, a, b):
-        """Check if two elements are in the same set.
-
-        Args:
-            a: First element.
-            b: Second element.
-
-        Returns:
-            True if connected, False otherwise.
-        """
         return self.find(a) == self.find(b)
 
     def union(self, a, b):
-        """Unite two elements into the same set.
-
-        Args:
-            a: First element.
-            b: Second element.
-
-        Returns:
-            True if elements were in different sets and are now united,
-            False if they were already in the same set.
-        """
         ra, rb = self.find(a), self.find(b)
         if ra == rb:
             return False
@@ -117,11 +85,6 @@ def shortest_path(
 def dijkstra_all(graph, source, weight_fn=None):
     """Compute shortest distances from source to all reachable nodes.
 
-    Args:
-        graph: Dict mapping node to set of neighbors.
-        source: Starting node.
-        weight_fn: Optional function (a, b) -> cost. Defaults to 1.
-
     Returns:
         Tuple of (distances dict, parents dict).
     """
@@ -143,33 +106,14 @@ def dijkstra_all(graph, source, weight_fn=None):
 
 
 def path_cost(path, weight_fn):
-    """Compute total cost of a path.
-
-    Args:
-        path: List of nodes.
-        weight_fn: Function (a, b) -> cost.
-
-    Returns:
-        Total cost as sum of edge weights.
-    """
+    """Compute total cost of a path."""
     if len(path) < 2:
         return 0
     return sum(weight_fn(path[idx], path[idx + 1]) for idx in range(len(path) - 1))
 
 
 def k_shortest_paths(graph, source, target, k_paths, weight_fn=None):
-    """Compute k shortest paths using Yen's algorithm.
-
-    Args:
-        graph: Dict mapping node to set of neighbors.
-        source: Starting node.
-        target: Destination node.
-        k_paths: Maximum number of paths to find.
-        weight_fn: Optional function (a, b) -> cost. Defaults to 1.
-
-    Returns:
-        List of paths (each path is a list of nodes).
-    """
+    """Compute k shortest paths using Yen's algorithm."""
     weight_fn = weight_fn or (lambda _a, _b: 1)
     first = shortest_path(graph, source, target, weight_fn=weight_fn)
     if not first:
@@ -208,16 +152,7 @@ def k_shortest_paths(graph, source, target, k_paths, weight_fn=None):
 
 
 def compute_distances(graph, source, weight_fn=None):
-    """Compute distances from source using BFS or Dijkstra.
-
-    Args:
-        graph: Dict mapping node to set/list of neighbors.
-        source: Starting node.
-        weight_fn: Optional function (a, b) -> cost. If None, uses BFS (unit weight).
-
-    Returns:
-        Dict mapping node to distance from source.
-    """
+    """Compute distances from source using BFS or Dijkstra."""
     if weight_fn is None:
         distances = {source: 0}
         queue = deque([source])
@@ -243,16 +178,7 @@ def compute_distances(graph, source, weight_fn=None):
 
 
 def select_k_centers(graph, k, weight_fn=None):
-    """Select k center nodes using greedy farthest-first algorithm.
-
-    Args:
-        graph: Dict mapping node to set/list of neighbors.
-        k: Number of centers to select.
-        weight_fn: Optional function (a, b) -> cost.
-
-    Returns:
-        List of selected center node IDs.
-    """
+    """Select k center nodes using greedy farthest-first algorithm."""
     nodes = sorted(graph.keys())
     if not nodes or k <= 0:
         return []

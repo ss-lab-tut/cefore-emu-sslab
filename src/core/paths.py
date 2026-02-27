@@ -1,4 +1,4 @@
-"""Common path constants for the topo package."""
+"""Common path constants."""
 
 from datetime import datetime
 from pathlib import Path

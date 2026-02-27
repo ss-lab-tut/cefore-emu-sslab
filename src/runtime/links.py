@@ -6,16 +6,7 @@ from mininet.log import info
 
 
 def find_link(mesh_links, host_a, host_b):
-    """Find link definition between two hosts.
-
-    Args:
-        mesh_links: List of link definitions.
-        host_a: First host index.
-        host_b: Second host index.
-
-    Returns:
-        Link dict if found, None otherwise.
-    """
+    """Find link definition between two hosts."""
     for link in mesh_links:
         if "hosts" in link:
             if host_a in link["hosts"] and host_b in link["hosts"]:
@@ -27,15 +18,7 @@ def find_link(mesh_links, host_a, host_b):
 
 
 def set_link_state(net, mesh_links, host_a, host_b, state):
-    """Set link state between two hosts.
-
-    Args:
-        net: Mininet network instance.
-        mesh_links: List of link definitions.
-        host_a: First host index.
-        host_b: Second host index.
-        state: "up" or "down".
-    """
+    """Set link state between two hosts."""
     link = find_link(mesh_links, host_a, host_b)
     if link is None:
         sys.exit(f"link not found between h{host_a} and h{host_b}")
@@ -43,45 +26,22 @@ def set_link_state(net, mesh_links, host_a, host_b, state):
     host_a_name = f"h{host_a}"
     host_b_name = f"h{host_b}"
     info("link", host_a_name, host_b_name, state, "\n")
-    # Equivalent to Mininet CLI: link hX hY up/down
     net.configLinkStatus(host_a_name, switch_name, state)
     net.configLinkStatus(host_b_name, switch_name, state)
 
 
 def link_down(net, mesh_links, host_a, host_b):
-    """Bring down link between two hosts.
-
-    Args:
-        net: Mininet network instance.
-        mesh_links: List of link definitions.
-        host_a: First host index.
-        host_b: Second host index.
-    """
+    """Bring down link between two hosts."""
     set_link_state(net, mesh_links, host_a, host_b, "down")
 
 
 def link_up(net, mesh_links, host_a, host_b):
-    """Bring up link between two hosts.
-
-    Args:
-        net: Mininet network instance.
-        mesh_links: List of link definitions.
-        host_a: First host index.
-        host_b: Second host index.
-    """
+    """Bring up link between two hosts."""
     set_link_state(net, mesh_links, host_a, host_b, "up")
 
 
 def pick_publish_link(mesh_links, publisher):
-    """Find a link connected to the publisher host.
-
-    Args:
-        mesh_links: List of link definitions.
-        publisher: Publisher host index.
-
-    Returns:
-        Link dict with host_a, host_b, switch, subnet.
-    """
+    """Find a link connected to the publisher host."""
     for link in mesh_links:
         if "hosts" in link:
             if publisher in link["hosts"]:
@@ -100,13 +60,7 @@ def pick_publish_link(mesh_links, publisher):
 
 
 def set_node_links_state(net, node_name, state):
-    """Set state of all links connected to a node.
-
-    Args:
-        net: Mininet network instance.
-        node_name: Node name (e.g., "h0").
-        state: "up" or "down".
-    """
+    """Set state of all links connected to a node."""
     node = net.get(node_name)
     for link in net.links:
         if link.intf1.node == node:

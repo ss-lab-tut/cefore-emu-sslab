@@ -40,27 +40,14 @@ def generate_operations(
     """Generate put/get operations from auto configuration.
 
     Args:
-        auto_config: Auto configuration dict with:
-            - publishers: list of publisher host IDs
-            - consumers: "random:N" string or list of host IDs
-            - content_count: number of contents per publisher (default 1)
-            - uri_prefix: URI prefix (default "ccnx:/test")
-            - consumer_per_content: number of get ops per content (default 1)
+        auto_config: Auto configuration dict with publishers, consumers,
+            content_count, uri_prefix, consumer_per_content.
         host_count: Total number of hosts.
         seed: Random seed.
         run_dir: Output directory for logs and artifacts.
 
     Returns:
         Tuple of (puts_list, gets_list).
-
-    Example auto_config:
-        {
-            "publishers": [9],
-            "consumers": "random:5",
-            "content_count": 3,
-            "uri_prefix": "ccnx:/test",
-            "consumer_per_content": 2
-        }
     """
     if run_dir is None:
         run_dir = Path(".")
@@ -87,7 +74,6 @@ def generate_operations(
             content_idx += 1
             uri = f"{uri_prefix}/content{content_idx}"
 
-            # log は含めない - disaster.py で動的生成（down状態を反映するため）
             puts_list.append({
                 "host": publisher,
                 "uri": uri,
@@ -98,7 +84,6 @@ def generate_operations(
                 if not consumers:
                     break
                 consumer = rng.choice(consumers)
-                # log は含めない - disaster.py で動的生成（down状態を反映するため）
                 gets_list.append({
                     "host": consumer,
                     "uri": uri,

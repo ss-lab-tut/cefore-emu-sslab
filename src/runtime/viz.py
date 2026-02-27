@@ -33,9 +33,6 @@ def _ensure_topo_deps():
 def build_host_graph(mesh_links):
     """Build adjacency graph from mesh links.
 
-    Args:
-        mesh_links: List of link definitions.
-
     Returns:
         Tuple of (graph dict, link_switch dict).
     """
@@ -61,15 +58,7 @@ def build_host_graph(mesh_links):
 
 
 def build_tree(graph, root):
-    """Build BFS tree from graph rooted at given node.
-
-    Args:
-        graph: Adjacency dict (node -> set of neighbors).
-        root: Root node.
-
-    Returns:
-        Dict mapping node to list of children.
-    """
+    """Build BFS tree from graph rooted at given node."""
     parent = {root: None}
     queue = [root]
     for node in queue:
@@ -87,11 +76,7 @@ def build_tree(graph, root):
 
 
 def print_mesh_links(mesh_links):
-    """Print ASCII visualization of mesh topology.
-
-    Args:
-        mesh_links: List of link definitions.
-    """
+    """Print ASCII visualization of mesh topology."""
     graph, link_switch = build_host_graph(mesh_links)
     info("\nMesh topology (per-host tree view):\n")
     for root in sorted(graph.keys()):
@@ -142,14 +127,7 @@ def print_mesh_links(mesh_links):
 
 
 def render_topology_png(mesh_links, output_path, seed=None, layout="spring"):
-    """Render topology to PNG image.
-
-    Args:
-        mesh_links: List of link definitions.
-        output_path: Path to save PNG file.
-        seed: Random seed for layout (spring layout only).
-        layout: Layout algorithm (spring, kamada_kawai, circular).
-    """
+    """Render topology to PNG image."""
     if not output_path:
         return
     if not _ensure_topo_deps():

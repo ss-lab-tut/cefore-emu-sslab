@@ -1,42 +1,31 @@
-"""Network configuration (IP address and FIB setup)."""
+"""Pure FIB computation logic (no Mininet dependency)."""
 
-from mininet.log import info
+from dataclasses import dataclass
 
-from .graph_algos import dijkstra_all
-
-
-def set_ip_addr(net, mesh_links):
-    """Assign IP addresses to all host interfaces.
-
-    Args:
-        net: Mininet network instance.
-        mesh_links: List of link definitions.
-    """
-    # Assign one /24 per link or per shared switch; host index selects the last octet.
-    for link in mesh_links:
-        subnet = link["subnet"]
-        if "hosts" in link:
-            for host_idx in link["hosts"]:
-                eth_idx = link["host_eth"][host_idx]
-                node_name = f"h{host_idx}"
-                ip = f"192.168.{subnet}.{host_idx + 1}"
-                command = f"ifconfig {node_name}-eth{eth_idx} {ip}"
-                print(node_name, "command:", command)
-                net.hosts[host_idx].cmd(command)
-            continue
-        for host_idx, eth_idx in (
-            (link["host_a"], link["host_a_eth"]),
-            (link["host_b"], link["host_b_eth"]),
-        ):
-            node_name = f"h{host_idx}"
-            ip = f"192.168.{subnet}.{host_idx + 1}"
-            command = f"ifconfig {node_name}-eth{eth_idx} {ip}"
-            print(node_name, "command:", command)
-            net.hosts[host_idx].cmd(command)
+from .graph import dijkstra_all
 
 
-def _build_graph_and_subnets(mesh_links):
-    """Build adjacency graph and link subnet mapping.
+@dataclass
+class LinkSubnet:
+    """Represents a link's subnet information."""
+
+    node_a: int
+    node_b: int
+    subnet: int
+
+
+@dataclass
+class Route:
+    """A single FIB route entry."""
+
+    source: int
+    prefix: str
+    next_hop: int
+    next_hop_ip: str
+
+
+def build_graph_and_subnets(mesh_links):
+    """Build adjacency graph and link subnet mapping from mesh_links.
 
     Args:
         mesh_links: List of link definitions.
@@ -72,23 +61,24 @@ def _build_graph_and_subnets(mesh_links):
     return host_num, graph, link_subnets
 
 
-def set_fib(net, mesh_links, k_paths):
-    """Add FIB entries for all destinations with multiple next hops.
+def compute_fib(mesh_links, k_paths):
+    """Compute FIB routes for all destinations with multiple next hops.
 
     Args:
-        net: Mininet network instance.
         mesh_links: List of link definitions.
         k_paths: Number of best next hops per destination.
-    """
-    host_num, graph, link_subnets = _build_graph_and_subnets(mesh_links)
 
+    Returns:
+        List of Route objects.
+    """
+    host_num, graph, link_subnets = build_graph_and_subnets(mesh_links)
     all_dist = []
     for src in range(host_num):
         distances, _parents = dijkstra_all(graph, src)
         all_dist.append(distances)
 
+    routes = []
     for src in range(host_num):
-        node_name = f"h{src}"
         for dest in range(host_num):
             if src == dest:
                 continue
@@ -101,7 +91,6 @@ def set_fib(net, mesh_links, k_paths):
                 cost = 1 + dist_to_dest
                 candidates.append((cost, neighbor))
             if not candidates:
-                info(f"host h{src} has no path to h{dest}\n")
                 continue
             candidates.sort()
             next_hops = [neighbor for _cost, neighbor in candidates[:k_paths]]
@@ -109,34 +98,38 @@ def set_fib(net, mesh_links, k_paths):
                 link_key = tuple(sorted((src, next_hop)))
                 subnet = link_subnets[link_key]
                 next_hop_ip = f"192.168.{subnet}.{next_hop + 1}"
-                command = f"cefroute add {prefix} udp {next_hop_ip} -d ./{node_name}"
-                print(node_name, "command:", command)
-                info(net.hosts[src].cmd(command))
+                routes.append(Route(
+                    source=src,
+                    prefix=prefix,
+                    next_hop=next_hop,
+                    next_hop_ip=next_hop_ip,
+                ))
+    return routes
 
 
-def set_fib_for_uris(net, mesh_links, k_paths, uri_publishers):
-    """Set FIB entries for multiple URIs with their respective publishers.
+def compute_fib_for_uris(mesh_links, k_paths, uri_publishers):
+    """Compute FIB routes for multiple URIs with their respective publishers.
 
     Args:
-        net: Mininet network instance.
         mesh_links: List of link definitions.
         k_paths: Number of shortest paths per destination.
         uri_publishers: Dict mapping URI prefix to publisher host ID.
-                        Example: {"ccnx:/test/content1": 9, "ccnx:/video": 5}
-    """
-    host_num, graph, link_subnets = _build_graph_and_subnets(mesh_links)
 
+    Returns:
+        List of Route objects.
+    """
+    host_num, graph, link_subnets = build_graph_and_subnets(mesh_links)
     all_dist = []
     for src in range(host_num):
         distances, _parents = dijkstra_all(graph, src)
         all_dist.append(distances)
 
+    routes = []
     for uri_prefix, publisher in uri_publishers.items():
         dest = publisher
         for src in range(host_num):
             if src == dest:
                 continue
-            node_name = f"h{src}"
             candidates = []
             for neighbor in graph[src]:
                 dist_to_dest = all_dist[neighbor].get(dest)
@@ -145,7 +138,6 @@ def set_fib_for_uris(net, mesh_links, k_paths, uri_publishers):
                 cost = 1 + dist_to_dest
                 candidates.append((cost, neighbor))
             if not candidates:
-                info(f"host h{src} has no path to publisher h{dest} for {uri_prefix}\n")
                 continue
             candidates.sort()
             next_hops = [neighbor for _cost, neighbor in candidates[:k_paths]]
@@ -153,6 +145,10 @@ def set_fib_for_uris(net, mesh_links, k_paths, uri_publishers):
                 link_key = tuple(sorted((src, next_hop)))
                 subnet = link_subnets[link_key]
                 next_hop_ip = f"192.168.{subnet}.{next_hop + 1}"
-                command = f"cefroute add {uri_prefix} udp {next_hop_ip} -d ./{node_name}"
-                print(node_name, "command:", command)
-                info(net.hosts[src].cmd(command))
+                routes.append(Route(
+                    source=src,
+                    prefix=uri_prefix,
+                    next_hop=next_hop,
+                    next_hop_ip=next_hop_ip,
+                ))
+    return routes

@@ -1,17 +1,20 @@
-"""Configuration file operations for Cefore nodes."""
+"""Template management and configuration file operations for Cefore nodes.
+
+Consolidates templates.py + config_io.py into a single module.
+"""
 
 import os
+import shutil
+import sys
 
 from mininet.log import info
 
+from ..core.paths import TEMPLATE_ROOT
+from ..core.roles import assign_roles
+
 
 def update_local_sock_id(node_dir, idx):
-    """Update LOCAL_SOCK_ID in cefnetd.conf and csmgrd.conf.
-
-    Args:
-        node_dir: Path to node configuration directory.
-        idx: Host index to set as LOCAL_SOCK_ID.
-    """
+    """Update LOCAL_SOCK_ID in cefnetd.conf and csmgrd.conf."""
     for conf_name in ("cefnetd.conf", "csmgrd.conf"):
         conf_path = os.path.join(node_dir, conf_name)
         if not os.path.isfile(conf_path):
@@ -37,13 +40,7 @@ def update_local_sock_id(node_dir, idx):
 
 
 def update_node_name(node_dir, idx, base_uri="example.com/xxx/router-"):
-    """Update NODE_NAME in cefnetd.conf.
-
-    Args:
-        node_dir: Path to node configuration directory.
-        idx: Host index to append to base_uri.
-        base_uri: Base URI prefix for the node name.
-    """
+    """Update NODE_NAME in cefnetd.conf."""
     conf_path = os.path.join(node_dir, "cefnetd.conf")
     if not os.path.isfile(conf_path):
         return
@@ -66,15 +63,7 @@ def update_node_name(node_dir, idx, base_uri="example.com/xxx/router-"):
 
 
 def read_port_num(node_dir, default=9695):
-    """Read PORT_NUM from cefnetd.conf.
-
-    Args:
-        node_dir: Path to node configuration directory.
-        default: Default port if not found.
-
-    Returns:
-        Port number as integer.
-    """
+    """Read PORT_NUM from cefnetd.conf."""
     conf_path = os.path.join(node_dir, "cefnetd.conf")
     if not os.path.isfile(conf_path):
         return default
@@ -93,12 +82,7 @@ def read_port_num(node_dir, default=9695):
 
 
 def cleanup_cefnetd_socket(node_dir, idx):
-    """Remove stale cefnetd socket file.
-
-    Args:
-        node_dir: Path to node configuration directory.
-        idx: Host index used in socket filename.
-    """
+    """Remove stale cefnetd socket file."""
     port = read_port_num(node_dir)
     sock_path = f"/tmp/cef_{port}.{idx}"
     if os.path.exists(sock_path):
@@ -107,3 +91,37 @@ def cleanup_cefnetd_socket(node_dir, idx):
             info(f"removed stale socket {sock_path}\n")
         except OSError:
             info(f"failed to remove stale socket {sock_path}\n")
+
+
+def ensure_node_dirs(host_num, rng, publishers=None):
+    """Create node directories from templates based on assigned roles.
+
+    Args:
+        host_num: Total number of hosts.
+        rng: Random number generator.
+        publishers: Set of host IDs designated as publishers.
+    """
+    roles = assign_roles(host_num, rng, publishers)
+    for idx in range(host_num):
+        node_dir = f"h{idx}"
+        template = TEMPLATE_ROOT / roles[idx].template
+        if not template.exists():
+            sys.exit(f"missing template directory: {template}")
+        if node_dir != str(template):
+            if os.path.isdir(node_dir):
+                shutil.rmtree(node_dir)
+            shutil.copytree(template, node_dir)
+        update_local_sock_id(node_dir, idx)
+
+
+def cleanup_node_dirs():
+    """Remove dynamically created node directories (h3 and above)."""
+    for name in os.listdir("."):
+        if not name.startswith("h"):
+            continue
+        suffix = name[1:]
+        if not suffix.isdigit():
+            continue
+        idx = int(suffix)
+        if idx >= 3 and os.path.isdir(name):
+            shutil.rmtree(name)

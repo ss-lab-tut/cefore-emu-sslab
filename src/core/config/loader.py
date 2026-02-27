@@ -20,9 +20,6 @@ def load_config(path: str | Path | None) -> dict[str, Any]:
 
     Returns:
         Configuration dictionary.
-
-    Raises:
-        SystemExit: If file not found or parse error.
     """
     if not path:
         return {}
@@ -173,10 +170,6 @@ def merge_cli_and_config(args: Any, config: dict[str, Any]) -> None:
 
     Config values are applied only if the corresponding CLI arg uses its default.
     The args object is modified in place.
-
-    Args:
-        args: argparse.Namespace with CLI arguments.
-        config: Configuration dictionary from load_config().
     """
     config_keys = (
         "hosts",

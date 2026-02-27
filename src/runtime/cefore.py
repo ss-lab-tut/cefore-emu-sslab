@@ -4,17 +4,11 @@ import time
 
 from mininet.log import info
 
-from .config_io import cleanup_cefnetd_socket
+from .template import cleanup_cefnetd_socket
 
 
 def wait_for_cefnetd(net, idx, timeout=5, interval=0.25):
     """Wait for cefnetd to become ready.
-
-    Args:
-        net: Mininet network instance.
-        idx: Host index.
-        timeout: Maximum wait time in seconds.
-        interval: Check interval in seconds.
 
     Returns:
         True if ready, False if timeout.
@@ -33,12 +27,7 @@ def wait_for_cefnetd(net, idx, timeout=5, interval=0.25):
 
 
 def start_csmgrd(net, idx):
-    """Start cache manager daemon for a host.
-
-    Args:
-        net: Mininet network instance.
-        idx: Host index.
-    """
+    """Start cache manager daemon for a host."""
     node_name = f"h{idx}"
     command = f"csmgrdstart -d ./{node_name} > /dev/null 2>&1"
     print(node_name, "command:", command)
@@ -47,24 +36,14 @@ def start_csmgrd(net, idx):
 
 
 def stop_csmgrd(net, idx):
-    """Stop cache manager daemon for a host.
-
-    Args:
-        net: Mininet network instance.
-        idx: Host index.
-    """
+    """Stop cache manager daemon for a host."""
     command = f"csmgrdstop -d ./h{idx}"
     info("hosts[", idx, "]:", command, "\n")
     net.hosts[idx].cmd(command)
 
 
 def start_cefnetd(net, idx):
-    """Start cefnetd forwarding daemon for a host.
-
-    Args:
-        net: Mininet network instance.
-        idx: Host index.
-    """
+    """Start cefnetd forwarding daemon for a host."""
     node_name = f"h{idx}"
     cleanup_cefnetd_socket(node_name, idx)
     command = f"cefnetdstart -d ./{node_name} > /dev/null 2>&1"
@@ -74,25 +53,14 @@ def start_cefnetd(net, idx):
 
 
 def stop_cefnetd(net, idx):
-    """Stop cefnetd forwarding daemon for a host.
-
-    Args:
-        net: Mininet network instance.
-        idx: Host index.
-    """
+    """Stop cefnetd forwarding daemon for a host."""
     command = f"cefnetdstop -F -d ./h{idx}"
     info("hosts[", idx, "]:", command, "\n")
     net.hosts[idx].cmd(command)
 
 
 def run_cefputfile(net, host_idx, uri):
-    """Run cefputfile to publish content.
-
-    Args:
-        net: Mininet network instance.
-        host_idx: Publisher host index.
-        uri: Content URI.
-    """
+    """Run cefputfile to publish content."""
     node_name = f"h{host_idx}"
     command = (
         f"cefputfile {uri} -f ./sample-putfile -t 3000 -e 3000 -d ./{node_name} "
@@ -119,10 +87,9 @@ def run_cefgetfile(
         host_idx: Consumer host index.
         uri: Content URI.
         output_path: Path to save retrieved file.
-        log_path: Path for log output (default: cefgetfile-log).
-        wait_for_down: Optional FlapState object or dict with "down_hosts" key
-            to wait for non-empty state.
-        wait_timeout: Max seconds to wait for down state (default: 5.0).
+        log_path: Path for log output.
+        wait_for_down: Optional FlapState object or dict with "down_hosts" key.
+        wait_timeout: Max seconds to wait for down state.
         log_path_factory: Optional callback fn(down_hosts_snapshot) -> log_path.
 
     Returns:
@@ -130,18 +97,14 @@ def run_cefgetfile(
     """
     node_name = f"h{host_idx}"
 
-    # wait_for_downが指定されている場合、down_hostsが空でなくなるまで待機
     snapshot = []
     if wait_for_down is not None:
         deadline = time.time() + wait_timeout
         while time.time() < deadline:
-            # FlapStateオブジェクトの場合（snapshot()メソッドを持つ）
             if hasattr(wait_for_down, "snapshot"):
                 snapshot = wait_for_down.snapshot()
-            # 従来の辞書の場合（後方互換性）
             elif isinstance(wait_for_down, dict):
                 snapshot = list(wait_for_down.get("down_hosts") or [])
-            # get()メソッドを持つオブジェクトの場合（FlapState.get()含む）
             elif hasattr(wait_for_down, "get"):
                 snapshot = list(wait_for_down.get("down_hosts") or [])
             else:
@@ -151,7 +114,6 @@ def run_cefgetfile(
                 break
             time.sleep(0.1)
 
-        # 最終状態のスナップショット取得（タイムアウト時）
         if not snapshot:
             if hasattr(wait_for_down, "snapshot"):
                 snapshot = wait_for_down.snapshot()
@@ -160,7 +122,6 @@ def run_cefgetfile(
             elif hasattr(wait_for_down, "get"):
                 snapshot = list(wait_for_down.get("down_hosts") or [])
 
-    # ログパスの決定（優先順位: log_path_factory > log_path > デフォルト）
     if log_path_factory:
         chosen_log = log_path_factory(snapshot)
     else:
@@ -175,12 +136,7 @@ def run_cefgetfile(
 
 
 def run_cefstatus(net, host_idx):
-    """Run cefstatus to display FIB state.
-
-    Args:
-        net: Mininet network instance.
-        host_idx: Host index.
-    """
+    """Run cefstatus to display FIB state."""
     node_name = f"h{host_idx}"
     command = f"cefstatus -d ./{node_name}"
     print(node_name, "command:", command)
@@ -188,12 +144,7 @@ def run_cefstatus(net, host_idx):
 
 
 def run_cefstatus_all(net, host_num):
-    """Run cefstatus for all hosts.
-
-    Args:
-        net: Mininet network instance.
-        host_num: Total number of hosts.
-    """
+    """Run cefstatus for all hosts."""
     info("\nFIB status per host:\n")
     for host_idx in range(host_num):
         run_cefstatus(net, host_idx)
