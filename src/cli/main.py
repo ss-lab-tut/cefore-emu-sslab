@@ -57,7 +57,13 @@ def cmd_disaster(args):
         for error in errors:
             print(f"config error: {error}", file=sys.stderr)
         sys.exit(1)
-    merge_cli_and_config(args, config_data)
+
+    # Build parser for CLI-precedence merge
+    cli_parser = argparse.ArgumentParser()
+    add_common_args(cli_parser)
+    add_mesh_args(cli_parser)
+    add_disaster_args(cli_parser)
+    merge_cli_and_config(args, config_data, cli_parser)
 
     run_dir = resolve_run_dir(args)
 
@@ -82,27 +88,6 @@ def cmd_disaster(args):
         }
         meta_path = run_dir / "meta.json"
         meta_path.write_text(json.dumps(meta_data, indent=2), encoding="utf-8")
-
-    # Parse JSON string arguments into Python objects
-    if isinstance(args.puts, str) and args.puts:
-        args.puts = json.loads(args.puts)
-    elif not args.puts:
-        args.puts = []
-
-    if isinstance(args.gets, str) and args.gets:
-        args.gets = json.loads(args.gets)
-    elif not args.gets:
-        args.gets = []
-
-    if isinstance(getattr(args, "warmup_gets", ""), str) and args.warmup_gets:
-        args.warmup_gets = json.loads(args.warmup_gets)
-    elif not getattr(args, "warmup_gets", None):
-        args.warmup_gets = []
-
-    if isinstance(getattr(args, "hot_uris", ""), str) and args.hot_uris:
-        args.hot_uris = [u.strip() for u in args.hot_uris.split(",") if u.strip()]
-    elif not getattr(args, "hot_uris", None):
-        args.hot_uris = []
 
     log_fp = None
     original_stdout = None

@@ -1,0 +1,21 @@
+hosts: 8
+switches: 12
+seed: 42
+k: 2
+
+no_cli: true
+duration: 60
+results_json: results.json
+
+auto:
+  publishers: [7]
+  consumers: "random:3"
+  content_count: 2
+  uri_prefix: "ccnx:/test"
+  consumer_per_content: 2
+
+down_interval: 20
+down_duration: 10
+down_count: 1
+get_interval: 5
+cache_count: 2

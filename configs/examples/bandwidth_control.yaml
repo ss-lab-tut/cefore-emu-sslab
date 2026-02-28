@@ -1,0 +1,19 @@
+hosts: 6
+switches: 10
+seed: 42
+k: 2
+
+bw:
+  - "h0,s0,1"
+  - "h3,s2,0.5"
+
+puts:
+  - host: 5
+    uri: "ccnx:/test/bw_test"
+    file: "./sample-putfile"
+
+gets:
+  - host: 0
+    uri: "ccnx:/test/bw_test"
+
+down_interval: 0

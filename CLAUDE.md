@@ -203,6 +203,32 @@ The disaster topology (`mesh-disaster-topology.py`) adds:
 --ext host,ifname[,ip][,mtu]   # Attach external interface to host
 ```
 
+**Root Namespace Bridging (runtime/bridge.py - BridgeManager):**
+Connects Mininet switches to the root namespace for cross-VM communication. BridgeManager handles veth pairs, IP routes, forwarding, NAT, and cleanup.
+
+**Autotest Mode (--no-cli + --results-json):**
+```bash
+sudo python3 -m src disaster --config configs/examples/autotest_duration.yaml
+```
+Runs experiment without interactive CLI and saves structured results to JSON.
+
+**Warmup Operations:**
+```bash
+--warmup-get-interval 5          # Interval between warmup gets
+--warmup-only-cache-nodes        # Restrict warmup to cache nodes (default)
+--warmup-all-hosts               # Warmup on all hosts
+--hot-uris uri1,uri2             # URIs to pre-cache during warmup
+```
+
+**Cache Configuration:**
+```bash
+--cache-count <n>                # Number of cache nodes (0 = down-count + 1)
+--cache-default-rct-ms <ms>      # Override CACHE_DEFAULT_RCT for cache nodes
+```
+
+**Pub/Sub Model:**
+Put operations with `"mode": "pubsub"` use `cefpubfile` instead of `cefputfile`. Get operations with `"mode": "pubsub"` use `cefsubfile` instead of `cefgetfile`.
+
 **JSON/YAML Configuration:**
 
 Configuration files support both JSON and YAML formats (YAML requires `pyyaml`).
