@@ -123,3 +123,43 @@ def add_disaster_args(parser):
         "--no-script-log", action="store_true",
         help="disable script log output",
     )
+    parser.add_argument(
+        "--no-cli", action="store_true",
+        help="skip interactive CLI (flap output visible on stdout)",
+    )
+    parser.add_argument(
+        "--duration", type=int, default=0,
+        help="eval phase duration in seconds for --no-cli (0: single cycle)",
+    )
+    parser.add_argument(
+        "--results-json", type=str, default="",
+        help="write warmup/eval get results to JSON under output directory",
+    )
+    parser.add_argument(
+        "--warmup-get-interval", type=int, default=0,
+        help="seconds between warmup get operations",
+    )
+    parser.add_argument(
+        "--warmup-only-cache-nodes", action="store_true", default=True,
+        help="restrict warmup prefetch to selected cache nodes",
+    )
+    parser.add_argument(
+        "--warmup-all-hosts", action="store_false", dest="warmup_only_cache_nodes",
+        help="run warmup prefetch on all hosts instead of cache nodes only",
+    )
+    parser.add_argument(
+        "--cache-default-rct-ms", type=int, default=None,
+        help="override CACHE_DEFAULT_RCT(ms) for cache nodes",
+    )
+    parser.add_argument(
+        "--publisher-host", type=int, default=None,
+        help="explicit publisher host used for publisher-down metric",
+    )
+    parser.add_argument(
+        "--hot-uris", type=str, default="",
+        help="comma-separated hot URIs for warmup generation",
+    )
+    parser.add_argument(
+        "--warmup-gets", type=str, default="",
+        help="JSON list of warmup get ops (host,uri,file,log)",
+    )

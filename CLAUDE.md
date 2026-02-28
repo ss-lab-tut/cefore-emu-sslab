@@ -22,6 +22,7 @@ src/
 │   ├── fib.py                     # Pure FIB computation (LinkSubnet, Route dataclasses)
 │   ├── roles.py                   # NodeRole dataclass and assign_roles()
 │   ├── flap_state.py              # Thread-safe FlapState for host failure tracking
+│   ├── tee.py                     # Tee: multi-stream writer (pure Python)
 │   ├── paths.py                   # ROOT_DIR, TEMPLATE_ROOT, resolve_run_dir()
 │   └── config/                    # Configuration utilities
 │       ├── loader.py              # JSON/YAML config loader
@@ -34,8 +35,9 @@ src/
 │   ├── net_config.py              # apply_ip_addr(), apply_fib(), apply_fib_for_uris()
 │   ├── topo.py                    # Topo subclasses: LineTopo, MeshTopo, SimpleLinkTopo
 │   ├── links.py                   # Link state operations: set_node_links_state()
-│   ├── bridge.py                  # External interface bridging (extracted from disaster)
+│   ├── bridge.py                  # Linux bridge + BridgeManager (root namespace bridging)
 │   ├── bandwidth.py               # Link bandwidth control (extracted from disaster)
+│   ├── external_net.py            # External network: Tee, periodic_host_flap, run_host_command
 │   └── viz.py                     # Topology visualization: render_topology_png()
 │
 ├── scenarios/                     # Experiment orchestration
@@ -48,7 +50,19 @@ src/
 │   ├── main.py                    # Unified CLI with subcommands
 │   └── args.py                    # Common argparse definitions
 │
+├── log/                           # Log parsing and summarization (independent module)
+│   ├── __init__.py                # Public API: summarize, parse_filename
+│   ├── filename.py                # Log filename parser
+│   ├── parser.py                  # Log content parser
+│   ├── summarizer.py              # CSV/Markdown summary generator
+│   └── cli.py                     # CLI entry point for log-summarize
+│
 └── __main__.py                    # Package entry point
+
+tools/
+└── autotest/                      # Automated experiment execution
+    ├── run.py                     # Batch experiment runner
+    └── analyze.py                 # Result analysis and summary generation
 
 configs/
 ├── templates/                     # Host templates
@@ -57,7 +71,10 @@ configs/
 │   └── h2/                        # Publisher template (CS_MODE=0)
 └── examples/                      # Example configurations
     ├── multi_publisher.json       # Multiple publisher example
-    └── auto_experiment.yaml       # Auto-generation example
+    ├── auto_experiment.yaml       # Auto-generation example
+    ├── manual_with_options.yaml   # Manual put/get with advanced options
+    ├── external_network_bridge.yaml # External network bridging example
+    └── autotest_hot.yaml          # Autotest with hot URIs example
 ```
 
 ### Layer Dependency Rules
@@ -198,6 +215,18 @@ For topologies with >3 hosts, additional directories (h3, h4, ...) are generated
 - `ensure_node_dirs()`: Creates host directories from templates using `assign_roles()`
 - `cleanup_node_dirs()`: Removes dynamically generated host directories
 - `update_local_sock_id()`: Modifies LOCAL_SOCK_ID to avoid socket conflicts
+- `apply_cache_node_settings()`: Forces CS_MODE=2 for designated cache nodes
+
+**Cefore Operations (runtime/cefore.py):**
+- `run_cefputfile()` / `run_cefpubfile()`: Content publishing (traditional / pub-sub)
+- `run_cefgetfile()` / `run_cefsubfile()`: Content retrieval (traditional / pub-sub)
+- `run_cefstatus()` / `run_cefstatus_all()`: FIB status display
+- All path arguments use `shlex.quote()` for security
+
+**Log Summarization (src/log/):**
+```bash
+python3 log-summarize.py logs/ex1_seed42/  # Summarize experiment logs to CSV
+```
 
 ### Disaster Topology Features
 
@@ -217,8 +246,35 @@ For topologies with >3 hosts, additional directories (h3, h4, ...) are generated
 
 **External Interface (runtime/bridge.py):**
 ```bash
---ext host,ifname[,ip][,mtu]   # Attach external interface to host
+--ext host,ifname[,ip][,mtu]   # Attach external interface to host (Linux bridge)
+--bridge switch,root_ip,local_routes[,ext_routes,gateway]  # Root namespace bridging
 ```
+
+**Root Namespace Bridging (runtime/bridge.py - BridgeManager):**
+Connects Mininet switches to the root namespace for cross-VM communication. BridgeManager handles veth pairs, IP routes, forwarding, NAT, and cleanup.
+
+**Autotest Mode (--no-cli + --results-json):**
+```bash
+sudo python3 -m src disaster --config configs/ex1.yaml --no-cli --results-json results.json
+```
+Runs experiment without interactive CLI and saves structured results to JSON.
+
+**Warmup Operations:**
+```bash
+--warmup-get-interval 5          # Interval between warmup gets
+--warmup-only-cache-nodes        # Restrict warmup to cache nodes (default)
+--warmup-all-hosts               # Warmup on all hosts
+--hot-uris uri1,uri2             # URIs to pre-cache during warmup
+```
+
+**Cache Configuration:**
+```bash
+--cache-count <n>                # Number of cache nodes (0 = down-count + 1)
+--cache-default-rct-ms <ms>      # Override CACHE_DEFAULT_RCT for cache nodes
+```
+
+**Pub/Sub Model:**
+Put operations with `"mode": "pubsub"` use `cefpubfile` instead of `cefputfile`. Get operations with `"mode": "pubsub"` use `cefsubfile` instead of `cefgetfile`.
 
 **JSON/YAML Configuration:**
 
@@ -270,6 +326,7 @@ After running scenarios, the following files appear:
 - `*.png` - Topology visualization images (when --topo-png used)
 - `meta.json` - Experiment metadata (disaster scenario with --run-dir)
 - `script.log` - Full script output log (disaster scenario)
+- `results.json` - Structured get results with success/failure details (autotest mode)
 
 ## Common Modifications
 

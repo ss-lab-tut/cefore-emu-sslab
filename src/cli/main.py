@@ -14,8 +14,8 @@ import sys
 from mininet.log import setLogLevel
 
 from ..core.config.loader import load_config, merge_cli_and_config, validate_config
-from ..core.paths import resolve_run_dir
-from ..scenarios.disaster import Tee
+from ..core.paths import resolve_run_dir, resolve_run_path
+from ..core.tee import Tee
 from .args import add_common_args, add_disaster_args, add_mesh_args
 
 
@@ -83,21 +83,51 @@ def cmd_disaster(args):
         meta_path = run_dir / "meta.json"
         meta_path.write_text(json.dumps(meta_data, indent=2), encoding="utf-8")
 
+    # Parse JSON string arguments into Python objects
+    if isinstance(args.puts, str) and args.puts:
+        args.puts = json.loads(args.puts)
+    elif not args.puts:
+        args.puts = []
+
+    if isinstance(args.gets, str) and args.gets:
+        args.gets = json.loads(args.gets)
+    elif not args.gets:
+        args.gets = []
+
+    if isinstance(getattr(args, "warmup_gets", ""), str) and args.warmup_gets:
+        args.warmup_gets = json.loads(args.warmup_gets)
+    elif not getattr(args, "warmup_gets", None):
+        args.warmup_gets = []
+
+    if isinstance(getattr(args, "hot_uris", ""), str) and args.hot_uris:
+        args.hot_uris = [u.strip() for u in args.hot_uris.split(",") if u.strip()]
+    elif not getattr(args, "hot_uris", None):
+        args.hot_uris = []
+
     log_fp = None
     original_stdout = None
     original_stderr = None
+    log_context = None
     if not args.no_script_log:
         log_name = args.script_log if args.script_log else "script.log"
         log_path = run_dir / log_name
         log_fp = open(log_path, "w")
         original_stdout = sys.stdout
         original_stderr = sys.stderr
-        sys.stdout = Tee(original_stdout, log_fp)
-        sys.stderr = Tee(original_stderr, log_fp)
+        tee_stdout = Tee(original_stdout, log_fp)
+        tee_stderr = Tee(original_stderr, log_fp)
+        sys.stdout = tee_stdout
+        sys.stderr = tee_stderr
+        log_context = {
+            "original_stdout": original_stdout,
+            "original_stderr": original_stderr,
+            "tee_stdout": tee_stdout,
+            "tee_stderr": tee_stderr,
+        }
 
     try:
         setLogLevel("info")
-        run_disaster_scenario(args, run_dir)
+        run_disaster_scenario(args, run_dir, log_context=log_context)
     finally:
         if log_fp:
             sys.stdout = original_stdout

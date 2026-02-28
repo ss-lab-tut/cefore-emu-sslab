@@ -4,7 +4,7 @@
   "seed": 42,
   "k": 2,
   "puts": [
-    {"host": 9, "uri": "ccnx:/test/video1", "file": "./video.bin"},
+    {"host": 9, "uri": "ccnx:/test/video1", "file": "./video.bin", "rate": 10, "expiry": 5000, "cache_time": 5000},
     {"host": 7, "uri": "ccnx:/test/data1", "file": "./data.bin"}
   ],
   "gets": [

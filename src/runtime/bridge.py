@@ -1,11 +1,24 @@
-"""External interface bridge operations (extracted from disaster.py)."""
+"""Bridge operations for external network connectivity.
+
+Provides two bridging mechanisms:
+- Linux bridge: attach_external_via_bridge() for direct NIC bridging
+- Root namespace bridge: BridgeManager for cross-VM communication via Mininet switches
+"""
 
 import subprocess
+from typing import Any
 
 from mininet.log import info
+from mininet.net import Mininet
+from mininet.node import Node
 
-# Track created bridges for cleanup
+# Track created Linux bridges for cleanup
 _created_bridges = {}
+
+
+# ---------------------------------------------------------------------------
+# Linux bridge functions (attach physical NIC to Mininet host)
+# ---------------------------------------------------------------------------
 
 
 def _run_root_cmd(cmd):
@@ -76,7 +89,7 @@ def attach_external_via_bridge(net, host_name, phy_intf, ip=None, mtu=None):
 
 
 def cleanup_external_bridges():
-    """Clean up all created bridges and veth pairs."""
+    """Clean up all created Linux bridges and veth pairs."""
     for host_name, info_dict in list(_created_bridges.items()):
         bridge_name = info_dict["bridge"]
         veth_root = info_dict["veth_root"]
@@ -116,3 +129,319 @@ def parse_ext_args(values):
         mtu = int(parts[3]) if len(parts) == 4 and parts[3] else None
         entries.append((host_name, intf_name, ip, mtu))
     return entries
+
+
+# ---------------------------------------------------------------------------
+# Root namespace bridging (BridgeManager for cross-VM communication)
+# ---------------------------------------------------------------------------
+
+
+class BridgeManager:
+    """Manage root namespace bridges and route cleanup."""
+
+    def __init__(self):
+        self.root_node = None
+        self.root_intf = None
+        self.routes_to_cleanup = []  # List of (node, del_cmd)
+
+    def get_or_create_root(self) -> Node:
+        """Get or create the root namespace node."""
+        if self.root_node is None:
+            self.root_node = Node("root", inNamespace=False)
+        return self.root_node
+
+    def connect_to_root_ns(
+        self,
+        net: Mininet,
+        switch_name: str,
+        root_ip: str,
+        local_routes: str,
+    ) -> None:
+        """Connect Mininet hosts to root namespace via switch.
+
+        Args:
+            net: Mininet network instance.
+            switch_name: Switch name to connect to root namespace.
+            root_ip: IP address for root namespace node (e.g., "192.168.100.1/24").
+            local_routes: Local Mininet host networks to route to.
+        """
+        root = self.get_or_create_root()
+        switch = net.get(switch_name)
+        if switch is None:
+            info(f"*** Warning: switch {switch_name} not found\n")
+            return
+
+        link = net.addLink(root, switch)
+        self.root_intf = link.intf1
+
+        root.setIP(root_ip, intf=self.root_intf)
+
+        cmd = f"route add -net {local_routes} dev {self.root_intf}"
+        info(f"*** Adding route in root ns: {cmd}\n")
+        root.cmd(cmd)
+        self.routes_to_cleanup.append((root, f"route del -net {local_routes}"))
+
+    def add_host_route(
+        self,
+        net: Mininet,
+        host_name: str,
+        dest_network: str,
+        gateway: str,
+        dev: str | None = None,
+    ) -> None:
+        """Add route from Mininet host to external network.
+
+        Args:
+            net: Mininet network instance.
+            host_name: Host name to add route to.
+            dest_network: Destination network (e.g., "192.168.201.0/24" or "default").
+            gateway: Gateway IP address.
+            dev: Optional interface device name.
+        """
+        host = net.get(host_name)
+        if host is None:
+            info(f"*** Warning: host {host_name} not found\n")
+            return
+
+        dev_clause = f" dev {dev}" if dev else ""
+        if dest_network in ("default", "0.0.0.0/0"):
+            cmd = f"ip route replace default via {gateway}{dev_clause}"
+            del_cmd = "ip route del default"
+        else:
+            cmd = f"route add -net {dest_network} gw {gateway}{dev_clause}"
+            del_cmd = f"route del -net {dest_network}"
+        info(f"*** Adding route in {host_name}: {cmd}\n")
+        host.cmd(cmd)
+        self.routes_to_cleanup.append((host, del_cmd))
+
+    def add_root_route(self, dest_network: str, gateway: str) -> None:
+        """Add route from root namespace to external network."""
+        root = self.get_or_create_root()
+        cmd = f"route add -net {dest_network} gw {gateway}"
+        info(f"*** Adding route in root ns: {cmd}\n")
+        root.cmd(cmd)
+        self.routes_to_cleanup.append((root, f"route del -net {dest_network}"))
+
+    def enable_ip_forwarding(self) -> None:
+        """Enable IP forwarding on root namespace node."""
+        root = self.get_or_create_root()
+        root.cmd("sysctl -w net.ipv4.ip_forward=1")
+
+    def enable_nat(self, local_routes: str, out_intf: str = None) -> None:
+        """Enable NAT (masquerade) for local routes via outbound interface.
+
+        Args:
+            local_routes: Source network to masquerade (e.g., "192.168.1.0/24").
+            out_intf: Outbound interface name. If None, auto-detected from default route.
+        """
+        root = self.get_or_create_root()
+        if out_intf is None:
+            result = root.cmd("ip route show default")
+            parts = result.split()
+            if "dev" in parts:
+                idx = parts.index("dev")
+                if idx + 1 < len(parts):
+                    out_intf = parts[idx + 1]
+        if not out_intf:
+            info("*** Warning: could not detect outbound interface for NAT\n")
+            return
+
+        root_intf_name = str(self.root_intf)
+        cmds = [
+            f"iptables -t nat -A POSTROUTING -s {local_routes} -o {out_intf} -j MASQUERADE",
+            f"iptables -A FORWARD -i {root_intf_name} -o {out_intf} -s {local_routes} -j ACCEPT",
+            f"iptables -A FORWARD -i {out_intf} -o {root_intf_name} -d {local_routes} -m state --state RELATED,ESTABLISHED -j ACCEPT",
+        ]
+        for cmd in cmds:
+            info(f"*** NAT: {cmd}\n")
+            root.cmd(cmd)
+        for cmd in cmds:
+            del_cmd = cmd.replace(" -A ", " -D ")
+            self.routes_to_cleanup.append((root, del_cmd))
+
+    def enable_normal_flow(self, net: Mininet, switch_name: str) -> None:
+        """Add NORMAL action flow to OVS switch for L2 learning bridge behavior."""
+        root = self.get_or_create_root()
+        root.cmd(f"ovs-ofctl add-flow {switch_name} priority=0,actions=NORMAL")
+        self.routes_to_cleanup.append(
+            (root, f"ovs-ofctl del-flows {switch_name} --strict priority=0")
+        )
+
+    def enable_proxy_arp(self) -> None:
+        """Enable Proxy ARP on root namespace interface."""
+        root = self.get_or_create_root()
+        if self.root_intf is None:
+            info("*** Warning: root interface not set, cannot enable proxy ARP\n")
+            return
+
+        root_intf_name = str(self.root_intf)
+        cmds = [
+            f"sysctl -w net.ipv4.conf.{root_intf_name}.proxy_arp=1",
+            "sysctl -w net.ipv4.conf.all.proxy_arp=1",
+        ]
+        for cmd in cmds:
+            info(f"*** Proxy ARP: {cmd}\n")
+            root.cmd(cmd)
+        self.routes_to_cleanup.append(
+            (root, f"sysctl -w net.ipv4.conf.{root_intf_name}.proxy_arp=0")
+        )
+        self.routes_to_cleanup.append((root, "sysctl -w net.ipv4.conf.all.proxy_arp=0"))
+
+    def cleanup(self) -> None:
+        """Remove all created routes and NAT rules."""
+        for node, del_cmd in reversed(self.routes_to_cleanup):
+            info(f"*** Removing route: {del_cmd}\n")
+            node.cmd(del_cmd)
+        self.routes_to_cleanup.clear()
+
+
+def extract_gateway_from_ip(ip_with_prefix: str) -> str:
+    """Extract gateway IP from IP/prefix notation.
+
+    For "192.168.100.1/24", returns "192.168.100.1".
+    """
+    return ip_with_prefix.split("/")[0]
+
+
+def parse_bridge_args(values: list[str] | None) -> list[dict[str, Any]]:
+    """Parse --bridge CLI arguments.
+
+    Format: switch,root_ip,local_routes[,external_routes,gateway]
+
+    Args:
+        values: List of bridge argument strings.
+
+    Returns:
+        List of bridge configuration dictionaries.
+    """
+    entries = []
+    for value in values or []:
+        parts = [part.strip() for part in value.split(",")]
+        if len(parts) < 3:
+            raise ValueError(
+                "bridge format is switch,root_ip,local_routes[,external_routes,gateway]"
+            )
+        entry = {
+            "switch": parts[0],
+            "root_ip": parts[1],
+            "local_routes": parts[2],
+        }
+        if len(parts) >= 5:
+            entry["external_routes"] = parts[3]
+            entry["gateway"] = parts[4]
+        entries.append(entry)
+    return entries
+
+
+def _resolve_root_ip(
+    switch_name: str,
+    root_ip: str | None,
+    mesh_links: list[dict[str, Any]] | None,
+) -> str | None:
+    """Auto-resolve root IP from mesh link subnet if set to 'auto'."""
+    if root_ip and root_ip != "auto":
+        return root_ip
+    if not mesh_links:
+        return root_ip
+    for link in mesh_links:
+        if link.get("switch") == switch_name:
+            subnet = link.get("subnet")
+            if subnet is not None:
+                return f"192.168.{subnet}.254/24"
+    return root_ip
+
+
+def _find_host_intf(
+    mesh_links: list[dict[str, Any]] | None,
+    host_idx: int,
+    switch_name: str,
+) -> str | None:
+    """Find the host interface connected to a specific switch."""
+    if not mesh_links:
+        return None
+    for link in mesh_links:
+        if link.get("switch") != switch_name:
+            continue
+        host_eth = link.get("host_eth") or {}
+        if host_idx in host_eth:
+            return f"h{host_idx}-eth{host_eth[host_idx]}"
+    return None
+
+
+def setup_bridges(
+    net: Mininet,
+    bridge_manager: BridgeManager,
+    bridge_configs: list[dict[str, Any]],
+    host_num: int,
+    mesh_links: list[dict[str, Any]] | None = None,
+) -> None:
+    """Set up all bridge configurations.
+
+    Args:
+        net: Mininet network instance.
+        bridge_manager: BridgeManager instance to use.
+        bridge_configs: List of bridge configuration dicts.
+        host_num: Total number of hosts in the network.
+        mesh_links: Optional mesh link info for auto-resolving IPs and interfaces.
+    """
+    for config in bridge_configs:
+        switch = config["switch"]
+        root_ip = _resolve_root_ip(config["switch"], config.get("root_ip"), mesh_links)
+        if not root_ip:
+            info(f"*** Warning: root_ip not set for switch {switch}\n")
+            continue
+        local_routes = config["local_routes"]
+
+        bridge_manager.connect_to_root_ns(net, switch, root_ip, local_routes)
+        bridge_manager.enable_normal_flow(net, switch)
+
+        gateway = extract_gateway_from_ip(root_ip)
+
+        hosts = config.get("hosts")
+        if hosts is None:
+            hosts = list(range(host_num))
+
+        external_routes = config.get("external_routes")
+        ext_gateway = config.get("gateway")
+
+        if external_routes:
+            if ext_gateway:
+                bridge_manager.add_root_route(external_routes, ext_gateway)
+
+            for host_idx in hosts:
+                host_name = f"h{host_idx}"
+                dev = _find_host_intf(mesh_links, host_idx, switch)
+                bridge_manager.add_host_route(
+                    net,
+                    host_name,
+                    external_routes,
+                    gateway,
+                    dev=dev,
+                )
+
+            for host_idx in hosts:
+                host = net.get(f"h{host_idx}")
+                host.cmd("echo 'nameserver 8.8.8.8' > /etc/resolv.conf")
+
+        use_nat = config.get("nat", False)
+        if use_nat:
+            bridge_manager.enable_ip_forwarding()
+            nat_out = config.get("nat_out")
+            bridge_manager.enable_nat(local_routes, nat_out)
+
+        use_proxy_arp = config.get("proxy_arp", False)
+        if use_proxy_arp:
+            bridge_manager.enable_proxy_arp()
+
+        vm_host_network = config.get("vm_host_network")
+        if vm_host_network:
+            for host_idx in hosts:
+                host_name = f"h{host_idx}"
+                dev = _find_host_intf(mesh_links, host_idx, switch)
+                bridge_manager.add_host_route(
+                    net,
+                    host_name,
+                    vm_host_network,
+                    gateway,
+                    dev=dev,
+                )

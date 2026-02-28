@@ -89,3 +89,8 @@ class FakeRuntime(Runtime):
 
     def get_links(self):
         return []
+
+    def run_cmd_popen(self, node, cmd):
+        """Fake popen: record command and return exit code 0."""
+        self.commands.append((node, cmd))
+        return 0
