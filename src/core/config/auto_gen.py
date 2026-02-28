@@ -93,9 +93,17 @@ def generate_operations(
     for entry in entries:
         if not isinstance(entry, dict):
             _error("auto entry must be a dict")
-        uri = entry.get("uri")
-        if not uri or not isinstance(uri, str):
-            _error("auto entry requires 'uri' (string)")
+
+        # Detect format: pubsub (uri) vs simple (uri_prefix)
+        has_uri = "uri" in entry
+        has_uri_prefix = "uri_prefix" in entry
+        if has_uri and has_uri_prefix:
+            _error("auto entry must have either 'uri' or 'uri_prefix', not both")
+        is_pubsub = has_uri or "pub_opts" in entry or "sub_opts" in entry
+        uri_base = entry.get("uri") or entry.get("uri_prefix")
+        if not uri_base or not isinstance(uri_base, str):
+            _error("auto entry requires 'uri' or 'uri_prefix' (string)")
+
         content_count = int(entry.get("content_count", 1))
         if content_count < 1:
             _error("content_count must be >=1")
@@ -108,32 +116,60 @@ def generate_operations(
         sub_opts = entry.get("sub_opts", {}) or {}
         wait = sub_opts.get("wait")
 
+        # consumer_per_content: top-level for simple, sub_opts for pubsub
+        if is_pubsub:
+            consumer_per_content = sub_opts.get("consumer_per_content", 1)
+        else:
+            consumer_per_content = entry.get("consumer_per_content", 1)
+
         # Create contents
-        for idx in range(content_count):
-            uri_full = f"{uri}/content{idx+1}" if content_count > 1 else uri
-            pub_host = rng.choice(publishers)
-            puts_list.append(
-                {
-                    "mode": "pubsub",
-                    "host": pub_host,
-                    "uri": uri_full,
-                    "file": file_path,
-                    "pub_opts": pub_opts,
-                }
-            )
-            for _ in range(sub_opts.get("consumer_per_content", 1) if consumers else 0):
-                if not consumers:
-                    break
-                cons = rng.choice(consumers)
-                gets_list.append(
-                    {
-                        "mode": "pubsub",
-                        "host": cons,
-                        "uri": uri_full,
-                        "file": str(run_dir / f"recv_{cons}_{uri_full.split('/')[-1]}"),
-                        "sub_opts": sub_opts,
-                        "wait": wait,
-                    }
-                )
+        content_idx = 0
+        for publisher in publishers:
+            for _ in range(content_count):
+                content_idx += 1
+                uri_full = f"{uri_base}/content{content_idx}"
+
+                if is_pubsub:
+                    puts_list.append(
+                        {
+                            "mode": "pubsub",
+                            "host": publisher,
+                            "uri": uri_full,
+                            "file": file_path,
+                            "pub_opts": pub_opts,
+                        }
+                    )
+                else:
+                    puts_list.append(
+                        {
+                            "host": publisher,
+                            "uri": uri_full,
+                            "file": file_path,
+                        }
+                    )
+
+                for _ in range(consumer_per_content if consumers else 0):
+                    if not consumers:
+                        break
+                    cons = rng.choice(consumers)
+                    if is_pubsub:
+                        gets_list.append(
+                            {
+                                "mode": "pubsub",
+                                "host": cons,
+                                "uri": uri_full,
+                                "file": str(run_dir / f"recv_{cons}_{uri_full.split('/')[-1]}"),
+                                "sub_opts": sub_opts,
+                                "wait": wait,
+                            }
+                        )
+                    else:
+                        gets_list.append(
+                            {
+                                "host": cons,
+                                "uri": uri_full,
+                                "file": str(run_dir / f"recvfile_h{cons}_c{content_idx}"),
+                            }
+                        )
 
     return puts_list, gets_list

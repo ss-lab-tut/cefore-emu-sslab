@@ -2,6 +2,7 @@ hosts: 5
 switches: 8
 seed: 42
 k: 2
+host_degree_min: 2
 
 puts:
   - host: 4

@@ -79,6 +79,7 @@ class MeshTopo(Topo):
         host_ports = [0] * hosts
 
         degrees = [rng.randint(host_degree_min, host_degree_max) for _ in range(hosts)]
+        initial_total = sum(degrees)
         if any(d < 1 for d in degrees):
             raise ValueError("all hosts must have degree >=1")
 
@@ -108,7 +109,12 @@ class MeshTopo(Topo):
                     partner = cand
                     break
             if partner is None:
-                raise ValueError("failed to build spanning tree under degree constraints")
+                needed = 2 * (hosts - 1)
+                raise ValueError(
+                    f"failed to build spanning tree: degree budget exhausted "
+                    f"(initial_total={initial_total}, needed>={needed}). "
+                    f"Increase --host-degree-min/--host-degree-max or reduce --hosts"
+                )
             chosen_switch = None
             for sw, hs in switch_hosts.items():
                 if len(hs) + 2 <= switch_capacity and partner in hs:
