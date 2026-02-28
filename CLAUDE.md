@@ -255,7 +255,7 @@ Connects Mininet switches to the root namespace for cross-VM communication. Brid
 
 **Autotest Mode (--no-cli + --results-json):**
 ```bash
-sudo python3 -m src disaster --config configs/ex1.yaml --no-cli --results-json results.json
+sudo python3 -m src disaster --config configs/examples/autotest_duration.yaml
 ```
 Runs experiment without interactive CLI and saves structured results to JSON.
 

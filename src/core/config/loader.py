@@ -162,13 +162,46 @@ def validate_config(config: dict[str, Any]) -> list[str]:
                 if "local_routes" not in bridge:
                     errors.append(f"bridges[{idx}] missing required field 'local_routes'")
 
+    # Boolean keys
+    for key in ("no_cli", "no_script_log", "warmup_only_cache_nodes"):
+        if key in config and not isinstance(config[key], bool):
+            errors.append(f"{key} must be a boolean")
+
+    # Non-negative integer keys
+    for key in ("duration", "warmup_get_interval"):
+        if key in config:
+            if not isinstance(config[key], int) or config[key] < 0:
+                errors.append(f"{key} must be an integer >= 0")
+
+    # Nullable integer keys
+    for key in ("cache_default_rct_ms", "publisher_host"):
+        if key in config and config[key] is not None:
+            if not isinstance(config[key], int):
+                errors.append(f"{key} must be an integer or null")
+
+    # String keys
+    for key in ("results_json", "script_log"):
+        if key in config and not isinstance(config[key], str):
+            errors.append(f"{key} must be a string")
+
+    if "hot_uris" in config:
+        val = config["hot_uris"]
+        if not isinstance(val, (str, list)):
+            errors.append("hot_uris must be a string or list of strings")
+
+    if "warmup_gets" in config:
+        if not isinstance(config["warmup_gets"], list):
+            errors.append("warmup_gets must be a list")
+
     return errors
 
 
-def merge_cli_and_config(args: Any, config: dict[str, Any]) -> None:
+def merge_cli_and_config(args: Any, config: dict[str, Any], parser=None) -> None:
     """Merge config file values into argparse args, respecting CLI precedence.
 
-    Config values are applied only if the corresponding CLI arg uses its default.
+    When parser is provided, config values are applied only if the
+    corresponding CLI arg still holds its default value (i.e., the user
+    did not explicitly set it on the command line).
     The args object is modified in place.
     """
     config_keys = (
@@ -199,11 +232,34 @@ def merge_cli_and_config(args: Any, config: dict[str, Any]) -> None:
         "output_dir",
         "timestamp",
         "legacy_layout",
+        "no_cli",
+        "duration",
+        "results_json",
+        "script_log",
+        "no_script_log",
+        "warmup_get_interval",
+        "warmup_only_cache_nodes",
+        "warmup_gets",
+        "hot_uris",
+        "cache_default_rct_ms",
+        "publisher_host",
     )
 
+    # Compute defaults for CLI-precedence check
+    defaults = {}
+    if parser is not None:
+        defaults = vars(parser.parse_args([]))
+
     for key in config_keys:
-        if key in config:
-            setattr(args, key, config[key])
+        if key not in config:
+            continue
+        # If parser provided, only apply config when CLI value equals default
+        if parser is not None:
+            cli_val = getattr(args, key, None)
+            default_val = defaults.get(key)
+            if cli_val != default_val:
+                continue
+        setattr(args, key, config[key])
 
     # Parse puts/gets if passed as JSON strings
     if isinstance(args.puts, str) and args.puts:
@@ -214,6 +270,21 @@ def merge_cli_and_config(args: Any, config: dict[str, Any]) -> None:
         args.bw = [args.bw]
     if isinstance(args.ext, str) and args.ext:
         args.ext = [args.ext]
+
+    # Parse warmup_gets / hot_uris
+    warmup_gets = getattr(args, "warmup_gets", "")
+    if isinstance(warmup_gets, str) and warmup_gets:
+        args.warmup_gets = json.loads(warmup_gets)
+    elif not warmup_gets:
+        args.warmup_gets = []
+
+    hot_uris = getattr(args, "hot_uris", "")
+    if isinstance(hot_uris, str) and hot_uris:
+        args.hot_uris = [u.strip() for u in hot_uris.split(",") if u.strip()]
+    elif isinstance(hot_uris, list):
+        pass  # Already a list from YAML
+    else:
+        args.hot_uris = []
 
     # Ensure puts/gets are lists
     if not hasattr(args, "puts") or args.puts is None or args.puts == "":
