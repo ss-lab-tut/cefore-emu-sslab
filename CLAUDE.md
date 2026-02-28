@@ -380,4 +380,4 @@ uv run python3 -m py_compile src/log/filename.py   # syntax check
 
 ## MCP Tool Settings
 
-Codex MCP を使用する際は、モデル `gpt-5.2-codex` (reasoning medium, summaries auto) を指定すること。
+Codex MCP を使用する際は、モデル `gpt-5.3-codex` (reasoning medium, summaries auto) を指定すること。
