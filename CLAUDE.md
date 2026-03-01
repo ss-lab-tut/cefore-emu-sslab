@@ -49,9 +49,8 @@ cefore-emu/
 │   │   ├── h1/                    # Router template (CS_MODE=2)
 │   │   └── h2/                    # Publisher template (CS_MODE=0)
 │   └── examples/                  # Example configurations
-│       ├── multi_publisher.json       # Multiple publisher example
-│       ├── auto_experiment.yaml       # Auto-generation example
-│       └── manual_with_options.yaml   # Manual puts/gets with options example
+│       ├── example.yaml               # Full config reference (all args, commented)
+│       └── example.json               # Same config in JSON format
 │
 ├── log-summarize.py               # Log CSV summarization entry point
 ├── *.py (root)                    # Entry point wrappers for src/topo/
@@ -89,8 +88,8 @@ sudo python3 mesh-disaster-topology.py --hosts 10 --switches 15 --seed 42 \
 
 **Using JSON/YAML configuration:**
 ```bash
-sudo python3 mesh-disaster-topology.py --config configs/examples/multi_publisher.json
-sudo python3 mesh-disaster-topology.py --config configs/examples/auto_experiment.yaml
+sudo python3 -m src disaster --config configs/examples/example.yaml
+sudo python3 -m src disaster --config configs/examples/example.json
 ```
 
 **Exiting Mininet:**
@@ -208,7 +207,7 @@ Connects Mininet switches to the root namespace for cross-VM communication. Brid
 
 **Autotest Mode (--no-cli + --results-json):**
 ```bash
-sudo python3 -m src disaster --config configs/examples/autotest_duration.yaml
+sudo python3 -m src disaster --config configs/examples/example.yaml --no-cli --duration 120 --results-json results.json
 ```
 Runs experiment without interactive CLI and saves structured results to JSON.
 
