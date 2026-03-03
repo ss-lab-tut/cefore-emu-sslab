@@ -239,19 +239,30 @@ class DisasterScenario(BaseScenario):
 
         # Cache node selection
         host_graph, _ = build_host_graph(self.topo.mesh_links)
-        cache_count = args.cache_count if args.cache_count > 0 else args.down_count + 1
-        cache_nodes = select_k_centers(host_graph, cache_count)
-        if not cache_nodes and args.hosts > 0:
-            cache_nodes = [args.hosts - 1]
-        self.cache_node_set = set(cache_nodes)
-        if cache_nodes:
-            info("cache nodes: " + ", ".join(f"h{idx}" for idx in cache_nodes) + "\n")
-
-        apply_cache_node_settings(
-            args.hosts,
-            self.cache_node_set,
-            getattr(args, "cache_default_rct_ms", None),
-        )
+        cache_config = getattr(args, "cache_config", None) or {}
+        if cache_config:
+            from ..runtime.cache_manager import CacheConfigManager
+            manager = CacheConfigManager(cache_config, args.hosts, host_graph, self.publisher_ids)
+            cache_nodes = manager.select_cache_nodes(exclude=self.publisher_ids)
+            if not cache_nodes and args.hosts > 0:
+                cache_nodes = [args.hosts - 1]
+            self.cache_node_set = set(cache_nodes)
+            if cache_nodes:
+                info("cache nodes: " + ", ".join(f"h{idx}" for idx in cache_nodes) + "\n")
+            manager.apply_configs(self.cache_node_set)
+        else:
+            cache_count = args.cache_count if args.cache_count > 0 else args.down_count + 1
+            cache_nodes = select_k_centers(host_graph, cache_count)
+            if not cache_nodes and args.hosts > 0:
+                cache_nodes = [args.hosts - 1]
+            self.cache_node_set = set(cache_nodes)
+            if cache_nodes:
+                info("cache nodes: " + ", ".join(f"h{idx}" for idx in cache_nodes) + "\n")
+            apply_cache_node_settings(
+                args.hosts,
+                self.cache_node_set,
+                getattr(args, "cache_default_rct_ms", None),
+            )
 
         # Daemon startup: csmgrd -> cefnetd -> wait ready
         for idx in sorted(self.cache_node_set):

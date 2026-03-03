@@ -220,6 +220,93 @@ def validate_config(config: dict[str, Any]) -> list[str]:
                         "auto.consumers must be 'random:N' string or list of host IDs"
                     )
 
+    if "cache_config" in config:
+        cc = config["cache_config"]
+        if not isinstance(cc, dict):
+            errors.append("cache_config must be a dict")
+        else:
+            valid_strategies = ("k_centers", "manual", "degree_based")
+            strategy = cc.get("strategy", "k_centers")
+            if strategy not in valid_strategies:
+                errors.append(
+                    f"cache_config.strategy must be one of: {', '.join(valid_strategies)}"
+                )
+
+            default = cc.get("default", {})
+            if not isinstance(default, dict):
+                errors.append("cache_config.default must be a dict")
+            else:
+                if "count" in default:
+                    if not isinstance(default["count"], int) or default["count"] < 0:
+                        errors.append("cache_config.default.count must be an integer >= 0")
+                if "capacity" in default:
+                    if not isinstance(default["capacity"], int) or default["capacity"] < 0:
+                        errors.append("cache_config.default.capacity must be an integer >= 0")
+                if "default_rct_ms" in default:
+                    if (
+                        not isinstance(default["default_rct_ms"], int)
+                        or default["default_rct_ms"] < 1000
+                    ):
+                        errors.append(
+                            "cache_config.default.default_rct_ms must be an integer >= 1000"
+                        )
+                if "algorithm" in default:
+                    valid_algos = ("LRU", "LFU", "FIFO", "None")
+                    if default["algorithm"] not in valid_algos:
+                        errors.append(
+                            f"cache_config.default.algorithm must be one of: {', '.join(valid_algos)}"
+                        )
+                if "type" in default:
+                    valid_types = ("memory", "filesystem")
+                    if default["type"] not in valid_types:
+                        errors.append(
+                            f"cache_config.default.type must be one of: {', '.join(valid_types)}"
+                        )
+
+            nodes = cc.get("nodes", [])
+            if not isinstance(nodes, list):
+                errors.append("cache_config.nodes must be a list")
+            else:
+                for node_idx, node_entry in enumerate(nodes):
+                    if not isinstance(node_entry, dict):
+                        errors.append(f"cache_config.nodes[{node_idx}] must be a dict")
+                        continue
+                    ids = node_entry.get("id", [])
+                    if isinstance(ids, int):
+                        ids = [ids]
+                    if not isinstance(ids, list) or not all(isinstance(i, int) for i in ids):
+                        errors.append(
+                            f"cache_config.nodes[{node_idx}].id must be an integer or list of integers"
+                        )
+                    if "capacity" in node_entry:
+                        if (
+                            not isinstance(node_entry["capacity"], int)
+                            or node_entry["capacity"] < 0
+                        ):
+                            errors.append(
+                                f"cache_config.nodes[{node_idx}].capacity must be an integer >= 0"
+                            )
+                    if "default_rct_ms" in node_entry:
+                        if (
+                            not isinstance(node_entry["default_rct_ms"], int)
+                            or node_entry["default_rct_ms"] < 1000
+                        ):
+                            errors.append(
+                                f"cache_config.nodes[{node_idx}].default_rct_ms must be an integer >= 1000"
+                            )
+                    if "algorithm" in node_entry:
+                        valid_algos = ("LRU", "LFU", "FIFO", "None")
+                        if node_entry["algorithm"] not in valid_algos:
+                            errors.append(
+                                f"cache_config.nodes[{node_idx}].algorithm must be one of: {', '.join(valid_algos)}"
+                            )
+                    if "type" in node_entry:
+                        valid_types = ("memory", "filesystem")
+                        if node_entry["type"] not in valid_types:
+                            errors.append(
+                                f"cache_config.nodes[{node_idx}].type must be one of: {', '.join(valid_types)}"
+                            )
+
     if "bridges" in config:
         if not isinstance(config["bridges"], list):
             errors.append("bridges must be a list")
@@ -346,6 +433,9 @@ def merge_cli_and_config(args: Any, config: dict[str, Any], parser=None) -> None
             if cli_val != default_val:
                 continue
         setattr(args, key, config[key])
+
+    if "cache_config" in config:
+        setattr(args, "cache_config", config["cache_config"])
 
     # Parse puts/gets if passed as JSON strings
     if isinstance(args.puts, str) and args.puts:

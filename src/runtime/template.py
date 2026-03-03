@@ -156,21 +156,35 @@ def apply_cache_node_settings(
     host_num: int,
     cache_nodes: set[int],
     cache_default_rct_ms: int | None = None,
+    cache_capacity: int | None = None,
+    cache_algorithm: str | None = None,
+    cache_type: str | None = None,
 ) -> None:
     """Apply cache-related runtime overrides to generated host configs.
 
     - Cache nodes only: force ``CS_MODE=2`` (external CS via csmgrd).
     - Non-cache nodes: keep template-selected CS_MODE untouched.
-    - Optional RCT override applies only to cache nodes.
+    - Optional parameters override csmgrd.conf values for all cache nodes.
+
+    Args:
+        host_num: Total number of hosts.
+        cache_nodes: Set of host indices designated as cache nodes.
+        cache_default_rct_ms: CACHE_DEFAULT_RCT value in milliseconds.
+        cache_capacity: CACHE_CAPACITY value in bytes.
+        cache_algorithm: CACHE_ALGORITHM value (e.g. LRU, LFU, FIFO).
+        cache_type: CACHE_TYPE value (e.g. memory, filesystem).
     """
     for idx in sorted(cache_nodes):
         if idx < 0 or idx >= host_num:
             continue
         node_dir = Path(f"h{idx}")
+        conf_path = node_dir / "csmgrd.conf"
         _set_config_value(node_dir / "cefnetd.conf", "CS_MODE", "2")
         if cache_default_rct_ms is not None:
-            _set_config_value(
-                node_dir / "csmgrd.conf",
-                "CACHE_DEFAULT_RCT",
-                str(cache_default_rct_ms),
-            )
+            _set_config_value(conf_path, "CACHE_DEFAULT_RCT", str(cache_default_rct_ms))
+        if cache_capacity is not None:
+            _set_config_value(conf_path, "CACHE_CAPACITY", str(cache_capacity))
+        if cache_algorithm is not None:
+            _set_config_value(conf_path, "CACHE_ALGORITHM", str(cache_algorithm))
+        if cache_type is not None:
+            _set_config_value(conf_path, "CACHE_TYPE", str(cache_type))

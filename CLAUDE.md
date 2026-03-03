@@ -7,6 +7,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 * Write programs to work together.
 * Write programs to handle text streams, because that is a universal interface.
 
+# Interaction contract
+- If requirements are ambiguous or underspecified, stop and ask 1–3 targeted questions before proceeding.
+- Before making any irreversible change (deletes, migrations, dependency upgrades, infra changes), ask for explicit confirmation.
+- Never assume environment details (OS, shell, package manager, project conventions). Ask or infer only from repo evidence.
+- Start each task by restating: Goal, Non-goals, Constraints, Success criteria (brief).
+- When multiple approaches exist, present 2 options with tradeoffs, then ask which to take.
+
 ## Notice
 
 Separate functions into separate files by type, and do not recreate existing functions in the execution script. If you need to edit them, edit the existing function and check that the modifications have been made.
@@ -396,4 +403,4 @@ uv run python3 ...   # Run with managed environment
 
 ## MCP Tool Settings
 
-Codex MCP を使用する際は、モデル `gpt-5.2-codex` (reasoning medium, summaries auto) を指定すること。
+When using Codex MCP, specify model `gpt-5.2-codex` (reasoning medium, summaries auto).
