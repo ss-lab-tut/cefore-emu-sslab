@@ -279,8 +279,15 @@ class DisasterScenario(BaseScenario):
 
         for idx in range(args.hosts):
             start_cefnetd(net, idx)
+        not_ready = []
         for idx in range(args.hosts):
-            wait_for_cefnetd(net, idx)
+            if not wait_for_cefnetd(net, idx):
+                not_ready.append(idx)
+        if not_ready:
+            hosts = ", ".join(f"h{idx}" for idx in not_ready)
+            raise RuntimeError(
+                f"cefnetd not ready on {hosts}; aborting before FIB programming"
+            )
 
         # FIB programming
         if self.uri_publishers:
