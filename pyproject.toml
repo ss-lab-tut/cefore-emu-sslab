@@ -12,7 +12,8 @@ dependencies = [
 ]
 
 [project.scripts]
-ceforeemu = "cli.main:main"
+ceforeemu = "src.cli.main:main"
 
 [tool.setuptools.packages.find]
-where = ["src"]
+where = ["."]
+include = ["src*"]

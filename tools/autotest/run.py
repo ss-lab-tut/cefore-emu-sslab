@@ -10,11 +10,10 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-SRC = ROOT / "src"
-if str(SRC) not in sys.path:
-    sys.path.insert(0, str(SRC))
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
-from config.loader import load_config  # noqa: E402
+from src.core.config.loader import load_config  # noqa: E402
 
 
 def _resolve_seed(base_config: dict, seed_base: int | None, index: int) -> int:
@@ -62,7 +61,9 @@ def _run_one(
     py = sys.executable
     cmd = [
         py,
-        "mesh-disaster-topology.py",
+        "-m",
+        "src",
+        "disaster",
         "--config",
         str(config_path),
         "--no-cli",

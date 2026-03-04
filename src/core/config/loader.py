@@ -132,11 +132,9 @@ def validate_config(config: dict[str, Any]) -> list[str]:
             errors.append("warmup_only_cache_nodes must be a boolean")
 
     if "cache_default_rct_ms" in config:
-        if (
-            not isinstance(config["cache_default_rct_ms"], int)
-            or config["cache_default_rct_ms"] < 1000
-        ):
-            errors.append("cache_default_rct_ms must be an integer >= 1000")
+        value = config["cache_default_rct_ms"]
+        if value is not None and (not isinstance(value, int) or value < 1000):
+            errors.append("cache_default_rct_ms must be an integer >= 1000 or null")
 
     if "publisher_host" in config:
         if config["publisher_host"] is not None and not isinstance(
@@ -145,10 +143,14 @@ def validate_config(config: dict[str, Any]) -> list[str]:
             errors.append("publisher_host must be an integer or null")
 
     if "hot_uris" in config:
-        if not isinstance(config["hot_uris"], list) or not all(
-            isinstance(uri, str) for uri in config["hot_uris"]
-        ):
-            errors.append("hot_uris must be a list of strings")
+        value = config["hot_uris"]
+        if isinstance(value, str):
+            pass
+        elif isinstance(value, list):
+            if not all(isinstance(uri, str) for uri in value):
+                errors.append("hot_uris must be a string or list of strings")
+        else:
+            errors.append("hot_uris must be a string or list of strings")
 
     if "warmup_gets" in config:
         if not isinstance(config["warmup_gets"], list):
@@ -207,18 +209,30 @@ def validate_config(config: dict[str, Any]) -> list[str]:
 
     if "auto" in config:
         auto = config["auto"]
-        if not isinstance(auto, dict):
-            errors.append("auto must be a dict")
+        entries: list[Any] | None = None
+        if isinstance(auto, dict):
+            entries = [auto]
+        elif isinstance(auto, list):
+            entries = auto
         else:
-            if "publishers" in auto:
-                if not isinstance(auto["publishers"], list):
-                    errors.append("auto.publishers must be a list of host IDs")
-            if "consumers" in auto:
-                val = auto["consumers"]
-                if not isinstance(val, (str, list)):
-                    errors.append(
-                        "auto.consumers must be 'random:N' string or list of host IDs"
-                    )
+            errors.append("auto must be a dict or list of dicts")
+
+        if entries is not None:
+            for idx, entry in enumerate(entries):
+                if not isinstance(entry, dict):
+                    errors.append(f"auto[{idx}] must be a dict")
+                    continue
+                if "publishers" in entry:
+                    if not isinstance(entry["publishers"], list):
+                        errors.append(
+                            f"auto[{idx}].publishers must be a list of host IDs"
+                        )
+                if "consumers" in entry:
+                    val = entry["consumers"]
+                    if not isinstance(val, (str, list)):
+                        errors.append(
+                            f"auto[{idx}].consumers must be 'random:N' string or list of host IDs"
+                        )
 
     if "cache_config" in config:
         cc = config["cache_config"]
@@ -497,11 +511,6 @@ def validate_config(config: dict[str, Any]) -> list[str]:
     for key in ("results_json", "script_log"):
         if key in config and config[key] is not None and not isinstance(config[key], str):
             errors.append(f"{key} must be a string")
-
-    if "hot_uris" in config:
-        val = config["hot_uris"]
-        if not isinstance(val, (str, list)):
-            errors.append("hot_uris must be a string or list of strings")
 
     if "warmup_gets" in config:
         if not isinstance(config["warmup_gets"], list):
