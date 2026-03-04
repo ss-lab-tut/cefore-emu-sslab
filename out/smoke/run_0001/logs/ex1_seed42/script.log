@@ -10,3 +10,46 @@ h2 command: ifconfig h2-eth1 192.168.3.3
 h3 command: ifconfig h3-eth1 192.168.3.4
 h4 command: ifconfig h4-eth2 192.168.3.5
 h3 command: ifconfig h3-eth2 192.168.4.4
+h0 command: csmgrdstart -d ./h0 > /dev/null 2>&1
+h1 command: csmgrdstart -d ./h1 > /dev/null 2>&1
+h0 command: cefnetdstart -d ./h0 > /dev/null 2>&1
+h1 command: cefnetdstart -d ./h1 > /dev/null 2>&1
+h2 command: cefnetdstart -d ./h2 > /dev/null 2>&1
+h3 command: cefnetdstart -d ./h3 > /dev/null 2>&1
+h4 command: cefnetdstart -d ./h4 > /dev/null 2>&1
+h0 command: cefroute add ccnx:/test/sample udp 192.168.3.5 -d ./h0
+h0 command: cefroute add ccnx:/test/sample udp 192.168.3.2 -d ./h0
+h1 command: cefroute add ccnx:/test/sample udp 192.168.3.5 -d ./h1
+h1 command: cefroute add ccnx:/test/sample udp 192.168.3.1 -d ./h1
+h2 command: cefroute add ccnx:/test/sample udp 192.168.3.5 -d ./h2
+h2 command: cefroute add ccnx:/test/sample udp 192.168.3.1 -d ./h2
+h3 command: cefroute add ccnx:/test/sample udp 192.168.3.5 -d ./h3
+h3 command: cefroute add ccnx:/test/sample udp 192.168.3.1 -d ./h3
+h0 command: cefstatus -d ./h0
+h1 command: cefstatus -d ./h1
+h2 command: cefstatus -d ./h2
+h3 command: cefstatus -d ./h3
+h4 command: cefstatus -d ./h4
+h4 command: cefputfile ccnx:/test/sample -f ./sample-putfile -r 10 -b 1024 -e 3000 -t 3000 -v crc32c -d ./h4 > /home/kinoko/development/github/cefore-emu-koh11235813/out/smoke/run_0001/logs/ex1_seed42/cefputfile_h4.log
+h0 command: cefgetfile ccnx:/test/sample -f /home/kinoko/development/github/cefore-emu-koh11235813/out/smoke/run_0001/logs/ex1_seed42/warmup_recv_h0_u0 -d ./h0 > /home/kinoko/development/github/cefore-emu-koh11235813/out/smoke/run_0001/logs/ex1_seed42/cefgetfile_seed42_downhostsnone_phasewarmup_cycle0_idx0_h0.log
+h1 command: cefgetfile ccnx:/test/sample -f /home/kinoko/development/github/cefore-emu-koh11235813/out/smoke/run_0001/logs/ex1_seed42/warmup_recv_h1_u0 -d ./h1 > /home/kinoko/development/github/cefore-emu-koh11235813/out/smoke/run_0001/logs/ex1_seed42/cefgetfile_seed42_downhostsnone_phasewarmup_cycle0_idx1_h1.log
+h0 command: cefgetfile ccnx:/test/sample -f /home/kinoko/development/github/cefore-emu-koh11235813/out/smoke/run_0001/logs/ex1_seed42/eval_recvfile_h0_idx0 -d ./h0 > /home/kinoko/development/github/cefore-emu-koh11235813/out/smoke/run_0001/logs/ex1_seed42/cefgetfile_seed42_downhosts1_phaseeval_cycle0_idx0_h0.log
+h0 command: cefgetfile ccnx:/test/sample -f /home/kinoko/development/github/cefore-emu-koh11235813/out/smoke/run_0001/logs/ex1_seed42/eval_recvfile_h0_idx0 -d ./h0 > /home/kinoko/development/github/cefore-emu-koh11235813/out/smoke/run_0001/logs/ex1_seed42/cefgetfile_seed42_downhosts1_phaseeval_cycle1_idx0_h0.log
+h0 command: cefgetfile ccnx:/test/sample -f /home/kinoko/development/github/cefore-emu-koh11235813/out/smoke/run_0001/logs/ex1_seed42/eval_recvfile_h0_idx0 -d ./h0 > /home/kinoko/development/github/cefore-emu-koh11235813/out/smoke/run_0001/logs/ex1_seed42/cefgetfile_seed42_downhosts1_phaseeval_cycle2_idx0_h0.log
+h0 command: cefgetfile ccnx:/test/sample -f /home/kinoko/development/github/cefore-emu-koh11235813/out/smoke/run_0001/logs/ex1_seed42/eval_recvfile_h0_idx0 -d ./h0 > /home/kinoko/development/github/cefore-emu-koh11235813/out/smoke/run_0001/logs/ex1_seed42/cefgetfile_seed42_downhosts1_phaseeval_cycle3_idx0_h0.log
+h0 command: cefgetfile ccnx:/test/sample -f /home/kinoko/development/github/cefore-emu-koh11235813/out/smoke/run_0001/logs/ex1_seed42/eval_recvfile_h0_idx0 -d ./h0 > /home/kinoko/development/github/cefore-emu-koh11235813/out/smoke/run_0001/logs/ex1_seed42/cefgetfile_seed42_downhosts1_phaseeval_cycle4_idx0_h0.log
+h0 command: cefgetfile ccnx:/test/sample -f /home/kinoko/development/github/cefore-emu-koh11235813/out/smoke/run_0001/logs/ex1_seed42/eval_recvfile_h0_idx0 -d ./h0 > /home/kinoko/development/github/cefore-emu-koh11235813/out/smoke/run_0001/logs/ex1_seed42/cefgetfile_seed42_downhosts1_phaseeval_cycle5_idx0_h0.log
+h0 command: cefgetfile ccnx:/test/sample -f /home/kinoko/development/github/cefore-emu-koh11235813/out/smoke/run_0001/logs/ex1_seed42/eval_recvfile_h0_idx0 -d ./h0 > /home/kinoko/development/github/cefore-emu-koh11235813/out/smoke/run_0001/logs/ex1_seed42/cefgetfile_seed42_downhosts1_phaseeval_cycle6_idx0_h0.log
+h0 command: cefgetfile ccnx:/test/sample -f /home/kinoko/development/github/cefore-emu-koh11235813/out/smoke/run_0001/logs/ex1_seed42/eval_recvfile_h0_idx0 -d ./h0 > /home/kinoko/development/github/cefore-emu-koh11235813/out/smoke/run_0001/logs/ex1_seed42/cefgetfile_seed42_downhosts1_phaseeval_cycle7_idx0_h0.log
+h0 command: cefgetfile ccnx:/test/sample -f /home/kinoko/development/github/cefore-emu-koh11235813/out/smoke/run_0001/logs/ex1_seed42/eval_recvfile_h0_idx0 -d ./h0 > /home/kinoko/development/github/cefore-emu-koh11235813/out/smoke/run_0001/logs/ex1_seed42/cefgetfile_seed42_downhosts1_phaseeval_cycle8_idx0_h0.log
+h0 command: cefgetfile ccnx:/test/sample -f /home/kinoko/development/github/cefore-emu-koh11235813/out/smoke/run_0001/logs/ex1_seed42/eval_recvfile_h0_idx0 -d ./h0 > /home/kinoko/development/github/cefore-emu-koh11235813/out/smoke/run_0001/logs/ex1_seed42/cefgetfile_seed42_downhosts1_phaseeval_cycle9_idx0_h0.log
+h0 command: cefgetfile ccnx:/test/sample -f /home/kinoko/development/github/cefore-emu-koh11235813/out/smoke/run_0001/logs/ex1_seed42/eval_recvfile_h0_idx0 -d ./h0 > /home/kinoko/development/github/cefore-emu-koh11235813/out/smoke/run_0001/logs/ex1_seed42/cefgetfile_seed42_downhostsnone_phaseeval_cycle10_idx0_h0.log
+h0 command: cefgetfile ccnx:/test/sample -f /home/kinoko/development/github/cefore-emu-koh11235813/out/smoke/run_0001/logs/ex1_seed42/eval_recvfile_h0_idx0 -d ./h0 > /home/kinoko/development/github/cefore-emu-koh11235813/out/smoke/run_0001/logs/ex1_seed42/cefgetfile_seed42_downhostsnone_phaseeval_cycle11_idx0_h0.log
+h0 command: cefgetfile ccnx:/test/sample -f /home/kinoko/development/github/cefore-emu-koh11235813/out/smoke/run_0001/logs/ex1_seed42/eval_recvfile_h0_idx0 -d ./h0 > /home/kinoko/development/github/cefore-emu-koh11235813/out/smoke/run_0001/logs/ex1_seed42/cefgetfile_seed42_downhostsnone_phaseeval_cycle12_idx0_h0.log
+h0 command: cefgetfile ccnx:/test/sample -f /home/kinoko/development/github/cefore-emu-koh11235813/out/smoke/run_0001/logs/ex1_seed42/eval_recvfile_h0_idx0 -d ./h0 > /home/kinoko/development/github/cefore-emu-koh11235813/out/smoke/run_0001/logs/ex1_seed42/cefgetfile_seed42_downhostsnone_phaseeval_cycle13_idx0_h0.log
+h0 command: cefgetfile ccnx:/test/sample -f /home/kinoko/development/github/cefore-emu-koh11235813/out/smoke/run_0001/logs/ex1_seed42/eval_recvfile_h0_idx0 -d ./h0 > /home/kinoko/development/github/cefore-emu-koh11235813/out/smoke/run_0001/logs/ex1_seed42/cefgetfile_seed42_downhostsnone_phaseeval_cycle14_idx0_h0.log
+h0 command: cefgetfile ccnx:/test/sample -f /home/kinoko/development/github/cefore-emu-koh11235813/out/smoke/run_0001/logs/ex1_seed42/eval_recvfile_h0_idx0 -d ./h0 > /home/kinoko/development/github/cefore-emu-koh11235813/out/smoke/run_0001/logs/ex1_seed42/cefgetfile_seed42_downhostsnone_phaseeval_cycle15_idx0_h0.log
+h0 command: cefgetfile ccnx:/test/sample -f /home/kinoko/development/github/cefore-emu-koh11235813/out/smoke/run_0001/logs/ex1_seed42/eval_recvfile_h0_idx0 -d ./h0 > /home/kinoko/development/github/cefore-emu-koh11235813/out/smoke/run_0001/logs/ex1_seed42/cefgetfile_seed42_downhostsnone_phaseeval_cycle16_idx0_h0.log
+h0 command: cefgetfile ccnx:/test/sample -f /home/kinoko/development/github/cefore-emu-koh11235813/out/smoke/run_0001/logs/ex1_seed42/eval_recvfile_h0_idx0 -d ./h0 > /home/kinoko/development/github/cefore-emu-koh11235813/out/smoke/run_0001/logs/ex1_seed42/cefgetfile_seed42_downhostsnone_phaseeval_cycle17_idx0_h0.log
+h0 command: cefgetfile ccnx:/test/sample -f /home/kinoko/development/github/cefore-emu-koh11235813/out/smoke/run_0001/logs/ex1_seed42/eval_recvfile_h0_idx0 -d ./h0 > /home/kinoko/development/github/cefore-emu-koh11235813/out/smoke/run_0001/logs/ex1_seed42/cefgetfile_seed42_downhostsnone_phaseeval_cycle18_idx0_h0.log
+h0 command: cefgetfile ccnx:/test/sample -f /home/kinoko/development/github/cefore-emu-koh11235813/out/smoke/run_0001/logs/ex1_seed42/eval_recvfile_h0_idx0 -d ./h0 > /home/kinoko/development/github/cefore-emu-koh11235813/out/smoke/run_0001/logs/ex1_seed42/cefgetfile_seed42_downhostsnone_phaseeval_cycle19_idx0_h0.log
