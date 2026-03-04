@@ -14,6 +14,7 @@ from mininet.link import TCLink
 from mininet.log import info
 
 from ..core.config.auto_gen import generate_operations
+from ..core.config.priority_resolver import PriorityConfigManager
 from ..core.flap_state import FlapState
 from ..core.graph import select_k_centers
 from ..core.paths import resolve_run_path
@@ -39,13 +40,8 @@ from ..runtime.cefore import (
     stop_csmgrd,
     wait_for_cefnetd,
 )
-from ..runtime.external_net import (
-    Tee,
-    parse_int_list,
-    periodic_host_flap,
-    run_host_command,
-)
-from ..runtime.links import pick_publish_link, set_node_links_state
+from ..runtime.external_net import parse_int_list
+from ..runtime.failure_manager import FlexibleFailureManager, periodic_host_flap
 from ..runtime.net_config import apply_fib, apply_fib_for_uris, apply_ip_addr
 from ..runtime.template import apply_cache_node_settings, cleanup_node_dirs, ensure_node_dirs
 from ..runtime.topo import MeshTopo
@@ -144,6 +140,12 @@ class DisasterScenario(BaseScenario):
         self.publisher_ids = set()
         self.topo = None
         self.seed_label = "none" if args.seed is None else str(args.seed)
+        self.stop_thread = None
+        self.priority_manager = None
+
+        priority_uris = getattr(args, "priority_uris", None)
+        if isinstance(priority_uris, dict) and priority_uris:
+            self.priority_manager = PriorityConfigManager(priority_uris)
 
         # Parse bridge configs
         self.bridge_configs = getattr(args, "bridges", None) or []
@@ -164,6 +166,8 @@ class DisasterScenario(BaseScenario):
         auto_config = getattr(args, "auto", None)
         if auto_config and not self.ops_put:
             self.ops_put, _ = generate_operations(auto_config, args.hosts, args.seed, self.run_dir)
+        if self.priority_manager:
+            self.ops_put = [self.priority_manager.apply_to_put(op) for op in self.ops_put]
 
         if not self.ops_put:
             publisher = args.hosts - 1
@@ -181,6 +185,10 @@ class DisasterScenario(BaseScenario):
         self.hot_uris = list(
             dict.fromkeys(getattr(args, "hot_uris", []) or [op["uri"] for op in self.ops_put])
         )
+        if self.priority_manager:
+            self.hot_uris = [
+                uri for uri in self.hot_uris if self.priority_manager.should_prefetch(uri)
+            ]
 
         for op in self.ops_put:
             self.uri_publishers[op["uri"]] = op["host"]
@@ -418,9 +426,13 @@ class DisasterScenario(BaseScenario):
 
         # Prepare get operations
         self.ops_get = args.gets or []
+        if self.priority_manager:
+            self.ops_get = [self.priority_manager.apply_to_get(op) for op in self.ops_get]
         auto_config = getattr(args, "auto", None)
         if auto_config and not self.ops_get:
             _, self.ops_get = generate_operations(auto_config, args.hosts, args.seed, self.run_dir)
+            if self.priority_manager:
+                self.ops_get = [self.priority_manager.apply_to_get(op) for op in self.ops_get]
         if not self.ops_get:
             base_uri = self.ops_put[0]["uri"]
             for idx in range(1, 6):
@@ -445,7 +457,18 @@ class DisasterScenario(BaseScenario):
 
         # Start host flapping
         use_cli = not getattr(args, "no_cli", False)
-        if args.down_interval > 0 and args.down_duration > 0:
+        scenario_config = getattr(args, "failure_scenarios", None)
+        if scenario_config:
+            failure_manager = FlexibleFailureManager(
+                scenario_config=scenario_config,
+                host_count=args.hosts,
+                rng=self.rng,
+                publisher_ids=self.publisher_ids,
+            )
+            self.stop_event, self.stop_thread = failure_manager.start(
+                net, self.flap_state, quiet=use_cli
+            )
+        elif args.down_interval > 0 and args.down_duration > 0:
             exclude_ids = parse_int_list(args.down_exclude)
             if self.publisher_ids:
                 exclude_ids = list(set(exclude_ids) | self.publisher_ids)

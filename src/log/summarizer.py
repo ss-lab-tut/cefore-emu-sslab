@@ -34,6 +34,8 @@ FILENAME_KEYS = (
     "file_seed",
     "down_hosts",
     "get_idx",
+    "phase",
+    "cycle",
 )
 
 # Command-specific ordered columns
@@ -129,6 +131,8 @@ def collect_records(
             row["file_seed"] = fmeta.seed
             row["down_hosts"] = fmeta.down_hosts
             row["get_idx"] = fmeta.idx
+            row["phase"] = fmeta.phase
+            row["cycle"] = fmeta.cycle
 
             row.update(record)
             grouped[fmeta.command].append(row)
