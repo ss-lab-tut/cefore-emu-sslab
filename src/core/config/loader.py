@@ -307,6 +307,156 @@ def validate_config(config: dict[str, Any]) -> list[str]:
                                 f"cache_config.nodes[{node_idx}].type must be one of: {', '.join(valid_types)}"
                             )
 
+    if "failure_scenarios" in config:
+        fs = config["failure_scenarios"]
+        if not isinstance(fs, dict):
+            errors.append("failure_scenarios must be a dict")
+        else:
+            strategy = fs.get("strategy", "simple")
+            valid_strategies = ("simple", "cyclic", "random", "manual")
+            if strategy not in valid_strategies:
+                errors.append(
+                    "failure_scenarios.strategy must be one of: simple, cyclic, random, manual"
+                )
+
+            if strategy == "simple":
+                simple = fs.get("simple")
+                if simple is None:
+                    errors.append(
+                        "failure_scenarios with strategy 'simple' requires 'simple' block"
+                    )
+                elif not isinstance(simple, dict):
+                    errors.append("failure_scenarios.simple must be a dict")
+                else:
+                    for field in ("interval", "duration", "count", "stagger"):
+                        if field in simple and simple[field] is not None and not isinstance(simple[field], int):
+                            errors.append(f"failure_scenarios.simple.{field} must be an integer")
+                    if "count" in simple and isinstance(simple.get("count"), int) and simple["count"] < 0:
+                        errors.append("failure_scenarios.simple.count must be an integer >= 0")
+                    if "stagger" in simple and isinstance(simple.get("stagger"), int) and simple["stagger"] < 0:
+                        errors.append("failure_scenarios.simple.stagger must be an integer >= 0")
+                    if "exclude" in simple and simple["exclude"] is not None:
+                        ex = simple["exclude"]
+                        if not isinstance(ex, list) or not all(isinstance(host, int) for host in ex):
+                            errors.append(
+                                "failure_scenarios.simple.exclude must be a list of integers"
+                            )
+            else:
+                cycles = fs.get("cycles")
+                if cycles is None:
+                    errors.append(
+                        f"failure_scenarios with strategy '{strategy}' requires 'cycles' list"
+                    )
+                elif not isinstance(cycles, list):
+                    errors.append("failure_scenarios.cycles must be a list")
+                elif len(cycles) == 0:
+                    errors.append(
+                        f"failure_scenarios with strategy '{strategy}' requires at least one cycle"
+                    )
+                else:
+                    for idx, cycle in enumerate(cycles):
+                        if not isinstance(cycle, dict):
+                            errors.append(f"failure_scenarios.cycles[{idx}] must be a dict")
+                            continue
+                        for field in ("interval", "duration", "count", "stagger"):
+                            if field in cycle and cycle[field] is not None and not isinstance(cycle[field], int):
+                                errors.append(
+                                    f"failure_scenarios.cycles[{idx}].{field} must be an integer"
+                                )
+                        if "count" in cycle and isinstance(cycle.get("count"), int) and cycle["count"] < 0:
+                            errors.append(
+                                f"failure_scenarios.cycles[{idx}].count must be an integer >= 0"
+                            )
+                        if "stagger" in cycle and isinstance(cycle.get("stagger"), int) and cycle["stagger"] < 0:
+                            errors.append(
+                                f"failure_scenarios.cycles[{idx}].stagger must be an integer >= 0"
+                            )
+                        if "exclude" in cycle and cycle["exclude"] is not None:
+                            ex = cycle["exclude"]
+                            if not isinstance(ex, list) or not all(isinstance(host, int) for host in ex):
+                                errors.append(
+                                    f"failure_scenarios.cycles[{idx}].exclude must be a list of integers"
+                                )
+                        if "target" in cycle and cycle["target"] is not None:
+                            tgt = cycle["target"]
+                            if not isinstance(tgt, list) or not all(isinstance(host, int) for host in tgt):
+                                errors.append(
+                                    f"failure_scenarios.cycles[{idx}].target must be a list of integers"
+                                )
+                        if "allow_publishers" in cycle and cycle["allow_publishers"] is not None:
+                            if not isinstance(cycle["allow_publishers"], bool):
+                                errors.append(
+                                    f"failure_scenarios.cycles[{idx}].allow_publishers must be a boolean"
+                                )
+
+    if "priority_uris" in config:
+        priority_uris = config["priority_uris"]
+        if not isinstance(priority_uris, dict):
+            errors.append("priority_uris must be a dict")
+        else:
+            valid_modes = ("putget", "pubsub")
+            valid_target = ("trg", "ref", "both")
+            for level_name, level_cfg in priority_uris.items():
+                if not isinstance(level_cfg, dict):
+                    errors.append(f"priority_uris.{level_name} must be a dict")
+                    continue
+
+                patterns = level_cfg.get("patterns")
+                if isinstance(patterns, str):
+                    if not patterns.strip():
+                        errors.append(f"priority_uris.{level_name}.patterns must not be empty")
+                elif isinstance(patterns, list):
+                    if not patterns:
+                        errors.append(f"priority_uris.{level_name}.patterns must not be empty")
+                    elif not all(isinstance(pattern, str) for pattern in patterns):
+                        errors.append(
+                            f"priority_uris.{level_name}.patterns must be a list of strings or a string"
+                        )
+                    elif any(not pattern.strip() for pattern in patterns):
+                        errors.append(
+                            f"priority_uris.{level_name}.patterns must not contain empty strings"
+                        )
+                else:
+                    errors.append(
+                        f"priority_uris.{level_name}.patterns must be a list of strings or a string"
+                    )
+
+                mode = level_cfg.get("mode")
+                if mode is not None and mode not in valid_modes:
+                    errors.append(f"priority_uris.{level_name}.mode must be 'putget' or 'pubsub'")
+
+                if "prefetch_to_cache" in level_cfg and not isinstance(level_cfg["prefetch_to_cache"], bool):
+                    errors.append(
+                        f"priority_uris.{level_name}.prefetch_to_cache must be a boolean"
+                    )
+
+                for field in ("expiry", "cache_time", "rate"):
+                    if field in level_cfg and level_cfg[field] is not None:
+                        if not isinstance(level_cfg[field], (int, float)):
+                            errors.append(
+                                f"priority_uris.{level_name}.{field} must be a number"
+                            )
+
+                for field in ("block_size", "port_num", "lifetime", "retry_limit", "pipeline"):
+                    if field in level_cfg and level_cfg[field] is not None:
+                        if not isinstance(level_cfg[field], int):
+                            errors.append(
+                                f"priority_uris.{level_name}.{field} must be an integer"
+                            )
+
+                for field in ("valid_algo", "ti_valid_algo", "rd_valid_algo", "ri_valid_algo", "td_valid_algo"):
+                    if field in level_cfg and level_cfg[field] is not None:
+                        if not isinstance(level_cfg[field], str):
+                            errors.append(
+                                f"priority_uris.{level_name}.{field} must be a string"
+                            )
+
+                if "target" in level_cfg and level_cfg["target"] is not None:
+                    if level_cfg["target"] not in valid_target:
+                        errors.append(
+                            f"priority_uris.{level_name}.target must be 'trg', 'ref', or 'both', got '{level_cfg['target']}'"
+                        )
+
     if "bridges" in config:
         if not isinstance(config["bridges"], list):
             errors.append("bridges must be a list")
@@ -345,7 +495,7 @@ def validate_config(config: dict[str, Any]) -> list[str]:
 
     # String keys
     for key in ("results_json", "script_log"):
-        if key in config and not isinstance(config[key], str):
+        if key in config and config[key] is not None and not isinstance(config[key], str):
             errors.append(f"{key} must be a string")
 
     if "hot_uris" in config:
@@ -416,7 +566,18 @@ def merge_cli_and_config(args: Any, config: dict[str, Any], parser=None) -> None
         "hot_uris",
         "cache_default_rct_ms",
         "publisher_host",
+        "failure_scenarios",
+        "priority_uris",
     )
+
+    _NULL_MEANS_DEFAULT = {
+        "seed",
+        "results_json",
+        "script_log",
+        "cache_default_rct_ms",
+        "publisher_host",
+        "topo_png",
+    }
 
     # Compute defaults for CLI-precedence check
     defaults = {}
@@ -431,6 +592,8 @@ def merge_cli_and_config(args: Any, config: dict[str, Any], parser=None) -> None
             cli_val = getattr(args, key, None)
             default_val = defaults.get(key)
             if cli_val != default_val:
+                continue
+            if config[key] is None and key in _NULL_MEANS_DEFAULT:
                 continue
         setattr(args, key, config[key])
 

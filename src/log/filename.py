@@ -1,7 +1,7 @@
 """Parse log filenames into structured metadata."""
 
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 
 
@@ -12,9 +12,11 @@ class FilenameMeta:
     command: str
     host_id: int
     content_id: int | None = None
-    seed: int | None = None
+    seed: str | int | None = None
     down_hosts: str | None = None
     idx: int | None = None
+    phase: str | None = None
+    cycle: int | None = None
 
 
 # Pattern A: host + content  e.g. cefputfile_h13_c10.log
@@ -27,7 +29,15 @@ _PAT_HOST_ONLY = re.compile(
     r"^(cef(?:put|get|pub|sub)file)_h(\d+)\.log$"
 )
 
-# Pattern C: disaster  e.g. cefgetfile_seed42_downhosts0,1_idx16_h4.log
+# Pattern C: disaster (new format with phase/cycle)
+# e.g. cefgetfile_seed42_downhostsnone_phaseeval_cycle0_idx0_h1.log
+_PAT_DISASTER_NEW = re.compile(
+    r"^(cef(?:put|get|pub|sub)file)_seed(\w+)_downhosts([\w,]+)_"
+    r"phase(\w+)_cycle(\d+)_idx(\d+)_h(\d+)\.log$"
+)
+
+# Pattern C2: disaster (legacy format)
+# e.g. cefgetfile_seed42_downhosts0,1_idx16_h4.log
 _PAT_DISASTER = re.compile(
     r"^(cef(?:put|get|pub|sub)file)_seed(\d+)_downhosts([\d,]+)_idx(\d+)_h(\d+)\.log$"
 )
@@ -51,6 +61,18 @@ def parse_filename(path: str | Path) -> FilenameMeta | None:
             command=m.group(1),
             host_id=int(m.group(2)),
             content_id=int(m.group(3)),
+        )
+
+    m = _PAT_DISASTER_NEW.match(name)
+    if m:
+        return FilenameMeta(
+            command=m.group(1),
+            host_id=int(m.group(7)),
+            seed=m.group(2),
+            down_hosts=m.group(3),
+            phase=m.group(4),
+            cycle=int(m.group(5)),
+            idx=int(m.group(6)),
         )
 
     m = _PAT_DISASTER.match(name)

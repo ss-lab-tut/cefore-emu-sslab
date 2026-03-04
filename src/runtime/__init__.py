@@ -27,6 +27,7 @@ from .links import (
     set_link_state,
     set_node_links_state,
 )
+from .failure_manager import FlexibleFailureManager, periodic_host_flap
 from .net_config import apply_fib, apply_fib_for_uris, apply_ip_addr
 from .template import (
     cleanup_cefnetd_socket,
@@ -81,6 +82,8 @@ __all__ = [
     "link_up",
     "pick_publish_link",
     "set_node_links_state",
+    "periodic_host_flap",
+    "FlexibleFailureManager",
     # net_config
     "apply_ip_addr",
     "apply_fib",
