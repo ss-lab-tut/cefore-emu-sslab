@@ -168,11 +168,19 @@ For topologies with >3 hosts, additional directories (h3, h4, ...) are generated
 - `ensure_node_dirs()`: Creates host directories from templates based on role heuristics
 - `select_template()`: Determines which template (h0/h1/h2) to use for each host index
 
-**Content Operations (exported from `src/topo`):**
+**Content Operations (exported from `src/runtime`):**
 - `run_cefputfile()`: Publish content via cefputfile with configurable options
 - `run_cefgetfile()`: Retrieve content via cefgetfile with configurable options
 - `run_cefpubfile()`: Publish content via cefpubfile (pub/sub model)
 - `run_cefsubfile()`: Subscribe to content via cefsubfile (pub/sub model)
+
+**Status/Info Commands:**
+- `run_cefinfo()`: Query content information via cefinfo (-c, -f, -r, -s, -p flags)
+- `run_csmgrstatus()`: Query cache manager status via csmgrstatus
+
+**FIB Route Management:**
+- `cefroute_del()`: Delete a FIB entry via `cefroute del`
+- `cefroute_enable()`: Enable a FIB entry via `cefroute enable`
 
 ### Mesh Topology Features
 
@@ -233,7 +241,31 @@ Runs experiment without interactive CLI and saves structured results to JSON.
 ```
 
 **Pub/Sub Model:**
-Put operations with `"mode": "pubsub"` use `cefpubfile` instead of `cefputfile`. Get operations with `"mode": "pubsub"` use `cefsubfile` instead of `cefgetfile`.
+Put operations with `"mode": "pubsub"` use `cefpubfile` instead of `cefputfile`. Get operations with `"mode": "pubsub"` use `cefsubfile` instead of `cefgetfile`. Pub/Sub success detection uses exit code + output file presence (no log text matching).
+
+**Event Scheduler (`src/runtime/scheduler.py`):**
+Timed events configured via `events` key in YAML/JSON. Events execute in a background thread.
+```yaml
+events:
+  - {at: 15, type: link_down, nodes: [1, 2]}
+  - {at: 25, type: link_up, nodes: [1, 2]}
+  - {at: 30, type: fib_del, host: 3, prefix: "ccnx:/test/sample", next_hop: "192.168.1.1"}
+```
+Supported types: `link_down`, `link_up`, `fib_add`, `fib_del`, `fib_enable`.
+
+**Monitoring (`src/runtime/monitoring.py`):**
+Periodic status collection configured via `monitoring` key in YAML/JSON.
+```yaml
+monitoring:
+  interval: 5
+  output_json: "monitor.json"
+  output_csv: "monitor.csv"
+  targets:
+    - {type: cefstatus, hosts: "all"}
+    - {type: csmgrstatus, hosts: "cache"}
+    - {type: cefinfo, hosts: [0], name_prefix: "ccnx:/test"}
+```
+Supported types: `cefstatus`, `csmgrstatus`, `cefinfo`. Hosts can be `"all"`, `"cache"`, or a list of IDs.
 
 **JSON/YAML Configuration:**
 

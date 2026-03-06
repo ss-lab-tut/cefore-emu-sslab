@@ -64,35 +64,7 @@ def update_node_name(node_dir, idx, base_uri="example.com/xxx/router-"):
         conf_file.writelines(new_lines)
 
 
-def read_port_num(node_dir, default=9695):
-    """Read PORT_NUM from cefnetd.conf."""
-    conf_path = os.path.join(node_dir, "cefnetd.conf")
-    if not os.path.isfile(conf_path):
-        return default
-    with open(conf_path, "r", encoding="utf-8") as conf_file:
-        for line in conf_file:
-            stripped = line.strip()
-            if not stripped or stripped.startswith("#"):
-                continue
-            if stripped.startswith("PORT_NUM="):
-                value = stripped.split("=", 1)[1].strip().split()[0]
-                try:
-                    return int(value)
-                except ValueError:
-                    break
-    return default
-
-
-def cleanup_cefnetd_socket(node_dir, idx):
-    """Remove stale cefnetd socket file."""
-    port = read_port_num(node_dir)
-    sock_path = f"/tmp/cef_{port}.{idx}"
-    if os.path.exists(sock_path):
-        try:
-            os.remove(sock_path)
-            info(f"removed stale socket {sock_path}\n")
-        except OSError:
-            info(f"failed to remove stale socket {sock_path}\n")
+from .cefore import cleanup_cefnetd_socket, read_port_num  # noqa: F401 (re-export)
 
 
 def ensure_node_dirs(host_num, rng, publishers=None):

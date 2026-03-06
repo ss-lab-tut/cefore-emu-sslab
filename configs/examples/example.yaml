@@ -54,7 +54,7 @@ puts:
     expiry: 3000                    # Content Objectライフタイム (秒) [オプション]
     cache_time: 3000                # キャッシュ削除期間 (秒) [オプション]
     valid_algo: "crc32c"            # バリデーションアルゴリズム: crc32c / rsa-sha256 [オプション]
-    # port_num: 9896                # ポート番号 [オプション]
+    # port_num: 9695                # ポート番号 [オプション]
     # mode: "pubsub"               # Pub/Subモデル時: cefpubfileを使用 [オプション]
     # pub_opts:                     # Pub/Sub用パブリッシャーオプション [オプション]
     #   lifetime: 5000
@@ -71,7 +71,7 @@ gets:
     # pipeline: 4                   # パイプライン数 [オプション]
     # sg: 1                         # Send Long Life Interest [オプション]
     # valid_algo: "crc32c"          # バリデーションアルゴリズム [オプション]
-    # port_num: 9896                # ポート番号 [オプション]
+    # port_num: 9695                # ポート番号 [オプション]
     # mode: "pubsub"               # Pub/Subモデル時: cefsubfileを使用 [オプション]
     # sub_opts:                     # Pub/Sub用サブスクライバーオプション [オプション]
     #   wait: 10
@@ -114,6 +114,51 @@ gets:
 #     pub_opts: {}
 #     sub_opts:
 #       wait: 5
+
+# -----------------------------------------------------------------------------
+# イベントスケジューラ (時限イベント)
+# -----------------------------------------------------------------------------
+# events:
+#   - at: 15                       # 開始から15秒後
+#     type: link_down              # リンクダウン
+#     nodes: [1, 2]                # ノード1-2間
+#   - at: 25
+#     type: link_up
+#     nodes: [1, 2]
+#   - at: 30
+#     type: fib_del                # FIBエントリ削除
+#     host: 3
+#     prefix: "ccnx:/test/sample"
+#     protocol: udp
+#     next_hop: "192.168.1.1"
+#   - at: 40
+#     type: fib_add
+#     host: 3
+#     prefix: "ccnx:/test/sample"
+#     protocol: udp
+#     next_hop: "192.168.1.1"
+#   - at: 50
+#     type: fib_enable
+#     host: 3
+#     prefix: "ccnx:/test/sample"
+#     protocol: udp
+#     next_hop: "192.168.1.1"
+
+# -----------------------------------------------------------------------------
+# モニタリング (定期収集)
+# -----------------------------------------------------------------------------
+# monitoring:
+#   interval: 5                    # 収集間隔 (秒)
+#   output_json: "monitor.json"    # JSON出力ファイル名
+#   output_csv: "monitor.csv"      # CSV出力ファイル名
+#   targets:
+#     - type: cefstatus            # cefstatus出力収集
+#       hosts: "all"               # "all", "cache", またはリスト [0, 1, 2]
+#     - type: csmgrstatus          # csmgrstatus出力収集
+#       hosts: "cache"             # キャッシュノードのみ
+#     - type: cefinfo              # cefinfo出力収集
+#       hosts: [0]
+#       name_prefix: "ccnx:/test"
 
 # -----------------------------------------------------------------------------
 # 実行制御

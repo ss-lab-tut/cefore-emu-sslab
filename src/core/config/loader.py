@@ -184,6 +184,33 @@ def validate_config(config: dict[str, Any]) -> list[str]:
                     errors.append(f"puts[{idx}].valid_algo must be a string")
                 if "port_num" in op and not isinstance(op["port_num"], int):
                     errors.append(f"puts[{idx}].port_num must be an integer")
+                if op.get("mode") == "pubsub" and "pub_opts" in op:
+                    pub_opts = op["pub_opts"]
+                    if not isinstance(pub_opts, dict):
+                        errors.append(f"puts[{idx}].pub_opts must be a dict")
+                    else:
+                        _PUB_OPTS_ALLOWED = {
+                            "lifetime", "retry_limit", "target",
+                            "ti_valid_algo", "rd_valid_algo",
+                            "rate", "block_size", "expiry", "cache_time", "port_num",
+                        }
+                        unknown = set(pub_opts.keys()) - _PUB_OPTS_ALLOWED
+                        if unknown:
+                            errors.append(
+                                f"puts[{idx}].pub_opts has unknown keys: {', '.join(sorted(unknown))}"
+                            )
+                        for field in ("lifetime", "retry_limit"):
+                            if field in pub_opts and not isinstance(pub_opts[field], (int, float)):
+                                errors.append(f"puts[{idx}].pub_opts.{field} must be a number")
+                        if "target" in pub_opts and pub_opts["target"] not in ("trg", "ref", "both"):
+                            errors.append(
+                                f"puts[{idx}].pub_opts.target must be 'trg', 'ref', or 'both'"
+                            )
+                        for field in ("ti_valid_algo", "rd_valid_algo"):
+                            if field in pub_opts and pub_opts[field] not in ("crc32c", "rsa-sha256"):
+                                errors.append(
+                                    f"puts[{idx}].pub_opts.{field} must be 'crc32c' or 'rsa-sha256'"
+                                )
 
     if "gets" in config:
         if not isinstance(config["gets"], list):
@@ -206,6 +233,28 @@ def validate_config(config: dict[str, Any]) -> list[str]:
                     errors.append(f"gets[{idx}].valid_algo must be a string")
                 if "port_num" in op and not isinstance(op["port_num"], int):
                     errors.append(f"gets[{idx}].port_num must be an integer")
+                if op.get("mode") == "pubsub" and "sub_opts" in op:
+                    sub_opts = op["sub_opts"]
+                    if not isinstance(sub_opts, dict):
+                        errors.append(f"gets[{idx}].sub_opts must be a dict")
+                    else:
+                        _SUB_OPTS_ALLOWED = {
+                            "pipeline", "ri_valid_algo", "td_valid_algo",
+                            "consumer_per_content", "port_num",
+                        }
+                        unknown = set(sub_opts.keys()) - _SUB_OPTS_ALLOWED
+                        if unknown:
+                            errors.append(
+                                f"gets[{idx}].sub_opts has unknown keys: {', '.join(sorted(unknown))}"
+                            )
+                        for field in ("pipeline", "consumer_per_content"):
+                            if field in sub_opts and not isinstance(sub_opts[field], int):
+                                errors.append(f"gets[{idx}].sub_opts.{field} must be an integer")
+                        for field in ("ri_valid_algo", "td_valid_algo"):
+                            if field in sub_opts and sub_opts[field] not in ("crc32c", "rsa-sha256"):
+                                errors.append(
+                                    f"gets[{idx}].sub_opts.{field} must be 'crc32c' or 'rsa-sha256'"
+                                )
 
     if "auto" in config:
         auto = config["auto"]
@@ -490,6 +539,61 @@ def validate_config(config: dict[str, Any]) -> list[str]:
                 if "nat_out" in bridge and not isinstance(bridge["nat_out"], str):
                     errors.append(f"bridges[{idx}].nat_out must be a string")
 
+    if "events" in config:
+        if not isinstance(config["events"], list):
+            errors.append("events must be a list")
+        else:
+            valid_event_types = ("link_down", "link_up", "fib_add", "fib_del", "fib_enable")
+            for idx, event in enumerate(config["events"]):
+                if not isinstance(event, dict):
+                    errors.append(f"events[{idx}] must be a dict")
+                    continue
+                if "at" not in event:
+                    errors.append(f"events[{idx}] missing required field 'at'")
+                elif not isinstance(event["at"], (int, float)) or event["at"] < 0:
+                    errors.append(f"events[{idx}].at must be a non-negative number")
+                if "type" not in event:
+                    errors.append(f"events[{idx}] missing required field 'type'")
+                elif event["type"] not in valid_event_types:
+                    errors.append(
+                        f"events[{idx}].type must be one of: {', '.join(valid_event_types)}"
+                    )
+                else:
+                    etype = event["type"]
+                    if etype in ("link_down", "link_up"):
+                        nodes = event.get("nodes")
+                        if not isinstance(nodes, list) or len(nodes) != 2:
+                            errors.append(f"events[{idx}].nodes must be a list of 2 elements")
+                    elif etype in ("fib_add", "fib_del", "fib_enable"):
+                        for field in ("host", "prefix", "next_hop"):
+                            if field not in event:
+                                errors.append(f"events[{idx}] missing required field '{field}'")
+
+    if "monitoring" in config:
+        mon = config["monitoring"]
+        if not isinstance(mon, dict):
+            errors.append("monitoring must be a dict")
+        else:
+            if "interval" in mon:
+                if not isinstance(mon["interval"], (int, float)) or mon["interval"] <= 0:
+                    errors.append("monitoring.interval must be a positive number")
+            valid_monitor_types = ("cefstatus", "csmgrstatus", "cefinfo")
+            targets = mon.get("targets", [])
+            if not isinstance(targets, list):
+                errors.append("monitoring.targets must be a list")
+            else:
+                for idx, target in enumerate(targets):
+                    if not isinstance(target, dict):
+                        errors.append(f"monitoring.targets[{idx}] must be a dict")
+                        continue
+                    if "type" not in target:
+                        errors.append(f"monitoring.targets[{idx}] missing required field 'type'")
+                    elif target["type"] not in valid_monitor_types:
+                        errors.append(
+                            f"monitoring.targets[{idx}].type must be one of: "
+                            f"{', '.join(valid_monitor_types)}"
+                        )
+
     # Boolean keys
     for key in ("no_cli", "no_script_log", "warmup_only_cache_nodes"):
         if key in config and not isinstance(config[key], bool):
@@ -577,6 +681,8 @@ def merge_cli_and_config(args: Any, config: dict[str, Any], parser=None) -> None
         "publisher_host",
         "failure_scenarios",
         "priority_uris",
+        "events",
+        "monitoring",
     )
 
     _NULL_MEANS_DEFAULT = {

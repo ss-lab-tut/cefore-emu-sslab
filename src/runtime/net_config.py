@@ -50,6 +50,44 @@ def apply_fib(net, mesh_links, k_paths):
         info(net.hosts[route.source].cmd(command))
 
 
+def cefroute_del(net, host_idx, prefix, protocol, next_hop, node_dir=None):
+    """Delete a FIB entry via cefroute del.
+
+    Args:
+        net: Mininet network instance.
+        host_idx: Host index.
+        prefix: Content name prefix (e.g. "ccnx:/test/sample").
+        protocol: Protocol (e.g. "udp").
+        next_hop: Next hop IP address.
+        node_dir: Node directory (defaults to ./h{host_idx}).
+    """
+    node_name = f"h{host_idx}"
+    if node_dir is None:
+        node_dir = f"./{node_name}"
+    command = f"cefroute del {prefix} {protocol} {next_hop} -d {node_dir}"
+    print(node_name, "command:", command)
+    info(net.hosts[host_idx].cmd(command))
+
+
+def cefroute_enable(net, host_idx, prefix, protocol, next_hop, node_dir=None):
+    """Enable a FIB entry via cefroute enable.
+
+    Args:
+        net: Mininet network instance.
+        host_idx: Host index.
+        prefix: Content name prefix (e.g. "ccnx:/test/sample").
+        protocol: Protocol (e.g. "udp").
+        next_hop: Next hop IP address.
+        node_dir: Node directory (defaults to ./h{host_idx}).
+    """
+    node_name = f"h{host_idx}"
+    if node_dir is None:
+        node_dir = f"./{node_name}"
+    command = f"cefroute enable {prefix} {protocol} {next_hop} -d {node_dir}"
+    print(node_name, "command:", command)
+    info(net.hosts[host_idx].cmd(command))
+
+
 def apply_fib_for_uris(net, mesh_links, k_paths, uri_publishers):
     """Apply FIB entries for multiple URIs.
 

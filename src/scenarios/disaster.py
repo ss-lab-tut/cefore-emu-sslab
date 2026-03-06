@@ -28,6 +28,8 @@ from ..runtime.bridge import (
     parse_ext_args,
     setup_bridges,
 )
+from ..runtime.monitoring import Monitor
+from ..runtime.scheduler import EventScheduler
 from ..runtime.cefore import (
     run_cefgetfile,
     run_cefpubfile,
@@ -71,6 +73,21 @@ def _detect_get_success(log_path: Path, out_path: Path, exit_code: int) -> dict:
     return {
         "success": success,
         "has_completed_log": has_completed,
+        "has_output_file": has_out,
+    }
+
+
+def _detect_sub_success(exit_code: int, out_path: Path, log_path: Path) -> dict:
+    """Evaluate cefsubfile success using exit code and output file.
+
+    cefsubfile logs do not contain "Completed to get all the chunks.",
+    so success is determined by exit code and output file presence only.
+    """
+    has_out = out_path.exists() and out_path.stat().st_size > 0
+    success = exit_code == 0 and has_out
+    return {
+        "success": success,
+        "has_completed_log": False,
         "has_output_file": has_out,
     }
 
@@ -142,6 +159,8 @@ class DisasterScenario(BaseScenario):
         self.seed_label = "none" if args.seed is None else str(args.seed)
         self.stop_thread = None
         self.priority_manager = None
+        self.event_scheduler = None
+        self.monitor = None
 
         priority_uris = getattr(args, "priority_uris", None)
         if isinstance(priority_uris, dict) and priority_uris:
@@ -372,7 +391,7 @@ class DisasterScenario(BaseScenario):
 
             if op.get("mode") == "pubsub":
                 sub_opts = op.get("sub_opts", {}) or {}
-                run_cefsubfile(
+                exit_code = run_cefsubfile(
                     net, consumer, uri,
                     output_path=str(outfile_path),
                     pipeline=sub_opts.get("pipeline"),
@@ -381,7 +400,6 @@ class DisasterScenario(BaseScenario):
                     port_num=sub_opts.get("port_num"),
                     log_name=str(log_path),
                 )
-                exit_code = 0
             else:
                 exit_code = run_cefgetfile(
                     net, consumer, uri,
@@ -395,7 +413,10 @@ class DisasterScenario(BaseScenario):
                     log_name=str(log_path),
                 )
 
-            verdict = _detect_get_success(log_path, outfile_path, exit_code)
+            if op.get("mode") == "pubsub":
+                verdict = _detect_sub_success(exit_code, outfile_path, log_path)
+            else:
+                verdict = _detect_get_success(log_path, outfile_path, exit_code)
             publisher_host = op.get("publisher_host")
             if publisher_host is None:
                 publisher_host = getattr(self.args, "publisher_host", None)
@@ -487,6 +508,29 @@ class DisasterScenario(BaseScenario):
                 quiet=use_cli,
             )
 
+        # Start event scheduler
+        events_config = getattr(args, "events", None) or []
+        if events_config:
+            self.event_scheduler = EventScheduler(
+                net, events_config, mesh_links=self.topo.mesh_links
+            )
+            self.event_scheduler.start()
+
+        # Start monitoring
+        monitoring_config = getattr(args, "monitoring", None) or {}
+        if monitoring_config and monitoring_config.get("targets"):
+            self.monitor = Monitor(
+                net,
+                targets=monitoring_config["targets"],
+                interval=monitoring_config.get("interval", 5),
+                output_dir=self.run_dir,
+                host_count=args.hosts,
+                cache_nodes=self.cache_node_set,
+                output_json=monitoring_config.get("output_json"),
+                output_csv=monitoring_config.get("output_csv"),
+            )
+            self.monitor.start()
+
         # Evaluation phase
         if use_cli:
             self._run_get_ops(net, self.ops_get, "eval", args.get_interval, cycle_idx=0)
@@ -525,6 +569,10 @@ class DisasterScenario(BaseScenario):
         except KeyboardInterrupt:
             info("\nInterrupted by user.\n")
         finally:
+            if self.monitor is not None:
+                self.monitor.stop()
+            if self.event_scheduler is not None:
+                self.event_scheduler.stop()
             if self.stop_event is not None:
                 self.stop_event.set()
 

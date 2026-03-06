@@ -15,6 +15,12 @@ dependencies = [
 [project.scripts]
 ceforeemu = "src.cli.main:main"
 
+[dependency-groups]
+dev = [
+    "mypy>=1.0",
+    "ruff>=0.1",
+]
+
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["src*"]

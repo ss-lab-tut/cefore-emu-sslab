@@ -10,9 +10,11 @@ from .bridge import (
 from .bandwidth import parse_bw_args, set_link_bandwidth
 from .cefore import (
     run_cefgetfile,
+    run_cefinfo,
     run_cefputfile,
     run_cefstatus,
     run_cefstatus_all,
+    run_csmgrstatus,
     start_cefnetd,
     start_csmgrd,
     stop_cefnetd,
@@ -28,7 +30,7 @@ from .links import (
     set_node_links_state,
 )
 from .failure_manager import FlexibleFailureManager, periodic_host_flap
-from .net_config import apply_fib, apply_fib_for_uris, apply_ip_addr
+from .net_config import apply_fib, apply_fib_for_uris, apply_ip_addr, cefroute_del, cefroute_enable
 from .template import (
     cleanup_cefnetd_socket,
     cleanup_node_dirs,
@@ -60,6 +62,8 @@ __all__ = [
     "run_cefgetfile",
     "run_cefstatus",
     "run_cefstatus_all",
+    "run_cefinfo",
+    "run_csmgrstatus",
     # template
     "update_local_sock_id",
     "update_node_name",
@@ -88,6 +92,8 @@ __all__ = [
     "apply_ip_addr",
     "apply_fib",
     "apply_fib_for_uris",
+    "cefroute_del",
+    "cefroute_enable",
     # topo
     "MeshTopo",
     "LineTopo",
