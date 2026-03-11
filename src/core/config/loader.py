@@ -240,7 +240,7 @@ def validate_config(config: dict[str, Any]) -> list[str]:
                     else:
                         _SUB_OPTS_ALLOWED = {
                             "pipeline", "ri_valid_algo", "td_valid_algo",
-                            "consumer_per_content", "port_num",
+                            "consumer_per_content", "port_num", "wait",
                         }
                         unknown = set(sub_opts.keys()) - _SUB_OPTS_ALLOWED
                         if unknown:
@@ -255,6 +255,8 @@ def validate_config(config: dict[str, Any]) -> list[str]:
                                 errors.append(
                                     f"gets[{idx}].sub_opts.{field} must be 'crc32c' or 'rsa-sha256'"
                                 )
+                        if "wait" in sub_opts and not isinstance(sub_opts["wait"], (int, float)):
+                            errors.append(f"gets[{idx}].sub_opts.wait must be a number")
 
     if "auto" in config:
         auto = config["auto"]
@@ -534,6 +536,11 @@ def validate_config(config: dict[str, Any]) -> list[str]:
                     errors.append(f"bridges[{idx}] missing required field 'root_ip'")
                 if "local_routes" not in bridge:
                     errors.append(f"bridges[{idx}] missing required field 'local_routes'")
+                elif not isinstance(bridge["local_routes"], str):
+                    errors.append(
+                        f"bridges[{idx}].local_routes must be a string"
+                        " (e.g. '192.168.0.0/16')"
+                    )
                 if "nat" in bridge and not isinstance(bridge["nat"], bool):
                     errors.append(f"bridges[{idx}].nat must be a boolean")
                 if "nat_out" in bridge and not isinstance(bridge["nat_out"], str):

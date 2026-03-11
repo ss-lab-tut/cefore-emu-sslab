@@ -34,21 +34,54 @@ CeforeEmu is a network emulator based on Mininet for testing Cefore (Content-Cen
 ```
 cefore-emu/
 ├── src/                           # Main source code
-│   ├── config/                    # Configuration utilities
+│   ├── __init__.py
+│   ├── __main__.py                # python -m src entry point
+│   ├── cli/                       # CLI interface
 │   │   ├── __init__.py
-│   │   ├── loader.py              # JSON/YAML config loader
-│   │   └── auto_generator.py      # Auto put/get generation
+│   │   ├── main.py                # Subcommand dispatcher
+│   │   └── args.py                # Argument parser definitions
+│   ├── core/                      # Core logic and algorithms
+│   │   ├── __init__.py
+│   │   ├── config/                # Configuration utilities
+│   │   │   ├── __init__.py
+│   │   │   ├── loader.py          # JSON/YAML config loader
+│   │   │   ├── auto_gen.py        # Auto put/get generation
+│   │   │   └── priority_resolver.py  # Config priority resolution
+│   │   ├── fib.py                 # FIB route computation
+│   │   ├── flap_state.py          # Host flap state tracking
+│   │   ├── graph.py               # Graph algorithms (Dijkstra, k-center)
+│   │   ├── paths.py               # Output path resolution
+│   │   ├── roles.py               # Node role assignment
+│   │   └── tee.py                 # Tee stdout/stderr to file
 │   ├── log/                       # Log parsing and CSV summarization
 │   │   ├── __init__.py            # Exports
 │   │   ├── filename.py            # Filename pattern → metadata extraction
 │   │   ├── parser.py              # Log text → dict parser
+│   │   ├── plotter.py             # Log data plotting
 │   │   ├── summarizer.py          # Directory walk + CSV output
 │   │   └── cli.py                 # argparse CLI
-│   └── topo/                      # Topology implementations
-│       ├── simple_three_nodes_two_switch.py   # 3-node linear topology
-│       ├── five_node_two_switch.py            # Scalable linear topology
-│       ├── mesh_nodes_switches.py             # Random mesh topology
-│       └── mesh_disaster_topology.py          # Mesh with disaster simulation
+│   ├── runtime/                   # Runtime operations
+│   │   ├── __init__.py
+│   │   ├── bandwidth.py           # Link bandwidth control
+│   │   ├── base.py                # Base runtime utilities
+│   │   ├── bridge.py              # Linux bridge & root NS bridging
+│   │   ├── cache_manager.py       # Cache manager operations
+│   │   ├── cefore.py              # Cefore daemon start/stop/wait
+│   │   ├── external_net.py        # External network mesh scenario
+│   │   ├── failure_manager.py     # Host failure simulation
+│   │   ├── links.py               # Link state control (up/down)
+│   │   ├── monitoring.py          # Periodic status collection
+│   │   ├── net_config.py          # IP address & FIB application
+│   │   ├── scheduler.py           # Timed event scheduler
+│   │   ├── template.py            # Host directory template management
+│   │   ├── topo.py                # Mininet Topo subclass (MeshTopo)
+│   │   └── viz.py                 # Topology visualization & PNG output
+│   └── scenarios/                 # Scenario implementations
+│       ├── __init__.py
+│       ├── base.py                # Shared scenario utilities
+│       ├── linear.py              # Linear topology scenario
+│       ├── mesh.py                # Mesh topology scenario
+│       └── disaster.py            # Mesh with disaster simulation
 │
 ├── configs/                       # Configuration
 │   ├── templates/                 # Host templates
@@ -60,7 +93,7 @@ cefore-emu/
 │       └── example.json               # Same config in JSON format
 │
 ├── log-summarize.py               # Log CSV summarization entry point
-├── *.py (root)                    # Entry point wrappers for src/topo/
+├── *.py (root)                    # Entry point wrappers
 ├── buffer.sh                      # UDP buffer configuration
 ├── pyproject.toml                 # Package configuration
 └── CLAUDE.md                      # This file
@@ -435,4 +468,4 @@ uv run python3 ...   # Run with managed environment
 
 ## MCP Tool Settings
 
-When using Codex MCP, specify model `gpt-5.2-codex` (reasoning medium, summaries auto).
+When using Codex MCP, specify model `gpt-5.4` (reasoning xhigh, summaries auto).

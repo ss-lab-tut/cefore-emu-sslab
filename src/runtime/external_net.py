@@ -278,7 +278,8 @@ def run_connect(args, run_dir: Path = None, log_context=None):
         start_cefnetd(net, idx)
 
     for idx in range(args.hosts):
-        wait_for_cefnetd(net, idx)
+        if not wait_for_cefnetd(net, idx):
+            info(f"WARNING: h{idx} cefnetd not ready\n")
 
     ops_get = args.gets or []
 

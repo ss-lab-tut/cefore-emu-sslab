@@ -202,7 +202,6 @@ warmup_gets: []                    # 明示的ウォームアップget操作リ�
 # bridges:
 #   - switch: "s0"                       # ブリッジ対象スイッチ
 #     root_ip: "192.168.200.1/24"        # ルートNS側IPアドレス
-#     local_routes:                      # ローカルルート (リスト)
-#       - "192.168.0.0/16"
+#     local_routes: "192.168.0.0/16"     # ローカルルート (文字列, route add -net に渡す)
 #     nat: true                          # NAT有効化
 #     nat_out: "eth0"                    # NAT外部インターフェース

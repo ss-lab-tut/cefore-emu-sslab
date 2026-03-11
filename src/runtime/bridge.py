@@ -5,6 +5,7 @@ Provides two bridging mechanisms:
 - Root namespace bridge: BridgeManager for cross-VM communication via Mininet switches
 """
 
+import shlex
 import subprocess
 from typing import Any
 
@@ -53,10 +54,11 @@ def attach_external_via_bridge(net, host_name, phy_intf, ip=None, mtu=None):
 
     info(f"[bridge] creating bridge {bridge_name} for {host_name} via {phy_intf}\n")
 
+    q_phy = shlex.quote(phy_intf)
     _run_root_cmd(f"ip link add {bridge_name} type bridge")
     _run_root_cmd(f"ip link set {bridge_name} up")
-    _run_root_cmd(f"ip link set {phy_intf} up")
-    _run_root_cmd(f"ip link set {phy_intf} master {bridge_name}")
+    _run_root_cmd(f"ip link set {q_phy} up")
+    _run_root_cmd(f"ip link set {q_phy} master {bridge_name}")
     _run_root_cmd(f"ip link add {veth_root} type veth peer name {veth_host}")
     _run_root_cmd(f"ip link set {veth_root} master {bridge_name}")
     _run_root_cmd(f"ip link set {veth_root} up")
@@ -72,7 +74,8 @@ def attach_external_via_bridge(net, host_name, phy_intf, ip=None, mtu=None):
         host.cmd(f"ip link set {veth_host} mtu {mtu}")
 
     if ip:
-        host.cmd(f"ip addr add {ip} dev {veth_host}")
+        q_ip = shlex.quote(ip)
+        host.cmd(f"ip addr add {q_ip} dev {veth_host}")
         info(f"[bridge] {host_name}: static IP {ip} on {veth_host}\n")
     else:
         info(f"[bridge] {host_name}: starting dhclient on {veth_host}\n")
@@ -96,7 +99,7 @@ def cleanup_external_bridges():
         phy_intf = info_dict["phy_intf"]
 
         info(f"[bridge] cleaning up {bridge_name}\n")
-        _run_root_cmd(f"ip link set {phy_intf} nomaster")
+        _run_root_cmd(f"ip link set {shlex.quote(phy_intf)} nomaster")
         _run_root_cmd(f"ip link del {veth_root} 2>/dev/null")
         _run_root_cmd(f"ip link set {bridge_name} down")
         _run_root_cmd(f"ip link del {bridge_name}")
@@ -176,10 +179,11 @@ class BridgeManager:
 
         root.setIP(root_ip, intf=self.root_intf)
 
-        cmd = f"route add -net {local_routes} dev {self.root_intf}"
+        q_routes = shlex.quote(local_routes)
+        cmd = f"route add -net {q_routes} dev {self.root_intf}"
         info(f"*** Adding route in root ns: {cmd}\n")
         root.cmd(cmd)
-        self.routes_to_cleanup.append((root, f"route del -net {local_routes}"))
+        self.routes_to_cleanup.append((root, f"route del -net {q_routes}"))
 
     def add_host_route(
         self,
@@ -203,13 +207,16 @@ class BridgeManager:
             info(f"*** Warning: host {host_name} not found\n")
             return
 
-        dev_clause = f" dev {dev}" if dev else ""
+        q_dev = shlex.quote(dev) if dev else ""
+        dev_clause = f" dev {q_dev}" if dev else ""
+        q_dest = shlex.quote(dest_network)
+        q_gw = shlex.quote(gateway)
         if dest_network in ("default", "0.0.0.0/0"):
-            cmd = f"ip route replace default via {gateway}{dev_clause}"
+            cmd = f"ip route replace default via {q_gw}{dev_clause}"
             del_cmd = "ip route del default"
         else:
-            cmd = f"route add -net {dest_network} gw {gateway}{dev_clause}"
-            del_cmd = f"route del -net {dest_network}"
+            cmd = f"route add -net {q_dest} gw {q_gw}{dev_clause}"
+            del_cmd = f"route del -net {q_dest}"
         info(f"*** Adding route in {host_name}: {cmd}\n")
         host.cmd(cmd)
         self.routes_to_cleanup.append((host, del_cmd))
@@ -217,10 +224,12 @@ class BridgeManager:
     def add_root_route(self, dest_network: str, gateway: str) -> None:
         """Add route from root namespace to external network."""
         root = self.get_or_create_root()
-        cmd = f"route add -net {dest_network} gw {gateway}"
+        q_dest = shlex.quote(dest_network)
+        q_gw = shlex.quote(gateway)
+        cmd = f"route add -net {q_dest} gw {q_gw}"
         info(f"*** Adding route in root ns: {cmd}\n")
         root.cmd(cmd)
-        self.routes_to_cleanup.append((root, f"route del -net {dest_network}"))
+        self.routes_to_cleanup.append((root, f"route del -net {q_dest}"))
 
     def enable_ip_forwarding(self) -> None:
         """Enable IP forwarding on root namespace node."""
@@ -247,10 +256,12 @@ class BridgeManager:
             return
 
         root_intf_name = str(self.root_intf)
+        q_routes = shlex.quote(local_routes)
+        q_out = shlex.quote(out_intf)
         cmds = [
-            f"iptables -t nat -A POSTROUTING -s {local_routes} -o {out_intf} -j MASQUERADE",
-            f"iptables -A FORWARD -i {root_intf_name} -o {out_intf} -s {local_routes} -j ACCEPT",
-            f"iptables -A FORWARD -i {out_intf} -o {root_intf_name} -d {local_routes} -m state --state RELATED,ESTABLISHED -j ACCEPT",
+            f"iptables -t nat -A POSTROUTING -s {q_routes} -o {q_out} -j MASQUERADE",
+            f"iptables -A FORWARD -i {root_intf_name} -o {q_out} -s {q_routes} -j ACCEPT",
+            f"iptables -A FORWARD -i {q_out} -o {root_intf_name} -d {q_routes} -m state --state RELATED,ESTABLISHED -j ACCEPT",
         ]
         for cmd in cmds:
             info(f"*** NAT: {cmd}\n")
@@ -262,9 +273,10 @@ class BridgeManager:
     def enable_normal_flow(self, net: Mininet, switch_name: str) -> None:
         """Add NORMAL action flow to OVS switch for L2 learning bridge behavior."""
         root = self.get_or_create_root()
-        root.cmd(f"ovs-ofctl add-flow {switch_name} priority=0,actions=NORMAL")
+        q_sw = shlex.quote(switch_name)
+        root.cmd(f"ovs-ofctl add-flow {q_sw} priority=0,actions=NORMAL")
         self.routes_to_cleanup.append(
-            (root, f"ovs-ofctl del-flows {switch_name} --strict priority=0")
+            (root, f"ovs-ofctl del-flows {q_sw} --strict priority=0")
         )
 
     def enable_proxy_arp(self) -> None:

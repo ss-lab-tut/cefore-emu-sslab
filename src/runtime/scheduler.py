@@ -19,8 +19,8 @@ def _cefroute_add(net, host_idx, prefix, protocol, next_hop):
 
 
 _EVENT_HANDLERS = {
-    "link_down": lambda net, ev, ml: link_down(net, ev["nodes"][0], ev["nodes"][1], ml),
-    "link_up": lambda net, ev, ml: link_up(net, ev["nodes"][0], ev["nodes"][1], ml),
+    "link_down": lambda net, ev, ml: link_down(net, ml, ev["nodes"][0], ev["nodes"][1]),
+    "link_up": lambda net, ev, ml: link_up(net, ml, ev["nodes"][0], ev["nodes"][1]),
     "fib_add": lambda net, ev, _: _cefroute_add(
         net, ev["host"], ev["prefix"], ev.get("protocol", "udp"), ev["next_hop"]
     ),

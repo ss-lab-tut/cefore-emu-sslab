@@ -98,7 +98,8 @@ class MeshScenario(BaseScenario):
         for idx in range(self.host_num):
             start_cefnetd(net, idx)
         for idx in range(self.host_num):
-            wait_for_cefnetd(net, idx)
+            if not wait_for_cefnetd(net, idx):
+                info(f"WARNING: h{idx} cefnetd not ready\n")
 
         apply_fib(net, self.topo.mesh_links, self.k_paths)
         run_cefstatus_all(net, self.host_num)

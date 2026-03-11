@@ -14,6 +14,7 @@ from ..runtime.cefore import (
     start_csmgrd,
     stop_cefnetd,
     stop_csmgrd,
+    wait_for_cefnetd,
 )
 from ..runtime.template import cleanup_node_dirs, ensure_node_dirs
 from ..runtime.topo import LineTopo
@@ -46,6 +47,9 @@ class LinearScenario(BaseScenario):
                 start_csmgrd(net, idx)
         for idx in range(self.host_num):
             start_cefnetd(net, idx)
+        for idx in range(self.host_num):
+            if not wait_for_cefnetd(net, idx):
+                info(f"WARNING: h{idx} cefnetd not ready\n")
 
         self._set_fib(net)
         time.sleep(1)

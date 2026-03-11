@@ -145,7 +145,7 @@ def run_cefputfile(
         log_name: Name of the log file.
     """
     node_name = f"h{host_idx}"
-    cmd_parts = [f"cefputfile {uri} -f {shlex.quote(file_path)}"]
+    cmd_parts = [f"cefputfile {shlex.quote(uri)} -f {shlex.quote(file_path)}"]
 
     if rate is not None:
         cmd_parts.append(f"-r {rate}")
@@ -156,7 +156,7 @@ def run_cefputfile(
     if cache_time is not None:
         cmd_parts.append(f"-t {cache_time}")
     if valid_algo is not None:
-        cmd_parts.append(f"-v {valid_algo}")
+        cmd_parts.append(f"-v {shlex.quote(valid_algo)}")
     if port_num is not None:
         cmd_parts.append(f"-p {port_num}")
 
@@ -164,7 +164,7 @@ def run_cefputfile(
 
     if not log_name:
         log_name = f"cefputfile-h{host_idx}.log"
-    cmd_parts.append(f"> {log_name}")
+    cmd_parts.append(f"> {shlex.quote(log_name)}")
 
     command = " ".join(cmd_parts)
     print(node_name, "command:", command)
@@ -203,7 +203,7 @@ def run_cefgetfile(
         exit_code: Exit code of the command.
     """
     node_name = f"h{host_idx}"
-    cmd_parts = [f"cefgetfile {uri} -f {shlex.quote(output_path)}"]
+    cmd_parts = [f"cefgetfile {shlex.quote(uri)} -f {shlex.quote(output_path)}"]
 
     if owner_only:
         cmd_parts.append("-o")
@@ -212,7 +212,7 @@ def run_cefgetfile(
     if pipeline is not None:
         cmd_parts.append(f"-s {pipeline}")
     if valid_algo is not None:
-        cmd_parts.append(f"-v {valid_algo}")
+        cmd_parts.append(f"-v {shlex.quote(valid_algo)}")
     if port_num is not None:
         cmd_parts.append(f"-p {port_num}")
     if sg is not None:
@@ -222,7 +222,7 @@ def run_cefgetfile(
 
     if not log_name:
         log_name = f"cefgetfile-h{host_idx}.log"
-    cmd_parts.append(f"> {log_name}")
+    cmd_parts.append(f"> {shlex.quote(log_name)}")
 
     command = " ".join(cmd_parts)
     print(node_name, "command:", command)
@@ -285,16 +285,16 @@ def run_cefsubfile(
         exit_code: Exit code of the command.
     """
     node_name = f"h{host_idx}"
-    cmd_parts = [f"cefsubfile {uri}"]
+    cmd_parts = [f"cefsubfile {shlex.quote(uri)}"]
 
     if output_path is not None:
         cmd_parts.append(f"-f {shlex.quote(output_path)}")
     if pipeline is not None:
         cmd_parts.append(f"-s {pipeline}")
     if ri_valid_algo is not None:
-        cmd_parts.append(f"-v_RI {ri_valid_algo}")
+        cmd_parts.append(f"-v_RI {shlex.quote(ri_valid_algo)}")
     if td_valid_algo is not None:
-        cmd_parts.append(f"-v_TD {td_valid_algo}")
+        cmd_parts.append(f"-v_TD {shlex.quote(td_valid_algo)}")
     if port_num is not None:
         cmd_parts.append(f"-p {port_num}")
 
@@ -302,7 +302,7 @@ def run_cefsubfile(
 
     if not log_name:
         log_name = f"cefsubfile-h{host_idx}.log"
-    cmd_parts.append(f"> {log_name}")
+    cmd_parts.append(f"> {shlex.quote(log_name)}")
 
     command = " ".join(cmd_parts)
     print(node_name, "command:", command)
@@ -349,7 +349,7 @@ def run_cefpubfile(
         log_name: Name of the log file.
     """
     node_name = f"h{host_idx}"
-    cmd_parts = [f"cefpubfile {uri} -f {shlex.quote(file_path)}"]
+    cmd_parts = [f"cefpubfile {shlex.quote(uri)} -f {shlex.quote(file_path)}"]
 
     if rate is not None:
         cmd_parts.append(f"-r {rate}")
@@ -364,11 +364,11 @@ def run_cefpubfile(
     if retry_limit is not None:
         cmd_parts.append(f"-m {retry_limit}")
     if target is not None:
-        cmd_parts.append(f"-z {target}")
+        cmd_parts.append(f"-z {shlex.quote(target)}")
     if ti_valid_algo is not None:
-        cmd_parts.append(f"-v_TI {ti_valid_algo}")
+        cmd_parts.append(f"-v_TI {shlex.quote(ti_valid_algo)}")
     if rd_valid_algo is not None:
-        cmd_parts.append(f"-v_RD {rd_valid_algo}")
+        cmd_parts.append(f"-v_RD {shlex.quote(rd_valid_algo)}")
     if port_num is not None:
         cmd_parts.append(f"-p {port_num}")
 
@@ -376,7 +376,7 @@ def run_cefpubfile(
 
     if not log_name:
         log_name = f"cefpubfile-h{host_idx}.log"
-    cmd_parts.append(f"> {log_name}")
+    cmd_parts.append(f"> {shlex.quote(log_name)}")
 
     command = " ".join(cmd_parts)
     print(node_name, "command:", command)
@@ -411,7 +411,7 @@ def run_cefinfo(
         Command output string.
     """
     node_name = f"h{host_idx}"
-    cmd_parts = [f"cefinfo {name_prefix}"]
+    cmd_parts = [f"cefinfo {shlex.quote(name_prefix)}"]
 
     if cache_info:
         cmd_parts.append("-c")
@@ -427,7 +427,7 @@ def run_cefinfo(
     cmd_parts.append(f"-d ./{node_name}")
 
     if log_name:
-        cmd_parts.append(f"> {log_name}")
+        cmd_parts.append(f"> {shlex.quote(log_name)}")
 
     command = " ".join(cmd_parts)
     print(node_name, "command:", command)
@@ -462,16 +462,16 @@ def run_csmgrstatus(
     cmd_parts = ["csmgrstatus"]
 
     if uri is not None:
-        cmd_parts.append(uri)
+        cmd_parts.append(shlex.quote(uri))
     if port_num is not None:
         cmd_parts.append(f"-p {port_num}")
     if host is not None:
-        cmd_parts.append(f"-h {host}")
+        cmd_parts.append(f"-h {shlex.quote(host)}")
 
     cmd_parts.append(f"-d ./{node_name}")
 
     if log_name:
-        cmd_parts.append(f"> {log_name}")
+        cmd_parts.append(f"> {shlex.quote(log_name)}")
 
     command = " ".join(cmd_parts)
     print(node_name, "command:", command)

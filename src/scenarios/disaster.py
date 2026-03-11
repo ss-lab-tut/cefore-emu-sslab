@@ -391,6 +391,9 @@ class DisasterScenario(BaseScenario):
 
             if op.get("mode") == "pubsub":
                 sub_opts = op.get("sub_opts", {}) or {}
+                wait = sub_opts.get("wait")
+                if wait and wait > 0:
+                    time.sleep(wait)
                 exit_code = run_cefsubfile(
                     net, consumer, uri,
                     output_path=str(outfile_path),
