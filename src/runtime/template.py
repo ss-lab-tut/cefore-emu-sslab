@@ -64,35 +64,7 @@ def update_node_name(node_dir, idx, base_uri="example.com/xxx/router-"):
         conf_file.writelines(new_lines)
 
 
-def read_port_num(node_dir, default=9695):
-    """Read PORT_NUM from cefnetd.conf."""
-    conf_path = os.path.join(node_dir, "cefnetd.conf")
-    if not os.path.isfile(conf_path):
-        return default
-    with open(conf_path, "r", encoding="utf-8") as conf_file:
-        for line in conf_file:
-            stripped = line.strip()
-            if not stripped or stripped.startswith("#"):
-                continue
-            if stripped.startswith("PORT_NUM="):
-                value = stripped.split("=", 1)[1].strip().split()[0]
-                try:
-                    return int(value)
-                except ValueError:
-                    break
-    return default
-
-
-def cleanup_cefnetd_socket(node_dir, idx):
-    """Remove stale cefnetd socket file."""
-    port = read_port_num(node_dir)
-    sock_path = f"/tmp/cef_{port}.{idx}"
-    if os.path.exists(sock_path):
-        try:
-            os.remove(sock_path)
-            info(f"removed stale socket {sock_path}\n")
-        except OSError:
-            info(f"failed to remove stale socket {sock_path}\n")
+from .cefore import cleanup_cefnetd_socket, read_port_num  # noqa: F401 (re-export)
 
 
 def ensure_node_dirs(host_num, rng, publishers=None):
@@ -156,21 +128,35 @@ def apply_cache_node_settings(
     host_num: int,
     cache_nodes: set[int],
     cache_default_rct_ms: int | None = None,
+    cache_capacity: int | None = None,
+    cache_algorithm: str | None = None,
+    cache_type: str | None = None,
 ) -> None:
     """Apply cache-related runtime overrides to generated host configs.
 
     - Cache nodes only: force ``CS_MODE=2`` (external CS via csmgrd).
     - Non-cache nodes: keep template-selected CS_MODE untouched.
-    - Optional RCT override applies only to cache nodes.
+    - Optional parameters override csmgrd.conf values for all cache nodes.
+
+    Args:
+        host_num: Total number of hosts.
+        cache_nodes: Set of host indices designated as cache nodes.
+        cache_default_rct_ms: CACHE_DEFAULT_RCT value in milliseconds.
+        cache_capacity: CACHE_CAPACITY value in bytes.
+        cache_algorithm: CACHE_ALGORITHM value (e.g. LRU, LFU, FIFO).
+        cache_type: CACHE_TYPE value (e.g. memory, filesystem).
     """
     for idx in sorted(cache_nodes):
         if idx < 0 or idx >= host_num:
             continue
         node_dir = Path(f"h{idx}")
+        conf_path = node_dir / "csmgrd.conf"
         _set_config_value(node_dir / "cefnetd.conf", "CS_MODE", "2")
         if cache_default_rct_ms is not None:
-            _set_config_value(
-                node_dir / "csmgrd.conf",
-                "CACHE_DEFAULT_RCT",
-                str(cache_default_rct_ms),
-            )
+            _set_config_value(conf_path, "CACHE_DEFAULT_RCT", str(cache_default_rct_ms))
+        if cache_capacity is not None:
+            _set_config_value(conf_path, "CACHE_CAPACITY", str(cache_capacity))
+        if cache_algorithm is not None:
+            _set_config_value(conf_path, "CACHE_ALGORITHM", str(cache_algorithm))
+        if cache_type is not None:
+            _set_config_value(conf_path, "CACHE_TYPE", str(cache_type))

@@ -14,6 +14,7 @@ from mininet.link import TCLink
 from mininet.log import info
 
 from ..core.config.auto_gen import generate_operations
+from ..core.config.priority_resolver import PriorityConfigManager
 from ..core.flap_state import FlapState
 from ..core.graph import select_k_centers
 from ..core.paths import resolve_run_path
@@ -27,6 +28,8 @@ from ..runtime.bridge import (
     parse_ext_args,
     setup_bridges,
 )
+from ..runtime.monitoring import Monitor
+from ..runtime.scheduler import EventScheduler
 from ..runtime.cefore import (
     run_cefgetfile,
     run_cefpubfile,
@@ -39,13 +42,8 @@ from ..runtime.cefore import (
     stop_csmgrd,
     wait_for_cefnetd,
 )
-from ..runtime.external_net import (
-    Tee,
-    parse_int_list,
-    periodic_host_flap,
-    run_host_command,
-)
-from ..runtime.links import pick_publish_link, set_node_links_state
+from ..runtime.external_net import parse_int_list
+from ..runtime.failure_manager import FlexibleFailureManager, periodic_host_flap
 from ..runtime.net_config import apply_fib, apply_fib_for_uris, apply_ip_addr
 from ..runtime.template import apply_cache_node_settings, cleanup_node_dirs, ensure_node_dirs
 from ..runtime.topo import MeshTopo
@@ -75,6 +73,21 @@ def _detect_get_success(log_path: Path, out_path: Path, exit_code: int) -> dict:
     return {
         "success": success,
         "has_completed_log": has_completed,
+        "has_output_file": has_out,
+    }
+
+
+def _detect_sub_success(exit_code: int, out_path: Path, log_path: Path) -> dict:
+    """Evaluate cefsubfile success using exit code and output file.
+
+    cefsubfile logs do not contain "Completed to get all the chunks.",
+    so success is determined by exit code and output file presence only.
+    """
+    has_out = out_path.exists() and out_path.stat().st_size > 0
+    success = exit_code == 0 and has_out
+    return {
+        "success": success,
+        "has_completed_log": False,
         "has_output_file": has_out,
     }
 
@@ -144,6 +157,14 @@ class DisasterScenario(BaseScenario):
         self.publisher_ids = set()
         self.topo = None
         self.seed_label = "none" if args.seed is None else str(args.seed)
+        self.stop_thread = None
+        self.priority_manager = None
+        self.event_scheduler = None
+        self.monitor = None
+
+        priority_uris = getattr(args, "priority_uris", None)
+        if isinstance(priority_uris, dict) and priority_uris:
+            self.priority_manager = PriorityConfigManager(priority_uris)
 
         # Parse bridge configs
         self.bridge_configs = getattr(args, "bridges", None) or []
@@ -164,6 +185,8 @@ class DisasterScenario(BaseScenario):
         auto_config = getattr(args, "auto", None)
         if auto_config and not self.ops_put:
             self.ops_put, _ = generate_operations(auto_config, args.hosts, args.seed, self.run_dir)
+        if self.priority_manager:
+            self.ops_put = [self.priority_manager.apply_to_put(op) for op in self.ops_put]
 
         if not self.ops_put:
             publisher = args.hosts - 1
@@ -181,6 +204,10 @@ class DisasterScenario(BaseScenario):
         self.hot_uris = list(
             dict.fromkeys(getattr(args, "hot_uris", []) or [op["uri"] for op in self.ops_put])
         )
+        if self.priority_manager:
+            self.hot_uris = [
+                uri for uri in self.hot_uris if self.priority_manager.should_prefetch(uri)
+            ]
 
         for op in self.ops_put:
             self.uri_publishers[op["uri"]] = op["host"]
@@ -239,19 +266,30 @@ class DisasterScenario(BaseScenario):
 
         # Cache node selection
         host_graph, _ = build_host_graph(self.topo.mesh_links)
-        cache_count = args.cache_count if args.cache_count > 0 else args.down_count + 1
-        cache_nodes = select_k_centers(host_graph, cache_count)
-        if not cache_nodes and args.hosts > 0:
-            cache_nodes = [args.hosts - 1]
-        self.cache_node_set = set(cache_nodes)
-        if cache_nodes:
-            info("cache nodes: " + ", ".join(f"h{idx}" for idx in cache_nodes) + "\n")
-
-        apply_cache_node_settings(
-            args.hosts,
-            self.cache_node_set,
-            getattr(args, "cache_default_rct_ms", None),
-        )
+        cache_config = getattr(args, "cache_config", None) or {}
+        if cache_config:
+            from ..runtime.cache_manager import CacheConfigManager
+            manager = CacheConfigManager(cache_config, args.hosts, host_graph, self.publisher_ids)
+            cache_nodes = manager.select_cache_nodes(exclude=self.publisher_ids)
+            if not cache_nodes and args.hosts > 0:
+                cache_nodes = [args.hosts - 1]
+            self.cache_node_set = set(cache_nodes)
+            if cache_nodes:
+                info("cache nodes: " + ", ".join(f"h{idx}" for idx in cache_nodes) + "\n")
+            manager.apply_configs(self.cache_node_set)
+        else:
+            cache_count = args.cache_count if args.cache_count > 0 else args.down_count + 1
+            cache_nodes = select_k_centers(host_graph, cache_count)
+            if not cache_nodes and args.hosts > 0:
+                cache_nodes = [args.hosts - 1]
+            self.cache_node_set = set(cache_nodes)
+            if cache_nodes:
+                info("cache nodes: " + ", ".join(f"h{idx}" for idx in cache_nodes) + "\n")
+            apply_cache_node_settings(
+                args.hosts,
+                self.cache_node_set,
+                getattr(args, "cache_default_rct_ms", None),
+            )
 
         # Daemon startup: csmgrd -> cefnetd -> wait ready
         for idx in sorted(self.cache_node_set):
@@ -260,8 +298,15 @@ class DisasterScenario(BaseScenario):
 
         for idx in range(args.hosts):
             start_cefnetd(net, idx)
+        not_ready = []
         for idx in range(args.hosts):
-            wait_for_cefnetd(net, idx)
+            if not wait_for_cefnetd(net, idx):
+                not_ready.append(idx)
+        if not_ready:
+            hosts = ", ".join(f"h{idx}" for idx in not_ready)
+            raise RuntimeError(
+                f"cefnetd not ready on {hosts}; aborting before FIB programming"
+            )
 
         # FIB programming
         if self.uri_publishers:
@@ -346,7 +391,7 @@ class DisasterScenario(BaseScenario):
 
             if op.get("mode") == "pubsub":
                 sub_opts = op.get("sub_opts", {}) or {}
-                run_cefsubfile(
+                exit_code = run_cefsubfile(
                     net, consumer, uri,
                     output_path=str(outfile_path),
                     pipeline=sub_opts.get("pipeline"),
@@ -355,7 +400,6 @@ class DisasterScenario(BaseScenario):
                     port_num=sub_opts.get("port_num"),
                     log_name=str(log_path),
                 )
-                exit_code = 0
             else:
                 exit_code = run_cefgetfile(
                     net, consumer, uri,
@@ -369,7 +413,10 @@ class DisasterScenario(BaseScenario):
                     log_name=str(log_path),
                 )
 
-            verdict = _detect_get_success(log_path, outfile_path, exit_code)
+            if op.get("mode") == "pubsub":
+                verdict = _detect_sub_success(exit_code, outfile_path, log_path)
+            else:
+                verdict = _detect_get_success(log_path, outfile_path, exit_code)
             publisher_host = op.get("publisher_host")
             if publisher_host is None:
                 publisher_host = getattr(self.args, "publisher_host", None)
@@ -407,9 +454,13 @@ class DisasterScenario(BaseScenario):
 
         # Prepare get operations
         self.ops_get = args.gets or []
+        if self.priority_manager:
+            self.ops_get = [self.priority_manager.apply_to_get(op) for op in self.ops_get]
         auto_config = getattr(args, "auto", None)
         if auto_config and not self.ops_get:
             _, self.ops_get = generate_operations(auto_config, args.hosts, args.seed, self.run_dir)
+            if self.priority_manager:
+                self.ops_get = [self.priority_manager.apply_to_get(op) for op in self.ops_get]
         if not self.ops_get:
             base_uri = self.ops_put[0]["uri"]
             for idx in range(1, 6):
@@ -434,7 +485,18 @@ class DisasterScenario(BaseScenario):
 
         # Start host flapping
         use_cli = not getattr(args, "no_cli", False)
-        if args.down_interval > 0 and args.down_duration > 0:
+        scenario_config = getattr(args, "failure_scenarios", None)
+        if scenario_config:
+            failure_manager = FlexibleFailureManager(
+                scenario_config=scenario_config,
+                host_count=args.hosts,
+                rng=self.rng,
+                publisher_ids=self.publisher_ids,
+            )
+            self.stop_event, self.stop_thread = failure_manager.start(
+                net, self.flap_state, quiet=use_cli
+            )
+        elif args.down_interval > 0 and args.down_duration > 0:
             exclude_ids = parse_int_list(args.down_exclude)
             if self.publisher_ids:
                 exclude_ids = list(set(exclude_ids) | self.publisher_ids)
@@ -445,6 +507,29 @@ class DisasterScenario(BaseScenario):
                 args.down_count, args.down_stagger,
                 quiet=use_cli,
             )
+
+        # Start event scheduler
+        events_config = getattr(args, "events", None) or []
+        if events_config:
+            self.event_scheduler = EventScheduler(
+                net, events_config, mesh_links=self.topo.mesh_links
+            )
+            self.event_scheduler.start()
+
+        # Start monitoring
+        monitoring_config = getattr(args, "monitoring", None) or {}
+        if monitoring_config and monitoring_config.get("targets"):
+            self.monitor = Monitor(
+                net,
+                targets=monitoring_config["targets"],
+                interval=monitoring_config.get("interval", 5),
+                output_dir=self.run_dir,
+                host_count=args.hosts,
+                cache_nodes=self.cache_node_set,
+                output_json=monitoring_config.get("output_json"),
+                output_csv=monitoring_config.get("output_csv"),
+            )
+            self.monitor.start()
 
         # Evaluation phase
         if use_cli:
@@ -484,6 +569,10 @@ class DisasterScenario(BaseScenario):
         except KeyboardInterrupt:
             info("\nInterrupted by user.\n")
         finally:
+            if self.monitor is not None:
+                self.monitor.stop()
+            if self.event_scheduler is not None:
+                self.event_scheduler.stop()
             if self.stop_event is not None:
                 self.stop_event.set()
 

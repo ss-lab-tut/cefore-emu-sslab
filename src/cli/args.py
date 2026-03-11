@@ -37,7 +37,7 @@ def add_mesh_args(parser):
     """Add arguments for mesh topology types."""
     parser.add_argument(
         "--switches", type=int, default=10,
-        help="maximum number of switches to create (0 = unlimited)",
+        help="number of switches (>= 2)",
     )
     parser.add_argument(
         "--node-per-switch", type=int, default=2,

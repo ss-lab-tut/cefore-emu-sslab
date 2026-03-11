@@ -1,11 +1,41 @@
 """Cefore daemon control functions."""
 
+import os
 import shlex
 import time
 
 from mininet.log import info
 
-from .template import cleanup_cefnetd_socket
+
+def read_port_num(node_dir, default=9695):
+    """Read PORT_NUM from cefnetd.conf."""
+    conf_path = os.path.join(node_dir, "cefnetd.conf")
+    if not os.path.isfile(conf_path):
+        return default
+    with open(conf_path, "r", encoding="utf-8") as conf_file:
+        for line in conf_file:
+            stripped = line.strip()
+            if not stripped or stripped.startswith("#"):
+                continue
+            if stripped.startswith("PORT_NUM="):
+                value = stripped.split("=", 1)[1].strip().split()[0]
+                try:
+                    return int(value)
+                except ValueError:
+                    break
+    return default
+
+
+def cleanup_cefnetd_socket(node_dir, idx):
+    """Remove stale cefnetd socket file."""
+    port = read_port_num(node_dir)
+    sock_path = f"/tmp/cef_{port}.{idx}"
+    if os.path.exists(sock_path):
+        try:
+            os.remove(sock_path)
+            info(f"removed stale socket {sock_path}\n")
+        except OSError:
+            info(f"failed to remove stale socket {sock_path}\n")
 
 
 def wait_for_cefnetd(net, idx, timeout=5, interval=0.25):
@@ -250,6 +280,9 @@ def run_cefsubfile(
         td_valid_algo: Validation algorithm for Trigger Data (crc32c or rsa-sha256).
         port_num: Port number.
         log_name: Name of the log file.
+
+    Returns:
+        exit_code: Exit code of the command.
     """
     node_name = f"h{host_idx}"
     cmd_parts = [f"cefsubfile {uri}"]
@@ -273,7 +306,10 @@ def run_cefsubfile(
 
     command = " ".join(cmd_parts)
     print(node_name, "command:", command)
-    net.get(node_name).cmd(command)
+    proc = net.hosts[host_idx].popen(command, shell=True)
+    exit_code = proc.wait()
+
+    return exit_code
 
 
 def run_cefpubfile(
@@ -345,3 +381,101 @@ def run_cefpubfile(
     command = " ".join(cmd_parts)
     print(node_name, "command:", command)
     net.get(node_name).cmd(command)
+
+
+def run_cefinfo(
+    net,
+    host_idx,
+    name_prefix,
+    cache_info=False,
+    full_discovery=False,
+    hop_count=None,
+    skip_hop=None,
+    port_num=None,
+    log_name=None,
+):
+    """Run cefinfo to query content information.
+
+    Args:
+        net: Mininet network instance.
+        host_idx: Host index.
+        name_prefix: Content name prefix to query.
+        cache_info: If True, add -c flag for cache information.
+        full_discovery: If True, add -f flag for full discovery.
+        hop_count: Maximum hop count (1-255).
+        skip_hop: Number of hops to skip (0-15).
+        port_num: Port number.
+        log_name: Name of the log file.
+
+    Returns:
+        Command output string.
+    """
+    node_name = f"h{host_idx}"
+    cmd_parts = [f"cefinfo {name_prefix}"]
+
+    if cache_info:
+        cmd_parts.append("-c")
+    if full_discovery:
+        cmd_parts.append("-f")
+    if hop_count is not None:
+        cmd_parts.append(f"-r {hop_count}")
+    if skip_hop is not None:
+        cmd_parts.append(f"-s {skip_hop}")
+    if port_num is not None:
+        cmd_parts.append(f"-p {port_num}")
+
+    cmd_parts.append(f"-d ./{node_name}")
+
+    if log_name:
+        cmd_parts.append(f"> {log_name}")
+
+    command = " ".join(cmd_parts)
+    print(node_name, "command:", command)
+    output = net.hosts[host_idx].cmd(command)
+    if not log_name:
+        info(output)
+    return output
+
+
+def run_csmgrstatus(
+    net,
+    host_idx,
+    uri=None,
+    port_num=None,
+    host=None,
+    log_name=None,
+):
+    """Run csmgrstatus to query cache manager status.
+
+    Args:
+        net: Mininet network instance.
+        host_idx: Host index.
+        uri: Content URI to query (optional).
+        port_num: Port number.
+        host: Hostname or IP to connect to.
+        log_name: Name of the log file.
+
+    Returns:
+        Command output string.
+    """
+    node_name = f"h{host_idx}"
+    cmd_parts = ["csmgrstatus"]
+
+    if uri is not None:
+        cmd_parts.append(uri)
+    if port_num is not None:
+        cmd_parts.append(f"-p {port_num}")
+    if host is not None:
+        cmd_parts.append(f"-h {host}")
+
+    cmd_parts.append(f"-d ./{node_name}")
+
+    if log_name:
+        cmd_parts.append(f"> {log_name}")
+
+    command = " ".join(cmd_parts)
+    print(node_name, "command:", command)
+    output = net.hosts[host_idx].cmd(command)
+    if not log_name:
+        info(output)
+    return output

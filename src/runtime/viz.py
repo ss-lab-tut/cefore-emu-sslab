@@ -166,7 +166,14 @@ def render_topology_png(mesh_links, output_path, seed=None, layout="spring"):
     graph.add_nodes_from(switch_nodes)
 
     if layout == "kamada_kawai":
-        pos = nx.kamada_kawai_layout(graph)
+        try:
+            pos = nx.kamada_kawai_layout(graph)
+        except (ImportError, ModuleNotFoundError) as exc:
+            info(
+                "kamada_kawai layout requires scipy; "
+                f"falling back to spring ({exc})\n"
+            )
+            pos = nx.spring_layout(graph, seed=seed)
     elif layout == "circular":
         pos = nx.circular_layout(graph)
     else:

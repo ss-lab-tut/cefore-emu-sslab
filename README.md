@@ -62,6 +62,8 @@ Key options:
 - `--down-count`: number of hosts down per cycle
 - `--down-stagger`: seconds to stagger down events within a cycle
 - `--get-interval`: seconds between `cefgetfile` runs
+- `--duration`: evaluation duration for non-interactive mode (`--no-cli`)
+- `--results-json`: write warmup/eval records for each `cefgetfile`
 - `--bw nodeA,nodeB,mbps`: set bandwidth on a link (repeatable)
 - `--ext host,ifname[,ip][,mtu]`: attach external interface to a host (repeatable)
 - `--config path`: JSON or YAML configuration file
@@ -148,15 +150,31 @@ sudo python3 mesh-disaster-topology.py --config config.yaml --output-dir experim
 
 # Add timestamp to directory name (ex1_seed42_20260129-1530)
 sudo python3 mesh-disaster-topology.py --config config.yaml --timestamp
-
-# Force legacy layout (current directory) even when num is set
-sudo python3 mesh-disaster-topology.py --config config.yaml --legacy
 ```
 
-**Backward compatibility:**
-- When `num` is not specified, logs are output to the current directory (legacy behavior)
-- `--legacy` flag forces legacy behavior even when `num` is set in config
+### Autotest (Warmup Prefetch)
 
-Legacy logs:
-- `cefputfile_{hosts}_{switches}_{seed}_{down-interval}_{down-duration}_{downhost}.log`
-- `cefgetfile_{hosts}_{switches}_{seed}_{down-interval}_{down-duration}_{downhost}_hX.log`
+Non-interactive single run:
+```bash
+sudo python3 mesh-disaster-topology.py \
+  --config configs/examples/autotest_hot.yaml \
+  --no-cli \
+  --duration 120 \
+  --results-json results.json \
+  --output-dir out/run_0001/logs \
+  --num 1
+```
+
+Batch runner:
+```bash
+sudo python3 tools/autotest/run.py \
+  --base-config configs/examples/autotest_hot.yaml \
+  --runs 5 \
+  --duration 120 \
+  --out out
+```
+
+Outputs:
+- `out/run_XXXX/logs/ex{num}_seed{seed}/`: per-run logs, `meta.json`, `results.json`
+- `out/summary.csv`: URI-level aggregate metrics
+- `out/summary.md`: human-readable summary

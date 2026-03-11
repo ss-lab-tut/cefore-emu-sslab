@@ -1,0 +1,1806 @@
+FIB status per host:
+h0 command: cefstatus -d ./h0
+2026-02-06 15:45:40.322 [cefctrl] INFO: [client] Config directory is ./h0
+2026-02-06 15:45:40.322 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.0
+2026-02-06 15:45:40.322 [cefctrl] INFO: [client] Listen Port is 9695
+CCNx Version     : 1
+Port             : 9695
+Rx Interest      : 0 (RGL[0], SYM[0], SEL[0])
+Tx Interest      : 0 (RGL[0], SYM[0], SEL[0])
+Rx ContentObject : 0
+Tx ContentObject : 0
+Cache Mode       : Localcache
+FWD Strategy     : flooding
+Interest Return  : Disabled
+Faces : 14
+  faceid =  40 : address = 192.168.1.15:9695 (udp)
+  faceid =  36 : address = 192.168.1.9:9695 (udp)
+  faceid =   4 : IPv4 Listen face (udp)
+  faceid =  53 : Local face
+  faceid =   5 : IPv6 Listen face (udp)
+  faceid =  42 : address = 192.168.2.5:9695 (udp)
+  faceid =  34 : address = 192.168.1.16:9695 (udp)
+  faceid =  52 : address = 192.168.2.19:9695 (udp)
+  faceid =  47 : address = 192.168.2.17:9695 (udp)
+  faceid =   6 : IPv4 Listen face (tcp)
+  faceid =  38 : address = 192.168.1.11:9695 (udp)
+  faceid =   7 : IPv6 Listen face (tcp)
+  faceid =   0 : Local face
+  faceid =  50 : address = 192.168.2.13:9695 (udp)
+FIB(App) :
+  Entry is empty
+FIB : 3
+  ccnx:/test/data1
+    Faces : 42 (-s-) RtCost=0
+            40 (-s-) RtCost=0
+            36 (-s-) RtCost=0
+            38 (-s-) RtCost=0
+  ccnx:/emergency/test2
+    Faces : 47 (-s-) RtCost=0
+            42 (-s-) RtCost=0
+            50 (-s-) RtCost=0
+            52 (-s-) RtCost=0
+  ccnx:/emergency/test
+    Faces : 34 (-s-) RtCost=0
+            36 (-s-) RtCost=0
+            38 (-s-) RtCost=0
+            40 (-s-) RtCost=0
+PIT(App) :
+  Entry is empty
+PIT :
+  Entry is empty
+h1 command: cefstatus -d ./h1
+2026-02-06 15:45:40.539 [cefctrl] INFO: [client] Config directory is ./h1
+2026-02-06 15:45:40.539 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.1
+2026-02-06 15:45:40.539 [cefctrl] INFO: [client] Listen Port is 9695
+CCNx Version     : 1
+Port             : 9695
+Rx Interest      : 0 (RGL[0], SYM[0], SEL[0])
+Tx Interest      : 0 (RGL[0], SYM[0], SEL[0])
+Rx ContentObject : 0
+Tx ContentObject : 0
+Cache Mode       : Excache
+FWD Strategy     : flooding
+Interest Return  : Disabled
+Faces : 8
+  faceid =  36 : address = 192.168.5.18:9695 (udp)
+  faceid =   4 : IPv4 Listen face (udp)
+  faceid =  43 : Local face
+  faceid =   5 : IPv6 Listen face (udp)
+  faceid =   0 : Local face
+  faceid =  34 : address = 192.168.5.9:9695 (udp)
+  faceid =   6 : IPv4 Listen face (tcp)
+  faceid =   7 : IPv6 Listen face (tcp)
+FIB(App) :
+  Entry is empty
+FIB : 4
+  ccnx:/test/data2
+    Faces : 34 (-s-) RtCost=0
+            36 (-s-) RtCost=0
+  ccnx:/emergency/test2
+    Faces : 34 (-s-) RtCost=0
+            36 (-s-) RtCost=0
+  ccnx:/emergency/test
+    Faces : 34 (-s-) RtCost=0
+            36 (-s-) RtCost=0
+  ccnx:/test/data1
+    Faces : 34 (-s-) RtCost=0
+            36 (-s-) RtCost=0
+PIT(App) :
+  Entry is empty
+PIT :
+  Entry is empty
+h2 command: cefstatus -d ./h2
+2026-02-06 15:45:40.756 [cefctrl] INFO: [client] Config directory is ./h2
+2026-02-06 15:45:40.756 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.2
+2026-02-06 15:45:40.756 [cefctrl] INFO: [client] Listen Port is 9695
+CCNx Version     : 1
+Port             : 9695
+Rx Interest      : 0 (RGL[0], SYM[0], SEL[0])
+Tx Interest      : 0 (RGL[0], SYM[0], SEL[0])
+Rx ContentObject : 0
+Tx ContentObject : 0
+Cache Mode       : Localcache
+FWD Strategy     : flooding
+Interest Return  : Disabled
+Faces : 8
+  faceid =   4 : IPv4 Listen face (udp)
+  faceid =   0 : Local face
+  faceid =  41 : Local face
+  faceid =   5 : IPv6 Listen face (udp)
+  faceid =  36 : address = 192.168.6.16:9695 (udp)
+  faceid =   6 : IPv4 Listen face (tcp)
+  faceid =  34 : address = 192.168.6.8:9695 (udp)
+  faceid =   7 : IPv6 Listen face (tcp)
+FIB(App) :
+  Entry is empty
+FIB : 3
+  ccnx:/test/data1
+    Faces : 34 (-s-) RtCost=0
+            36 (-s-) RtCost=0
+  ccnx:/emergency/test2
+    Faces : 34 (-s-) RtCost=0
+            36 (-s-) RtCost=0
+  ccnx:/test/data2
+    Faces : 36 (-s-) RtCost=0
+            34 (-s-) RtCost=0
+PIT(App) :
+  Entry is empty
+PIT :
+  Entry is empty
+h3 command: cefstatus -d ./h3
+2026-02-06 15:45:40.973 [cefctrl] INFO: [client] Config directory is ./h3
+2026-02-06 15:45:40.973 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.3
+2026-02-06 15:45:40.973 [cefctrl] INFO: [client] Listen Port is 9695
+CCNx Version     : 1
+Port             : 9695
+Rx Interest      : 0 (RGL[0], SYM[0], SEL[0])
+Tx Interest      : 0 (RGL[0], SYM[0], SEL[0])
+Rx ContentObject : 0
+Tx ContentObject : 0
+Cache Mode       : Localcache
+FWD Strategy     : flooding
+Interest Return  : Disabled
+Faces : 7
+  faceid =  34 : address = 192.168.7.17:9695 (udp)
+  faceid =   4 : IPv4 Listen face (udp)
+  faceid =  37 : Local face
+  faceid =   5 : IPv6 Listen face (udp)
+  faceid =   0 : Local face
+  faceid =   6 : IPv4 Listen face (tcp)
+  faceid =   7 : IPv6 Listen face (tcp)
+FIB(App) :
+  Entry is empty
+FIB : 3
+  ccnx:/test/data1
+    Faces : 34 (-s-) RtCost=0
+  ccnx:/emergency/test
+    Faces : 34 (-s-) RtCost=0
+  ccnx:/test/data2
+    Faces : 34 (-s-) RtCost=0
+PIT(App) :
+  Entry is empty
+PIT :
+  Entry is empty
+h4 command: cefstatus -d ./h4
+2026-02-06 15:45:41.189 [cefctrl] INFO: [client] Config directory is ./h4
+2026-02-06 15:45:41.190 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.4
+2026-02-06 15:45:41.190 [cefctrl] INFO: [client] Listen Port is 9695
+CCNx Version     : 1
+Port             : 9695
+Rx Interest      : 0 (RGL[0], SYM[0], SEL[0])
+Tx Interest      : 0 (RGL[0], SYM[0], SEL[0])
+Rx ContentObject : 0
+Tx ContentObject : 0
+Cache Mode       : None
+FWD Strategy     : flooding
+Interest Return  : Disabled
+Faces : 12
+  faceid =   0 : Local face
+  faceid =   4 : IPv4 Listen face (udp)
+  faceid =  40 : address = 192.168.9.10:9695 (udp)
+  faceid =  38 : address = 192.168.9.6:9695 (udp)
+  faceid =   5 : IPv6 Listen face (udp)
+  faceid =  36 : address = 192.168.2.19:9695 (udp)
+  faceid =  47 : address = 192.168.2.17:9695 (udp)
+  faceid =   6 : IPv4 Listen face (tcp)
+  faceid =  34 : address = 192.168.2.1:9695 (udp)
+  faceid =   7 : IPv6 Listen face (tcp)
+  faceid =  45 : address = 192.168.2.13:9695 (udp)
+  faceid =  55 : Local face
+FIB(App) :
+  Entry is empty
+FIB : 4
+  ccnx:/emergency/test
+    Faces : 34 (-s-) RtCost=0
+            36 (-s-) RtCost=0
+            38 (-s-) RtCost=0
+            40 (-s-) RtCost=0
+  ccnx:/emergency/test2
+    Faces : 47 (-s-) RtCost=0
+            34 (-s-) RtCost=0
+            45 (-s-) RtCost=0
+            36 (-s-) RtCost=0
+  ccnx:/test/data2
+    Faces : 34 (-s-) RtCost=0
+            45 (-s-) RtCost=0
+            47 (-s-) RtCost=0
+            36 (-s-) RtCost=0
+  ccnx:/test/data1
+    Faces : 40 (-s-) RtCost=0
+            38 (-s-) RtCost=0
+            34 (-s-) RtCost=0
+            45 (-s-) RtCost=0
+PIT(App) :
+  Entry is empty
+PIT :
+  Entry is empty
+h5 command: cefstatus -d ./h5
+2026-02-06 15:45:41.407 [cefctrl] INFO: [client] Config directory is ./h5
+2026-02-06 15:45:41.407 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.5
+2026-02-06 15:45:41.407 [cefctrl] INFO: [client] Listen Port is 9695
+CCNx Version     : 1
+Port             : 9695
+Rx Interest      : 0 (RGL[0], SYM[0], SEL[0])
+Tx Interest      : 0 (RGL[0], SYM[0], SEL[0])
+Rx ContentObject : 0
+Tx ContentObject : 0
+Cache Mode       : Excache
+FWD Strategy     : flooding
+Interest Return  : Disabled
+Faces : 11
+  faceid =  38 : address = 192.168.9.5:9695 (udp)
+  faceid =  36 : address = 192.168.4.20:9695 (udp)
+  faceid =   4 : IPv4 Listen face (udp)
+  faceid =  42 : address = 192.168.9.10:9695 (udp)
+  faceid =  40 : address = 192.168.4.7:9695 (udp)
+  faceid =   0 : Local face
+  faceid =  54 : Local face
+  faceid =   5 : IPv6 Listen face (udp)
+  faceid =  34 : address = 192.168.4.11:9695 (udp)
+  faceid =   6 : IPv4 Listen face (tcp)
+  faceid =   7 : IPv6 Listen face (tcp)
+FIB(App) :
+  Entry is empty
+FIB : 4
+  ccnx:/test/data2
+    Faces : 38 (-s-) RtCost=0
+            34 (-s-) RtCost=0
+            40 (-s-) RtCost=0
+            42 (-s-) RtCost=0
+  ccnx:/emergency/test2
+    Faces : 38 (-s-) RtCost=0
+            42 (-s-) RtCost=0
+            34 (-s-) RtCost=0
+            36 (-s-) RtCost=0
+  ccnx:/emergency/test
+    Faces : 34 (-s-) RtCost=0
+            36 (-s-) RtCost=0
+            38 (-s-) RtCost=0
+            40 (-s-) RtCost=0
+  ccnx:/test/data1
+    Faces : 42 (-s-) RtCost=0
+            38 (-s-) RtCost=0
+            40 (-s-) RtCost=0
+            34 (-s-) RtCost=0
+PIT(App) :
+  Entry is empty
+PIT :
+  Entry is empty
+h6 command: cefstatus -d ./h6
+2026-02-06 15:45:41.624 [cefctrl] INFO: [client] Config directory is ./h6
+2026-02-06 15:45:41.624 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.6
+2026-02-06 15:45:41.624 [cefctrl] INFO: [client] Listen Port is 9695
+CCNx Version     : 1
+Port             : 9695
+Rx Interest      : 0 (RGL[0], SYM[0], SEL[0])
+Tx Interest      : 0 (RGL[0], SYM[0], SEL[0])
+Rx ContentObject : 0
+Tx ContentObject : 0
+Cache Mode       : None
+FWD Strategy     : flooding
+Interest Return  : Disabled
+Faces : 9
+  faceid =  36 : address = 192.168.4.20:9695 (udp)
+  faceid =   4 : IPv4 Listen face (udp)
+  faceid =  38 : address = 192.168.4.6:9695 (udp)
+  faceid =   0 : Local face
+  faceid =   5 : IPv6 Listen face (udp)
+  faceid =  34 : address = 192.168.4.11:9695 (udp)
+  faceid =   6 : IPv4 Listen face (tcp)
+  faceid =   7 : IPv6 Listen face (tcp)
+  faceid =  48 : Local face
+FIB(App) :
+  Entry is empty
+FIB : 4
+  ccnx:/emergency/test
+    Faces : 34 (-s-) RtCost=0
+            36 (-s-) RtCost=0
+            38 (-s-) RtCost=0
+  ccnx:/emergency/test2
+    Faces : 38 (-s-) RtCost=0
+            34 (-s-) RtCost=0
+            36 (-s-) RtCost=0
+  ccnx:/test/data2
+    Faces : 34 (-s-) RtCost=0
+            38 (-s-) RtCost=0
+            36 (-s-) RtCost=0
+  ccnx:/test/data1
+    Faces : 38 (-s-) RtCost=0
+            34 (-s-) RtCost=0
+            36 (-s-) RtCost=0
+PIT(App) :
+  Entry is empty
+PIT :
+  Entry is empty
+h7 command: cefstatus -d ./h7
+2026-02-06 15:45:41.841 [cefctrl] INFO: [client] Config directory is ./h7
+2026-02-06 15:45:41.841 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.7
+2026-02-06 15:45:41.841 [cefctrl] INFO: [client] Listen Port is 9695
+CCNx Version     : 1
+Port             : 9695
+Rx Interest      : 0 (RGL[0], SYM[0], SEL[0])
+Tx Interest      : 0 (RGL[0], SYM[0], SEL[0])
+Rx ContentObject : 0
+Tx ContentObject : 0
+Cache Mode       : Excache
+FWD Strategy     : flooding
+Interest Return  : Disabled
+Faces : 12
+  faceid =  38 : address = 192.168.8.12:9695 (udp)
+  faceid =  45 : address = 192.168.8.18:9695 (udp)
+  faceid =   4 : IPv4 Listen face (udp)
+  faceid =  40 : address = 192.168.8.14:9695 (udp)
+  faceid =  55 : Local face
+  faceid =   0 : Local face
+  faceid =   5 : IPv6 Listen face (udp)
+  faceid =  34 : address = 192.168.6.3:9695 (udp)
+  faceid =  36 : address = 192.168.6.16:9695 (udp)
+  faceid =   6 : IPv4 Listen face (tcp)
+  faceid =   7 : IPv6 Listen face (tcp)
+  faceid =  47 : address = 192.168.8.19:9695 (udp)
+FIB(App) :
+  Entry is empty
+FIB : 4
+  ccnx:/test/data2
+    Faces : 36 (-s-) RtCost=0
+            47 (-s-) RtCost=0
+            34 (-s-) RtCost=0
+            38 (-s-) RtCost=0
+  ccnx:/emergency/test2
+    Faces : 47 (-s-) RtCost=0
+            38 (-s-) RtCost=0
+            40 (-s-) RtCost=0
+            36 (-s-) RtCost=0
+  ccnx:/emergency/test
+    Faces : 34 (-s-) RtCost=0
+            36 (-s-) RtCost=0
+            38 (-s-) RtCost=0
+            40 (-s-) RtCost=0
+  ccnx:/test/data1
+    Faces : 38 (-s-) RtCost=0
+            40 (-s-) RtCost=0
+            36 (-s-) RtCost=0
+            45 (-s-) RtCost=0
+PIT(App) :
+  Entry is empty
+PIT :
+  Entry is empty
+h8 command: cefstatus -d ./h8
+2026-02-06 15:45:42.058 [cefctrl] INFO: [client] Config directory is ./h8
+2026-02-06 15:45:42.058 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.8
+2026-02-06 15:45:42.058 [cefctrl] INFO: [client] Listen Port is 9695
+CCNx Version     : 1
+Port             : 9695
+Rx Interest      : 0 (RGL[0], SYM[0], SEL[0])
+Tx Interest      : 0 (RGL[0], SYM[0], SEL[0])
+Rx ContentObject : 0
+Tx ContentObject : 0
+Cache Mode       : Localcache
+FWD Strategy     : flooding
+Interest Return  : Disabled
+Faces : 10
+  faceid =  40 : address = 192.168.1.15:9695 (udp)
+  faceid =   4 : IPv4 Listen face (udp)
+  faceid =  53 : Local face
+  faceid =   5 : IPv6 Listen face (udp)
+  faceid =  34 : address = 192.168.1.16:9695 (udp)
+  faceid =  36 : address = 192.168.1.1:9695 (udp)
+  faceid =   6 : IPv4 Listen face (tcp)
+  faceid =  38 : address = 192.168.1.11:9695 (udp)
+  faceid =   0 : Local face
+  faceid =   7 : IPv6 Listen face (tcp)
+FIB(App) :
+  Entry is empty
+FIB : 4
+  ccnx:/test/data1
+    Faces : 40 (-s-) RtCost=0
+            36 (-s-) RtCost=0
+            38 (-s-) RtCost=0
+            34 (-s-) RtCost=0
+  ccnx:/emergency/test2
+    Faces : 36 (-s-) RtCost=0
+            38 (-s-) RtCost=0
+            40 (-s-) RtCost=0
+            34 (-s-) RtCost=0
+  ccnx:/emergency/test
+    Faces : 34 (-s-) RtCost=0
+            36 (-s-) RtCost=0
+            38 (-s-) RtCost=0
+            40 (-s-) RtCost=0
+  ccnx:/test/data2
+    Faces : 36 (-s-) RtCost=0
+            38 (-s-) RtCost=0
+            40 (-s-) RtCost=0
+            34 (-s-) RtCost=0
+PIT(App) :
+  Entry is empty
+PIT :
+  Entry is empty
+h9 command: cefstatus -d ./h9
+2026-02-06 15:45:42.275 [cefctrl] INFO: [client] Config directory is ./h9
+2026-02-06 15:45:42.276 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.9
+2026-02-06 15:45:42.276 [cefctrl] INFO: [client] Listen Port is 9695
+CCNx Version     : 1
+Port             : 9695
+Rx Interest      : 0 (RGL[0], SYM[0], SEL[0])
+Tx Interest      : 0 (RGL[0], SYM[0], SEL[0])
+Rx ContentObject : 0
+Tx ContentObject : 0
+Cache Mode       : Localcache
+FWD Strategy     : flooding
+Interest Return  : Disabled
+Faces : 11
+  faceid =  40 : address = 192.168.9.5:9695 (udp)
+  faceid =   4 : IPv4 Listen face (udp)
+  faceid =  43 : address = 192.168.9.6:9695 (udp)
+  faceid =  50 : Local face
+  faceid =   5 : IPv6 Listen face (udp)
+  faceid =  36 : address = 192.168.3.14:9695 (udp)
+  faceid =   0 : Local face
+  faceid =  34 : address = 192.168.3.12:9695 (udp)
+  faceid =   6 : IPv4 Listen face (tcp)
+  faceid =  38 : address = 192.168.3.15:9695 (udp)
+  faceid =   7 : IPv6 Listen face (tcp)
+FIB(App) :
+  Entry is empty
+FIB : 3
+  ccnx:/emergency/test2
+    Faces : 40 (-s-) RtCost=0
+            43 (-s-) RtCost=0
+            34 (-s-) RtCost=0
+            36 (-s-) RtCost=0
+  ccnx:/emergency/test
+    Faces : 34 (-s-) RtCost=0
+            36 (-s-) RtCost=0
+            38 (-s-) RtCost=0
+            40 (-s-) RtCost=0
+  ccnx:/test/data2
+    Faces : 40 (-s-) RtCost=0
+            38 (-s-) RtCost=0
+            43 (-s-) RtCost=0
+            34 (-s-) RtCost=0
+PIT(App) :
+  Entry is empty
+PIT :
+  Entry is empty
+h10 command: cefstatus -d ./h10
+2026-02-06 15:45:42.493 [cefctrl] INFO: [client] Config directory is ./h10
+2026-02-06 15:45:42.493 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.10
+2026-02-06 15:45:42.493 [cefctrl] INFO: [client] Listen Port is 9695
+CCNx Version     : 1
+Port             : 9695
+Rx Interest      : 0 (RGL[0], SYM[0], SEL[0])
+Tx Interest      : 0 (RGL[0], SYM[0], SEL[0])
+Rx ContentObject : 0
+Tx ContentObject : 0
+Cache Mode       : None
+FWD Strategy     : flooding
+Interest Return  : Disabled
+Faces : 12
+  faceid =  40 : address = 192.168.1.15:9695 (udp)
+  faceid =  38 : address = 192.168.1.9:9695 (udp)
+  faceid =   4 : IPv4 Listen face (udp)
+  faceid =  46 : address = 192.168.4.7:9695 (udp)
+  faceid =  42 : address = 192.168.4.6:9695 (udp)
+  faceid =   5 : IPv6 Listen face (udp)
+  faceid =  34 : address = 192.168.1.16:9695 (udp)
+  faceid =  36 : address = 192.168.1.1:9695 (udp)
+  faceid =   6 : IPv4 Listen face (tcp)
+  faceid =   7 : IPv6 Listen face (tcp)
+  faceid =   0 : Local face
+  faceid =  55 : Local face
+FIB(App) :
+  Entry is empty
+FIB : 4
+  ccnx:/emergency/test
+    Faces : 34 (-s-) RtCost=0
+            36 (-s-) RtCost=0
+            38 (-s-) RtCost=0
+            40 (-s-) RtCost=0
+  ccnx:/emergency/test2
+    Faces : 36 (-s-) RtCost=0
+            42 (-s-) RtCost=0
+            38 (-s-) RtCost=0
+            40 (-s-) RtCost=0
+  ccnx:/test/data2
+    Faces : 36 (-s-) RtCost=0
+            38 (-s-) RtCost=0
+            40 (-s-) RtCost=0
+            34 (-s-) RtCost=0
+  ccnx:/test/data1
+    Faces : 42 (-s-) RtCost=0
+            40 (-s-) RtCost=0
+            36 (-s-) RtCost=0
+            46 (-s-) RtCost=0
+PIT(App) :
+  Entry is empty
+PIT :
+  Entry is empty
+h11 command: cefstatus -d ./h11
+2026-02-06 15:45:42.710 [cefctrl] INFO: [client] Config directory is ./h11
+2026-02-06 15:45:42.710 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.11
+2026-02-06 15:45:42.710 [cefctrl] INFO: [client] Listen Port is 9695
+CCNx Version     : 1
+Port             : 9695
+Rx Interest      : 0 (RGL[0], SYM[0], SEL[0])
+Tx Interest      : 0 (RGL[0], SYM[0], SEL[0])
+Rx ContentObject : 0
+Tx ContentObject : 0
+Cache Mode       : Excache
+FWD Strategy     : flooding
+Interest Return  : Disabled
+Faces : 12
+  faceid =  34 : address = 192.168.8.8:9695 (udp)
+  faceid =   0 : Local face
+  faceid =  40 : address = 192.168.8.18:9695 (udp)
+  faceid =   4 : IPv4 Listen face (udp)
+  faceid =  36 : address = 192.168.8.14:9695 (udp)
+  faceid =  55 : Local face
+  faceid =   5 : IPv6 Listen face (udp)
+  faceid =   6 : IPv4 Listen face (tcp)
+  faceid =  42 : address = 192.168.3.10:9695 (udp)
+  faceid =  38 : address = 192.168.3.15:9695 (udp)
+  faceid =   7 : IPv6 Listen face (tcp)
+  faceid =  47 : address = 192.168.8.19:9695 (udp)
+FIB(App) :
+  Entry is empty
+FIB : 4
+  ccnx:/test/data2
+    Faces : 38 (-s-) RtCost=0
+            47 (-s-) RtCost=0
+            34 (-s-) RtCost=0
+            42 (-s-) RtCost=0
+  ccnx:/emergency/test2
+    Faces : 47 (-s-) RtCost=0
+            34 (-s-) RtCost=0
+            42 (-s-) RtCost=0
+            36 (-s-) RtCost=0
+  ccnx:/emergency/test
+    Faces : 34 (-s-) RtCost=0
+            36 (-s-) RtCost=0
+            38 (-s-) RtCost=0
+            40 (-s-) RtCost=0
+  ccnx:/test/data1
+    Faces : 42 (-s-) RtCost=0
+            36 (-s-) RtCost=0
+            38 (-s-) RtCost=0
+            34 (-s-) RtCost=0
+PIT(App) :
+  Entry is empty
+PIT :
+  Entry is empty
+h12 command: cefstatus -d ./h12
+2026-02-06 15:45:42.927 [cefctrl] INFO: [client] Config directory is ./h12
+2026-02-06 15:45:42.927 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.12
+2026-02-06 15:45:42.927 [cefctrl] INFO: [client] Listen Port is 9695
+CCNx Version     : 1
+Port             : 9695
+Rx Interest      : 0 (RGL[0], SYM[0], SEL[0])
+Tx Interest      : 0 (RGL[0], SYM[0], SEL[0])
+Rx ContentObject : 0
+Tx ContentObject : 0
+Cache Mode       : None
+FWD Strategy     : flooding
+Interest Return  : Disabled
+Faces : 10
+  faceid =   4 : IPv4 Listen face (udp)
+  faceid =   5 : IPv6 Listen face (udp)
+  faceid =  38 : address = 192.168.2.5:9695 (udp)
+  faceid =   0 : Local face
+  faceid =  36 : address = 192.168.2.19:9695 (udp)
+  faceid =  40 : address = 192.168.2.17:9695 (udp)
+  faceid =   6 : IPv4 Listen face (tcp)
+  faceid =  34 : address = 192.168.2.1:9695 (udp)
+  faceid =   7 : IPv6 Listen face (tcp)
+  faceid =  53 : Local face
+FIB(App) :
+  Entry is empty
+FIB : 4
+  ccnx:/emergency/test
+    Faces : 34 (-s-) RtCost=0
+            36 (-s-) RtCost=0
+            38 (-s-) RtCost=0
+            40 (-s-) RtCost=0
+  ccnx:/emergency/test2
+    Faces : 40 (-s-) RtCost=0
+            34 (-s-) RtCost=0
+            38 (-s-) RtCost=0
+            36 (-s-) RtCost=0
+  ccnx:/test/data2
+    Faces : 34 (-s-) RtCost=0
+            38 (-s-) RtCost=0
+            40 (-s-) RtCost=0
+            36 (-s-) RtCost=0
+  ccnx:/test/data1
+    Faces : 38 (-s-) RtCost=0
+            34 (-s-) RtCost=0
+            40 (-s-) RtCost=0
+            36 (-s-) RtCost=0
+PIT(App) :
+  Entry is empty
+PIT :
+  Entry is empty
+h13 command: cefstatus -d ./h13
+2026-02-06 15:45:43.145 [cefctrl] INFO: [client] Config directory is ./h13
+2026-02-06 15:45:43.145 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.13
+2026-02-06 15:45:43.145 [cefctrl] INFO: [client] Listen Port is 9695
+CCNx Version     : 1
+Port             : 9695
+Rx Interest      : 0 (RGL[0], SYM[0], SEL[0])
+Tx Interest      : 0 (RGL[0], SYM[0], SEL[0])
+Rx ContentObject : 0
+Tx ContentObject : 0
+Cache Mode       : Excache
+FWD Strategy     : flooding
+Interest Return  : Disabled
+Faces : 12
+  faceid =  34 : address = 192.168.8.8:9695 (udp)
+  faceid =  36 : address = 192.168.8.12:9695 (udp)
+  faceid =  40 : address = 192.168.8.18:9695 (udp)
+  faceid =   0 : Local face
+  faceid =   4 : IPv4 Listen face (udp)
+  faceid =  55 : Local face
+  faceid =   5 : IPv6 Listen face (udp)
+  faceid =   6 : IPv4 Listen face (tcp)
+  faceid =  42 : address = 192.168.3.10:9695 (udp)
+  faceid =  38 : address = 192.168.3.15:9695 (udp)
+  faceid =   7 : IPv6 Listen face (tcp)
+  faceid =  47 : address = 192.168.8.19:9695 (udp)
+FIB(App) :
+  Entry is empty
+FIB : 4
+  ccnx:/test/data2
+    Faces : 38 (-s-) RtCost=0
+            47 (-s-) RtCost=0
+            34 (-s-) RtCost=0
+            42 (-s-) RtCost=0
+  ccnx:/emergency/test2
+    Faces : 47 (-s-) RtCost=0
+            34 (-s-) RtCost=0
+            42 (-s-) RtCost=0
+            36 (-s-) RtCost=0
+  ccnx:/emergency/test
+    Faces : 34 (-s-) RtCost=0
+            36 (-s-) RtCost=0
+            38 (-s-) RtCost=0
+            40 (-s-) RtCost=0
+  ccnx:/test/data1
+    Faces : 42 (-s-) RtCost=0
+            36 (-s-) RtCost=0
+            38 (-s-) RtCost=0
+            34 (-s-) RtCost=0
+PIT(App) :
+  Entry is empty
+PIT :
+  Entry is empty
+h14 command: cefstatus -d ./h14
+2026-02-06 15:45:43.362 [cefctrl] INFO: [client] Config directory is ./h14
+2026-02-06 15:45:43.362 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.14
+2026-02-06 15:45:43.362 [cefctrl] INFO: [client] Listen Port is 9695
+CCNx Version     : 1
+Port             : 9695
+Rx Interest      : 0 (RGL[0], SYM[0], SEL[0])
+Tx Interest      : 0 (RGL[0], SYM[0], SEL[0])
+Rx ContentObject : 0
+Tx ContentObject : 0
+Cache Mode       : None
+FWD Strategy     : flooding
+Interest Return  : Disabled
+Faces : 13
+  faceid =  38 : address = 192.168.1.9:9695 (udp)
+  faceid =   0 : Local face
+  faceid =   4 : IPv4 Listen face (udp)
+  faceid =   5 : IPv6 Listen face (udp)
+  faceid =  46 : address = 192.168.3.14:9695 (udp)
+  faceid =  44 : address = 192.168.3.12:9695 (udp)
+  faceid =  34 : address = 192.168.1.16:9695 (udp)
+  faceid =  36 : address = 192.168.1.1:9695 (udp)
+  faceid =   6 : IPv4 Listen face (tcp)
+  faceid =  40 : address = 192.168.1.11:9695 (udp)
+  faceid =  42 : address = 192.168.3.10:9695 (udp)
+  faceid =   7 : IPv6 Listen face (tcp)
+  faceid =  56 : Local face
+FIB(App) :
+  Entry is empty
+FIB : 4
+  ccnx:/emergency/test
+    Faces : 34 (-s-) RtCost=0
+            36 (-s-) RtCost=0
+            38 (-s-) RtCost=0
+            40 (-s-) RtCost=0
+  ccnx:/emergency/test2
+    Faces : 36 (-s-) RtCost=0
+            38 (-s-) RtCost=0
+            42 (-s-) RtCost=0
+            40 (-s-) RtCost=0
+  ccnx:/test/data2
+    Faces : 36 (-s-) RtCost=0
+            38 (-s-) RtCost=0
+            40 (-s-) RtCost=0
+            34 (-s-) RtCost=0
+  ccnx:/test/data1
+    Faces : 42 (-s-) RtCost=0
+            44 (-s-) RtCost=0
+            46 (-s-) RtCost=0
+            36 (-s-) RtCost=0
+PIT(App) :
+  Entry is empty
+PIT :
+  Entry is empty
+h15 command: cefstatus -d ./h15
+2026-02-06 15:45:43.579 [cefctrl] INFO: [client] Config directory is ./h15
+2026-02-06 15:45:43.579 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.15
+2026-02-06 15:45:43.579 [cefctrl] INFO: [client] Listen Port is 9695
+CCNx Version     : 1
+Port             : 9695
+Rx Interest      : 0 (RGL[0], SYM[0], SEL[0])
+Tx Interest      : 0 (RGL[0], SYM[0], SEL[0])
+Rx ContentObject : 0
+Tx ContentObject : 0
+Cache Mode       : Excache
+FWD Strategy     : flooding
+Interest Return  : Disabled
+Faces : 12
+  faceid =  42 : address = 192.168.1.15:9695 (udp)
+  faceid =  40 : address = 192.168.1.9:9695 (udp)
+  faceid =   0 : Local face
+  faceid =   4 : IPv4 Listen face (udp)
+  faceid =  55 : Local face
+  faceid =   5 : IPv6 Listen face (udp)
+  faceid =  34 : address = 192.168.6.3:9695 (udp)
+  faceid =  38 : address = 192.168.1.1:9695 (udp)
+  faceid =   6 : IPv4 Listen face (tcp)
+  faceid =  50 : address = 192.168.1.11:9695 (udp)
+  faceid =  36 : address = 192.168.6.8:9695 (udp)
+  faceid =   7 : IPv6 Listen face (tcp)
+FIB(App) :
+  Entry is empty
+FIB : 4
+  ccnx:/test/data2
+    Faces : 38 (-s-) RtCost=0
+            40 (-s-) RtCost=0
+            50 (-s-) RtCost=0
+            42 (-s-) RtCost=0
+  ccnx:/emergency/test2
+    Faces : 38 (-s-) RtCost=0
+            36 (-s-) RtCost=0
+            40 (-s-) RtCost=0
+            50 (-s-) RtCost=0
+  ccnx:/emergency/test
+    Faces : 34 (-s-) RtCost=0
+            36 (-s-) RtCost=0
+            38 (-s-) RtCost=0
+            40 (-s-) RtCost=0
+  ccnx:/test/data1
+    Faces : 42 (-s-) RtCost=0
+            38 (-s-) RtCost=0
+            36 (-s-) RtCost=0
+            40 (-s-) RtCost=0
+PIT(App) :
+  Entry is empty
+PIT :
+  Entry is empty
+h16 command: cefstatus -d ./h16
+2026-02-06 15:45:43.796 [cefctrl] INFO: [client] Config directory is ./h16
+2026-02-06 15:45:43.796 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.16
+2026-02-06 15:45:43.796 [cefctrl] INFO: [client] Listen Port is 9695
+CCNx Version     : 1
+Port             : 9695
+Rx Interest      : 0 (RGL[0], SYM[0], SEL[0])
+Tx Interest      : 0 (RGL[0], SYM[0], SEL[0])
+Rx ContentObject : 0
+Tx ContentObject : 0
+Cache Mode       : None
+FWD Strategy     : flooding
+Interest Return  : Disabled
+Faces : 11
+  faceid =   0 : Local face
+  faceid =   4 : IPv4 Listen face (udp)
+  faceid =   5 : IPv6 Listen face (udp)
+  faceid =  38 : address = 192.168.2.5:9695 (udp)
+  faceid =  36 : address = 192.168.2.19:9695 (udp)
+  faceid =   6 : IPv4 Listen face (tcp)
+  faceid =  46 : address = 192.168.7.4:9695 (udp)
+  faceid =  34 : address = 192.168.2.1:9695 (udp)
+  faceid =   7 : IPv6 Listen face (tcp)
+  faceid =  40 : address = 192.168.2.13:9695 (udp)
+  faceid =  54 : Local face
+FIB(App) :
+  Entry is empty
+FIB : 4
+  ccnx:/emergency/test
+    Faces : 34 (-s-) RtCost=0
+            36 (-s-) RtCost=0
+            38 (-s-) RtCost=0
+            40 (-s-) RtCost=0
+  ccnx:/emergency/test2
+    Faces : 46 (-s-) RtCost=0
+            34 (-s-) RtCost=0
+            38 (-s-) RtCost=0
+            40 (-s-) RtCost=0
+  ccnx:/test/data2
+    Faces : 34 (-s-) RtCost=0
+            38 (-s-) RtCost=0
+            40 (-s-) RtCost=0
+            36 (-s-) RtCost=0
+  ccnx:/test/data1
+    Faces : 38 (-s-) RtCost=0
+            34 (-s-) RtCost=0
+            40 (-s-) RtCost=0
+            36 (-s-) RtCost=0
+PIT(App) :
+  Entry is empty
+PIT :
+  Entry is empty
+h17 command: cefstatus -d ./h17
+2026-02-06 15:45:44.012 [cefctrl] INFO: [client] Config directory is ./h17
+2026-02-06 15:45:44.013 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.17
+2026-02-06 15:45:44.013 [cefctrl] INFO: [client] Listen Port is 9695
+CCNx Version     : 1
+Port             : 9695
+Rx Interest      : 0 (RGL[0], SYM[0], SEL[0])
+Tx Interest      : 0 (RGL[0], SYM[0], SEL[0])
+Rx ContentObject : 0
+Tx ContentObject : 0
+Cache Mode       : Excache
+FWD Strategy     : flooding
+Interest Return  : Disabled
+Faces : 12
+  faceid =  34 : address = 192.168.8.8:9695 (udp)
+  faceid =  38 : address = 192.168.8.12:9695 (udp)
+  faceid =   4 : IPv4 Listen face (udp)
+  faceid =  40 : address = 192.168.8.14:9695 (udp)
+  faceid =  55 : Local face
+  faceid =   5 : IPv6 Listen face (udp)
+  faceid =  36 : address = 192.168.5.9:9695 (udp)
+  faceid =  53 : address = 192.168.5.2:9695 (udp)
+  faceid =   6 : IPv4 Listen face (tcp)
+  faceid =   0 : Local face
+  faceid =   7 : IPv6 Listen face (tcp)
+  faceid =  46 : address = 192.168.8.19:9695 (udp)
+FIB(App) :
+  Entry is empty
+FIB : 4
+  ccnx:/test/data2
+    Faces : 36 (-s-) RtCost=0
+            46 (-s-) RtCost=0
+            53 (-s-) RtCost=0
+            34 (-s-) RtCost=0
+  ccnx:/emergency/test2
+    Faces : 46 (-s-) RtCost=0
+            34 (-s-) RtCost=0
+            36 (-s-) RtCost=0
+            38 (-s-) RtCost=0
+  ccnx:/emergency/test
+    Faces : 34 (-s-) RtCost=0
+            36 (-s-) RtCost=0
+            38 (-s-) RtCost=0
+            40 (-s-) RtCost=0
+  ccnx:/test/data1
+    Faces : 38 (-s-) RtCost=0
+            40 (-s-) RtCost=0
+            34 (-s-) RtCost=0
+            36 (-s-) RtCost=0
+PIT(App) :
+  Entry is empty
+PIT :
+  Entry is empty
+h18 command: cefstatus -d ./h18
+2026-02-06 15:45:44.229 [cefctrl] INFO: [client] Config directory is ./h18
+2026-02-06 15:45:44.229 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.18
+2026-02-06 15:45:44.229 [cefctrl] INFO: [client] Listen Port is 9695
+CCNx Version     : 1
+Port             : 9695
+Rx Interest      : 0 (RGL[0], SYM[0], SEL[0])
+Tx Interest      : 0 (RGL[0], SYM[0], SEL[0])
+Rx ContentObject : 0
+Tx ContentObject : 0
+Cache Mode       : None
+FWD Strategy     : flooding
+Interest Return  : Disabled
+Faces : 13
+  faceid =  34 : address = 192.168.8.8:9695 (udp)
+  faceid =  38 : address = 192.168.8.12:9695 (udp)
+  faceid =   4 : IPv4 Listen face (udp)
+  faceid =   0 : Local face
+  faceid =  40 : address = 192.168.8.14:9695 (udp)
+  faceid =   5 : IPv6 Listen face (udp)
+  faceid =  42 : address = 192.168.2.5:9695 (udp)
+  faceid =  47 : address = 192.168.2.17:9695 (udp)
+  faceid =   6 : IPv4 Listen face (tcp)
+  faceid =  36 : address = 192.168.2.1:9695 (udp)
+  faceid =   7 : IPv6 Listen face (tcp)
+  faceid =  51 : address = 192.168.2.13:9695 (udp)
+  faceid =  56 : Local face
+FIB(App) :
+  Entry is empty
+FIB : 4
+  ccnx:/emergency/test
+    Faces : 34 (-s-) RtCost=0
+            36 (-s-) RtCost=0
+            38 (-s-) RtCost=0
+            40 (-s-) RtCost=0
+  ccnx:/emergency/test2
+    Faces : 47 (-s-) RtCost=0
+            36 (-s-) RtCost=0
+            42 (-s-) RtCost=0
+            51 (-s-) RtCost=0
+  ccnx:/test/data2
+    Faces : 36 (-s-) RtCost=0
+            42 (-s-) RtCost=0
+            51 (-s-) RtCost=0
+            47 (-s-) RtCost=0
+  ccnx:/test/data1
+    Faces : 42 (-s-) RtCost=0
+            38 (-s-) RtCost=0
+            40 (-s-) RtCost=0
+            36 (-s-) RtCost=0
+PIT(App) :
+  Entry is empty
+PIT :
+  Entry is empty
+h19 command: cefstatus -d ./h19
+2026-02-06 15:45:44.447 [cefctrl] INFO: [client] Config directory is ./h19
+2026-02-06 15:45:44.447 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.19
+2026-02-06 15:45:44.447 [cefctrl] INFO: [client] Listen Port is 9695
+CCNx Version     : 1
+Port             : 9695
+Rx Interest      : 0 (RGL[0], SYM[0], SEL[0])
+Tx Interest      : 0 (RGL[0], SYM[0], SEL[0])
+Rx ContentObject : 0
+Tx ContentObject : 0
+Cache Mode       : Excache
+FWD Strategy     : flooding
+Interest Return  : Disabled
+Faces : 13
+  faceid =  34 : address = 192.168.8.8:9695 (udp)
+  faceid =  38 : address = 192.168.8.12:9695 (udp)
+  faceid =   4 : IPv4 Listen face (udp)
+  faceid =  46 : address = 192.168.4.7:9695 (udp)
+  faceid =  40 : address = 192.168.8.14:9695 (udp)
+  faceid =  42 : address = 192.168.4.6:9695 (udp)
+  faceid =  56 : Local face
+  faceid =   5 : IPv6 Listen face (udp)
+  faceid =  36 : address = 192.168.4.11:9695 (udp)
+  faceid =   0 : Local face
+  faceid =   6 : IPv4 Listen face (tcp)
+  faceid =   7 : IPv6 Listen face (tcp)
+  faceid =  48 : address = 192.168.8.19:9695 (udp)
+FIB(App) :
+  Entry is empty
+FIB : 4
+  ccnx:/test/data2
+    Faces : 36 (-s-) RtCost=0
+            48 (-s-) RtCost=0
+            42 (-s-) RtCost=0
+            46 (-s-) RtCost=0
+  ccnx:/emergency/test2
+    Faces : 48 (-s-) RtCost=0
+            42 (-s-) RtCost=0
+            34 (-s-) RtCost=0
+            36 (-s-) RtCost=0
+  ccnx:/emergency/test
+    Faces : 34 (-s-) RtCost=0
+            36 (-s-) RtCost=0
+            38 (-s-) RtCost=0
+            40 (-s-) RtCost=0
+  ccnx:/test/data1
+    Faces : 42 (-s-) RtCost=0
+            38 (-s-) RtCost=0
+            40 (-s-) RtCost=0
+            46 (-s-) RtCost=0
+PIT(App) :
+  Entry is empty
+PIT :
+  Entry is empty
+
+Mesh topology (per-host tree view):
+h0
+|-- h4 (via s1)
+|   |-- h5 (via s8)
+|   `-- h9 (via s8)
+|-- h8 (via s0)
+|   |-- h1 (via s4)
+|   `-- h17 (via s4)
+|-- h10 (via s0)
+|   |-- h6 (via s3)
+|   `-- h19 (via s3)
+|-- h12 (via s1)
+|-- h14 (via s0)
+|   |-- h11 (via s2)
+|   `-- h13 (via s2)
+|-- h15 (via s0)
+|   |-- h2 (via s5)
+|   `-- h7 (via s5)
+|-- h16 (via s1)
+|   `-- h3 (via s6)
+`-- h18 (via s1)
+
+h1
+|-- h8 (via s4)
+|   |-- h0 (via s0)
+|   |   |-- h4 (via s1)
+|   |   |-- h12 (via s1)
+|   |   `-- h16 (via s1)
+|   |       `-- h3 (via s6)
+|   |-- h10 (via s0)
+|   |   |-- h5 (via s3)
+|   |   `-- h6 (via s3)
+|   |-- h14 (via s0)
+|   |   `-- h9 (via s2)
+|   `-- h15 (via s0)
+|       `-- h2 (via s5)
+`-- h17 (via s4)
+    |-- h7 (via s7)
+    |-- h11 (via s7)
+    |-- h13 (via s7)
+    |-- h18 (via s7)
+    `-- h19 (via s7)
+
+h2
+|-- h7 (via s5)
+|   |-- h11 (via s7)
+|   |   `-- h9 (via s2)
+|   |-- h13 (via s7)
+|   |-- h17 (via s7)
+|   |   `-- h1 (via s4)
+|   |-- h18 (via s7)
+|   |   |-- h4 (via s1)
+|   |   |-- h12 (via s1)
+|   |   `-- h16 (via s1)
+|   |       `-- h3 (via s6)
+|   `-- h19 (via s7)
+|       |-- h5 (via s3)
+|       `-- h6 (via s3)
+`-- h15 (via s5)
+    |-- h0 (via s0)
+    |-- h8 (via s0)
+    |-- h10 (via s0)
+    `-- h14 (via s0)
+
+h3
+`-- h16 (via s6)
+    |-- h0 (via s1)
+    |   |-- h8 (via s0)
+    |   |   `-- h1 (via s4)
+    |   |-- h10 (via s0)
+    |   |   `-- h6 (via s3)
+    |   |-- h14 (via s0)
+    |   `-- h15 (via s0)
+    |       `-- h2 (via s5)
+    |-- h4 (via s1)
+    |   |-- h5 (via s8)
+    |   `-- h9 (via s8)
+    |-- h12 (via s1)
+    `-- h18 (via s1)
+        |-- h7 (via s7)
+        |-- h11 (via s7)
+        |-- h13 (via s7)
+        |-- h17 (via s7)
+        `-- h19 (via s7)
+
+h4
+|-- h0 (via s1)
+|   |-- h8 (via s0)
+|   |   `-- h1 (via s4)
+|   |-- h10 (via s0)
+|   |-- h14 (via s0)
+|   `-- h15 (via s0)
+|       `-- h2 (via s5)
+|-- h5 (via s8)
+|   |-- h6 (via s3)
+|   `-- h19 (via s3)
+|-- h9 (via s8)
+|   |-- h11 (via s2)
+|   `-- h13 (via s2)
+|-- h12 (via s1)
+|-- h16 (via s1)
+|   `-- h3 (via s6)
+`-- h18 (via s1)
+    |-- h7 (via s7)
+    `-- h17 (via s7)
+
+h5
+|-- h4 (via s8)
+|   |-- h0 (via s1)
+|   |-- h12 (via s1)
+|   |-- h16 (via s1)
+|   |   `-- h3 (via s6)
+|   `-- h18 (via s1)
+|-- h6 (via s3)
+|-- h9 (via s8)
+|   |-- h11 (via s2)
+|   |-- h13 (via s2)
+|   `-- h14 (via s2)
+|-- h10 (via s3)
+|   |-- h8 (via s0)
+|   |   `-- h1 (via s4)
+|   `-- h15 (via s0)
+|       `-- h2 (via s5)
+`-- h19 (via s3)
+    |-- h7 (via s7)
+    `-- h17 (via s7)
+
+h6
+|-- h5 (via s3)
+|   |-- h4 (via s8)
+|   |   |-- h12 (via s1)
+|   |   `-- h16 (via s1)
+|   |       `-- h3 (via s6)
+|   `-- h9 (via s8)
+|-- h10 (via s3)
+|   |-- h0 (via s0)
+|   |-- h8 (via s0)
+|   |   `-- h1 (via s4)
+|   |-- h14 (via s0)
+|   `-- h15 (via s0)
+|       `-- h2 (via s5)
+`-- h19 (via s3)
+    |-- h7 (via s7)
+    |-- h11 (via s7)
+    |-- h13 (via s7)
+    |-- h17 (via s7)
+    `-- h18 (via s7)
+
+h7
+|-- h2 (via s5)
+|-- h11 (via s7)
+|   |-- h9 (via s2)
+|   `-- h14 (via s2)
+|-- h13 (via s7)
+|-- h15 (via s5)
+|   |-- h0 (via s0)
+|   |-- h8 (via s0)
+|   `-- h10 (via s0)
+|-- h17 (via s7)
+|   `-- h1 (via s4)
+|-- h18 (via s7)
+|   |-- h4 (via s1)
+|   |-- h12 (via s1)
+|   `-- h16 (via s1)
+|       `-- h3 (via s6)
+`-- h19 (via s7)
+    |-- h5 (via s3)
+    `-- h6 (via s3)
+
+h8
+|-- h0 (via s0)
+|   |-- h4 (via s1)
+|   |-- h12 (via s1)
+|   |-- h16 (via s1)
+|   |   `-- h3 (via s6)
+|   `-- h18 (via s1)
+|-- h1 (via s4)
+|-- h10 (via s0)
+|   |-- h5 (via s3)
+|   |-- h6 (via s3)
+|   `-- h19 (via s3)
+|-- h14 (via s0)
+|   |-- h9 (via s2)
+|   |-- h11 (via s2)
+|   `-- h13 (via s2)
+|-- h15 (via s0)
+|   |-- h2 (via s5)
+|   `-- h7 (via s5)
+`-- h17 (via s4)
+
+h9
+|-- h4 (via s8)
+|   |-- h0 (via s1)
+|   |-- h12 (via s1)
+|   |-- h16 (via s1)
+|   |   `-- h3 (via s6)
+|   `-- h18 (via s1)
+|-- h5 (via s8)
+|   |-- h6 (via s3)
+|   |-- h10 (via s3)
+|   `-- h19 (via s3)
+|-- h11 (via s2)
+|   |-- h7 (via s7)
+|   |   `-- h2 (via s5)
+|   `-- h17 (via s7)
+|       `-- h1 (via s4)
+|-- h13 (via s2)
+`-- h14 (via s2)
+    |-- h8 (via s0)
+    `-- h15 (via s0)
+
+h10
+|-- h0 (via s0)
+|   |-- h4 (via s1)
+|   |-- h12 (via s1)
+|   |-- h16 (via s1)
+|   |   `-- h3 (via s6)
+|   `-- h18 (via s1)
+|-- h5 (via s3)
+|   `-- h9 (via s8)
+|-- h6 (via s3)
+|-- h8 (via s0)
+|   |-- h1 (via s4)
+|   `-- h17 (via s4)
+|-- h14 (via s0)
+|   |-- h11 (via s2)
+|   `-- h13 (via s2)
+|-- h15 (via s0)
+|   |-- h2 (via s5)
+|   `-- h7 (via s5)
+`-- h19 (via s3)
+
+h11
+|-- h7 (via s7)
+|   |-- h2 (via s5)
+|   `-- h15 (via s5)
+|-- h9 (via s2)
+|   |-- h4 (via s8)
+|   `-- h5 (via s8)
+|-- h13 (via s7)
+|-- h14 (via s2)
+|   |-- h0 (via s0)
+|   |-- h8 (via s0)
+|   `-- h10 (via s0)
+|-- h17 (via s7)
+|   `-- h1 (via s4)
+|-- h18 (via s7)
+|   |-- h12 (via s1)
+|   `-- h16 (via s1)
+|       `-- h3 (via s6)
+`-- h19 (via s7)
+    `-- h6 (via s3)
+
+h12
+|-- h0 (via s1)
+|   |-- h8 (via s0)
+|   |   `-- h1 (via s4)
+|   |-- h10 (via s0)
+|   |   `-- h6 (via s3)
+|   |-- h14 (via s0)
+|   `-- h15 (via s0)
+|       `-- h2 (via s5)
+|-- h4 (via s1)
+|   |-- h5 (via s8)
+|   `-- h9 (via s8)
+|-- h16 (via s1)
+|   `-- h3 (via s6)
+`-- h18 (via s1)
+    |-- h7 (via s7)
+    |-- h11 (via s7)
+    |-- h13 (via s7)
+    |-- h17 (via s7)
+    `-- h19 (via s7)
+
+h13
+|-- h7 (via s7)
+|   |-- h2 (via s5)
+|   `-- h15 (via s5)
+|-- h9 (via s2)
+|   |-- h4 (via s8)
+|   `-- h5 (via s8)
+|-- h11 (via s7)
+|-- h14 (via s2)
+|   |-- h0 (via s0)
+|   |-- h8 (via s0)
+|   `-- h10 (via s0)
+|-- h17 (via s7)
+|   `-- h1 (via s4)
+|-- h18 (via s7)
+|   |-- h12 (via s1)
+|   `-- h16 (via s1)
+|       `-- h3 (via s6)
+`-- h19 (via s7)
+    `-- h6 (via s3)
+
+h14
+|-- h0 (via s0)
+|   |-- h4 (via s1)
+|   |-- h12 (via s1)
+|   |-- h16 (via s1)
+|   |   `-- h3 (via s6)
+|   `-- h18 (via s1)
+|-- h8 (via s0)
+|   |-- h1 (via s4)
+|   `-- h17 (via s4)
+|-- h9 (via s2)
+|   `-- h5 (via s8)
+|-- h10 (via s0)
+|   |-- h6 (via s3)
+|   `-- h19 (via s3)
+|-- h11 (via s2)
+|   `-- h7 (via s7)
+|-- h13 (via s2)
+`-- h15 (via s0)
+    `-- h2 (via s5)
+
+h15
+|-- h0 (via s0)
+|   |-- h4 (via s1)
+|   |-- h12 (via s1)
+|   |-- h16 (via s1)
+|   |   `-- h3 (via s6)
+|   `-- h18 (via s1)
+|-- h2 (via s5)
+|-- h7 (via s5)
+|   |-- h11 (via s7)
+|   |-- h13 (via s7)
+|   |-- h17 (via s7)
+|   `-- h19 (via s7)
+|-- h8 (via s0)
+|   `-- h1 (via s4)
+|-- h10 (via s0)
+|   |-- h5 (via s3)
+|   `-- h6 (via s3)
+`-- h14 (via s0)
+    `-- h9 (via s2)
+
+h16
+|-- h0 (via s1)
+|   |-- h8 (via s0)
+|   |   `-- h1 (via s4)
+|   |-- h10 (via s0)
+|   |   `-- h6 (via s3)
+|   |-- h14 (via s0)
+|   `-- h15 (via s0)
+|       `-- h2 (via s5)
+|-- h3 (via s6)
+|-- h4 (via s1)
+|   |-- h5 (via s8)
+|   `-- h9 (via s8)
+|-- h12 (via s1)
+`-- h18 (via s1)
+    |-- h7 (via s7)
+    |-- h11 (via s7)
+    |-- h13 (via s7)
+    |-- h17 (via s7)
+    `-- h19 (via s7)
+
+h17
+|-- h1 (via s4)
+|-- h7 (via s7)
+|   |-- h2 (via s5)
+|   `-- h15 (via s5)
+|-- h8 (via s4)
+|   |-- h0 (via s0)
+|   |-- h10 (via s0)
+|   `-- h14 (via s0)
+|-- h11 (via s7)
+|   `-- h9 (via s2)
+|-- h13 (via s7)
+|-- h18 (via s7)
+|   |-- h4 (via s1)
+|   |-- h12 (via s1)
+|   `-- h16 (via s1)
+|       `-- h3 (via s6)
+`-- h19 (via s7)
+    |-- h5 (via s3)
+    `-- h6 (via s3)
+
+h18
+|-- h0 (via s1)
+|   |-- h8 (via s0)
+|   |-- h10 (via s0)
+|   |-- h14 (via s0)
+|   `-- h15 (via s0)
+|-- h4 (via s1)
+|   |-- h5 (via s8)
+|   `-- h9 (via s8)
+|-- h7 (via s7)
+|   `-- h2 (via s5)
+|-- h11 (via s7)
+|-- h12 (via s1)
+|-- h13 (via s7)
+|-- h16 (via s1)
+|   `-- h3 (via s6)
+|-- h17 (via s7)
+|   `-- h1 (via s4)
+`-- h19 (via s7)
+    `-- h6 (via s3)
+
+h19
+|-- h5 (via s3)
+|   |-- h4 (via s8)
+|   `-- h9 (via s8)
+|-- h6 (via s3)
+|-- h7 (via s7)
+|   |-- h2 (via s5)
+|   `-- h15 (via s5)
+|-- h10 (via s3)
+|   |-- h0 (via s0)
+|   |-- h8 (via s0)
+|   `-- h14 (via s0)
+|-- h11 (via s7)
+|-- h13 (via s7)
+|-- h17 (via s7)
+|   `-- h1 (via s4)
+`-- h18 (via s7)
+    |-- h12 (via s1)
+    `-- h16 (via s1)
+        `-- h3 (via s6)
+
+> - Topology view as a single figure (adjacency matrix)
+Mesh topology (adjacency matrix; cell = switch):
+    h0  h1  h2  h3  h4  h5  h6  h7  h8  h9  h10 h11 h12 h13 h14 h15 h16 h17 h18 h19
+h0  .   .   .   .   s1  .   .   .   s0  .   s0  .   s1  .   s0  s0  s1  .   s1  .
+h1  .   .   .   .   .   .   .   .   s4  .   .   .   .   .   .   .   .   s4  .   .
+h2  .   .   .   .   .   .   .   s5  .   .   .   .   .   .   .   s5  .   .   .   .
+h3  .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   s6  .   .   .
+h4  s1  .   .   .   .   s8  .   .   .   s8  .   .   s1  .   .   .   s1  .   s1  .
+h5  .   .   .   .   s8  .   s3  .   .   s8  s3  .   .   .   .   .   .   .   .   s3
+h6  .   .   .   .   .   s3  .   .   .   .   s3  .   .   .   .   .   .   .   .   s3
+h7  .   .   s5  .   .   .   .   .   .   .   .   s7  .   s7  .   s5  .   s7  s7  s7
+h8  s0  s4  .   .   .   .   .   .   .   .   s0  .   .   .   s0  s0  .   s4  .   .
+h9  .   .   .   .   s8  s8  .   .   .   .   .   s2  .   s2  s2  .   .   .   .   .
+h10 s0  .   .   .   .   s3  s3  .   s0  .   .   .   .   .   s0  s0  .   .   .   s3
+h11 .   .   .   .   .   .   .   s7  .   s2  .   .   .   s7  s2  .   .   s7  s7  s7
+h12 s1  .   .   .   s1  .   .   .   .   .   .   .   .   .   .   .   s1  .   s1  .
+h13 .   .   .   .   .   .   .   s7  .   s2  .   s7  .   .   s2  .   .   s7  s7  s7
+h14 s0  .   .   .   .   .   .   .   s0  s2  s0  s2  .   s2  .   s0  .   .   .   .
+h15 s0  .   s5  .   .   .   .   s5  s0  .   s0  .   .   .   s0  .   .   .   .   .
+h16 s1  .   .   s6  s1  .   .   .   .   .   .   .   s1  .   .   .   .   .   s1  .
+h17 .   s4  .   .   .   .   .   s7  s4  .   .   s7  .   s7  .   .   .   .   s7  s7
+h18 s1  .   .   .   s1  .   .   s7  .   .   .   s7  s1  s7  .   .   s1  s7  .   s7
+h19 .   .   .   .   .   s3  s3  s7  .   .   s3  s7  .   s7  .   .   .   s7  s7  .
+
+topology PNG saved to logs/ex3_seed42_20260206-1544/ex20_seed42.png
+cache nodes: h0, h1, h2
+h2 command: cefputfile ccnx:/emergency/test -f ./style.css -r 10 -e 5000 -t 5000 -d ./h2 > logs/ex3_seed42_20260206-1544/cefputfile_h2.log
+h9 command: cefputfile ccnx:/test/data1 -f './disk IO.png' -e 3000 -t 3000 -d ./h9 > logs/ex3_seed42_20260206-1544/cefputfile_h9.log
+h3 command: cefputfile ccnx:/emergency/test2 -f ./SN7100andSN770.jpg -r 4 -e 5000 -t 3000 -d ./h3 > logs/ex3_seed42_20260206-1544/cefputfile_h3.log
+h0 command: cefputfile ccnx:/test/data2 -f ./link-audio.sh -e 3000 -t 3000 -d ./h0 > logs/ex3_seed42_20260206-1544/cefputfile_h0.log
+h0 command: cefgetfile ccnx:/emergency/test2 -f logs/ex3_seed42_20260206-1544/recvfile_at_h0 -s 4 -d ./h0 > logs/ex3_seed42_20260206-1544/cefgetfile_seed42_downhosts12_idx0_h0.log
+h6 command: cefgetfile ccnx:/test/data1 -f logs/ex3_seed42_20260206-1544/recvfile_at_h6 -o -d ./h6 > logs/ex3_seed42_20260206-1544/cefgetfile_seed42_downhosts11,12_idx1_h6.log
+h11 command: cefgetfile ccnx:/emergency/test -f logs/ex3_seed42_20260206-1544/recvfile_at_h11 -d ./h11 > logs/ex3_seed42_20260206-1544/cefgetfile_seed42_downhosts11,12_idx2_h11.log
+h16 command: cefgetfile ccnx:/emergency/test -f logs/ex3_seed42_20260206-1544/recvfile_at_h16 -d ./h16 > logs/ex3_seed42_20260206-1544/cefgetfile_seed42_downhosts8,16_idx3_h16.log
+*** Starting CLI:
+mininet> h4 ping -c 3 8.8.8.8
+PING 8.8.8.8 (8.8.8.8) 56(84) bytes of data.
+From 192.168.9.5 icmp_seq=1 Destination Host Unreachable
+From 192.168.9.5 icmp_seq=2 Destination Host Unreachable
+From 192.168.9.5 icmp_seq=3 Destination Host Unreachable
+
+--- 8.8.8.8 ping statistics ---
+3 packets transmitted, 0 received, +3 errors, 100% packet loss, time 2034ms
+pipe 3
+mininet> h9 ping -c 3 google.com
+ping: google.com: Temporary failure in name resolution
+mininet> s8 ping -c 3 google.com
+ping: google.com: Temporary failure in name resolution
+mininet> s3 ping -c 3 google.com
+ping: google.com: Temporary failure in name resolution
+mininet> s3 ip a
+1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN group default qlen 1000
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+    inet 127.0.0.1/8 scope host lo
+       valid_lft forever preferred_lft forever
+    inet6 ::1/128 scope host noprefixroute
+       valid_lft forever preferred_lft forever
+2: enp9s0f0np0: <NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc mq state DOWN group default qlen 1000
+    link/ether 9c:7b:ef:40:b8:72 brd ff:ff:ff:ff:ff:ff
+3: enp9s0f1np1: <NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc mq state DOWN group default qlen 1000
+    link/ether 9c:7b:ef:40:b8:73 brd ff:ff:ff:ff:ff:ff
+4: enp9s0f2np2: <NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc mq state DOWN group default qlen 1000
+    link/ether 9c:7b:ef:40:b8:74 brd ff:ff:ff:ff:ff:ff
+5: eno1: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc fq_codel state UP group default qlen 1000
+    link/ether 9c:7b:ef:40:b8:71 brd ff:ff:ff:ff:ff:ff
+    altname enp0s31f6
+    inet 133.243.146.210/24 brd 133.243.146.255 scope global dynamic noprefixroute eno1
+       valid_lft 72213sec preferred_lft 72213sec
+    inet6 fe80::9e7b:efff:fe40:b871/64 scope link
+       valid_lft forever preferred_lft forever
+6: enp33s0f0: <NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc mq state DOWN group default qlen 1000
+    link/ether 90:e2:ba:02:96:20 brd ff:ff:ff:ff:ff:ff
+7: enp153s0f0np0: <NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc mq state DOWN group default qlen 1000
+    link/ether 64:9d:99:b1:4f:ea brd ff:ff:ff:ff:ff:ff
+8: enp33s0f1: <NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc mq state DOWN group default qlen 1000
+    link/ether 90:e2:ba:02:96:21 brd ff:ff:ff:ff:ff:ff
+9: enp153s0f1np1: <NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc mq state DOWN group default qlen 1000
+    link/ether 64:9d:99:b1:4f:eb brd ff:ff:ff:ff:ff:ff
+10: enp153s0f2np2: <NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc mq state DOWN group default qlen 1000
+    link/ether 64:9d:99:b1:4f:ec brd ff:ff:ff:ff:ff:ff
+11: enp153s0f3np3: <NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc mq state DOWN group default qlen 1000
+    link/ether 64:9d:99:b1:4f:ed brd ff:ff:ff:ff:ff:ff
+12: wlxcce1d53e941f: <BROADCAST,MULTICAST> mtu 1500 qdisc noop state DOWN group default qlen 1000
+    link/ether cc:e1:d5:3e:94:1f brd ff:ff:ff:ff:ff:ff
+296: s0-eth1@if2: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master ovs-system state UP group default qlen 1000
+    link/ether 5a:da:4d:35:12:db brd ff:ff:ff:ff:ff:ff link-netnsid 0
+    inet6 fe80::58da:4dff:fe35:12db/64 scope link
+       valid_lft forever preferred_lft forever
+297: s1-eth1@if3: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master ovs-system state UP group default qlen 1000
+    link/ether 7a:d0:71:d1:8c:63 brd ff:ff:ff:ff:ff:ff link-netnsid 0
+    inet6 fe80::78d0:71ff:fed1:8c63/64 scope link
+       valid_lft forever preferred_lft forever
+298: s4-eth1@if2: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master ovs-system state UP group default qlen 1000
+    link/ether 3e:5d:e8:64:d0:55 brd ff:ff:ff:ff:ff:ff link-netnsid 1
+    inet6 fe80::3c5d:e8ff:fe64:d055/64 scope link
+       valid_lft forever preferred_lft forever
+299: s5-eth1@if2: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master ovs-system state UP group default qlen 1000
+    link/ether 0a:c9:df:85:6a:84 brd ff:ff:ff:ff:ff:ff link-netnsid 2
+    inet6 fe80::8c9:dfff:fe85:6a84/64 scope link
+       valid_lft forever preferred_lft forever
+300: s6-eth1@if2: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master ovs-system state UP group default qlen 1000
+    link/ether da:89:b0:22:b8:a3 brd ff:ff:ff:ff:ff:ff link-netnsid 3
+    inet6 fe80::d889:b0ff:fe22:b8a3/64 scope link
+       valid_lft forever preferred_lft forever
+301: s1-eth2@if2: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master ovs-system state UP group default qlen 1000
+    link/ether 52:f2:cc:6c:f2:b7 brd ff:ff:ff:ff:ff:ff link-netnsid 4
+    inet6 fe80::50f2:ccff:fe6c:f2b7/64 scope link
+       valid_lft forever preferred_lft forever
+302: s8-eth1@if3: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master ovs-system state UP group default qlen 1000
+    link/ether 46:a1:28:ff:ac:2d brd ff:ff:ff:ff:ff:ff link-netnsid 4
+    inet6 fe80::44a1:28ff:feff:ac2d/64 scope link
+       valid_lft forever preferred_lft forever
+303: s3-eth1@if2: <BROADCAST,MULTICAST> mtu 1500 qdisc noqueue master ovs-system state DOWN group default qlen 1000
+    link/ether 66:42:6b:43:a7:a9 brd ff:ff:ff:ff:ff:ff link-netnsid 5
+304: s8-eth2@if3: <BROADCAST,MULTICAST> mtu 1500 qdisc noqueue master ovs-system state DOWN group default qlen 1000
+    link/ether fe:c8:58:7b:b4:7e brd ff:ff:ff:ff:ff:ff link-netnsid 5
+305: s3-eth2@if2: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master ovs-system state UP group default qlen 1000
+    link/ether 76:66:48:59:e2:29 brd ff:ff:ff:ff:ff:ff link-netnsid 6
+    inet6 fe80::7466:48ff:fe59:e229/64 scope link
+       valid_lft forever preferred_lft forever
+306: s5-eth2@if2: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master ovs-system state UP group default qlen 1000
+    link/ether ee:52:55:5d:97:a4 brd ff:ff:ff:ff:ff:ff link-netnsid 7
+    inet6 fe80::ec52:55ff:fe5d:97a4/64 scope link
+       valid_lft forever preferred_lft forever
+307: s7-eth1@if3: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master ovs-system state UP group default qlen 1000
+    link/ether aa:59:e3:54:4b:c9 brd ff:ff:ff:ff:ff:ff link-netnsid 7
+    inet6 fe80::a859:e3ff:fe54:4bc9/64 scope link
+       valid_lft forever preferred_lft forever
+308: s0-eth2@if2: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master ovs-system state UP group default qlen 1000
+    link/ether aa:a4:32:55:73:c2 brd ff:ff:ff:ff:ff:ff link-netnsid 8
+    inet6 fe80::a8a4:32ff:fe55:73c2/64 scope link
+       valid_lft forever preferred_lft forever
+309: s4-eth2@if3: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master ovs-system state UP group default qlen 1000
+    link/ether de:21:ff:6f:a1:5d brd ff:ff:ff:ff:ff:ff link-netnsid 8
+    inet6 fe80::dc21:ffff:fe6f:a15d/64 scope link
+       valid_lft forever preferred_lft forever
+310: s2-eth1@if2: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master ovs-system state UP group default qlen 1000
+    link/ether 56:a5:04:70:97:e4 brd ff:ff:ff:ff:ff:ff link-netnsid 9
+    inet6 fe80::54a5:4ff:fe70:97e4/64 scope link
+       valid_lft forever preferred_lft forever
+311: s8-eth3@if3: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master ovs-system state UP group default qlen 1000
+    link/ether ae:2c:f9:01:8d:3a brd ff:ff:ff:ff:ff:ff link-netnsid 9
+    inet6 fe80::ac2c:f9ff:fe01:8d3a/64 scope link
+       valid_lft forever preferred_lft forever
+312: s0-eth3@if2: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master ovs-system state UP group default qlen 1000
+    link/ether fe:f1:9d:b8:bc:45 brd ff:ff:ff:ff:ff:ff link-netnsid 10
+    inet6 fe80::fcf1:9dff:feb8:bc45/64 scope link
+       valid_lft forever preferred_lft forever
+313: s3-eth3@if3: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master ovs-system state UP group default qlen 1000
+    link/ether 7e:15:40:2a:4d:76 brd ff:ff:ff:ff:ff:ff link-netnsid 10
+    inet6 fe80::7c15:40ff:fe2a:4d76/64 scope link
+       valid_lft forever preferred_lft forever
+314: s2-eth2@if2: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master ovs-system state UP group default qlen 1000
+    link/ether 42:a0:53:27:32:ef brd ff:ff:ff:ff:ff:ff link-netnsid 11
+    inet6 fe80::40a0:53ff:fe27:32ef/64 scope link
+       valid_lft forever preferred_lft forever
+315: s7-eth2@if3: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master ovs-system state UP group default qlen 1000
+    link/ether 46:07:97:7f:7e:24 brd ff:ff:ff:ff:ff:ff link-netnsid 11
+    inet6 fe80::4407:97ff:fe7f:7e24/64 scope link
+       valid_lft forever preferred_lft forever
+316: s1-eth3@if2: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master ovs-system state UP group default qlen 1000
+    link/ether 2e:e7:42:b4:d0:96 brd ff:ff:ff:ff:ff:ff link-netnsid 12
+    inet6 fe80::2ce7:42ff:feb4:d096/64 scope link
+       valid_lft forever preferred_lft forever
+317: s2-eth3@if2: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master ovs-system state UP group default qlen 1000
+    link/ether 76:8c:34:b9:ee:82 brd ff:ff:ff:ff:ff:ff link-netnsid 13
+    inet6 fe80::748c:34ff:feb9:ee82/64 scope link
+       valid_lft forever preferred_lft forever
+318: s7-eth3@if3: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master ovs-system state UP group default qlen 1000
+    link/ether 06:27:6b:c0:2a:08 brd ff:ff:ff:ff:ff:ff link-netnsid 13
+    inet6 fe80::427:6bff:fec0:2a08/64 scope link
+       valid_lft forever preferred_lft forever
+319: s0-eth4@if2: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master ovs-system state UP group default qlen 1000
+    link/ether fa:0a:e2:e1:71:ad brd ff:ff:ff:ff:ff:ff link-netnsid 14
+    inet6 fe80::f80a:e2ff:fee1:71ad/64 scope link
+       valid_lft forever preferred_lft forever
+320: s2-eth4@if3: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master ovs-system state UP group default qlen 1000
+    link/ether 16:62:07:68:6b:6a brd ff:ff:ff:ff:ff:ff link-netnsid 14
+    inet6 fe80::1462:7ff:fe68:6b6a/64 scope link
+       valid_lft forever preferred_lft forever
+321: s0-eth5@if2: <BROADCAST,MULTICAST> mtu 1500 qdisc noqueue master ovs-system state DOWN group default qlen 1000
+    link/ether c2:57:6e:bd:ad:91 brd ff:ff:ff:ff:ff:ff link-netnsid 15
+322: s5-eth3@if3: <BROADCAST,MULTICAST> mtu 1500 qdisc noqueue master ovs-system state DOWN group default qlen 1000
+    link/ether 82:e4:36:1d:76:e7 brd ff:ff:ff:ff:ff:ff link-netnsid 15
+323: s1-eth4@if2: <BROADCAST,MULTICAST> mtu 1500 qdisc noqueue master ovs-system state DOWN group default qlen 1000
+    link/ether 46:c0:81:f3:97:d0 brd ff:ff:ff:ff:ff:ff link-netnsid 16
+324: s6-eth2@if3: <BROADCAST,MULTICAST> mtu 1500 qdisc noqueue master ovs-system state DOWN group default qlen 1000
+    link/ether e6:a8:2a:08:65:36 brd ff:ff:ff:ff:ff:ff link-netnsid 16
+325: s4-eth3@if2: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master ovs-system state UP group default qlen 1000
+    link/ether 7a:c8:94:85:1f:93 brd ff:ff:ff:ff:ff:ff link-netnsid 17
+    inet6 fe80::78c8:94ff:fe85:1f93/64 scope link
+       valid_lft forever preferred_lft forever
+326: s7-eth4@if3: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master ovs-system state UP group default qlen 1000
+    link/ether 96:f2:0e:f9:be:68 brd ff:ff:ff:ff:ff:ff link-netnsid 17
+    inet6 fe80::94f2:eff:fef9:be68/64 scope link
+       valid_lft forever preferred_lft forever
+327: s1-eth5@if2: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master ovs-system state UP group default qlen 1000
+    link/ether 02:fc:c2:52:1b:56 brd ff:ff:ff:ff:ff:ff link-netnsid 18
+    inet6 fe80::fc:c2ff:fe52:1b56/64 scope link
+       valid_lft forever preferred_lft forever
+328: s7-eth5@if3: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master ovs-system state UP group default qlen 1000
+    link/ether 36:b8:83:7e:0d:99 brd ff:ff:ff:ff:ff:ff link-netnsid 18
+    inet6 fe80::34b8:83ff:fe7e:d99/64 scope link
+       valid_lft forever preferred_lft forever
+329: s3-eth4@if2: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master ovs-system state UP group default qlen 1000
+    link/ether ce:b8:cd:90:40:1f brd ff:ff:ff:ff:ff:ff link-netnsid 19
+    inet6 fe80::ccb8:cdff:fe90:401f/64 scope link
+       valid_lft forever preferred_lft forever
+330: s7-eth6@if3: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master ovs-system state UP group default qlen 1000
+    link/ether 92:9a:3c:6f:b2:b2 brd ff:ff:ff:ff:ff:ff link-netnsid 19
+    inet6 fe80::909a:3cff:fe6f:b2b2/64 scope link
+       valid_lft forever preferred_lft forever
+331: ovs-system: <BROADCAST,MULTICAST> mtu 1500 qdisc noop state DOWN group default qlen 1000
+    link/ether c6:b3:52:46:c3:16 brd ff:ff:ff:ff:ff:ff
+332: s1: <BROADCAST,MULTICAST> mtu 1500 qdisc noop state DOWN group default qlen 1000
+    link/ether ae:57:28:be:75:45 brd ff:ff:ff:ff:ff:ff
+333: s6: <BROADCAST,MULTICAST> mtu 1500 qdisc noop state DOWN group default qlen 1000
+    link/ether 66:d6:91:37:db:4c brd ff:ff:ff:ff:ff:ff
+334: s3: <BROADCAST,MULTICAST> mtu 1500 qdisc noop state DOWN group default qlen 1000
+    link/ether ce:da:d9:6b:e8:46 brd ff:ff:ff:ff:ff:ff
+335: s0: <BROADCAST,MULTICAST> mtu 1500 qdisc noop state DOWN group default qlen 1000
+    link/ether 0a:73:bf:f1:64:4b brd ff:ff:ff:ff:ff:ff
+336: s2: <BROADCAST,MULTICAST> mtu 1500 qdisc noop state DOWN group default qlen 1000
+    link/ether aa:a6:67:db:e0:42 brd ff:ff:ff:ff:ff:ff
+337: s8: <BROADCAST,MULTICAST> mtu 1500 qdisc noop state DOWN group default qlen 1000
+    link/ether 32:10:87:bb:65:4f brd ff:ff:ff:ff:ff:ff
+338: s7: <BROADCAST,MULTICAST> mtu 1500 qdisc noop state DOWN group default qlen 1000
+    link/ether 9e:ef:c7:6d:3c:47 brd ff:ff:ff:ff:ff:ff
+339: s4: <BROADCAST,MULTICAST> mtu 1500 qdisc noop state DOWN group default qlen 1000
+    link/ether 86:69:43:9e:2b:44 brd ff:ff:ff:ff:ff:ff
+340: s5: <BROADCAST,MULTICAST> mtu 1500 qdisc noop state DOWN group default qlen 1000
+    link/ether c2:f7:16:ce:b2:48 brd ff:ff:ff:ff:ff:ff
+341: s8-eth4@root-eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP group default qlen 1000
+    link/ether a6:0c:e3:e7:13:a5 brd ff:ff:ff:ff:ff:ff
+    inet6 fe80::a40c:e3ff:fee7:13a5/64 scope link
+       valid_lft forever preferred_lft forever
+342: root-eth0@s8-eth4: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP group default qlen 1000
+    link/ether de:e1:42:fb:05:9c brd ff:ff:ff:ff:ff:ff
+    inet 192.168.9.254/24 brd 192.168.9.255 scope global root-eth0
+       valid_lft forever preferred_lft forever
+    inet6 fe80::dce1:42ff:fefb:59c/64 scope link
+       valid_lft forever preferred_lft forever
+mininet> s8 ovs-ofctl dump-flows s8
+ovs-ofctl: 127.0.0.1 is not a bridge or a socket
+mininet> h4 cefstatus -d ./h4
+2026-02-06 15:48:34.401 [cefctrl] INFO: [client] Config directory is ./h4
+2026-02-06 15:48:34.401 [cefctrl] INFO: [client] Local Socket Name is /tmp/cef_9695.4
+2026-02-06 15:48:34.401 [cefctrl] INFO: [client] Listen Port is 9695
+CCNx Version     : 1
+Port             : 9695
+Rx Interest      : 546953 (RGL[546953], SYM[0], SEL[0])
+Tx Interest      : 1233803 (RGL[1233803], SYM[0], SEL[0])
+Rx ContentObject : 3080
+Tx ContentObject : 2616
+Cache Mode       : None
+FWD Strategy     : flooding
+Interest Return  : Disabled
+Faces : 12
+  faceid =   0 : Local face
+  faceid =   4 : IPv4 Listen face (udp)
+  faceid =  40 : address = 192.168.9.10:9695 (udp)
+  faceid =  38 : address = 192.168.9.6:9695 (udp)
+  faceid =   5 : IPv6 Listen face (udp)
+  faceid =  36 : address = 192.168.2.19:9695 (udp)
+  faceid =  47 : address = 192.168.2.17:9695 (udp)
+  faceid =   6 : IPv4 Listen face (tcp)
+  faceid =  34 : address = 192.168.2.1:9695 (udp)
+  faceid =   7 : IPv6 Listen face (tcp)
+  faceid =  45 : address = 192.168.2.13:9695 (udp)
+  faceid =  56 : Local face
+FIB(App) :
+  Entry is empty
+FIB : 4
+  ccnx:/emergency/test
+    Faces : 34 (-s-) RtCost=0
+            36 (-s-) RtCost=0
+            38 (-s-) RtCost=0
+            40 (-s-) RtCost=0
+  ccnx:/emergency/test2
+    Faces : 47 (-s-) RtCost=0
+            34 (-s-) RtCost=0
+            45 (-s-) RtCost=0
+            36 (-s-) RtCost=0
+  ccnx:/test/data2
+    Faces : 34 (-s-) RtCost=0
+            45 (-s-) RtCost=0
+            47 (-s-) RtCost=0
+            36 (-s-) RtCost=0
+  ccnx:/test/data1
+    Faces : 40 (-s-) RtCost=0
+            38 (-s-) RtCost=0
+            34 (-s-) RtCost=0
+            45 (-s-) RtCost=0
+PIT(App) :
+  Entry is empty
+PIT : 7
+  ccnx:/test/data1/Chunk=120
+    DownFaces : 34
+    UpFaces   : 40 38 45 34
+  ccnx:/test/data1/Chunk=121
+    DownFaces : 34
+    UpFaces   : 40 38 45 34
+  ccnx:/test/data1/Chunk=118
+    DownFaces : 34
+    UpFaces   : 40 38 45 34
+  ccnx:/test/data1/Chunk=119
+    DownFaces : 34 47
+    UpFaces   : 40 34 45 38
+  ccnx:/test/data1/Chunk=117
+    DownFaces : 34
+    UpFaces   : 40 38 45 34
+  ccnx:/test/data1/Chunk=116
+    DownFaces : 34 47
+    UpFaces   : 40 38 45 34
+  ccnx:/test/data1/Chunk=122
+    DownFaces : 34 47
+    UpFaces   : 40 38 45 34
+mininet> exit
+hosts[ 0 ]: cefnetdstop -F -d ./h0
+hosts[ 1 ]: cefnetdstop -F -d ./h1
+hosts[ 2 ]: cefnetdstop -F -d ./h2
+hosts[ 3 ]: cefnetdstop -F -d ./h3
+hosts[ 4 ]: cefnetdstop -F -d ./h4
+hosts[ 5 ]: cefnetdstop -F -d ./h5
+hosts[ 6 ]: cefnetdstop -F -d ./h6
+hosts[ 7 ]: cefnetdstop -F -d ./h7
+hosts[ 8 ]: cefnetdstop -F -d ./h8
+hosts[ 9 ]: cefnetdstop -F -d ./h9
+hosts[ 10 ]: cefnetdstop -F -d ./h10
+hosts[ 11 ]: cefnetdstop -F -d ./h11
+hosts[ 12 ]: cefnetdstop -F -d ./h12
+hosts[ 13 ]: cefnetdstop -F -d ./h13
+hosts[ 14 ]: cefnetdstop -F -d ./h14
+hosts[ 15 ]: cefnetdstop -F -d ./h15
+hosts[ 16 ]: cefnetdstop -F -d ./h16
+hosts[ 17 ]: cefnetdstop -F -d ./h17
+hosts[ 18 ]: cefnetdstop -F -d ./h18
+hosts[ 19 ]: cefnetdstop -F -d ./h19
+hosts[ 1 ]: csmgrdstop -d ./h1
+hosts[ 3 ]: csmgrdstop -d ./h3
+hosts[ 5 ]: csmgrdstop -d ./h5
+hosts[ 7 ]: csmgrdstop -d ./h7
+hosts[ 9 ]: csmgrdstop -d ./h9
+hosts[ 11 ]: csmgrdstop -d ./h11
+hosts[ 13 ]: csmgrdstop -d ./h13
+hosts[ 15 ]: csmgrdstop -d ./h15
+hosts[ 17 ]: csmgrdstop -d ./h17
+hosts[ 19 ]: csmgrdstop -d ./h19
+*** Removing route: sysctl -w net.ipv4.conf.all.proxy_arp=0
+*** Removing route: sysctl -w net.ipv4.conf.root-eth0.proxy_arp=0
+*** Removing route: iptables -D FORWARD -i eno1 -o root-eth0 -d 192.168.0.0/16 -m state --state RELATED,ESTABLISHED -j ACCEPT
+*** Removing route: iptables -D FORWARD -i root-eth0 -o eno1 -s 192.168.0.0/16 -j ACCEPT
+*** Removing route: iptables -t nat -D POSTROUTING -s 192.168.0.0/16 -o eno1 -j MASQUERADE
+*** Removing route: ip route del default
+*** Removing route: ip route del default
+*** Removing route: ovs-ofctl del-flows s8 --strict priority=0
+*** Removing route: route del -net 192.168.0.0/16
+*** Stopping 1 controllers
+c0
+*** Stopping 36 links
+....................................
+*** Stopping 9 switches
+s0 s1 s2 s3 s4 s5 s6 s7 s8
+*** Stopping 20 hosts
+h0 h1 h2 h3 h4 h5 h6 h7 h8 h9 h10 h11 h12 h13 h14 h15 h16 h17 h18 h19
+*** Done
+*** Removing excess controllers/ofprotocols/ofdatapaths/pings/noxes
+killall controller ofprotocol ofdatapath ping nox_corelt-nox_core ovs-openflowd ovs-controllerovs-testcontroller udpbwtest mnexec ivs ryu-manager 2> /dev/null
+killall -9 controller ofprotocol ofdatapath ping nox_corelt-nox_core ovs-openflowd ovs-controllerovs-testcontroller udpbwtest mnexec ivs ryu-manager 2> /dev/null
+pkill -9 -f "sudo mnexec"
+*** Removing junk from /tmp
+rm -f /tmp/vconn* /tmp/vlogs* /tmp/*.out /tmp/*.log
+*** Removing old X11 tunnels
+*** Removing excess kernel datapaths
+ps ax | egrep -o 'dp[0-9]+' | sed 's/dp/nl:/'
+***  Removing OVS datapaths
+ovs-vsctl --timeout=1 list-br
+ovs-vsctl --timeout=1 list-br
+*** Removing all links of the pattern foo-ethX
+ip link show | egrep -o '([-_.[:alnum:]]+-eth[[:digit:]]+)'
+ip link show
+*** Killing stale mininet node processes
+pkill -9 -f mininet:
+*** Shutting down stale tunnels
+pkill -9 -f Tunnel=Ethernet
+pkill -9 -f .ssh/mn
+rm -f ~/.ssh/mn/*
+*** Cleanup complete.

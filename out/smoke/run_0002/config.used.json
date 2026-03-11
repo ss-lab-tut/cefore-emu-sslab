@@ -1,0 +1,54 @@
+{
+  "hosts": 5,
+  "switches": 8,
+  "seed": 43,
+  "k": 2,
+  "host_degree_min": 2,
+  "host_degree_max": 5,
+  "switch_use_all": false,
+  "node_per_switch": 0,
+  "num": 2,
+  "output_dir": "/home/kinoko/development/github/cefore-emu-koh11235813/out/smoke/run_0002/logs",
+  "timestamp": false,
+  "legacy_layout": false,
+  "topo_png": "topology.png",
+  "topo_layout": "kamada_kawai",
+  "script_log": "script.log",
+  "no_script_log": false,
+  "down_interval": 30,
+  "down_duration": 10,
+  "down_count": 1,
+  "down_stagger": 2,
+  "down_exclude": "0,4",
+  "cache_count": 2,
+  "cache_default_rct_ms": 10000,
+  "puts": [
+    {
+      "host": 4,
+      "uri": "ccnx:/test/sample",
+      "file": "./sample-putfile",
+      "rate": 10,
+      "block_size": 1024,
+      "expiry": 3000,
+      "cache_time": 3000,
+      "valid_algo": "crc32c"
+    }
+  ],
+  "gets": [
+    {
+      "host": 0,
+      "uri": "ccnx:/test/sample"
+    }
+  ],
+  "no_cli": true,
+  "duration": 20,
+  "results_json": "results.json",
+  "get_interval": 10,
+  "warmup_get_interval": 5,
+  "warmup_only_cache_nodes": true,
+  "publisher_host": 4,
+  "hot_uris": [
+    "ccnx:/test/sample"
+  ],
+  "warmup_gets": []
+}
