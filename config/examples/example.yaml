@@ -1,6 +1,6 @@
 # =============================================================================
 # CeforeEmu 設定ファイル (全パラメータ記載)
-# Usage: sudo .venv/bin/python3 -m src disaster --config configs/examples/example.yaml
+# Usage: sudo .venv/bin/python3 -m src disaster --config config/examples/example.yaml
 # =============================================================================
 
 # -----------------------------------------------------------------------------

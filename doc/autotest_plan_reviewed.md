@@ -57,7 +57,7 @@ warmup を cache nodes に投げても、csmgrd が動いていなければ “�
 3. `CACHE_DEFAULT_RCT` の固定有効化＋config上書き対応。
 4. `tools/autotest/run.py` 新規作成。
 5. `tools/autotest/analyze.py` 新規作成。
-6. `configs/examples/autotest_hot.yaml` 新規作成（bridge禁止）。
+6. `config/examples/autotest_hot.yaml` 新規作成（bridge禁止）。
 7. `README.md` に autotest 実行手順追記。
 
 ---
@@ -115,7 +115,7 @@ warmup を cache nodes に投げても、csmgrd が動いていなければ “�
 
 ### 2) CACHE_DEFAULT_RCT 反映
 
-12. 段階1：`configs/templates/h1/csmgrd.conf` に `CACHE_DEFAULT_RCT=<固定値>` を有効化。
+12. 段階1：`config/templates/h1/csmgrd.conf` に `CACHE_DEFAULT_RCT=<固定値>` を有効化。
 13. 段階2：`cache_default_rct_ms` が指定されたら、生成された `hN/csmgrd.conf` を上書き編集する。
     - 書き換えは `src/topo/templates.py` に helper を追加し、`ensure_node_dirs()` 後に適用。
 
@@ -140,7 +140,7 @@ warmup を cache nodes に投げても、csmgrd が動いていなければ “�
     - `exit_code!=0`
     - success 文言不足（例：`Completed to get all the chunks.`）
     - out_file 欠損/0byte
-19. configs/examples/autotest_hot.yaml を追加：
+19. config/examples/autotest_hot.yaml を追加：
     - bridge/ext なし（入ってたらエラーになる）
     - Hot URI 定義（puts）
     - warmup/eval gets（もしくは warmup_gets 省略で自動生成）
@@ -186,4 +186,4 @@ warmup を cache nodes に投げても、csmgrd が動いていなければ “�
 3. cache nodes で csmgrd が動いていることを保証する（ここを外すとキャッシュ実験が成立しない）  
 4. `cache_default_rct_ms` を `hN/csmgrd.conf` へ反映できるようにする（段階1: templates 固定、段階2: config 上書き）  
 5. `tools/autotest/run.py` と `tools/autotest/analyze.py` を追加し、複数回実行と集計を自動化する  
-6. `configs/examples/autotest_hot.yaml` と README を追加する
+6. `config/examples/autotest_hot.yaml` と README を追加する

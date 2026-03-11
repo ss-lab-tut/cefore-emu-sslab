@@ -51,7 +51,7 @@
 
 ### 3.2 実装方針（段階）
 **段階1（最速で成立）**
-- `configs/templates/h1/csmgrd.conf` に `CACHE_DEFAULT_RCT=<ms>` を有効化して固定値で延長。
+- `config/templates/h1/csmgrd.conf` に `CACHE_DEFAULT_RCT=<ms>` を有効化して固定値で延長。
 
 **段階2（実験パラメータ化：推奨）**
 - config（json/yaml）に `cache_default_rct_ms` を追加し、`ensure_node_dirs()` で生成された `hN/csmgrd.conf` に反映する。
@@ -184,7 +184,7 @@
 3. `CACHE_DEFAULT_RCT` を延長できるようにする（段階1: templates 直書き、段階2: config で上書き）  
 4. `tools/autotest/run.py` を新規作成し、N回実験を回してログ/結果を out 配下に整理する  
 5. `tools/autotest/analyze.py` を新規作成し、results から `summary.csv` と `summary.md` を生成する  
-6. `configs/examples/` に autotest 用 base config を追加（bridge 無し、Hot定義、down 設定あり）  
+6. `config/examples/` に autotest 用 base config を追加（bridge 無し、Hot定義、down 設定あり）  
 7. README に自動テストの実行方法を追記する  
 
 ---
@@ -194,13 +194,13 @@
 ```bash
 # 1回実行（非対話）
 sudo python3 mesh-disaster-topology.py \
-  --config configs/examples/autotest_hot.yaml \
+  --config config/examples/autotest_hot.yaml \
   --no-cli --duration 120 \
   --results-json logs/ex1_seed42/results.json
 
 # 複数回オーケストレーション
 sudo python3 tools/autotest/run.py \
-  --base-config configs/examples/autotest_hot.yaml \
+  --base-config config/examples/autotest_hot.yaml \
   --runs 5 --duration 120 --out autotest_runs
 ```
 

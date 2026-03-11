@@ -14,6 +14,8 @@ dependencies = [
 
 [project.scripts]
 ceforeemu = "src.cli.main:main"
+ceforeemu-log = "src.log.cli:main"
+ceforeemu-connect = "src.runtime.external_net:main"
 
 [dependency-groups]
 dev = [

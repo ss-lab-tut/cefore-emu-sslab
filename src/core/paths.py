@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Any
 
 ROOT_DIR = Path(__file__).resolve().parent.parent.parent
-TEMPLATE_ROOT = ROOT_DIR / "configs" / "templates"
+TEMPLATE_ROOT = ROOT_DIR / "config" / "templates"
 
 
 def resolve_run_dir(args: Any) -> Path:

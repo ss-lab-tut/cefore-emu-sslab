@@ -1,0 +1,4 @@
+[console_scripts]
+ceforeemu = src.cli.main:main
+ceforeemu-connect = src.runtime.external_net:main
+ceforeemu-log = src.log.cli:main
