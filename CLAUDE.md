@@ -83,7 +83,7 @@ cefore-emu/
 │       ├── mesh.py                # Mesh topology scenario
 │       └── disaster.py            # Mesh with disaster simulation
 │
-├── config/                        # Configuration (旧 configs/)
+├── config/                        # Configuration
 │   ├── templates/                 # Host templates
 │   │   ├── h0/                    # Consumer template (CS_MODE=0)
 │   │   ├── h1/                    # Router template (CS_MODE=2)
@@ -457,6 +457,13 @@ The project uses `pyproject.toml` with uv for dependency management.
 uv sync              # Install dependencies
 uv run python3 ...   # Run with managed environment
 ```
+
+**CLI entry points** (`pyproject.toml [project.scripts]`):
+- `ceforeemu` — main CLI (`src.cli.main:main`)
+- `ceforeemu-log` — log summarization (`src.log.cli:main`)
+- `ceforeemu-connect` — external network (`src.runtime.external_net:main`)
+
+After modifying `[project.scripts]`, run `uv pip install -e .` to register new entry points.
 
 **Dependencies:**
 - mininet>=2.3.0

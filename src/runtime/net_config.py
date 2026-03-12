@@ -1,5 +1,7 @@
 """Network configuration application (Mininet-dependent)."""
 
+import shlex
+
 from mininet.log import info
 
 from ..core.fib import compute_fib, compute_fib_for_uris
@@ -45,7 +47,7 @@ def apply_fib(net, mesh_links, k_paths):
     routes = compute_fib(mesh_links, k_paths)
     for route in routes:
         node_name = f"h{route.source}"
-        command = f"cefroute add {route.prefix} udp {route.next_hop_ip} -d ./{node_name}"
+        command = f"cefroute add {shlex.quote(route.prefix)} udp {route.next_hop_ip} -d ./{node_name}"
         print(node_name, "command:", command)
         info(net.hosts[route.source].cmd(command))
 
@@ -64,7 +66,7 @@ def cefroute_del(net, host_idx, prefix, protocol, next_hop, node_dir=None):
     node_name = f"h{host_idx}"
     if node_dir is None:
         node_dir = f"./{node_name}"
-    command = f"cefroute del {prefix} {protocol} {next_hop} -d {node_dir}"
+    command = f"cefroute del {shlex.quote(prefix)} {protocol} {next_hop} -d {node_dir}"
     print(node_name, "command:", command)
     info(net.hosts[host_idx].cmd(command))
 
@@ -83,7 +85,7 @@ def cefroute_enable(net, host_idx, prefix, protocol, next_hop, node_dir=None):
     node_name = f"h{host_idx}"
     if node_dir is None:
         node_dir = f"./{node_name}"
-    command = f"cefroute enable {prefix} {protocol} {next_hop} -d {node_dir}"
+    command = f"cefroute enable {shlex.quote(prefix)} {protocol} {next_hop} -d {node_dir}"
     print(node_name, "command:", command)
     info(net.hosts[host_idx].cmd(command))
 
@@ -100,6 +102,6 @@ def apply_fib_for_uris(net, mesh_links, k_paths, uri_publishers):
     routes = compute_fib_for_uris(mesh_links, k_paths, uri_publishers)
     for route in routes:
         node_name = f"h{route.source}"
-        command = f"cefroute add {route.prefix} udp {route.next_hop_ip} -d ./{node_name}"
+        command = f"cefroute add {shlex.quote(route.prefix)} udp {route.next_hop_ip} -d ./{node_name}"
         print(node_name, "command:", command)
         info(net.hosts[route.source].cmd(command))

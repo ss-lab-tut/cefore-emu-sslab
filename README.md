@@ -302,7 +302,7 @@ cefore-emu/
 │       ├── mesh.py                # Mesh topology scenario
 │       └── disaster.py            # Mesh with disaster simulation
 │
-├── config/                        # Configuration (旧 configs/)
+├── config/                        # Configuration
 │   ├── templates/                 # Host templates (h0, h1, h2)
 │   └── examples/                  # Example configurations (YAML/JSON)
 ├── doc/                           # Design documents

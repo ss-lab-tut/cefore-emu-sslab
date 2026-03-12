@@ -1,5 +1,6 @@
 """Event scheduler for timed network operations."""
 
+import shlex
 import threading
 import time
 
@@ -13,7 +14,7 @@ def _cefroute_add(net, host_idx, prefix, protocol, next_hop):
     """Add a FIB entry via cefroute add."""
     node_name = f"h{host_idx}"
     node_dir = f"./{node_name}"
-    command = f"cefroute add {prefix} {protocol} {next_hop} -d {node_dir}"
+    command = f"cefroute add {shlex.quote(prefix)} {protocol} {next_hop} -d {node_dir}"
     print(node_name, "command:", command)
     info(net.hosts[host_idx].cmd(command))
 
