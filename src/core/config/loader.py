@@ -5,6 +5,8 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from ..protocols import VALID_ROUTE_PROTOCOLS, normalize_route_protocol
+
 HAVE_YAML = True
 try:
     import yaml
@@ -284,6 +286,13 @@ def validate_config(config: dict[str, Any]) -> list[str]:
                         errors.append(
                             f"auto[{idx}].consumers must be 'random:N' string or list of host IDs"
                         )
+                if "sub_opts" in entry:
+                    sub_opts = entry["sub_opts"]
+                    if not isinstance(sub_opts, dict):
+                        errors.append(f"auto[{idx}].sub_opts must be a dict")
+                    else:
+                        if "wait" in sub_opts and not isinstance(sub_opts["wait"], (int, float)):
+                            errors.append(f"auto[{idx}].sub_opts.wait must be a number")
 
     if "cache_config" in config:
         cc = config["cache_config"]
@@ -575,6 +584,14 @@ def validate_config(config: dict[str, Any]) -> list[str]:
                         for field in ("host", "prefix", "next_hop"):
                             if field not in event:
                                 errors.append(f"events[{idx}] missing required field '{field}'")
+                        if "protocol" in event:
+                            try:
+                                normalize_route_protocol(event["protocol"])
+                            except (TypeError, ValueError):
+                                errors.append(
+                                    f"events[{idx}].protocol must be one of: "
+                                    f"{', '.join(VALID_ROUTE_PROTOCOLS)}"
+                                )
 
     if "monitoring" in config:
         mon = config["monitoring"]

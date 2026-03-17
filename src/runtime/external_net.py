@@ -209,9 +209,9 @@ def attach_external_interface_intf(net, host_name, intf_name, ip=None, mtu=None)
     host = net.get(host_name)
     Intf(intf_name, node=host)
     if mtu:
-        host.cmd(f"ifconfig {intf_name} mtu {mtu}")
+        host.cmd(f"ifconfig {shlex.quote(intf_name)} mtu {mtu}")
     if ip:
-        host.cmd(f"ifconfig {intf_name} {ip}")
+        host.cmd(f"ifconfig {shlex.quote(intf_name)} {shlex.quote(ip)}")
     info(f"attached {intf_name} to {host_name}\n")
 
 
@@ -348,7 +348,7 @@ def run_connect(args, run_dir: Path = None, log_context=None):
             resolve_run_path(run_dir, op.get("log"), f"cefputfile_h{host}.log")
         )
         command = (
-            f"cefputfile {uri} -f {shlex.quote(infile)} -t 3000 -e 3000 -d ./h{host} > {log_path}"
+            f"cefputfile {shlex.quote(uri)} -f {shlex.quote(infile)} -t 3000 -e 3000 -d ./h{host} > {shlex.quote(log_path)}"
         )
         print(f"h{host}", "command:", command)
         run_host_command(net, host, command)

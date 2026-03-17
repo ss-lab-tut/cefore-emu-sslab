@@ -6,6 +6,7 @@ import time
 
 from mininet.log import info
 
+from ..core.protocols import normalize_route_protocol
 from .links import link_down, link_up
 from .net_config import cefroute_del, cefroute_enable
 
@@ -14,7 +15,8 @@ def _cefroute_add(net, host_idx, prefix, protocol, next_hop):
     """Add a FIB entry via cefroute add."""
     node_name = f"h{host_idx}"
     node_dir = f"./{node_name}"
-    command = f"cefroute add {shlex.quote(prefix)} {protocol} {next_hop} -d {node_dir}"
+    protocol_arg = shlex.quote(normalize_route_protocol(protocol))
+    command = f"cefroute add {shlex.quote(prefix)} {protocol_arg} {shlex.quote(next_hop)} -d {node_dir}"
     print(node_name, "command:", command)
     info(net.hosts[host_idx].cmd(command))
 
@@ -23,13 +25,13 @@ _EVENT_HANDLERS = {
     "link_down": lambda net, ev, ml: link_down(net, ml, ev["nodes"][0], ev["nodes"][1]),
     "link_up": lambda net, ev, ml: link_up(net, ml, ev["nodes"][0], ev["nodes"][1]),
     "fib_add": lambda net, ev, _: _cefroute_add(
-        net, ev["host"], ev["prefix"], ev.get("protocol", "udp"), ev["next_hop"]
+        net, ev["host"], ev["prefix"], ev.get("protocol"), ev["next_hop"]
     ),
     "fib_del": lambda net, ev, _: cefroute_del(
-        net, ev["host"], ev["prefix"], ev.get("protocol", "udp"), ev["next_hop"]
+        net, ev["host"], ev["prefix"], ev.get("protocol"), ev["next_hop"]
     ),
     "fib_enable": lambda net, ev, _: cefroute_enable(
-        net, ev["host"], ev["prefix"], ev.get("protocol", "udp"), ev["next_hop"]
+        net, ev["host"], ev["prefix"], ev.get("protocol"), ev["next_hop"]
     ),
 }
 
