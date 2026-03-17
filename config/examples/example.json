@@ -51,11 +51,7 @@
   "results_json": "",
   "get_interval": 10,
 
-  "warmup_get_interval": 5,
-  "warmup_only_cache_nodes": true,
   "publisher_host": 4,
-  "hot_uris": ["ccnx:/test/sample"],
-  "warmup_gets": [],
 
   "bw": ["h0,s0,10"],
   "ext": [],

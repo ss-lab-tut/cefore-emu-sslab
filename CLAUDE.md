@@ -479,4 +479,4 @@ After modifying `[project.scripts]`, run `uv pip install -e .` to register new e
 
 ## MCP Tool Settings
 
-When using Codex MCP, specify model `gpt-5.4` (reasoning xhigh, summaries auto).
+When using Codex MCP, specify model `gpt-5.4` (reasoning high, summaries auto).

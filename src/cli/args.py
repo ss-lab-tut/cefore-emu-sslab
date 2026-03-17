@@ -133,19 +133,7 @@ def add_disaster_args(parser):
     )
     parser.add_argument(
         "--results-json", type=str, default="",
-        help="write warmup/eval get results to JSON under output directory",
-    )
-    parser.add_argument(
-        "--warmup-get-interval", type=int, default=0,
-        help="seconds between warmup get operations",
-    )
-    parser.add_argument(
-        "--warmup-only-cache-nodes", action="store_true", default=True,
-        help="restrict warmup prefetch to selected cache nodes",
-    )
-    parser.add_argument(
-        "--warmup-all-hosts", action="store_false", dest="warmup_only_cache_nodes",
-        help="run warmup prefetch on all hosts instead of cache nodes only",
+        help="write eval get results to JSON under output directory",
     )
     parser.add_argument(
         "--cache-default-rct-ms", type=int, default=None,
@@ -154,12 +142,4 @@ def add_disaster_args(parser):
     parser.add_argument(
         "--publisher-host", type=int, default=None,
         help="explicit publisher host used for publisher-down metric",
-    )
-    parser.add_argument(
-        "--hot-uris", type=str, default="",
-        help="comma-separated hot URIs for warmup generation",
-    )
-    parser.add_argument(
-        "--warmup-gets", type=str, default="",
-        help="JSON list of warmup get ops (host,uri,file,log)",
     )

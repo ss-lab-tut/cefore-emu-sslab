@@ -74,8 +74,6 @@ def summarize(records: list[dict]) -> list[dict]:
     by_uri: dict[str, dict] = defaultdict(
         lambda: {
             "uri": "",
-            "warmup_total": 0,
-            "warmup_success": 0,
             "eval_total": 0,
             "eval_success": 0,
             "eval_pubdown_total": 0,
@@ -95,8 +93,6 @@ def summarize(records: list[dict]) -> list[dict]:
         phase = rec.get("phase", "eval")
         success, reasons = classify(rec)
         if phase == "warmup":
-            row["warmup_total"] += 1
-            row["warmup_success"] += int(success)
             continue
 
         row["eval_total"] += 1
@@ -116,16 +112,13 @@ def summarize(records: list[dict]) -> list[dict]:
 
     rows = []
     for _, row in sorted(by_uri.items(), key=lambda item: item[0]):
-        row["warmup_success_rate"] = (
-            row["warmup_success"] / row["warmup_total"] if row["warmup_total"] else 0.0
-        )
         row["eval_success_rate"] = (
-            row["eval_success"] / row["eval_total"] if row["eval_total"] else 0.0
+            row["eval_success"] / row["eval_total"] if row["eval_total"] else None
         )
         row["eval_success_rate_when_publisher_down"] = (
             row["eval_pubdown_success"] / row["eval_pubdown_total"]
             if row["eval_pubdown_total"]
-            else 0.0
+            else None
         )
         rows.append(row)
     return rows
@@ -135,9 +128,6 @@ def write_csv(rows: list[dict], path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     fields = [
         "uri",
-        "warmup_total",
-        "warmup_success",
-        "warmup_success_rate",
         "eval_total",
         "eval_success",
         "eval_success_rate",
@@ -155,6 +145,10 @@ def write_csv(rows: list[dict], path: Path) -> None:
             writer.writerow(row)
 
 
+def _fmt_rate(v) -> str:
+    return "N/A" if v is None else f"{v:.3f}"
+
+
 def write_md(rows: list[dict], path: Path, input_files: list[Path]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     lines = []
@@ -163,15 +157,12 @@ def write_md(rows: list[dict], path: Path, input_files: list[Path]) -> None:
     lines.append(f"- input_files: {len(input_files)}")
     lines.append(f"- uris: {len(rows)}")
     lines.append("")
-    lines.append(
-        "| uri | warmup_success_rate | eval_success_rate | eval_success_rate_when_publisher_down |"
-    )
-    lines.append("|---|---:|---:|---:|")
+    lines.append("| uri | eval_success_rate | eval_success_rate_when_publisher_down |")
+    lines.append("|---|---:|---:|")
     for row in rows:
         lines.append(
-            f"| {row['uri']} | {row['warmup_success_rate']:.3f} | "
-            f"{row['eval_success_rate']:.3f} | "
-            f"{row['eval_success_rate_when_publisher_down']:.3f} |"
+            f"| {row['uri']} | {_fmt_rate(row['eval_success_rate'])} | "
+            f"{_fmt_rate(row['eval_success_rate_when_publisher_down'])} |"
         )
     lines.append("")
     lines.append("## Failure Reasons (Eval)")

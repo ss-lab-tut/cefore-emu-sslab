@@ -1,5 +1,5 @@
 hosts: 12
-switches: 20
+switches: 25
 seed: 77
 k: 2
 

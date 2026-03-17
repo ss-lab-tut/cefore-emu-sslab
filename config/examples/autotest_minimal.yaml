@@ -1,0 +1,9 @@
+hosts: 4
+switches: 6
+seed: 100
+k: 2
+get_interval: 0
+puts:
+  - {host: 3, uri: "ccnx:/test/sample1", file: "./sample-putfile"}
+gets:
+  - {host: 0, uri: "ccnx:/test/sample1"}

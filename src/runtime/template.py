@@ -135,7 +135,7 @@ def apply_cache_node_settings(
     """Apply cache-related runtime overrides to generated host configs.
 
     - Cache nodes only: force ``CS_MODE=2`` (external CS via csmgrd).
-    - Non-cache nodes: keep template-selected CS_MODE untouched.
+    - Non-cache nodes: force ``CS_MODE=0`` to prevent csmgrd-wait hang.
     - Optional parameters override csmgrd.conf values for all cache nodes.
 
     Args:
@@ -160,3 +160,11 @@ def apply_cache_node_settings(
             _set_config_value(conf_path, "CACHE_ALGORITHM", str(cache_algorithm))
         if cache_type is not None:
             _set_config_value(conf_path, "CACHE_TYPE", str(cache_type))
+
+    for idx in range(host_num):
+        if idx in cache_nodes:
+            continue
+        node_dir = Path(f"h{idx}")
+        cefnetd_conf = node_dir / "cefnetd.conf"
+        if cefnetd_conf.exists():
+            _set_config_value(cefnetd_conf, "CS_MODE", "0")

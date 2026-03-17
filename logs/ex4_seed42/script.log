@@ -1,0 +1,63 @@
+h12 command: ifconfig h12-eth0 192.168.1.13
+h14 command: ifconfig h14-eth0 192.168.1.15
+h4 command: ifconfig h4-eth0 192.168.2.5
+h14 command: ifconfig h14-eth1 192.168.2.15
+h8 command: ifconfig h8-eth0 192.168.3.9
+h12 command: ifconfig h12-eth1 192.168.3.13
+h4 command: ifconfig h4-eth1 192.168.4.5
+h11 command: ifconfig h11-eth0 192.168.4.12
+h1 command: ifconfig h1-eth0 192.168.5.2
+h14 command: ifconfig h14-eth2 192.168.5.15
+h12 command: ifconfig h12-eth2 192.168.6.13
+h13 command: ifconfig h13-eth0 192.168.6.14
+h0 command: ifconfig h0-eth0 192.168.7.1
+h4 command: ifconfig h4-eth2 192.168.7.5
+h9 command: ifconfig h9-eth0 192.168.8.10
+h14 command: ifconfig h14-eth3 192.168.8.15
+h7 command: ifconfig h7-eth0 192.168.9.8
+h12 command: ifconfig h12-eth3 192.168.9.13
+h3 command: ifconfig h3-eth0 192.168.10.4
+h4 command: ifconfig h4-eth3 192.168.10.5
+h8 command: ifconfig h8-eth1 192.168.11.9
+h10 command: ifconfig h10-eth0 192.168.11.11
+h5 command: ifconfig h5-eth0 192.168.12.6
+h11 command: ifconfig h11-eth1 192.168.12.12
+h1 command: ifconfig h1-eth1 192.168.13.2
+h6 command: ifconfig h6-eth0 192.168.13.7
+h2 command: ifconfig h2-eth0 192.168.14.3
+h13 command: ifconfig h13-eth1 192.168.14.14
+h8 command: ifconfig h8-eth2 192.168.15.9
+h12 command: ifconfig h12-eth4 192.168.15.13
+h0 command: ifconfig h0-eth1 192.168.16.1
+h10 command: ifconfig h10-eth1 192.168.16.11
+h3 command: ifconfig h3-eth1 192.168.17.4
+h7 command: ifconfig h7-eth1 192.168.17.8
+h6 command: ifconfig h6-eth1 192.168.18.7
+h13 command: ifconfig h13-eth2 192.168.18.14
+h2 command: ifconfig h2-eth1 192.168.19.3
+h11 command: ifconfig h11-eth2 192.168.19.12
+h1 command: ifconfig h1-eth2 192.168.20.2
+h14 command: ifconfig h14-eth4 192.168.20.15
+h4 command: ifconfig h4-eth4 192.168.21.5
+h5 command: ifconfig h5-eth1 192.168.21.6
+h0 command: ifconfig h0-eth2 192.168.22.1
+h9 command: ifconfig h9-eth1 192.168.22.10
+h9 command: ifconfig h9-eth2 192.168.23.10
+h0 command: csmgrdstart -d ./h0 > /dev/null 2>&1
+h6 command: csmgrdstart -d ./h6 > /dev/null 2>&1
+h7 command: csmgrdstart -d ./h7 > /dev/null 2>&1
+h0 command: cefnetdstart -d ./h0 > /dev/null 2>&1
+h1 command: cefnetdstart -d ./h1 > /dev/null 2>&1
+h2 command: cefnetdstart -d ./h2 > /dev/null 2>&1
+h3 command: cefnetdstart -d ./h3 > /dev/null 2>&1
+h4 command: cefnetdstart -d ./h4 > /dev/null 2>&1
+h5 command: cefnetdstart -d ./h5 > /dev/null 2>&1
+h6 command: cefnetdstart -d ./h6 > /dev/null 2>&1
+h7 command: cefnetdstart -d ./h7 > /dev/null 2>&1
+h8 command: cefnetdstart -d ./h8 > /dev/null 2>&1
+h9 command: cefnetdstart -d ./h9 > /dev/null 2>&1
+h10 command: cefnetdstart -d ./h10 > /dev/null 2>&1
+h11 command: cefnetdstart -d ./h11 > /dev/null 2>&1
+h12 command: cefnetdstart -d ./h12 > /dev/null 2>&1
+h13 command: cefnetdstart -d ./h13 > /dev/null 2>&1
+h14 command: cefnetdstart -d ./h14 > /dev/null 2>&1
