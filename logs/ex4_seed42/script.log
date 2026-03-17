@@ -61,3 +61,103 @@ h11 command: cefnetdstart -d ./h11 > /dev/null 2>&1
 h12 command: cefnetdstart -d ./h12 > /dev/null 2>&1
 h13 command: cefnetdstart -d ./h13 > /dev/null 2>&1
 h14 command: cefnetdstart -d ./h14 > /dev/null 2>&1
+h0 command: cefroute add ccnx:/test/sample udp 192.168.7.5 -d ./h0
+h0 command: cefroute add ccnx:/test/sample udp 192.168.22.10 -d ./h0
+h1 command: cefroute add ccnx:/test/sample udp 192.168.20.15 -d ./h1
+h1 command: cefroute add ccnx:/test/sample udp 192.168.13.7 -d ./h1
+h2 command: cefroute add ccnx:/test/sample udp 192.168.19.12 -d ./h2
+h2 command: cefroute add ccnx:/test/sample udp 192.168.14.14 -d ./h2
+h3 command: cefroute add ccnx:/test/sample udp 192.168.10.5 -d ./h3
+h3 command: cefroute add ccnx:/test/sample udp 192.168.17.8 -d ./h3
+h5 command: cefroute add ccnx:/test/sample udp 192.168.21.5 -d ./h5
+h5 command: cefroute add ccnx:/test/sample udp 192.168.12.12 -d ./h5
+h6 command: cefroute add ccnx:/test/sample udp 192.168.13.2 -d ./h6
+h6 command: cefroute add ccnx:/test/sample udp 192.168.18.14 -d ./h6
+h7 command: cefroute add ccnx:/test/sample udp 192.168.17.4 -d ./h7
+h7 command: cefroute add ccnx:/test/sample udp 192.168.9.13 -d ./h7
+h8 command: cefroute add ccnx:/test/sample udp 192.168.11.11 -d ./h8
+h8 command: cefroute add ccnx:/test/sample udp 192.168.15.13 -d ./h8
+h9 command: cefroute add ccnx:/test/sample udp 192.168.22.1 -d ./h9
+h9 command: cefroute add ccnx:/test/sample udp 192.168.8.15 -d ./h9
+h10 command: cefroute add ccnx:/test/sample udp 192.168.16.1 -d ./h10
+h10 command: cefroute add ccnx:/test/sample udp 192.168.11.9 -d ./h10
+h11 command: cefroute add ccnx:/test/sample udp 192.168.4.5 -d ./h11
+h11 command: cefroute add ccnx:/test/sample udp 192.168.12.6 -d ./h11
+h12 command: cefroute add ccnx:/test/sample udp 192.168.1.15 -d ./h12
+h12 command: cefroute add ccnx:/test/sample udp 192.168.9.8 -d ./h12
+h13 command: cefroute add ccnx:/test/sample udp 192.168.14.3 -d ./h13
+h13 command: cefroute add ccnx:/test/sample udp 192.168.6.13 -d ./h13
+h14 command: cefroute add ccnx:/test/sample udp 192.168.2.5 -d ./h14
+h14 command: cefroute add ccnx:/test/sample udp 192.168.20.2 -d ./h14
+h0 command: cefstatus -d ./h0
+h1 command: cefstatus -d ./h1
+h2 command: cefstatus -d ./h2
+h3 command: cefstatus -d ./h3
+h4 command: cefstatus -d ./h4
+h5 command: cefstatus -d ./h5
+h6 command: cefstatus -d ./h6
+h7 command: cefstatus -d ./h7
+h8 command: cefstatus -d ./h8
+h9 command: cefstatus -d ./h9
+h10 command: cefstatus -d ./h10
+h11 command: cefstatus -d ./h11
+h12 command: cefstatus -d ./h12
+h13 command: cefstatus -d ./h13
+h14 command: cefstatus -d ./h14
+h4 command: cefputfile ccnx:/test/sample -f ./sample-putfile -r 10 -b 1024 -e 3000 -t 3000 -v crc32c -d ./h4 > /home/lab_shared/cefore-emu-sslab/logs/ex4_seed42/cefputfile_h4.log
+h0 command: cefgetfile ccnx:/test/sample -f /home/lab_shared/cefore-emu-sslab/logs/ex4_seed42/eval_recvfile_h0_idx0 -d ./h0 > /home/lab_shared/cefore-emu-sslab/logs/ex4_seed42/cefgetfile_seed42_downhosts6_phaseeval_cycle0_idx0_h0.log
+h0 command: cefgetfile ccnx:/test/sample -f /home/lab_shared/cefore-emu-sslab/logs/ex4_seed42/eval_recvfile_h0_idx0 -d ./h0 > /home/lab_shared/cefore-emu-sslab/logs/ex4_seed42/cefgetfile_seed42_downhosts6_phaseeval_cycle1_idx0_h0.log
+h0 command: cefgetfile ccnx:/test/sample -f /home/lab_shared/cefore-emu-sslab/logs/ex4_seed42/eval_recvfile_h0_idx0 -d ./h0 > /home/lab_shared/cefore-emu-sslab/logs/ex4_seed42/cefgetfile_seed42_downhosts3,6_phaseeval_cycle2_idx0_h0.log
+h0 command: cefgetfile ccnx:/test/sample -f /home/lab_shared/cefore-emu-sslab/logs/ex4_seed42/eval_recvfile_h0_idx0 -d ./h0 > /home/lab_shared/cefore-emu-sslab/logs/ex4_seed42/cefgetfile_seed42_downhosts3,6_phaseeval_cycle3_idx0_h0.log
+h0 command: cefgetfile ccnx:/test/sample -f /home/lab_shared/cefore-emu-sslab/logs/ex4_seed42/eval_recvfile_h0_idx0 -d ./h0 > /home/lab_shared/cefore-emu-sslab/logs/ex4_seed42/cefgetfile_seed42_downhosts3,6_phaseeval_cycle4_idx0_h0.log
+h0 command: cefgetfile ccnx:/test/sample -f /home/lab_shared/cefore-emu-sslab/logs/ex4_seed42/eval_recvfile_h0_idx0 -d ./h0 > /home/lab_shared/cefore-emu-sslab/logs/ex4_seed42/cefgetfile_seed42_downhosts3,6_phaseeval_cycle5_idx0_h0.log
+h0 command: cefgetfile ccnx:/test/sample -f /home/lab_shared/cefore-emu-sslab/logs/ex4_seed42/eval_recvfile_h0_idx0 -d ./h0 > /home/lab_shared/cefore-emu-sslab/logs/ex4_seed42/cefgetfile_seed42_downhosts3,6_phaseeval_cycle6_idx0_h0.log
+h0 command: cefgetfile ccnx:/test/sample -f /home/lab_shared/cefore-emu-sslab/logs/ex4_seed42/eval_recvfile_h0_idx0 -d ./h0 > /home/lab_shared/cefore-emu-sslab/logs/ex4_seed42/cefgetfile_seed42_downhosts3,6_phaseeval_cycle7_idx0_h0.log
+h0 command: cefgetfile ccnx:/test/sample -f /home/lab_shared/cefore-emu-sslab/logs/ex4_seed42/eval_recvfile_h0_idx0 -d ./h0 > /home/lab_shared/cefore-emu-sslab/logs/ex4_seed42/cefgetfile_seed42_downhosts3,6_phaseeval_cycle8_idx0_h0.log
+h0 command: cefgetfile ccnx:/test/sample -f /home/lab_shared/cefore-emu-sslab/logs/ex4_seed42/eval_recvfile_h0_idx0 -d ./h0 > /home/lab_shared/cefore-emu-sslab/logs/ex4_seed42/cefgetfile_seed42_downhosts3,6_phaseeval_cycle9_idx0_h0.log
+h0 command: cefgetfile ccnx:/test/sample -f /home/lab_shared/cefore-emu-sslab/logs/ex4_seed42/eval_recvfile_h0_idx0 -d ./h0 > /home/lab_shared/cefore-emu-sslab/logs/ex4_seed42/cefgetfile_seed42_downhosts3,6_phaseeval_cycle10_idx0_h0.log
+h0 command: cefgetfile ccnx:/test/sample -f /home/lab_shared/cefore-emu-sslab/logs/ex4_seed42/eval_recvfile_h0_idx0 -d ./h0 > /home/lab_shared/cefore-emu-sslab/logs/ex4_seed42/cefgetfile_seed42_downhosts3,6_phaseeval_cycle11_idx0_h0.log
+h0 command: cefgetfile ccnx:/test/sample -f /home/lab_shared/cefore-emu-sslab/logs/ex4_seed42/eval_recvfile_h0_idx0 -d ./h0 > /home/lab_shared/cefore-emu-sslab/logs/ex4_seed42/cefgetfile_seed42_downhosts3,6_phaseeval_cycle12_idx0_h0.log
+h0 command: cefgetfile ccnx:/test/sample -f /home/lab_shared/cefore-emu-sslab/logs/ex4_seed42/eval_recvfile_h0_idx0 -d ./h0 > /home/lab_shared/cefore-emu-sslab/logs/ex4_seed42/cefgetfile_seed42_downhosts3,6_phaseeval_cycle13_idx0_h0.log
+h0 command: cefgetfile ccnx:/test/sample -f /home/lab_shared/cefore-emu-sslab/logs/ex4_seed42/eval_recvfile_h0_idx0 -d ./h0 > /home/lab_shared/cefore-emu-sslab/logs/ex4_seed42/cefgetfile_seed42_downhosts3,6_phaseeval_cycle14_idx0_h0.log
+h0 command: cefgetfile ccnx:/test/sample -f /home/lab_shared/cefore-emu-sslab/logs/ex4_seed42/eval_recvfile_h0_idx0 -d ./h0 > /home/lab_shared/cefore-emu-sslab/logs/ex4_seed42/cefgetfile_seed42_downhosts3,6_phaseeval_cycle15_idx0_h0.log
+h0 command: cefgetfile ccnx:/test/sample -f /home/lab_shared/cefore-emu-sslab/logs/ex4_seed42/eval_recvfile_h0_idx0 -d ./h0 > /home/lab_shared/cefore-emu-sslab/logs/ex4_seed42/cefgetfile_seed42_downhosts3,6_phaseeval_cycle16_idx0_h0.log
+h0 command: cefgetfile ccnx:/test/sample -f /home/lab_shared/cefore-emu-sslab/logs/ex4_seed42/eval_recvfile_h0_idx0 -d ./h0 > /home/lab_shared/cefore-emu-sslab/logs/ex4_seed42/cefgetfile_seed42_downhosts3,6_phaseeval_cycle17_idx0_h0.log
+h0 command: cefgetfile ccnx:/test/sample -f /home/lab_shared/cefore-emu-sslab/logs/ex4_seed42/eval_recvfile_h0_idx0 -d ./h0 > /home/lab_shared/cefore-emu-sslab/logs/ex4_seed42/cefgetfile_seed42_downhosts3,6_phaseeval_cycle18_idx0_h0.log
+h0 command: cefgetfile ccnx:/test/sample -f /home/lab_shared/cefore-emu-sslab/logs/ex4_seed42/eval_recvfile_h0_idx0 -d ./h0 > /home/lab_shared/cefore-emu-sslab/logs/ex4_seed42/cefgetfile_seed42_downhosts3,6_phaseeval_cycle19_idx0_h0.log
+h0 command: cefgetfile ccnx:/test/sample -f /home/lab_shared/cefore-emu-sslab/logs/ex4_seed42/eval_recvfile_h0_idx0 -d ./h0 > /home/lab_shared/cefore-emu-sslab/logs/ex4_seed42/cefgetfile_seed42_downhosts3,6_phaseeval_cycle20_idx0_h0.log
+h0 command: cefgetfile ccnx:/test/sample -f /home/lab_shared/cefore-emu-sslab/logs/ex4_seed42/eval_recvfile_h0_idx0 -d ./h0 > /home/lab_shared/cefore-emu-sslab/logs/ex4_seed42/cefgetfile_seed42_downhosts3,6_phaseeval_cycle21_idx0_h0.log
+h0 command: cefgetfile ccnx:/test/sample -f /home/lab_shared/cefore-emu-sslab/logs/ex4_seed42/eval_recvfile_h0_idx0 -d ./h0 > /home/lab_shared/cefore-emu-sslab/logs/ex4_seed42/cefgetfile_seed42_downhosts3,6_phaseeval_cycle22_idx0_h0.log
+h0 command: cefgetfile ccnx:/test/sample -f /home/lab_shared/cefore-emu-sslab/logs/ex4_seed42/eval_recvfile_h0_idx0 -d ./h0 > /home/lab_shared/cefore-emu-sslab/logs/ex4_seed42/cefgetfile_seed42_downhosts3,6_phaseeval_cycle23_idx0_h0.log
+h0 command: cefgetfile ccnx:/test/sample -f /home/lab_shared/cefore-emu-sslab/logs/ex4_seed42/eval_recvfile_h0_idx0 -d ./h0 > /home/lab_shared/cefore-emu-sslab/logs/ex4_seed42/cefgetfile_seed42_downhosts3,6_phaseeval_cycle24_idx0_h0.log
+h0 command: cefgetfile ccnx:/test/sample -f /home/lab_shared/cefore-emu-sslab/logs/ex4_seed42/eval_recvfile_h0_idx0 -d ./h0 > /home/lab_shared/cefore-emu-sslab/logs/ex4_seed42/cefgetfile_seed42_downhosts3,6_phaseeval_cycle25_idx0_h0.log
+h0 command: cefgetfile ccnx:/test/sample -f /home/lab_shared/cefore-emu-sslab/logs/ex4_seed42/eval_recvfile_h0_idx0 -d ./h0 > /home/lab_shared/cefore-emu-sslab/logs/ex4_seed42/cefgetfile_seed42_downhosts3,6_phaseeval_cycle26_idx0_h0.log
+h0 command: cefgetfile ccnx:/test/sample -f /home/lab_shared/cefore-emu-sslab/logs/ex4_seed42/eval_recvfile_h0_idx0 -d ./h0 > /home/lab_shared/cefore-emu-sslab/logs/ex4_seed42/cefgetfile_seed42_downhosts3,6_phaseeval_cycle27_idx0_h0.log
+h0 command: cefgetfile ccnx:/test/sample -f /home/lab_shared/cefore-emu-sslab/logs/ex4_seed42/eval_recvfile_h0_idx0 -d ./h0 > /home/lab_shared/cefore-emu-sslab/logs/ex4_seed42/cefgetfile_seed42_downhosts3,6_phaseeval_cycle28_idx0_h0.log
+h0 command: cefgetfile ccnx:/test/sample -f /home/lab_shared/cefore-emu-sslab/logs/ex4_seed42/eval_recvfile_h0_idx0 -d ./h0 > /home/lab_shared/cefore-emu-sslab/logs/ex4_seed42/cefgetfile_seed42_downhosts3,6_phaseeval_cycle29_idx0_h0.log
+h0 command: cefgetfile ccnx:/test/sample -f /home/lab_shared/cefore-emu-sslab/logs/ex4_seed42/eval_recvfile_h0_idx0 -d ./h0 > /home/lab_shared/cefore-emu-sslab/logs/ex4_seed42/cefgetfile_seed42_downhosts3,6_phaseeval_cycle30_idx0_h0.log
+h0 command: cefgetfile ccnx:/test/sample -f /home/lab_shared/cefore-emu-sslab/logs/ex4_seed42/eval_recvfile_h0_idx0 -d ./h0 > /home/lab_shared/cefore-emu-sslab/logs/ex4_seed42/cefgetfile_seed42_downhosts3,6_phaseeval_cycle31_idx0_h0.log
+h0 command: cefgetfile ccnx:/test/sample -f /home/lab_shared/cefore-emu-sslab/logs/ex4_seed42/eval_recvfile_h0_idx0 -d ./h0 > /home/lab_shared/cefore-emu-sslab/logs/ex4_seed42/cefgetfile_seed42_downhosts3,6_phaseeval_cycle32_idx0_h0.log
+h0 command: cefgetfile ccnx:/test/sample -f /home/lab_shared/cefore-emu-sslab/logs/ex4_seed42/eval_recvfile_h0_idx0 -d ./h0 > /home/lab_shared/cefore-emu-sslab/logs/ex4_seed42/cefgetfile_seed42_downhosts3,6_phaseeval_cycle33_idx0_h0.log
+h0 command: cefgetfile ccnx:/test/sample -f /home/lab_shared/cefore-emu-sslab/logs/ex4_seed42/eval_recvfile_h0_idx0 -d ./h0 > /home/lab_shared/cefore-emu-sslab/logs/ex4_seed42/cefgetfile_seed42_downhosts3,6_phaseeval_cycle34_idx0_h0.log
+h0 command: cefgetfile ccnx:/test/sample -f /home/lab_shared/cefore-emu-sslab/logs/ex4_seed42/eval_recvfile_h0_idx0 -d ./h0 > /home/lab_shared/cefore-emu-sslab/logs/ex4_seed42/cefgetfile_seed42_downhosts3,6_phaseeval_cycle35_idx0_h0.log
+h0 command: cefgetfile ccnx:/test/sample -f /home/lab_shared/cefore-emu-sslab/logs/ex4_seed42/eval_recvfile_h0_idx0 -d ./h0 > /home/lab_shared/cefore-emu-sslab/logs/ex4_seed42/cefgetfile_seed42_downhosts3,6_phaseeval_cycle36_idx0_h0.log
+h0 command: cefgetfile ccnx:/test/sample -f /home/lab_shared/cefore-emu-sslab/logs/ex4_seed42/eval_recvfile_h0_idx0 -d ./h0 > /home/lab_shared/cefore-emu-sslab/logs/ex4_seed42/cefgetfile_seed42_downhosts3,6_phaseeval_cycle37_idx0_h0.log
+h0 command: cefgetfile ccnx:/test/sample -f /home/lab_shared/cefore-emu-sslab/logs/ex4_seed42/eval_recvfile_h0_idx0 -d ./h0 > /home/lab_shared/cefore-emu-sslab/logs/ex4_seed42/cefgetfile_seed42_downhosts3,6_phaseeval_cycle38_idx0_h0.log
+h0 command: cefgetfile ccnx:/test/sample -f /home/lab_shared/cefore-emu-sslab/logs/ex4_seed42/eval_recvfile_h0_idx0 -d ./h0 > /home/lab_shared/cefore-emu-sslab/logs/ex4_seed42/cefgetfile_seed42_downhosts3,6_phaseeval_cycle39_idx0_h0.log
+h0 command: cefgetfile ccnx:/test/sample -f /home/lab_shared/cefore-emu-sslab/logs/ex4_seed42/eval_recvfile_h0_idx0 -d ./h0 > /home/lab_shared/cefore-emu-sslab/logs/ex4_seed42/cefgetfile_seed42_downhosts3,6_phaseeval_cycle40_idx0_h0.log
+h0 command: cefgetfile ccnx:/test/sample -f /home/lab_shared/cefore-emu-sslab/logs/ex4_seed42/eval_recvfile_h0_idx0 -d ./h0 > /home/lab_shared/cefore-emu-sslab/logs/ex4_seed42/cefgetfile_seed42_downhosts3,6_phaseeval_cycle41_idx0_h0.log
+h0 command: cefgetfile ccnx:/test/sample -f /home/lab_shared/cefore-emu-sslab/logs/ex4_seed42/eval_recvfile_h0_idx0 -d ./h0 > /home/lab_shared/cefore-emu-sslab/logs/ex4_seed42/cefgetfile_seed42_downhosts3,6_phaseeval_cycle42_idx0_h0.log
+h0 command: cefgetfile ccnx:/test/sample -f /home/lab_shared/cefore-emu-sslab/logs/ex4_seed42/eval_recvfile_h0_idx0 -d ./h0 > /home/lab_shared/cefore-emu-sslab/logs/ex4_seed42/cefgetfile_seed42_downhosts3,6_phaseeval_cycle43_idx0_h0.log
+h0 command: cefgetfile ccnx:/test/sample -f /home/lab_shared/cefore-emu-sslab/logs/ex4_seed42/eval_recvfile_h0_idx0 -d ./h0 > /home/lab_shared/cefore-emu-sslab/logs/ex4_seed42/cefgetfile_seed42_downhosts3,6_phaseeval_cycle44_idx0_h0.log
+h0 command: cefgetfile ccnx:/test/sample -f /home/lab_shared/cefore-emu-sslab/logs/ex4_seed42/eval_recvfile_h0_idx0 -d ./h0 > /home/lab_shared/cefore-emu-sslab/logs/ex4_seed42/cefgetfile_seed42_downhosts3,6_phaseeval_cycle45_idx0_h0.log
+h0 command: cefgetfile ccnx:/test/sample -f /home/lab_shared/cefore-emu-sslab/logs/ex4_seed42/eval_recvfile_h0_idx0 -d ./h0 > /home/lab_shared/cefore-emu-sslab/logs/ex4_seed42/cefgetfile_seed42_downhosts3,6_phaseeval_cycle46_idx0_h0.log
+h0 command: cefgetfile ccnx:/test/sample -f /home/lab_shared/cefore-emu-sslab/logs/ex4_seed42/eval_recvfile_h0_idx0 -d ./h0 > /home/lab_shared/cefore-emu-sslab/logs/ex4_seed42/cefgetfile_seed42_downhosts3,6_phaseeval_cycle47_idx0_h0.log
+h0 command: cefgetfile ccnx:/test/sample -f /home/lab_shared/cefore-emu-sslab/logs/ex4_seed42/eval_recvfile_h0_idx0 -d ./h0 > /home/lab_shared/cefore-emu-sslab/logs/ex4_seed42/cefgetfile_seed42_downhosts3,6_phaseeval_cycle48_idx0_h0.log
+h0 command: cefgetfile ccnx:/test/sample -f /home/lab_shared/cefore-emu-sslab/logs/ex4_seed42/eval_recvfile_h0_idx0 -d ./h0 > /home/lab_shared/cefore-emu-sslab/logs/ex4_seed42/cefgetfile_seed42_downhosts3,6_phaseeval_cycle49_idx0_h0.log
+h0 command: cefgetfile ccnx:/test/sample -f /home/lab_shared/cefore-emu-sslab/logs/ex4_seed42/eval_recvfile_h0_idx0 -d ./h0 > /home/lab_shared/cefore-emu-sslab/logs/ex4_seed42/cefgetfile_seed42_downhosts3,6_phaseeval_cycle50_idx0_h0.log
+h0 command: cefgetfile ccnx:/test/sample -f /home/lab_shared/cefore-emu-sslab/logs/ex4_seed42/eval_recvfile_h0_idx0 -d ./h0 > /home/lab_shared/cefore-emu-sslab/logs/ex4_seed42/cefgetfile_seed42_downhosts3,6_phaseeval_cycle51_idx0_h0.log
+h0 command: cefgetfile ccnx:/test/sample -f /home/lab_shared/cefore-emu-sslab/logs/ex4_seed42/eval_recvfile_h0_idx0 -d ./h0 > /home/lab_shared/cefore-emu-sslab/logs/ex4_seed42/cefgetfile_seed42_downhosts3,6_phaseeval_cycle52_idx0_h0.log
+h0 command: cefgetfile ccnx:/test/sample -f /home/lab_shared/cefore-emu-sslab/logs/ex4_seed42/eval_recvfile_h0_idx0 -d ./h0 > /home/lab_shared/cefore-emu-sslab/logs/ex4_seed42/cefgetfile_seed42_downhosts3,6_phaseeval_cycle53_idx0_h0.log
+h0 command: cefgetfile ccnx:/test/sample -f /home/lab_shared/cefore-emu-sslab/logs/ex4_seed42/eval_recvfile_h0_idx0 -d ./h0 > /home/lab_shared/cefore-emu-sslab/logs/ex4_seed42/cefgetfile_seed42_downhosts3,6_phaseeval_cycle54_idx0_h0.log
+h0 command: cefgetfile ccnx:/test/sample -f /home/lab_shared/cefore-emu-sslab/logs/ex4_seed42/eval_recvfile_h0_idx0 -d ./h0 > /home/lab_shared/cefore-emu-sslab/logs/ex4_seed42/cefgetfile_seed42_downhosts3,6_phaseeval_cycle55_idx0_h0.log

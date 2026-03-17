@@ -87,7 +87,7 @@ cefore-emu/
 │   ├── templates/                 # Host templates
 │   │   ├── h0/                    # Consumer template (CS_MODE=0)
 │   │   ├── h1/                    # Router template (CS_MODE=2)
-│   │   └── h2/                    # Publisher template (CS_MODE=0)
+│   │   └── h2/                    # Publisher template (CS_MODE=1)
 │   └── examples/                  # Example configurations
 │       ├── example.yaml           # Full config reference (all args, commented)
 │       ├── example.json           # Same config in JSON format
@@ -260,14 +260,6 @@ Connects Mininet switches to the root namespace for cross-VM communication. Brid
 sudo ceforeemu disaster --config config/examples/example.yaml --no-cli --duration 120 --results-json results.json
 ```
 Runs experiment without interactive CLI and saves structured results to JSON.
-
-**Warmup Operations:**
-```bash
---warmup-get-interval 5          # Interval between warmup gets
---warmup-only-cache-nodes        # Restrict warmup to cache nodes (default)
---warmup-all-hosts               # Warmup on all hosts
---hot-uris uri1,uri2             # URIs to pre-cache during warmup
-```
 
 **Cache Configuration:**
 ```bash

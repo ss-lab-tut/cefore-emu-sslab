@@ -16,7 +16,7 @@ class NodeRole:
 
 CONSUMER = NodeRole("consumer", "h0", cs_mode=0, runs_csmgrd=False)
 ROUTER = NodeRole("router", "h1", cs_mode=2, runs_csmgrd=True)
-PUBLISHER = NodeRole("publisher", "h2", cs_mode=0, runs_csmgrd=False)
+PUBLISHER = NodeRole("publisher", "h2", cs_mode=1, runs_csmgrd=False)
 
 # Template mapping from name to role
 _TEMPLATE_TO_ROLE = {"h0": CONSUMER, "h1": ROUTER, "h2": PUBLISHER}

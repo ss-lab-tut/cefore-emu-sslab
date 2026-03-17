@@ -253,6 +253,7 @@ class DisasterScenario(BaseScenario):
                 args.hosts,
                 self.cache_node_set,
                 getattr(args, "cache_default_rct_ms", None),
+                publishers=self.publisher_ids,
             )
 
         # Daemon startup: csmgrd -> cefnetd -> wait ready
