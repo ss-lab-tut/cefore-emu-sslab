@@ -1,42 +1,87 @@
-hosts: 12
-switches: 25
-seed: 77
-k: 2
+# =============================================================================
+# flexible_cache.yaml
+# 柔軟なキャッシュ戦略とノード個別設定の設定例
+#
+# 実行例:
+#   sudo .venv/bin/python3 -m src disaster --config config/examples/flexible_cache.yaml
+# =============================================================================
 
-# Per-node cache configuration (Phase 3 feature)
+# -----------------------------------------------------------------------------
+# トポロジ設定
+# -----------------------------------------------------------------------------
+hosts: 12                    # ホスト数
+switches: 25                 # スイッチ数
+seed: 77                     # 乱数シード
+k: 2                         # 宛先あたりの最短パス数
+
+# -----------------------------------------------------------------------------
+# ルーティング戦略
+# -----------------------------------------------------------------------------
+# routing:
+#   strategy: "dijkstra"     # dijkstra / shortest_path / ecmp
+#   k: 2                     # ルーティング専用のk値（省略時はトップレベルの k）
+
+# -----------------------------------------------------------------------------
+# キャッシュ設定（ノード個別設定付き）
+# -----------------------------------------------------------------------------
 cache_config:
-  strategy: k_centers      # k_centers | manual | degree_based
+  strategy: k_centers          # k_centers: 重心ベース / manual: 手動 / degree_based: 次数ベース
   default:
-    count: 5               # Number of cache nodes to select
-    capacity: 819200       # CACHE_CAPACITY (bytes)
-    default_rct_ms: 1800000  # CACHE_DEFAULT_RCT (ms)
-    algorithm: "LRU"       # CACHE_ALGORITHM: LRU | LFU | FIFO | None
-    type: "memory"         # CACHE_TYPE: memory | filesystem
+    count: 5                   # キャッシュノード数
+    capacity: 819200           # CACHE_CAPACITY (bytes)
+    default_rct_ms: 1800000    # CACHE_DEFAULT_RCT (ミリ秒)
+    algorithm: "LRU"           # CACHE_ALGORITHM: LRU / LFU / FIFO / None
+    type: "memory"             # CACHE_TYPE: memory / filesystem
 
-  # Per-node overrides (applied after default)
+  # ノード個別設定（default の後に上書き適用される）
   nodes:
-    - id: [5, 6]           # High-capacity cache nodes
+    - id: [5, 6]               # 大容量キャッシュノード
       capacity: 1638400
       algorithm: "LFU"
       default_rct_ms: 3600000
-    - id: [7, 8]           # Standard cache nodes (use defaults)
+    - id: [7, 8]               # 標準キャッシュノード（default を使用）
       capacity: 819200
-    - id: [9]              # Edge cache — small capacity, short retention
+    - id: [9]                  # エッジキャッシュ — 小容量・短保持
       capacity: 204800
       default_rct_ms: 900000
 
+# -----------------------------------------------------------------------------
+# ノード故障シミュレーション（マルチサイクル）
+# -----------------------------------------------------------------------------
 failure_scenarios:
-  strategy: cyclic
+  strategy: cyclic             # simple / cyclic / random / manual
   cycles:
-    - interval: 30
+    - interval: 30             # サイクル1: 30秒後に2ノードダウン、10秒後に復旧
       duration: 10
       count: 2
-    - interval: 30
+    - interval: 30             # サイクル2: 30秒後に3ノードダウン、15秒後に復旧
       duration: 15
       count: 3
 
+# -----------------------------------------------------------------------------
+# イベントスケジューラ
+# -----------------------------------------------------------------------------
+# events:
+#   - at: 20
+#     type: bw_set             # 帯域変更（共有スイッチ全体に適用）
+#     nodes: [0, 5]
+#     bandwidth: 3
+#   - at: 40
+#     type: bw_set             # 周期的帯域劣化
+#     nodes: [1, 6]
+#     bandwidth: 1
+#     repeat:
+#       interval: 30
+#       duration: 10
+#       restore:
+#         bandwidth: 10
+#       count: 3
+
+# -----------------------------------------------------------------------------
+# Auto生成（コンテンツ操作の自動生成）
+# -----------------------------------------------------------------------------
 auto:
-  - uri: "ccnx:/test/content"
-    publishers: [11]
-    consumers: "random:5"
-    content_count: 3
+  - uri: "ccnx:/test/content"   # コンテンツURI（pubsub形式）
+    publishers: [11]             # パブリッシャーホストIDリスト
+    consumers: "random:5"        # ランダムに5ノードをコンシューマーに
+    content_count: 3             # パブリッシャーあたりコンテンツ数

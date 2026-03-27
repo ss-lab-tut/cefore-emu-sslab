@@ -26,6 +26,21 @@
   "cache_count": 2,
   "cache_default_rct_ms": 10000,
 
+  "routing": {
+    "strategy": "dijkstra"
+  },
+
+  "cache_config": {
+    "strategy": "k_centers",
+    "default": {
+      "count": 2,
+      "capacity": 819200,
+      "default_rct_ms": 10000,
+      "algorithm": "LRU",
+      "type": "memory"
+    }
+  },
+
   "puts": [
     {
       "host": 4,
@@ -46,6 +61,41 @@
     }
   ],
 
+  "events": [
+    {
+      "at": 15,
+      "type": "link_down",
+      "nodes": [1, 2]
+    },
+    {
+      "at": 25,
+      "type": "link_up",
+      "nodes": [1, 2]
+    },
+    {
+      "at": 30,
+      "type": "bw_set",
+      "nodes": [0, 3],
+      "bandwidth": 5
+    },
+    {
+      "at": 40,
+      "type": "bw_set",
+      "nodes": [1, 3],
+      "bandwidth": 1,
+      "repeat": {
+        "interval": 30,
+        "duration": 10,
+        "restore": { "bandwidth": 10 },
+        "count": 3
+      }
+    }
+  ],
+
+  "warmup_get_interval": 0,
+  "warmup_only_cache_nodes": true,
+  "hot_uris": ["ccnx:/test/sample"],
+
   "no_cli": false,
   "duration": 0,
   "results_json": "",
@@ -53,7 +103,7 @@
 
   "publisher_host": 4,
 
-  "bw": ["h0,s0,10"],
+  "bw": [],
   "ext": [],
   "bridges": []
 }

@@ -37,11 +37,63 @@ down_stagger: 2        # サイクル内の個別ダウン間隔 (秒)
 # down_exclude: "0,4"    # ダウン対象から除外するホストID (カンマ区切り)
 down_exclude: "0"
 
-# ----------------------------------------------------------------------------
-# キャッシュ設定
+# -----------------------------------------------------------------------------
+# キャッシュ設定 (レガシー: cache_count + cache_default_rct_ms)
 # -----------------------------------------------------------------------------
 cache_count: 0                 # キャッシュノード数 (0 = down_count + 1)
 cache_default_rct_ms: 10000    # キャッシュノードの CACHE_DEFAULT_RCT (ミリ秒, >=1000)
+
+# -----------------------------------------------------------------------------
+# キャッシュ設定 (拡張: cache_config)
+# cache_config を指定すると cache_count/cache_default_rct_ms より優先される
+# -----------------------------------------------------------------------------
+# cache_config:
+#   strategy: "k_centers"        # k_centers: 重心ベース / manual: 手動 / degree_based: 次数ベース
+#   default:
+#     count: 3                   # キャッシュノード数
+#     capacity: 819200           # CACHE_CAPACITY (bytes)
+#     default_rct_ms: 1800000    # CACHE_DEFAULT_RCT (ミリ秒, >=1000)
+#     algorithm: "LRU"           # CACHE_ALGORITHM: LRU / LFU / FIFO / None
+#     type: "memory"             # CACHE_TYPE: memory / filesystem
+#   nodes:                       # ノード個別設定（オプション）
+#     - id: [3, 5]
+#       capacity: 1638400
+#       algorithm: "LFU"
+#     - id: [7]
+#       capacity: 204800
+#       default_rct_ms: 900000
+
+# -----------------------------------------------------------------------------
+# ルーティング戦略
+# -----------------------------------------------------------------------------
+# routing:
+#   strategy: "dijkstra"         # dijkstra: k本最良ネクストホップ（デフォルト）
+#                                # shortest_path: 最短経路1本のみ（k=1固定）
+#                                # ecmp: 等コスト全ネクストホップ（k無視）
+#   k: 3                         # ルーティング専用のk値（省略時はトップレベルの k を使用）
+
+# -----------------------------------------------------------------------------
+# ノード故障シミュレーション (拡張: failure_scenarios)
+# failure_scenarios を指定すると down_interval/down_duration 等より優先される
+# -----------------------------------------------------------------------------
+# failure_scenarios:
+#   strategy: "simple"           # simple / cyclic / random / manual
+#   simple:                      # simple 戦略用
+#     interval: 30
+#     duration: 10
+#     count: 2
+#     stagger: 2
+#     exclude: [0, 4]
+#   # cycles:                    # cyclic/random/manual 戦略用
+#   #   - interval: 30
+#   #     duration: 10
+#   #     count: 2
+#   #     exclude: [4]
+#   #   - interval: 60
+#   #     duration: 15
+#   #     count: 1
+#   #     target: [1, 3]         # manual 戦略: 対象ホスト指定
+#   #     allow_publishers: false
 
 # -----------------------------------------------------------------------------
 # コンテンツ操作: puts (cefputfile / cefpubfile)
@@ -119,6 +171,13 @@ gets:
 # -----------------------------------------------------------------------------
 # イベントスケジューラ (時限イベント)
 # -----------------------------------------------------------------------------
+# type: link_down, link_up, fib_add, fib_del, fib_enable, bw_set, compute_call
+# repeat: 繰り返し設定（全イベントタイプで使用可能）
+#   interval: 繰り返し間隔（秒）
+#   duration: restore イベントまでの時間（秒）
+#   restore:  復元時に上書きするフィールド（dict）
+#   restore_type: 復元イベントの type（例: link_up）
+#   count:    繰り返し回数（null で無限）
 # events:
 #   - at: 15                       # 開始から15秒後
 #     type: link_down              # リンクダウン
@@ -133,17 +192,48 @@ gets:
 #     protocol: udp
 #     next_hop: "192.168.1.1"
 #   - at: 40
-#     type: fib_add
+#     type: fib_add                # FIBエントリ追加
 #     host: 3
 #     prefix: "ccnx:/test/sample"
 #     protocol: udp
 #     next_hop: "192.168.1.1"
 #   - at: 50
-#     type: fib_enable
+#     type: fib_enable             # FIBエントリ有効化
 #     host: 3
 #     prefix: "ccnx:/test/sample"
 #     protocol: udp
 #     next_hop: "192.168.1.1"
+#   - at: 60
+#     type: bw_set                 # 帯域変更（共有スイッチ全体に適用）
+#     nodes: [0, 3]                # ホストインデックスのペア
+#     bandwidth: 5                 # Mbps
+#   - at: 70
+#     type: bw_set                 # 周期的帯域劣化（repeat付き）
+#     nodes: [1, 5]
+#     bandwidth: 1
+#     repeat:
+#       interval: 30               # 30秒ごとに繰り返し
+#       duration: 10               # 10秒後に復元
+#       restore:
+#         bandwidth: 10            # 復元時の帯域
+#       count: 3                   # 3回繰り返し
+#   - at: 80
+#     type: link_down              # 周期的リンク断（repeat付き）
+#     nodes: [2, 4]
+#     repeat:
+#       interval: 45
+#       duration: 15
+#       restore_type: link_up      # 復旧イベントの type
+#       count: 3
+#   - at: 90
+#     type: compute_call           # 外部API呼び出し（bridges設定で到達性確保が必要）
+#     host: 3
+#     endpoint: "http://10.0.0.100:8080/api/process"
+#     method: POST                 # GET or POST
+#     payload: '{"query": "analyze"}'
+#     output_file: "compute_result.json"   # run_dir 配下に保存
+#     timeout: 30
+#     # publish_uri: "ccnx:/compute/result1"  # 結果をCeforeで配信
 
 # -----------------------------------------------------------------------------
 # モニタリング (定期収集)
@@ -162,6 +252,17 @@ gets:
 #       name_prefix: "ccnx:/test"
 
 # -----------------------------------------------------------------------------
+# ウォームアップ設定
+# -----------------------------------------------------------------------------
+# warmup_get_interval: 3       # ウォームアップ取得間隔 (秒)
+# warmup_only_cache_nodes: true  # true: キャッシュノードのみでウォームアップ
+# hot_uris:                     # プリキャッシュ対象URI
+#   - "ccnx:/test/sample"
+# warmup_gets:                  # 明示的なウォームアップ操作リスト（hot_uris より優先）
+#   - host: 1
+#     uri: "ccnx:/test/sample"
+
+# -----------------------------------------------------------------------------
 # 実行制御
 # -----------------------------------------------------------------------------
 no_cli: false          # true: インタラクティブCLIをスキップ (自動テスト用)
@@ -172,8 +273,11 @@ get_interval: 10       # cefgetfile実行間隔 (秒)
 publisher_host: 4                  # パブリッシャーホスト (publisher-downメトリクス用)
 
 # -----------------------------------------------------------------------------
-# 帯域制御
+# 帯域制御 (静的: 起動時に適用)
 # -----------------------------------------------------------------------------
+# 注意: スイッチ名(s0等)はトポロジ生成結果に依存する。topo_png の出力画像や
+# 起動ログで実際のスイッチ名を確認してから指定すること。
+# 動的な帯域変更は events の bw_set イベントで行う。
 # bw:                                # リンク帯域設定 (リスト形式)
 #   - "h0,s0,10"                     # ノードA,ノードB,帯域(Mbps)
 #   - "h1,s1,5"
