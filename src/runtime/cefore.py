@@ -38,7 +38,7 @@ def cleanup_cefnetd_socket(node_dir, idx):
             info(f"failed to remove stale socket {sock_path}\n")
 
 
-def wait_for_cefnetd(net, idx, timeout=5, interval=0.25):
+def wait_for_cefnetd(net, idx, timeout=10, interval=0.25):
     """Wait for cefnetd to become ready.
 
     Args:

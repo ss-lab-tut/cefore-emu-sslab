@@ -263,9 +263,10 @@ class DisasterScenario(BaseScenario):
 
         for idx in range(args.hosts):
             start_cefnetd(net, idx)
+        cefnetd_timeout = getattr(args, "cefnetd_timeout", None) or 10
         not_ready = []
         for idx in range(args.hosts):
-            if not wait_for_cefnetd(net, idx):
+            if not wait_for_cefnetd(net, idx, timeout=cefnetd_timeout):
                 not_ready.append(idx)
         if not_ready:
             hosts = ", ".join(f"h{idx}" for idx in not_ready)

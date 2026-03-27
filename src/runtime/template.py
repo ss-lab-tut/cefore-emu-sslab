@@ -101,6 +101,22 @@ def cleanup_node_dirs():
             shutil.rmtree(name)
 
 
+def _read_config_value(path: Path, key: str) -> str | None:
+    """Read the current value of KEY from a config file.
+
+    Returns the value string if found, or None if the key is not present
+    or is commented out.
+    """
+    if not path.exists():
+        return None
+    pattern = re.compile(rf"^\s*{re.escape(key)}\s*=\s*(.*)$")
+    for line in path.read_text(encoding="utf-8").splitlines():
+        m = pattern.match(line)
+        if m:
+            return m.group(1).strip()
+    return None
+
+
 def _set_config_value(path: Path, key: str, value: str) -> None:
     """Set KEY=VALUE in a config file, replacing commented/default lines."""
     if not path.exists():
@@ -137,7 +153,9 @@ def apply_cache_node_settings(
 
     - Cache nodes: force ``CS_MODE=2`` (external CS via csmgrd).
     - Publisher nodes (non-cache): force ``CS_MODE=1`` (local CS for content serving).
-    - Other non-cache nodes: force ``CS_MODE=0`` to prevent csmgrd-wait hang.
+    - Other non-cache nodes: preserve template CS_MODE (0 or 1).
+      If the template set CS_MODE=2 but the node is not a cache node,
+      downgrade to CS_MODE=0 to prevent csmgrd-wait hang.
 
     Args:
         host_num: Total number of hosts.
@@ -175,4 +193,9 @@ def apply_cache_node_settings(
         if idx in publishers:
             _set_config_value(cefnetd_conf, "CS_MODE", "1")
         else:
-            _set_config_value(cefnetd_conf, "CS_MODE", "0")
+            # Preserve template CS_MODE (0 or 1) from assign_roles.
+            # Only downgrade CS_MODE=2 → 0 to prevent csmgrd-wait hang
+            # on nodes that are not cache nodes.
+            current = _read_config_value(cefnetd_conf, "CS_MODE")
+            if current == "2":
+                _set_config_value(cefnetd_conf, "CS_MODE", "0")

@@ -127,6 +127,11 @@ def validate_config(config: dict[str, Any]) -> list[str]:
         if value is not None and (not isinstance(value, int) or value < 1000):
             errors.append("cache_default_rct_ms must be an integer >= 1000 or null")
 
+    if "cefnetd_timeout" in config:
+        value = config["cefnetd_timeout"]
+        if not isinstance(value, (int, float)) or value <= 0:
+            errors.append("cefnetd_timeout must be a positive number")
+
     if "publisher_host" in config:
         if config["publisher_host"] is not None and not isinstance(
             config["publisher_host"], int
@@ -734,6 +739,7 @@ def merge_cli_and_config(args: Any, config: dict[str, Any], parser=None) -> None
         "events",
         "monitoring",
         "routing",
+        "cefnetd_timeout",
     )
 
     _NULL_MEANS_DEFAULT = {
