@@ -11,7 +11,6 @@ __pycache__
 *.png
 *.jpg
 /*.log
-logs
 h*/
 link-audio.sh
 style.css
