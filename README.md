@@ -17,6 +17,7 @@ Three topology types are available via a unified CLI:
 * Cefore installed on Ubuntu 22.04
 * Mininet version 2.3.0 ([https://mininet.org/](https://mininet.org/))
 * Python >= 3.12
+* curl (required for `compute_call` events)
 
 ```bash
 uv sync   # Install dependencies

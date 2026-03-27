@@ -44,7 +44,7 @@ from ..runtime.cefore import (
 )
 from ..runtime.external_net import parse_int_list
 from ..runtime.failure_manager import FlexibleFailureManager, periodic_host_flap
-from ..runtime.net_config import apply_fib, apply_fib_for_uris, apply_ip_addr
+from ..runtime.net_config import apply_fib, apply_ip_addr
 from ..runtime.template import apply_cache_node_settings, cleanup_node_dirs, ensure_node_dirs
 from ..runtime.topo import MeshTopo
 from ..runtime.viz import build_host_graph, print_mesh_links, render_topology_png
@@ -309,10 +309,14 @@ class DisasterScenario(BaseScenario):
             )
 
         # FIB programming
-        if self.uri_publishers:
-            apply_fib_for_uris(net, self.topo.mesh_links, args.k, self.uri_publishers)
-        else:
-            apply_fib(net, self.topo.mesh_links, args.k)
+        routing_config = getattr(args, "routing", None) or {}
+        routing_strategy = routing_config.get("strategy", "dijkstra")
+        routing_k = routing_config.get("k", args.k)
+        apply_fib(
+            net, self.topo.mesh_links, routing_k,
+            strategy=routing_strategy,
+            uri_publishers=self.uri_publishers or None,
+        )
 
         run_cefstatus_all(net, args.hosts)
         print_mesh_links(self.topo.mesh_links)
@@ -515,7 +519,8 @@ class DisasterScenario(BaseScenario):
         events_config = getattr(args, "events", None) or []
         if events_config:
             self.event_scheduler = EventScheduler(
-                net, events_config, mesh_links=self.topo.mesh_links
+                net, events_config, mesh_links=self.topo.mesh_links,
+                run_dir=self.run_dir,
             )
             self.event_scheduler.start()
 

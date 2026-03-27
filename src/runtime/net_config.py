@@ -4,7 +4,7 @@ import shlex
 
 from mininet.log import info
 
-from ..core.fib import compute_fib, compute_fib_for_uris
+from ..core.fib import compute_fib, compute_fib_for_uris, get_routing_strategy
 from ..core.protocols import normalize_route_protocol
 
 
@@ -42,15 +42,18 @@ def apply_ip_addr(net, mesh_links):
             net.hosts[host_idx].cmd(command)
 
 
-def apply_fib(net, mesh_links, k_paths):
-    """Apply FIB entries to all hosts.
+def apply_fib(net, mesh_links, k_paths, strategy="dijkstra", uri_publishers=None):
+    """Apply FIB entries using the specified routing strategy.
 
     Args:
         net: Mininet network instance.
         mesh_links: List of link definitions.
         k_paths: Number of best next hops per destination.
+        strategy: Routing strategy name (dijkstra, shortest_path, ecmp).
+        uri_publishers: Optional dict mapping URI prefix to publisher host ID.
     """
-    routes = compute_fib(mesh_links, k_paths)
+    strat = get_routing_strategy(strategy)
+    routes = strat.compute_routes(mesh_links, k_paths, uri_publishers)
     for route in routes:
         node_name = f"h{route.source}"
         command = f"cefroute add {shlex.quote(route.prefix)} udp {shlex.quote(route.next_hop_ip)} -d ./{node_name}"
@@ -103,7 +106,7 @@ def cefroute_enable(net, host_idx, prefix, protocol, next_hop, node_dir=None):
 
 
 def apply_fib_for_uris(net, mesh_links, k_paths, uri_publishers):
-    """Apply FIB entries for multiple URIs.
+    """Apply FIB entries for multiple URIs (legacy wrapper).
 
     Args:
         net: Mininet network instance.
@@ -111,9 +114,4 @@ def apply_fib_for_uris(net, mesh_links, k_paths, uri_publishers):
         k_paths: Number of shortest paths per destination.
         uri_publishers: Dict mapping URI prefix to publisher host ID.
     """
-    routes = compute_fib_for_uris(mesh_links, k_paths, uri_publishers)
-    for route in routes:
-        node_name = f"h{route.source}"
-        command = f"cefroute add {shlex.quote(route.prefix)} udp {shlex.quote(route.next_hop_ip)} -d ./{node_name}"
-        print(node_name, "command:", command)
-        info(net.hosts[route.source].cmd(command))
+    apply_fib(net, mesh_links, k_paths, uri_publishers=uri_publishers)

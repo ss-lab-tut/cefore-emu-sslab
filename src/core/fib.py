@@ -1,5 +1,6 @@
 """Pure FIB computation logic (no Mininet dependency)."""
 
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
 from .graph import dijkstra_all
@@ -152,3 +153,115 @@ def compute_fib_for_uris(mesh_links, k_paths, uri_publishers):
                     next_hop_ip=next_hop_ip,
                 ))
     return routes
+
+
+# ---------------------------------------------------------------------------
+# Pluggable routing strategies
+# ---------------------------------------------------------------------------
+
+class RoutingStrategy(ABC):
+    """Abstract base class for FIB route computation strategies."""
+
+    @abstractmethod
+    def compute_routes(
+        self,
+        mesh_links,
+        k_paths,
+        uri_publishers=None,
+    ) -> list[Route]:
+        """Compute FIB routes.
+
+        Args:
+            mesh_links: List of link definitions (topology).
+            k_paths: Number of best next hops per destination.
+            uri_publishers: Optional dict mapping URI prefix to publisher host ID.
+                If None, default prefixes (ccnx:/test/exampleN) are used.
+
+        Returns:
+            List of Route objects.
+        """
+        ...
+
+
+class DijkstraStrategy(RoutingStrategy):
+    """Default: per-source Dijkstra with k best next hops."""
+
+    def compute_routes(self, mesh_links, k_paths, uri_publishers=None):
+        if uri_publishers:
+            return compute_fib_for_uris(mesh_links, k_paths, uri_publishers)
+        return compute_fib(mesh_links, k_paths)
+
+
+class ShortestPathOnlyStrategy(RoutingStrategy):
+    """Single shortest path per destination (k=1 fixed)."""
+
+    def compute_routes(self, mesh_links, k_paths, uri_publishers=None):
+        if uri_publishers:
+            return compute_fib_for_uris(mesh_links, 1, uri_publishers)
+        return compute_fib(mesh_links, 1)
+
+
+class EqualCostMultiPathStrategy(RoutingStrategy):
+    """ECMP: all equal-cost next hops, k_paths is ignored."""
+
+    def compute_routes(self, mesh_links, k_paths, uri_publishers=None):
+        host_num, graph, link_subnets = build_graph_and_subnets(mesh_links)
+        all_dist = [dijkstra_all(graph, src)[0] for src in range(host_num)]
+        routes = []
+        if uri_publishers:
+            destinations = list(uri_publishers.items())
+        else:
+            destinations = [
+                (f"ccnx:/test/example{d + 1}", d) for d in range(host_num)
+            ]
+        for prefix, dest in destinations:
+            for src in range(host_num):
+                if src == dest:
+                    continue
+                candidates = []
+                for neighbor in graph[src]:
+                    dist = all_dist[neighbor].get(dest)
+                    if dist is not None:
+                        candidates.append((1 + dist, neighbor))
+                if not candidates:
+                    continue
+                candidates.sort()
+                min_cost = candidates[0][0]
+                for cost, neighbor in candidates:
+                    if cost > min_cost:
+                        break
+                    key = tuple(sorted((src, neighbor)))
+                    subnet = link_subnets[key]
+                    routes.append(Route(
+                        src, prefix, neighbor,
+                        f"192.168.{subnet}.{neighbor + 1}",
+                    ))
+        return routes
+
+
+_ROUTING_STRATEGIES = {
+    "dijkstra": DijkstraStrategy,
+    "shortest_path": ShortestPathOnlyStrategy,
+    "ecmp": EqualCostMultiPathStrategy,
+}
+
+
+def get_routing_strategy(name="dijkstra"):
+    """Get a routing strategy instance by name.
+
+    Args:
+        name: Strategy name (dijkstra, shortest_path, ecmp).
+
+    Returns:
+        RoutingStrategy instance.
+
+    Raises:
+        ValueError: If the strategy name is unknown.
+    """
+    cls = _ROUTING_STRATEGIES.get(name)
+    if cls is None:
+        raise ValueError(
+            f"Unknown routing strategy: {name}. "
+            f"Available: {list(_ROUTING_STRATEGIES)}"
+        )
+    return cls()

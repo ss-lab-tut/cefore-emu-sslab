@@ -559,7 +559,11 @@ def validate_config(config: dict[str, Any]) -> list[str]:
         if not isinstance(config["events"], list):
             errors.append("events must be a list")
         else:
-            valid_event_types = ("link_down", "link_up", "fib_add", "fib_del", "fib_enable")
+            valid_event_types = (
+                "link_down", "link_up", "fib_add", "fib_del", "fib_enable",
+                "bw_set", "compute_call",
+            )
+            host_count = config.get("hosts")
             for idx, event in enumerate(config["events"]):
                 if not isinstance(event, dict):
                     errors.append(f"events[{idx}] must be a dict")
@@ -580,6 +584,39 @@ def validate_config(config: dict[str, Any]) -> list[str]:
                         nodes = event.get("nodes")
                         if not isinstance(nodes, list) or len(nodes) != 2:
                             errors.append(f"events[{idx}].nodes must be a list of 2 elements")
+                        elif isinstance(host_count, int):
+                            for n in nodes:
+                                if isinstance(n, int) and (n < 0 or n >= host_count):
+                                    errors.append(
+                                        f"events[{idx}].nodes contains out-of-range host index {n}"
+                                    )
+                    elif etype == "bw_set":
+                        nodes = event.get("nodes")
+                        if not isinstance(nodes, list) or len(nodes) != 2:
+                            errors.append(f"events[{idx}].nodes must be a list of 2 host indices")
+                        elif isinstance(host_count, int):
+                            for n in nodes:
+                                if isinstance(n, int) and (n < 0 or n >= host_count):
+                                    errors.append(
+                                        f"events[{idx}].nodes contains out-of-range host index {n}"
+                                    )
+                        if "bandwidth" not in event:
+                            errors.append(f"events[{idx}] missing required field 'bandwidth'")
+                        elif not isinstance(event["bandwidth"], (int, float)) or event["bandwidth"] < 0:
+                            errors.append(f"events[{idx}].bandwidth must be a non-negative number")
+                    elif etype == "compute_call":
+                        for field in ("host", "endpoint"):
+                            if field not in event:
+                                errors.append(f"events[{idx}] missing required field '{field}'")
+                        if "host" in event and not isinstance(event["host"], int):
+                            errors.append(f"events[{idx}].host must be an integer")
+                        if "endpoint" in event and not isinstance(event["endpoint"], str):
+                            errors.append(f"events[{idx}].endpoint must be a string")
+                        if "method" in event and event["method"] not in ("GET", "POST"):
+                            errors.append(f"events[{idx}].method must be 'GET' or 'POST'")
+                        if "timeout" in event:
+                            if not isinstance(event["timeout"], (int, float)) or event["timeout"] <= 0:
+                                errors.append(f"events[{idx}].timeout must be a positive number")
                     elif etype in ("fib_add", "fib_del", "fib_enable"):
                         for field in ("host", "prefix", "next_hop"):
                             if field not in event:
@@ -592,6 +629,33 @@ def validate_config(config: dict[str, Any]) -> list[str]:
                                     f"events[{idx}].protocol must be one of: "
                                     f"{', '.join(VALID_ROUTE_PROTOCOLS)}"
                                 )
+
+                    # host range check for fib/compute_call events
+                    if "host" in event and isinstance(event["host"], int) and isinstance(host_count, int):
+                        if event["host"] < 0 or event["host"] >= host_count:
+                            errors.append(
+                                f"events[{idx}].host is out of range (0..{host_count - 1})"
+                            )
+
+                # repeat validation (all event types)
+                if "repeat" in event:
+                    rep = event["repeat"]
+                    if not isinstance(rep, dict):
+                        errors.append(f"events[{idx}].repeat must be a dict")
+                    else:
+                        if "interval" in rep:
+                            if not isinstance(rep["interval"], (int, float)) or rep["interval"] <= 0:
+                                errors.append(f"events[{idx}].repeat.interval must be a positive number")
+                        if "duration" in rep:
+                            if not isinstance(rep["duration"], (int, float)) or rep["duration"] < 0:
+                                errors.append(f"events[{idx}].repeat.duration must be a non-negative number")
+                        if "count" in rep and rep["count"] is not None:
+                            if not isinstance(rep["count"], int) or rep["count"] < 1:
+                                errors.append(f"events[{idx}].repeat.count must be a positive integer or null")
+                        if "restore" in rep and not isinstance(rep["restore"], dict):
+                            errors.append(f"events[{idx}].repeat.restore must be a dict")
+                        if "restore_type" in rep and rep["restore_type"] not in valid_event_types:
+                            errors.append(f"events[{idx}].repeat.restore_type must be a valid event type")
 
     if "monitoring" in config:
         mon = config["monitoring"]
@@ -617,6 +681,19 @@ def validate_config(config: dict[str, Any]) -> list[str]:
                             f"monitoring.targets[{idx}].type must be one of: "
                             f"{', '.join(valid_monitor_types)}"
                         )
+
+    if "routing" in config:
+        routing = config["routing"]
+        if not isinstance(routing, dict):
+            errors.append("routing must be a dict")
+        else:
+            strategy = routing.get("strategy", "dijkstra")
+            valid_routing = ("dijkstra", "shortest_path", "ecmp")
+            if strategy not in valid_routing:
+                errors.append(f"routing.strategy must be one of {valid_routing}")
+            if "k" in routing:
+                if not isinstance(routing["k"], int) or routing["k"] < 1:
+                    errors.append("routing.k must be a positive integer")
 
     # Boolean keys
     for key in ("no_cli", "no_script_log", "warmup_only_cache_nodes"):
@@ -707,6 +784,7 @@ def merge_cli_and_config(args: Any, config: dict[str, Any], parser=None) -> None
         "priority_uris",
         "events",
         "monitoring",
+        "routing",
     )
 
     _NULL_MEANS_DEFAULT = {

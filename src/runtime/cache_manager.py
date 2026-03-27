@@ -10,6 +10,34 @@ _VALID_TYPES = frozenset({"memory", "filesystem"})
 _VALID_STRATEGIES = frozenset({"k_centers", "manual", "degree_based"})
 
 
+def _select_k_centers(manager, exclude, rng):
+    count = manager.default_config.get("count", 0)
+    candidates = select_k_centers(manager.graph, count)
+    return [idx for idx in candidates if idx not in exclude]
+
+
+def _select_manual(manager, exclude, rng):
+    manual_ids = sorted(manager.node_overrides.keys())
+    return [idx for idx in manual_ids if idx not in exclude]
+
+
+def _select_degree_based(manager, exclude, rng):
+    count = manager.default_config.get("count", 0)
+    degree = {node: len(neighbors) for node, neighbors in manager.graph.items()}
+    sorted_nodes = sorted(
+        [n for n in degree if n not in exclude],
+        key=lambda n: (-degree[n], n),
+    )
+    return sorted_nodes[:count]
+
+
+_CACHE_STRATEGIES = {
+    "k_centers": _select_k_centers,
+    "manual": _select_manual,
+    "degree_based": _select_degree_based,
+}
+
+
 class CacheConfigManager:
     """Manage per-node cache configuration from a cache_config dict.
 
@@ -66,26 +94,13 @@ class CacheConfigManager:
             List of selected cache node IDs.
         """
         exclude = exclude or set()
-        count = self.default_config.get("count", 0)
-
-        if self.strategy == "k_centers":
-            candidates = select_k_centers(self.graph, count)
-            return [idx for idx in candidates if idx not in exclude]
-
-        if self.strategy == "manual":
-            # Nodes listed in the 'nodes' section define the cache set
-            manual_ids = sorted(self.node_overrides.keys())
-            return [idx for idx in manual_ids if idx not in exclude]
-
-        if self.strategy == "degree_based":
-            degree = {node: len(neighbors) for node, neighbors in self.graph.items()}
-            sorted_nodes = sorted(
-                [n for n in degree if n not in exclude],
-                key=lambda n: (-degree[n], n),
+        strategy_fn = _CACHE_STRATEGIES.get(self.strategy)
+        if strategy_fn is None:
+            raise ValueError(
+                f"Unknown cache strategy: {self.strategy}. "
+                f"Available: {list(_CACHE_STRATEGIES)}"
             )
-            return sorted_nodes[:count]
-
-        return []
+        return strategy_fn(self, exclude, rng)
 
     def apply_configs(self, cache_nodes: set) -> None:
         """Apply default cache settings and per-node overrides to host configs.
