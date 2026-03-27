@@ -269,7 +269,7 @@ def run_connect(args, run_dir: Path = None, log_context=None):
     if not cache_nodes and args.hosts > 0:
         cache_nodes = [args.hosts - 1]
     cache_node_set = set(cache_nodes)
-    apply_cache_node_settings(args.hosts, cache_node_set, None)
+    apply_cache_node_settings(args.hosts, cache_node_set, None, publishers=publisher_ids)
 
     for idx in sorted(cache_node_set):
         start_csmgrd(net, idx)

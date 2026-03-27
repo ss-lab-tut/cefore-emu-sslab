@@ -123,6 +123,7 @@ class CacheConfigManager:
             cache_capacity=default.get("capacity"),
             cache_algorithm=default.get("algorithm"),
             cache_type=default.get("type"),
+            publishers=self.publisher_ids,
         )
 
         # Step 2: apply per-node overrides

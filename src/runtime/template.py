@@ -131,12 +131,13 @@ def apply_cache_node_settings(
     cache_capacity: int | None = None,
     cache_algorithm: str | None = None,
     cache_type: str | None = None,
+    publishers: set[int] | None = None,
 ) -> None:
     """Apply cache-related runtime overrides to generated host configs.
 
-    - Cache nodes only: force ``CS_MODE=2`` (external CS via csmgrd).
-    - Non-cache nodes: keep template-selected CS_MODE untouched.
-    - Optional parameters override csmgrd.conf values for all cache nodes.
+    - Cache nodes: force ``CS_MODE=2`` (external CS via csmgrd).
+    - Publisher nodes (non-cache): force ``CS_MODE=1`` (local CS for content serving).
+    - Other non-cache nodes: force ``CS_MODE=0`` to prevent csmgrd-wait hang.
 
     Args:
         host_num: Total number of hosts.
@@ -145,7 +146,10 @@ def apply_cache_node_settings(
         cache_capacity: CACHE_CAPACITY value in bytes.
         cache_algorithm: CACHE_ALGORITHM value (e.g. LRU, LFU, FIFO).
         cache_type: CACHE_TYPE value (e.g. memory, filesystem).
+        publishers: Set of host indices designated as publishers.
     """
+    publishers = publishers or set()
+
     for idx in sorted(cache_nodes):
         if idx < 0 or idx >= host_num:
             continue
@@ -160,3 +164,15 @@ def apply_cache_node_settings(
             _set_config_value(conf_path, "CACHE_ALGORITHM", str(cache_algorithm))
         if cache_type is not None:
             _set_config_value(conf_path, "CACHE_TYPE", str(cache_type))
+
+    for idx in range(host_num):
+        if idx in cache_nodes:
+            continue
+        node_dir = Path(f"h{idx}")
+        cefnetd_conf = node_dir / "cefnetd.conf"
+        if not cefnetd_conf.exists():
+            continue
+        if idx in publishers:
+            _set_config_value(cefnetd_conf, "CS_MODE", "1")
+        else:
+            _set_config_value(cefnetd_conf, "CS_MODE", "0")

@@ -21,6 +21,16 @@ ceforeemu-connect = "src.runtime.external_net:main"
 dev = [
     "mypy>=1.0",
     "ruff>=0.1",
+    "pytest>=8.0",
+    "pytest-cov>=6.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-ra"
+markers = [
+    "integration: requires root/Mininet/Cefore (deselect with '-m not integration')",
 ]
 
 [tool.setuptools.packages.find]

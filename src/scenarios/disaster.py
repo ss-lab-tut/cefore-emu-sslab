@@ -92,32 +92,6 @@ def _detect_sub_success(exit_code: int, out_path: Path, log_path: Path) -> dict:
     }
 
 
-def _build_warmup_ops(args, run_dir: Path, hot_uris, cache_nodes):
-    """Build warmup operations when not explicitly configured."""
-    explicit = getattr(args, "warmup_gets", None) or []
-    if explicit:
-        return explicit
-
-    if not hot_uris:
-        return []
-
-    warmup_nodes = list(cache_nodes) if getattr(args, "warmup_only_cache_nodes", True) else []
-    if not warmup_nodes:
-        warmup_nodes = [idx for idx in range(args.hosts)]
-
-    warmup_ops = []
-    for uri_idx, uri in enumerate(hot_uris):
-        for host_idx in warmup_nodes:
-            warmup_ops.append(
-                {
-                    "host": host_idx,
-                    "uri": uri,
-                    "file": str(run_dir / f"warmup_recv_h{host_idx}_u{uri_idx}"),
-                }
-            )
-    return warmup_ops
-
-
 def _resolve_results_path(args, run_dir: Path):
     """Resolve results.json path from args."""
     raw = getattr(args, "results_json", None)
@@ -133,7 +107,6 @@ class DisasterScenario(BaseScenario):
     - BridgeManager for root namespace bridging
     - Periodic host flapping
     - Autotest mode (--no-cli + results-json)
-    - Warmup operations
     - Per-URI FIB routing
     """
 
@@ -153,7 +126,6 @@ class DisasterScenario(BaseScenario):
         self.uri_publishers = {}
         self.ops_put = []
         self.ops_get = []
-        self.hot_uris = []
         self.publisher_ids = set()
         self.topo = None
         self.seed_label = "none" if args.seed is None else str(args.seed)
@@ -201,14 +173,6 @@ class DisasterScenario(BaseScenario):
             ]
 
         self.publisher_ids = set(op["host"] for op in self.ops_put)
-        self.hot_uris = list(
-            dict.fromkeys(getattr(args, "hot_uris", []) or [op["uri"] for op in self.ops_put])
-        )
-        if self.priority_manager:
-            self.hot_uris = [
-                uri for uri in self.hot_uris if self.priority_manager.should_prefetch(uri)
-            ]
-
         for op in self.ops_put:
             self.uri_publishers[op["uri"]] = op["host"]
 
@@ -289,6 +253,7 @@ class DisasterScenario(BaseScenario):
                 args.hosts,
                 self.cache_node_set,
                 getattr(args, "cache_default_rct_ms", None),
+                publishers=self.publisher_ids,
             )
 
         # Daemon startup: csmgrd -> cefnetd -> wait ready
@@ -454,7 +419,7 @@ class DisasterScenario(BaseScenario):
                 time.sleep(per_get_interval)
 
     def run_experiment(self, net):
-        """Run the disaster experiment: puts, warmup, flapping, gets."""
+        """Run the disaster experiment: puts, flapping, gets."""
         args = self.args
 
         self._run_put_ops(net)
@@ -480,15 +445,6 @@ class DisasterScenario(BaseScenario):
                         "file": f"recvfile_at_h{consumer}",
                     }
                 )
-
-        # Warmup phase
-        warmup_ops = _build_warmup_ops(args, self.run_dir, self.hot_uris, list(self.cache_node_set))
-        if warmup_ops:
-            self._run_get_ops(
-                net, warmup_ops, "warmup",
-                getattr(args, "warmup_get_interval", 0),
-                cycle_idx=0,
-            )
 
         # Start host flapping
         use_cli = not getattr(args, "no_cli", False)

@@ -122,17 +122,6 @@ def validate_config(config: dict[str, Any]) -> list[str]:
         if not isinstance(config["duration"], int) or config["duration"] < 0:
             errors.append("duration must be an integer >= 0")
 
-    if "warmup_get_interval" in config:
-        if (
-            not isinstance(config["warmup_get_interval"], int)
-            or config["warmup_get_interval"] < 0
-        ):
-            errors.append("warmup_get_interval must be an integer >= 0")
-
-    if "warmup_only_cache_nodes" in config:
-        if not isinstance(config["warmup_only_cache_nodes"], bool):
-            errors.append("warmup_only_cache_nodes must be a boolean")
-
     if "cache_default_rct_ms" in config:
         value = config["cache_default_rct_ms"]
         if value is not None and (not isinstance(value, int) or value < 1000):
@@ -143,29 +132,6 @@ def validate_config(config: dict[str, Any]) -> list[str]:
             config["publisher_host"], int
         ):
             errors.append("publisher_host must be an integer or null")
-
-    if "hot_uris" in config:
-        value = config["hot_uris"]
-        if isinstance(value, str):
-            pass
-        elif isinstance(value, list):
-            if not all(isinstance(uri, str) for uri in value):
-                errors.append("hot_uris must be a string or list of strings")
-        else:
-            errors.append("hot_uris must be a string or list of strings")
-
-    if "warmup_gets" in config:
-        if not isinstance(config["warmup_gets"], list):
-            errors.append("warmup_gets must be a list")
-        else:
-            for idx, op in enumerate(config["warmup_gets"]):
-                if not isinstance(op, dict):
-                    errors.append(f"warmup_gets[{idx}] must be a dict")
-                    continue
-                if "host" not in op:
-                    errors.append(f"warmup_gets[{idx}] missing required field 'host'")
-                if "uri" not in op:
-                    errors.append(f"warmup_gets[{idx}] missing required field 'uri'")
 
     if "puts" in config:
         if not isinstance(config["puts"], list):
@@ -499,11 +465,6 @@ def validate_config(config: dict[str, Any]) -> list[str]:
                 if mode is not None and mode not in valid_modes:
                     errors.append(f"priority_uris.{level_name}.mode must be 'putget' or 'pubsub'")
 
-                if "prefetch_to_cache" in level_cfg and not isinstance(level_cfg["prefetch_to_cache"], bool):
-                    errors.append(
-                        f"priority_uris.{level_name}.prefetch_to_cache must be a boolean"
-                    )
-
                 for field in ("expiry", "cache_time", "rate"):
                     if field in level_cfg and level_cfg[field] is not None:
                         if not isinstance(level_cfg[field], (int, float)):
@@ -696,12 +657,12 @@ def validate_config(config: dict[str, Any]) -> list[str]:
                     errors.append("routing.k must be a positive integer")
 
     # Boolean keys
-    for key in ("no_cli", "no_script_log", "warmup_only_cache_nodes"):
+    for key in ("no_cli", "no_script_log"):
         if key in config and not isinstance(config[key], bool):
             errors.append(f"{key} must be a boolean")
 
     # Non-negative integer keys
-    for key in ("duration", "warmup_get_interval"):
+    for key in ("duration",):
         if key in config:
             if not isinstance(config[key], int) or config[key] < 0:
                 errors.append(f"{key} must be an integer >= 0")
@@ -716,10 +677,6 @@ def validate_config(config: dict[str, Any]) -> list[str]:
     for key in ("results_json", "script_log"):
         if key in config and config[key] is not None and not isinstance(config[key], str):
             errors.append(f"{key} must be a string")
-
-    if "warmup_gets" in config:
-        if not isinstance(config["warmup_gets"], list):
-            errors.append("warmup_gets must be a list")
 
     return errors
 
@@ -759,12 +716,8 @@ def merge_cli_and_config(args: Any, config: dict[str, Any], parser=None) -> None
         "no_cli",
         "duration",
         "results_json",
-        "warmup_get_interval",
-        "warmup_only_cache_nodes",
-        "warmup_gets",
         "cache_default_rct_ms",
         "publisher_host",
-        "hot_uris",
         "num",
         "output_dir",
         "timestamp",
@@ -774,10 +727,6 @@ def merge_cli_and_config(args: Any, config: dict[str, Any], parser=None) -> None
         "results_json",
         "script_log",
         "no_script_log",
-        "warmup_get_interval",
-        "warmup_only_cache_nodes",
-        "warmup_gets",
-        "hot_uris",
         "cache_default_rct_ms",
         "publisher_host",
         "failure_scenarios",
@@ -826,21 +775,6 @@ def merge_cli_and_config(args: Any, config: dict[str, Any], parser=None) -> None
         args.bw = [args.bw]
     if isinstance(args.ext, str) and args.ext:
         args.ext = [args.ext]
-
-    # Parse warmup_gets / hot_uris
-    warmup_gets = getattr(args, "warmup_gets", "")
-    if isinstance(warmup_gets, str) and warmup_gets:
-        args.warmup_gets = json.loads(warmup_gets)
-    elif not warmup_gets:
-        args.warmup_gets = []
-
-    hot_uris = getattr(args, "hot_uris", "")
-    if isinstance(hot_uris, str) and hot_uris:
-        args.hot_uris = [u.strip() for u in hot_uris.split(",") if u.strip()]
-    elif isinstance(hot_uris, list):
-        pass  # Already a list from YAML
-    else:
-        args.hot_uris = []
 
     # Ensure puts/gets are lists
     if not hasattr(args, "puts") or args.puts is None or args.puts == "":

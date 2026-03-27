@@ -1,6 +1,6 @@
 {
   "num": 1,
-  "hosts": 8,
+  "hosts": 5,
   "switches": 8,
   "seed": 42,
   "k": 2,

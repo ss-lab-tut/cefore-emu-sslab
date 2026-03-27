@@ -31,7 +31,6 @@ class PriorityConfigManager:
                 "mode": level_config.get("mode", "putget"),
                 "expiry": level_config.get("expiry"),
                 "cache_time": level_config.get("cache_time"),
-                "prefetch_to_cache": level_config.get("prefetch_to_cache", False),
                 "rate": level_config.get("rate"),
                 "block_size": level_config.get("block_size"),
                 "valid_algo": level_config.get("valid_algo"),
@@ -182,9 +181,3 @@ class PriorityConfigManager:
                 modified["port_num"] = config["port_num"]
 
         return modified
-
-    def should_prefetch(self, uri: str) -> bool:
-        _, config = self.resolve_priority(uri)
-        if not config:
-            return False
-        return bool(config.get("prefetch_to_cache", False))
