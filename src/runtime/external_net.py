@@ -237,7 +237,7 @@ def run_connect(args, run_dir: Path = None, log_context=None):
 
     publisher_ids = set(op["host"] for op in ops_put) if ops_put else None
 
-    ensure_node_dirs(args.hosts, rng or random.Random(), publisher_ids)
+    generated_node_dirs = ensure_node_dirs(args.hosts, rng or random.Random(), publisher_ids)
 
     topo = MeshTopo(
         hosts=args.hosts,
@@ -379,7 +379,7 @@ def run_connect(args, run_dir: Path = None, log_context=None):
 
     net.stop()
     mn_cleanup()
-    cleanup_node_dirs()
+    cleanup_node_dirs(generated_node_dirs)
 
 
 def main():

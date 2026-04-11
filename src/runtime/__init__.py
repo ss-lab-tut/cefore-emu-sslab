@@ -8,6 +8,7 @@ from .bridge import (
     parse_ext_args,
 )
 from .bandwidth import parse_bw_args, set_link_bandwidth
+from .debug import archive_node_dirs
 from .cefore import (
     run_cefgetfile,
     run_cefinfo,
@@ -71,6 +72,8 @@ __all__ = [
     "cleanup_cefnetd_socket",
     "ensure_node_dirs",
     "cleanup_node_dirs",
+    # debug
+    "archive_node_dirs",
     # bridge
     "attach_external_via_bridge",
     "attach_external_interface",

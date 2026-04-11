@@ -14,6 +14,11 @@ from mininet.log import info
 from ..core.paths import TEMPLATE_ROOT
 from ..core.roles import assign_roles
 
+# Marker file written inside every hN directory created by ensure_node_dirs().
+# cleanup_node_dirs() only removes directories that carry this stamp,
+# preventing accidental deletion of manually created directories.
+STAMP_FILENAME = ".ceforeemu-node-dir"
+
 
 def update_local_sock_id(node_dir, idx):
     """Update LOCAL_SOCK_ID in cefnetd.conf and csmgrd.conf."""
@@ -67,38 +72,60 @@ def update_node_name(node_dir, idx, base_uri="example.com/xxx/router-"):
 from .cefore import cleanup_cefnetd_socket, read_port_num  # noqa: F401 (re-export)
 
 
-def ensure_node_dirs(host_num, rng, publishers=None):
+def ensure_node_dirs(host_num, rng, publishers=None) -> list[Path]:
     """Create node directories from templates based on assigned roles.
+
+    Each created directory receives a stamp file (STAMP_FILENAME) so that
+    cleanup_node_dirs() can safely identify generated directories.
+
+    If a directory already exists without the stamp, the function exits with
+    an error to avoid destroying unmanaged content.
 
     Args:
         host_num: Total number of hosts.
         rng: Random number generator.
         publishers: Set of host IDs designated as publishers.
+
+    Returns:
+        List of Path objects for every directory that was created or refreshed.
     """
     roles = assign_roles(host_num, rng, publishers)
+    generated: list[Path] = []
     for idx in range(host_num):
-        node_dir = f"h{idx}"
+        node_dir = Path(f"h{idx}")
         template = TEMPLATE_ROOT / roles[idx].template
         if not template.exists():
             sys.exit(f"missing template directory: {template}")
-        if node_dir != str(template):
-            if os.path.isdir(node_dir):
-                shutil.rmtree(node_dir)
-            shutil.copytree(template, node_dir)
-        update_local_sock_id(node_dir, idx)
+        if node_dir.is_dir():
+            stamp = node_dir / STAMP_FILENAME
+            if not stamp.exists():
+                sys.exit(
+                    f"{node_dir} exists but was not created by ceforeemu "
+                    f"(no {STAMP_FILENAME} stamp). Remove it manually before running."
+                )
+            shutil.rmtree(node_dir)
+        shutil.copytree(template, node_dir)
+        (node_dir / STAMP_FILENAME).touch()
+        update_local_sock_id(str(node_dir), idx)
+        generated.append(node_dir)
+    return generated
 
 
-def cleanup_node_dirs():
-    """Remove dynamically created node directories (h3 and above)."""
-    for name in os.listdir("."):
-        if not name.startswith("h"):
+def cleanup_node_dirs(generated_dirs: list[Path]) -> None:
+    """Remove generated node directories identified by their stamp file.
+
+    Only directories that contain the STAMP_FILENAME marker are removed.
+    Directories without the stamp are silently skipped.
+
+    Args:
+        generated_dirs: List of Path objects returned by ensure_node_dirs().
+    """
+    for node_dir in generated_dirs:
+        if not node_dir.is_dir():
             continue
-        suffix = name[1:]
-        if not suffix.isdigit():
-            continue
-        idx = int(suffix)
-        if idx >= 3 and os.path.isdir(name):
-            shutil.rmtree(name)
+        stamp = node_dir / STAMP_FILENAME
+        if stamp.exists():
+            shutil.rmtree(node_dir)
 
 
 def _read_config_value(path: Path, key: str) -> str | None:

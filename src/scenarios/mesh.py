@@ -19,7 +19,7 @@ from ..runtime.cefore import (
 )
 from ..runtime.links import pick_publish_link
 from ..runtime.net_config import apply_fib, apply_ip_addr
-from ..runtime.template import cleanup_node_dirs, ensure_node_dirs
+from ..runtime.template import ensure_node_dirs
 from ..runtime.topo import MeshTopo, max_possible_links, min_required_links
 from ..runtime.viz import print_mesh_links, render_topology_png
 
@@ -42,6 +42,7 @@ class MeshScenario(BaseScenario):
         host_degree_max=2,
         switch_use_all=False,
         run_dir=None,
+        debug_config=None,
     ):
         self.host_num = host_num
         self.swhich_num = swhich_num
@@ -54,6 +55,8 @@ class MeshScenario(BaseScenario):
         self.host_degree_max = host_degree_max
         self.switch_use_all = switch_use_all
         self.run_dir = run_dir or Path(".")
+        self.debug_config = debug_config
+        self.generated_node_dirs = []
 
         if host_num < 3:
             sys.exit("host count must be at least 3")
@@ -72,7 +75,7 @@ class MeshScenario(BaseScenario):
         self.topo = None
 
     def build_topology(self):
-        ensure_node_dirs(self.host_num, self.rng)
+        self.generated_node_dirs = ensure_node_dirs(self.host_num, self.rng)
         self.topo = MeshTopo(
             hosts=self.host_num,
             swhich_num=self.swhich_num,
@@ -136,7 +139,6 @@ class MeshScenario(BaseScenario):
         for idx in range(self.host_num):
             if idx % 2 == 1:
                 stop_csmgrd(net, idx)
-        cleanup_node_dirs()
 
 
 def run_mesh_scenario(
@@ -151,6 +153,7 @@ def run_mesh_scenario(
     host_degree_max=2,
     switch_use_all=False,
     run_dir=None,
+    debug_config=None,
 ):
     """Entry point for mesh topology scenario."""
     scenario = MeshScenario(
@@ -165,5 +168,6 @@ def run_mesh_scenario(
         host_degree_max=host_degree_max,
         switch_use_all=switch_use_all,
         run_dir=run_dir,
+        debug_config=debug_config,
     )
     scenario.execute()

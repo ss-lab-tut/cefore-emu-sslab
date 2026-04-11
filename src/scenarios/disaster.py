@@ -46,6 +46,7 @@ from ..runtime.external_net import parse_int_list
 from ..runtime.failure_manager import FlexibleFailureManager, periodic_host_flap
 from ..runtime.net_config import apply_fib, apply_ip_addr
 from ..runtime.template import apply_cache_node_settings, cleanup_node_dirs, ensure_node_dirs
+from ..runtime.debug import archive_node_dirs
 from ..runtime.topo import MeshTopo
 from ..runtime.viz import build_host_graph, print_mesh_links, render_topology_png
 
@@ -110,11 +111,12 @@ class DisasterScenario(BaseScenario):
     - Per-URI FIB routing
     """
 
-    def __init__(self, args, run_dir: Path = None, log_context=None):
+    def __init__(self, args, run_dir: Path = None, log_context=None, debug_config=None):
         self.args = args
         self.run_dir = (run_dir or Path("logs")).resolve()
         self.run_dir.mkdir(parents=True, exist_ok=True)
         self.log_context = log_context
+        self.debug_config = debug_config
 
         self.rng = random.Random(args.seed) if args.seed is not None else random.Random()
         self.results = []
@@ -133,6 +135,7 @@ class DisasterScenario(BaseScenario):
         self.priority_manager = None
         self.event_scheduler = None
         self.monitor = None
+        self.generated_node_dirs = []
 
         priority_uris = getattr(args, "priority_uris", None)
         if isinstance(priority_uris, dict) and priority_uris:
@@ -179,7 +182,7 @@ class DisasterScenario(BaseScenario):
     def build_topology(self):
         """Create mesh topology."""
         args = self.args
-        ensure_node_dirs(args.hosts, self.rng, self.publisher_ids)
+        self.generated_node_dirs = ensure_node_dirs(args.hosts, self.rng, self.publisher_ids)
 
         self.topo = MeshTopo(
             hosts=args.hosts,
@@ -542,6 +545,7 @@ class DisasterScenario(BaseScenario):
                 self.stop_event.set()
 
             if net is not None:
+                self.collect_debug_pre_teardown(net)
                 try:
                     self.teardown(net)
                 except Exception as exc:
@@ -549,7 +553,8 @@ class DisasterScenario(BaseScenario):
                 net.stop()
                 mn_cleanup()
 
-            cleanup_node_dirs()
+            self.collect_debug_post_teardown()
+            cleanup_node_dirs(self.generated_node_dirs)
 
             if self.results_path is not None:
                 self.results_path.write_text(
@@ -567,7 +572,7 @@ class DisasterScenario(BaseScenario):
         cleanup_external_bridges()
 
 
-def run_disaster_scenario(args, run_dir=None, log_context=None):
+def run_disaster_scenario(args, run_dir=None, log_context=None, debug_config=None):
     """Convenience function to run disaster scenario."""
-    scenario = DisasterScenario(args, run_dir, log_context)
+    scenario = DisasterScenario(args, run_dir, log_context, debug_config)
     scenario.execute()

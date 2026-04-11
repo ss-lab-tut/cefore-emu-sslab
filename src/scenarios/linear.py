@@ -3,6 +3,7 @@
 import random
 import sys
 import time
+from pathlib import Path
 
 from mininet.log import info
 from mininet.util import irange
@@ -16,7 +17,7 @@ from ..runtime.cefore import (
     stop_csmgrd,
     wait_for_cefnetd,
 )
-from ..runtime.template import cleanup_node_dirs, ensure_node_dirs
+from ..runtime.template import ensure_node_dirs
 from ..runtime.topo import LineTopo
 
 from .base import BaseScenario
@@ -25,14 +26,17 @@ from .base import BaseScenario
 class LinearScenario(BaseScenario):
     """Linear topology scenario: h0-s0-h1-s1-...-sN-hN."""
 
-    def __init__(self, host_num):
+    def __init__(self, host_num, run_dir=None, debug_config=None):
         if host_num < 2:
             sys.exit("host count must be at least 2")
         self.host_num = host_num
+        self.run_dir = run_dir or Path(".")
+        self.debug_config = debug_config
         self.rng = random.Random()
+        self.generated_node_dirs = []
 
     def build_topology(self):
-        ensure_node_dirs(self.host_num, self.rng)
+        self.generated_node_dirs = ensure_node_dirs(self.host_num, self.rng)
         return LineTopo(hosts=self.host_num)
 
     def configure(self, net):
@@ -78,7 +82,6 @@ class LinearScenario(BaseScenario):
         for idx in range(self.host_num):
             if idx % 2 == 1:
                 stop_csmgrd(net, idx)
-        cleanup_node_dirs()
 
     def _set_ip_addr(self, net):
         """Assign IPs for linear topology."""
@@ -106,7 +109,7 @@ class LinearScenario(BaseScenario):
             info(net.hosts[idx].cmd(command))
 
 
-def run_linear_scenario(host_num):
+def run_linear_scenario(host_num, run_dir=None, debug_config=None):
     """Entry point for linear topology scenario."""
-    scenario = LinearScenario(host_num)
+    scenario = LinearScenario(host_num, run_dir=run_dir, debug_config=debug_config)
     scenario.execute()

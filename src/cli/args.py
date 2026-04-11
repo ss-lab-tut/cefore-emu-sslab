@@ -2,6 +2,29 @@
 
 import argparse
 
+_DEBUG_ARTIFACT_CHOICES = ("node_dirs", "fib_dump", "daemon_logs")
+
+
+def add_debug_args(parser):
+    """Add debug artifact collection arguments."""
+    parser.add_argument(
+        "--debug",
+        action="store_true",
+        help="enable all debug artifact collection (equivalent to all --debug-artifact choices)",
+    )
+    parser.add_argument(
+        "--debug-artifact",
+        action="append",
+        default=[],
+        choices=_DEBUG_ARTIFACT_CHOICES,
+        dest="debug_artifact",
+        metavar="ARTIFACT",
+        help=(
+            "collect a specific debug artifact (repeatable): "
+            + ", ".join(_DEBUG_ARTIFACT_CHOICES)
+        ),
+    )
+
 
 def add_common_args(parser):
     """Add arguments common to all topology types."""

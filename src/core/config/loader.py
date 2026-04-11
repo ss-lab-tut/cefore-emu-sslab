@@ -661,6 +661,24 @@ def validate_config(config: dict[str, Any]) -> list[str]:
                 if not isinstance(routing["k"], int) or routing["k"] < 1:
                     errors.append("routing.k must be a positive integer")
 
+    if "debug" in config:
+        debug = config["debug"]
+        if not isinstance(debug, (bool, dict)):
+            errors.append("debug must be a boolean or dict")
+        elif isinstance(debug, dict):
+            artifacts = debug.get("artifacts", [])
+            if not isinstance(artifacts, list):
+                errors.append("debug.artifacts must be a list")
+            else:
+                _valid_artifacts = {"node_dirs", "fib_dump", "daemon_logs"}
+                for art in artifacts:
+                    if art not in _valid_artifacts:
+                        errors.append(
+                            f"debug.artifacts contains unknown artifact: {art!r}"
+                        )
+            if "output_subdir" in debug and not isinstance(debug["output_subdir"], str):
+                errors.append("debug.output_subdir must be a string")
+
     # Boolean keys
     for key in ("no_cli", "no_script_log"):
         if key in config and not isinstance(config[key], bool):
