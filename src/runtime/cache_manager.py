@@ -12,8 +12,7 @@ _VALID_STRATEGIES = frozenset({"k_centers", "manual", "degree_based"})
 
 def _select_k_centers(manager, exclude, rng):
     count = manager.default_config.get("count", 0)
-    candidates = select_k_centers(manager.graph, count)
-    return [idx for idx in candidates if idx not in exclude]
+    return select_k_centers(manager.graph, count, exclude=exclude)
 
 
 def _select_manual(manager, exclude, rng):

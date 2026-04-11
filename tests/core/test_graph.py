@@ -189,3 +189,18 @@ class TestSelectKCenters:
     def test_k_zero(self, triangle_graph):
         centers = select_k_centers(triangle_graph, 0)
         assert centers == []
+
+    def test_exclude_nodes_not_selected(self):
+        # 4-node line: 0-1-2-3. Exclude node 0 (would normally be first center).
+        graph = {0: {1}, 1: {0, 2}, 2: {1, 3}, 3: {2}}
+        centers = select_k_centers(graph, 2, exclude={0})
+        assert 0 not in centers
+        assert len(centers) == 2
+
+    def test_exclude_guarantees_count(self):
+        # 5-node graph where node 4 would be selected by farthest-first.
+        # Excluding it must still yield count=2 from the remaining nodes.
+        graph = {0: {1}, 1: {0, 2}, 2: {1, 3}, 3: {2, 4}, 4: {3}}
+        centers = select_k_centers(graph, 2, exclude={4})
+        assert 4 not in centers
+        assert len(centers) == 2
