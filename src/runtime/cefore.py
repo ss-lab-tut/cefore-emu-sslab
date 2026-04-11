@@ -2,6 +2,7 @@
 
 import os
 import shlex
+import subprocess
 import time
 
 from mininet.log import info
@@ -380,7 +381,8 @@ def run_cefpubfile(
 
     command = " ".join(cmd_parts)
     print(node_name, "command:", command)
-    net.get(node_name).cmd(command)
+    proc = net.get(node_name).popen(command, shell=True, stderr=subprocess.DEVNULL)
+    return proc
 
 
 def run_cefinfo(

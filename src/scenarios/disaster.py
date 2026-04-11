@@ -297,11 +297,11 @@ class DisasterScenario(BaseScenario):
             host = int(op["host"])
             uri = op["uri"]
             infile = op.get("file", "./sample-putfile")
-            log_path = _artifact_path(
-                self.run_dir,
-                op.get("log"),
-                f"cefputfile_h{host}.log",
+            default_log = (
+                f"cefpubfile_h{host}.log" if op.get("mode") == "pubsub"
+                else f"cefputfile_h{host}.log"
             )
+            log_path = _artifact_path(self.run_dir, op.get("log"), default_log)
             if op.get("mode") == "pubsub":
                 pub_opts = op.get("pub_opts", {}) or {}
                 run_cefpubfile(
