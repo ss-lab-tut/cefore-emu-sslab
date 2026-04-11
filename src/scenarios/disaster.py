@@ -158,8 +158,9 @@ class DisasterScenario(BaseScenario):
         args = self.args
         self.ops_put = args.puts or []
         auto_config = getattr(args, "auto", None)
-        if auto_config and not self.ops_put:
-            self.ops_put, _ = generate_operations(auto_config, args.hosts, args.seed, self.run_dir)
+        if auto_config:
+            auto_puts, _ = generate_operations(auto_config, args.hosts, args.seed, self.run_dir)
+            self.ops_put = self.ops_put + auto_puts
         if self.priority_manager:
             self.ops_put = [self.priority_manager.apply_to_put(op) for op in self.ops_put]
 
@@ -433,10 +434,11 @@ class DisasterScenario(BaseScenario):
         if self.priority_manager:
             self.ops_get = [self.priority_manager.apply_to_get(op) for op in self.ops_get]
         auto_config = getattr(args, "auto", None)
-        if auto_config and not self.ops_get:
-            _, self.ops_get = generate_operations(auto_config, args.hosts, args.seed, self.run_dir)
+        if auto_config:
+            _, auto_gets = generate_operations(auto_config, args.hosts, args.seed, self.run_dir)
             if self.priority_manager:
-                self.ops_get = [self.priority_manager.apply_to_get(op) for op in self.ops_get]
+                auto_gets = [self.priority_manager.apply_to_get(op) for op in auto_gets]
+            self.ops_get = self.ops_get + auto_gets
         if not self.ops_get:
             base_uri = self.ops_put[0]["uri"]
             for idx in range(1, 6):

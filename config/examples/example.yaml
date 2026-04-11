@@ -76,24 +76,24 @@ cache_default_rct_ms: 10000    # キャッシュノードの CACHE_DEFAULT_RCT (
 # ノード故障シミュレーション (拡張: failure_scenarios)
 # failure_scenarios を指定すると down_interval/down_duration 等より優先される
 # -----------------------------------------------------------------------------
-# failure_scenarios:
-#   strategy: "simple"           # simple / cyclic / random / manual
-#   simple:                      # simple 戦略用
-#     interval: 30
-#     duration: 10
-#     count: 2
-#     stagger: 2
-#     exclude: [0, 4]
-#   # cycles:                    # cyclic/random/manual 戦略用
-#   #   - interval: 30
-#   #     duration: 10
-#   #     count: 2
-#   #     exclude: [4]
-#   #   - interval: 60
-#   #     duration: 15
-#   #     count: 1
-#   #     target: [1, 3]         # manual 戦略: 対象ホスト指定
-#   #     allow_publishers: false
+failure_scenarios:
+  strategy: "cyclic"           # simple / cyclic / random / manual
+  simple:                      # simple 戦略用
+    interval: 30
+    duration: 10
+    count: 2
+    stagger: 2
+    exclude: [0, 4]
+  cycles:                    # cyclic/random/manual 戦略用
+    - interval: 30
+      duration: 10
+      count: 2
+      exclude: [4]
+    - interval: 60
+      duration: 15
+      count: 1
+  #     target: [1, 3]         # manual 戦略: 対象ホスト指定
+      allow_publishers: false
 
 # -----------------------------------------------------------------------------
 # コンテンツ操作: puts (cefputfile / cefpubfile)
@@ -106,7 +106,7 @@ puts:
     block_size: 1024                # 最大ペイロード長 (bytes) [オプション]
     expiry: 3000                    # Content Objectライフタイム (秒) [オプション]
     cache_time: 3000                # キャッシュ削除期間 (秒) [オプション]
-    valid_algo: "crc32c"            # バリデーションアルゴリズム: crc32c / rsa-sha256 [オプション]
+#     valid_algo: "crc32c"            # バリデーションアルゴリズム: crc32c / rsa-sha256 [オプション]
     # port_num: 9695                # ポート番号 [オプション]
     # mode: "pubsub"               # Pub/Subモデル時: cefpubfileを使用 [オプション]
     # pub_opts:                     # Pub/Sub用パブリッシャーオプション [オプション]
@@ -154,19 +154,19 @@ gets:
 #     consumer_per_content: 1
 #
 # ■ 複数エントリ (リスト形式)
-# auto:
-#   - publishers: [4]
-#     consumers: "random:2"
-#     content_count: 2
-#     uri_prefix: "ccnx:/test/data"
-#     consumer_per_content: 1
-#   - publishers: [3]
-#     consumers: [0]
-#     content_count: 1
-#     uri: "ccnx:/test/live"
-#     pub_opts: {}
-#     sub_opts:
-#       wait: 5
+auto:
+  - publishers: [11]
+    consumers: "random:2"
+    content_count: 2
+    uri_prefix: "ccnx:/test/data"
+    consumer_per_content: 1
+  - publishers: [7]
+    consumers: [0]
+    content_count: 1
+    uri: "ccnx:/test/live"
+    pub_opts: {}
+    sub_opts:
+      wait: 5
 
 # -----------------------------------------------------------------------------
 # イベントスケジューラ (時限イベント)
