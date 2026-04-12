@@ -75,8 +75,9 @@ class Monitor:
         """Run one collection cycle."""
         for target in self.targets:
             target_type = target.get("type")
+            default_hosts = "cache" if target_type == "csmgrstatus" else "all"
             hosts = _resolve_hosts(
-                target.get("hosts", "all"), self.host_count, self.cache_nodes
+                target.get("hosts", default_hosts), self.host_count, self.cache_nodes
             )
             for host_idx in hosts:
                 try:

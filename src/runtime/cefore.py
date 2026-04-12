@@ -526,8 +526,6 @@ def run_csmgrstatus(
     if host is not None:
         cmd_parts.append(f"-h {shlex.quote(host)}")
 
-    cmd_parts.append(f"-d ./{node_name}")
-
     if log_name:
         cmd_parts.append(f"> {shlex.quote(log_name)}")
 
