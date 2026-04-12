@@ -50,10 +50,6 @@ def add_common_args(parser):
         "--timestamp", action="store_true",
         help="add timestamp to output directory name",
     )
-    parser.add_argument(
-        "--legacy", action="store_true", dest="legacy_layout",
-        help="use legacy layout (output to current directory)",
-    )
 
 
 def add_mesh_args(parser):

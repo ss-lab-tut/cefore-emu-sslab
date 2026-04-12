@@ -35,7 +35,7 @@ from ..runtime.cefore import (
     run_cefpubfile,
     run_cefputfile,
     run_cefstatus_all,
-    run_cefsubfile,
+    start_cefsubfile,
     start_cefnetd,
     start_csmgrd,
     stop_cefnetd,
@@ -291,50 +291,64 @@ class DisasterScenario(BaseScenario):
         run_cefstatus_all(net, args.hosts)
         print_mesh_links(self.topo.mesh_links)
 
-    def _run_put_ops(self, net):
-        """Execute put operations."""
-        for op in self.ops_put:
+    def _run_put_ops(self, net, ops=None):
+        """Execute normal (cefputfile) put operations."""
+        for op in (ops if ops is not None else self.ops_put):
             host = int(op["host"])
             uri = op["uri"]
             infile = op.get("file", "./sample-putfile")
-            default_log = (
-                f"cefpubfile_h{host}.log" if op.get("mode") == "pubsub"
-                else f"cefputfile_h{host}.log"
+            log_path = _artifact_path(
+                self.run_dir, op.get("log"), f"cefputfile_h{host}.log"
             )
-            log_path = _artifact_path(self.run_dir, op.get("log"), default_log)
-            if op.get("mode") == "pubsub":
-                pub_opts = op.get("pub_opts", {}) or {}
-                run_cefpubfile(
-                    net, host, uri,
-                    file_path=infile,
-                    rate=pub_opts.get("rate"),
-                    block_size=pub_opts.get("block_size"),
-                    expiry=pub_opts.get("expiry"),
-                    cache_time=pub_opts.get("cache_time"),
-                    lifetime=pub_opts.get("lifetime"),
-                    retry_limit=pub_opts.get("retry_limit"),
-                    target=pub_opts.get("target"),
-                    ti_valid_algo=pub_opts.get("ti_valid_algo"),
-                    rd_valid_algo=pub_opts.get("rd_valid_algo"),
-                    port_num=pub_opts.get("port_num"),
-                    log_name=str(log_path),
-                )
-            else:
-                run_cefputfile(
-                    net, host, uri,
-                    file_path=infile,
-                    rate=op.get("rate"),
-                    block_size=op.get("block_size"),
-                    expiry=op.get("expiry", 3000),
-                    cache_time=op.get("cache_time", 3000),
-                    valid_algo=op.get("valid_algo"),
-                    port_num=op.get("port_num"),
-                    log_name=str(log_path),
-                )
+            run_cefputfile(
+                net, host, uri,
+                file_path=infile,
+                rate=op.get("rate"),
+                block_size=op.get("block_size"),
+                expiry=op.get("expiry", 3000),
+                cache_time=op.get("cache_time", 3000),
+                valid_algo=op.get("valid_algo"),
+                port_num=op.get("port_num"),
+                log_name=str(log_path),
+            )
             time.sleep(1)
 
+    def _record_get_result(self, op, phase, exit_code, outfile_path, log_path, down_hosts):
+        """Append a single get/sub result to self.results."""
+        uri = op["uri"]
+        consumer = int(op["host"])
+        if op.get("mode") == "pubsub":
+            verdict = _detect_sub_success(exit_code, outfile_path, log_path)
+        else:
+            verdict = _detect_get_success(log_path, outfile_path, exit_code)
+        publisher_host = op.get("publisher_host")
+        if publisher_host is None:
+            publisher_host = getattr(self.args, "publisher_host", None)
+        if publisher_host is None:
+            publisher_host = self.uri_publishers.get(uri)
+        publisher_down = (
+            publisher_host in down_hosts if publisher_host is not None else False
+        )
+        self.results.append(
+            {
+                "ts": _timestamp_utc(),
+                "phase": phase,
+                "host": consumer,
+                "uri": uri,
+                "out_file": str(outfile_path),
+                "log_file": str(log_path),
+                "exit_code": exit_code,
+                "down_hosts": down_hosts,
+                "publisher_host": publisher_host,
+                "publisher_down": publisher_down,
+                "success": verdict["success"],
+                "has_completed_log": verdict["has_completed_log"],
+                "has_output_file": verdict["has_output_file"],
+            }
+        )
+
     def _run_get_ops(self, net, ops, phase, per_get_interval, cycle_idx=0):
-        """Execute get operations with flap state tracking."""
+        """Execute normal (non-pubsub) get operations with flap state tracking."""
         for idx, op in enumerate(ops):
             consumer = int(op["host"])
             uri = op["uri"]
@@ -363,94 +377,169 @@ class DisasterScenario(BaseScenario):
                     ),
                 )
 
-            if op.get("mode") == "pubsub":
-                sub_opts = op.get("sub_opts", {}) or {}
-                wait = sub_opts.get("wait")
-                if wait and wait > 0:
-                    time.sleep(wait)
-                exit_code = run_cefsubfile(
-                    net, consumer, uri,
-                    output_path=str(outfile_path),
-                    pipeline=sub_opts.get("pipeline"),
-                    ri_valid_algo=sub_opts.get("ri_valid_algo"),
-                    td_valid_algo=sub_opts.get("td_valid_algo"),
-                    port_num=sub_opts.get("port_num"),
-                    log_name=str(log_path),
-                )
-            else:
-                exit_code = run_cefgetfile(
-                    net, consumer, uri,
-                    str(outfile_path),
-                    owner_only=op.get("owner_only", False),
-                    chunk=op.get("chunk"),
-                    pipeline=op.get("pipeline"),
-                    valid_algo=op.get("valid_algo"),
-                    port_num=op.get("port_num"),
-                    sg=op.get("sg"),
-                    log_name=str(log_path),
-                )
+            exit_code = run_cefgetfile(
+                net, consumer, uri,
+                str(outfile_path),
+                owner_only=op.get("owner_only", False),
+                chunk=op.get("chunk"),
+                pipeline=op.get("pipeline"),
+                valid_algo=op.get("valid_algo"),
+                port_num=op.get("port_num"),
+                sg=op.get("sg"),
+                log_name=str(log_path),
+            )
 
-            if op.get("mode") == "pubsub":
-                verdict = _detect_sub_success(exit_code, outfile_path, log_path)
-            else:
-                verdict = _detect_get_success(log_path, outfile_path, exit_code)
-            publisher_host = op.get("publisher_host")
-            if publisher_host is None:
-                publisher_host = getattr(self.args, "publisher_host", None)
-            if publisher_host is None:
-                publisher_host = self.uri_publishers.get(uri)
-            publisher_down = (
-                publisher_host in down_hosts if publisher_host is not None else False
-            )
-            self.results.append(
-                {
-                    "ts": _timestamp_utc(),
-                    "phase": phase,
-                    "host": consumer,
-                    "uri": uri,
-                    "out_file": str(outfile_path),
-                    "log_file": str(log_path),
-                    "exit_code": exit_code,
-                    "down_hosts": down_hosts,
-                    "publisher_host": publisher_host,
-                    "publisher_down": publisher_down,
-                    "success": verdict["success"],
-                    "has_completed_log": verdict["has_completed_log"],
-                    "has_output_file": verdict["has_output_file"],
-                }
-            )
+            self._record_get_result(op, phase, exit_code, outfile_path, log_path, down_hosts)
 
             if idx < len(ops) - 1 and per_get_interval > 0:
                 time.sleep(per_get_interval)
 
-    def run_experiment(self, net):
-        """Run the disaster experiment: puts, flapping, gets."""
+    def _start_pubsub_get_ops(self, net, pubsub_gets, phase, cycle_idx):
+        """Start cefsubfile processes in background.
+
+        Returns a list of pending dicts with proc, paths, and context needed
+        for result recording after waiting.
+        """
+        pending = []
+        for idx, op in enumerate(pubsub_gets):
+            consumer = int(op["host"])
+            uri = op["uri"]
+            outfile_path = _artifact_path(
+                self.run_dir,
+                op.get("file"),
+                f"{phase}_recvfile_h{consumer}_idx{idx}",
+            )
+            down_hosts = self.flap_state.snapshot()
+            if op.get("log"):
+                log_path = _artifact_path(
+                    self.run_dir,
+                    op["log"],
+                    f"{phase}_cefsubfile_h{consumer}_idx{idx}.log",
+                )
+            else:
+                down_label = "none" if not down_hosts else ",".join(
+                    str(h) for h in sorted(down_hosts)
+                )
+                log_path = _artifact_path(
+                    self.run_dir,
+                    None,
+                    (
+                        f"cefsubfile_seed{self.seed_label}_downhosts{down_label}_"
+                        f"phase{phase}_cycle{cycle_idx}_idx{idx}_h{consumer}.log"
+                    ),
+                )
+            sub_opts = op.get("sub_opts", {}) or {}
+            proc = start_cefsubfile(
+                net, consumer, uri,
+                output_path=str(outfile_path),
+                pipeline=sub_opts.get("pipeline"),
+                ri_valid_algo=sub_opts.get("ri_valid_algo"),
+                td_valid_algo=sub_opts.get("td_valid_algo"),
+                port_num=sub_opts.get("port_num"),
+                log_name=str(log_path),
+            )
+            pending.append({
+                "op": op,
+                "proc": proc,
+                "outfile_path": outfile_path,
+                "log_path": log_path,
+                "down_hosts": down_hosts,
+                "phase": phase,
+            })
+        return pending
+
+    def _run_pubsub_put_ops(self, net, pubsub_puts):
+        """Execute pubsub put operations (cefpubfile) and wait for each to finish."""
+        for op in pubsub_puts:
+            host = int(op["host"])
+            uri = op["uri"]
+            infile = op.get("file", "./sample-putfile")
+            log_path = _artifact_path(
+                self.run_dir, op.get("log"), f"cefpubfile_h{host}.log"
+            )
+            pub_opts = op.get("pub_opts", {}) or {}
+            proc = run_cefpubfile(
+                net, host, uri,
+                file_path=infile,
+                rate=pub_opts.get("rate"),
+                block_size=pub_opts.get("block_size"),
+                expiry=pub_opts.get("expiry"),
+                cache_time=pub_opts.get("cache_time"),
+                lifetime=pub_opts.get("lifetime"),
+                retry_limit=pub_opts.get("retry_limit"),
+                target=pub_opts.get("target"),
+                ti_valid_algo=pub_opts.get("ti_valid_algo"),
+                rd_valid_algo=pub_opts.get("rd_valid_algo"),
+                port_num=pub_opts.get("port_num"),
+                log_name=str(log_path),
+            )
+            proc.wait()
+            time.sleep(1)
+
+    def _wait_pubsub_get_ops(self, pending):
+        """Wait for cefsubfile processes and record results."""
+        for item in pending:
+            exit_code = item["proc"].wait()
+            self._record_get_result(
+                op=item["op"],
+                phase=item["phase"],
+                exit_code=exit_code,
+                outfile_path=item["outfile_path"],
+                log_path=item["log_path"],
+                down_hosts=item["down_hosts"],
+            )
+
+    def _run_eval_cycle(self, net, normal_gets, pubsub_gets, pubsub_puts, phase, cycle_idx):
+        """Execute one evaluation cycle.
+
+        For pubsub: subscriber starts first, then publisher, then subscriber
+        results are collected.  Normal gets follow in sequence.
+        """
+        if pubsub_gets:
+            pending = self._start_pubsub_get_ops(net, pubsub_gets, phase, cycle_idx)
+            self._run_pubsub_put_ops(net, pubsub_puts)
+            self._wait_pubsub_get_ops(pending)
+        if normal_gets:
+            self._run_get_ops(net, normal_gets, phase, self.args.get_interval, cycle_idx=cycle_idx)
+
+    def _prepare_get_ops(self):
+        """Prepare and return get operations list."""
         args = self.args
-
-        self._run_put_ops(net)
-
-        # Prepare get operations
-        self.ops_get = args.gets or []
+        ops_get = args.gets or []
         if self.priority_manager:
-            self.ops_get = [self.priority_manager.apply_to_get(op) for op in self.ops_get]
+            ops_get = [self.priority_manager.apply_to_get(op) for op in ops_get]
         auto_config = getattr(args, "auto", None)
         if auto_config:
             _, auto_gets = generate_operations(auto_config, args.hosts, args.seed, self.run_dir)
             if self.priority_manager:
                 auto_gets = [self.priority_manager.apply_to_get(op) for op in auto_gets]
-            self.ops_get = self.ops_get + auto_gets
-        if not self.ops_get:
+            ops_get = ops_get + auto_gets
+        if not ops_get:
             base_uri = self.ops_put[0]["uri"]
-            for idx in range(1, 6):
-                candidates = [h for h in range(args.hosts) if h != self.ops_put[0]["host"]]
+            candidates = [h for h in range(args.hosts) if h != self.ops_put[0]["host"]]
+            for _ in range(1, 6):
                 consumer = self.rng.choice(candidates)
-                self.ops_get.append(
+                ops_get.append(
                     {
                         "host": consumer,
                         "uri": base_uri,
                         "file": f"recvfile_at_h{consumer}",
                     }
                 )
+        return ops_get
+
+    def run_experiment(self, net):
+        """Run the disaster experiment: puts, flapping, gets."""
+        args = self.args
+
+        self.ops_get = self._prepare_get_ops()
+
+        normal_puts = [op for op in self.ops_put if op.get("mode") != "pubsub"]
+        pubsub_puts = [op for op in self.ops_put if op.get("mode") == "pubsub"]
+        normal_gets = [op for op in self.ops_get if op.get("mode") != "pubsub"]
+        pubsub_gets = [op for op in self.ops_get if op.get("mode") == "pubsub"]
+
+        self._run_put_ops(net, normal_puts)
 
         # Start host flapping
         use_cli = not getattr(args, "no_cli", False)
@@ -502,20 +591,19 @@ class DisasterScenario(BaseScenario):
             self.monitor.start()
 
         # Evaluation phase
-        if use_cli:
-            self._run_get_ops(net, self.ops_get, "eval", args.get_interval, cycle_idx=0)
+        duration = max(0, int(getattr(args, "duration", 0)))
+        if use_cli or duration == 0:
+            self._run_eval_cycle(net, normal_gets, pubsub_gets, pubsub_puts, "eval", cycle_idx=0)
         else:
-            duration = max(0, int(getattr(args, "duration", 0)))
-            if duration == 0:
-                self._run_get_ops(net, self.ops_get, "eval", args.get_interval, cycle_idx=0)
-            else:
-                deadline = time.time() + duration
-                cycle_idx = 0
-                while time.time() < deadline:
-                    self._run_get_ops(net, self.ops_get, "eval", args.get_interval, cycle_idx=cycle_idx)
-                    cycle_idx += 1
-                    if time.time() >= deadline:
-                        break
+            deadline = time.time() + duration
+            cycle_idx = 0
+            while time.time() < deadline:
+                self._run_eval_cycle(
+                    net, normal_gets, pubsub_gets, pubsub_puts, "eval", cycle_idx=cycle_idx
+                )
+                cycle_idx += 1
+                if time.time() >= deadline:
+                    break
 
     def execute(self):
         """Override BaseScenario.execute() for CLI and autotest control."""

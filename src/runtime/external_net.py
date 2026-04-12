@@ -415,7 +415,6 @@ def main():
     parser.add_argument("--num", type=int, default=None)
     parser.add_argument("--output-dir", type=str, default="logs")
     parser.add_argument("--timestamp", action="store_true")
-    parser.add_argument("--legacy", action="store_true", dest="legacy_layout")
     parser.add_argument("--no-cli", action="store_true")
     args = parser.parse_args()
 
@@ -426,9 +425,6 @@ def main():
             print(f"config error: {error}", file=sys.stderr)
         sys.exit(1)
     merge_cli_and_config(args, config_data)
-
-    if args.legacy_layout:
-        sys.exit("--legacy is disabled for deterministic output isolation")
 
     run_dir = resolve_run_dir(args)
     run_dir = run_dir.resolve()

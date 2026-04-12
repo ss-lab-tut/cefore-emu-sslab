@@ -469,8 +469,8 @@ def test_validate_timestamp_non_boolean():
     assert any("timestamp" in e for e in errors)
 
 
-def test_validate_legacy_layout_non_boolean():
-    errors = validate_config({"legacy_layout": "yes"})
+def test_validate_legacy_layout_removed():
+    errors = validate_config({"legacy_layout": False})
     assert any("legacy_layout" in e for e in errors)
 
 

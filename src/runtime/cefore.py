@@ -313,6 +313,62 @@ def run_cefsubfile(
     return exit_code
 
 
+def start_cefsubfile(
+    net,
+    host_idx,
+    uri,
+    output_path=None,
+    pipeline=None,
+    ri_valid_algo=None,
+    td_valid_algo=None,
+    port_num=None,
+    log_name=None,
+):
+    """Start cefsubfile in background (non-blocking).
+
+    Identical command construction to run_cefsubfile but returns the Popen
+    process immediately without waiting.  Caller is responsible for calling
+    proc.wait() to collect the exit code.
+
+    Args:
+        net: Mininet network instance.
+        host_idx: Subscriber host index.
+        uri: Content URI.
+        output_path: Directory path to output content (use "-" for stdout).
+        pipeline: Number of pipeline.
+        ri_valid_algo: Validation algorithm for Reflexive Interest.
+        td_valid_algo: Validation algorithm for Trigger Data.
+        port_num: Port number.
+        log_name: Name of the log file.
+
+    Returns:
+        Popen process object.
+    """
+    node_name = f"h{host_idx}"
+    cmd_parts = [f"cefsubfile {shlex.quote(uri)}"]
+
+    if output_path is not None:
+        cmd_parts.append(f"-f {shlex.quote(output_path)}")
+    if pipeline is not None:
+        cmd_parts.append(f"-s {pipeline}")
+    if ri_valid_algo is not None:
+        cmd_parts.append(f"-v_RI {shlex.quote(ri_valid_algo)}")
+    if td_valid_algo is not None:
+        cmd_parts.append(f"-v_TD {shlex.quote(td_valid_algo)}")
+    if port_num is not None:
+        cmd_parts.append(f"-p {port_num}")
+
+    cmd_parts.append(f"-d ./{node_name}")
+
+    if not log_name:
+        log_name = f"cefsubfile-h{host_idx}.log"
+    cmd_parts.append(f"> {shlex.quote(log_name)}")
+
+    command = " ".join(cmd_parts)
+    print(node_name, "command:", command)
+    return net.hosts[host_idx].popen(command, shell=True)
+
+
 def run_cefpubfile(
     net,
     host_idx,

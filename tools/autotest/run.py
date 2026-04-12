@@ -52,7 +52,6 @@ def _run_one(
     cfg["results_json"] = "results.json"
     cfg["output_dir"] = str(logs_root)
     cfg["timestamp"] = False
-    cfg["legacy_layout"] = False
 
     config_path = run_root / "config.used.json"
     config_path.write_text(json.dumps(cfg, ensure_ascii=False, indent=2), encoding="utf-8")

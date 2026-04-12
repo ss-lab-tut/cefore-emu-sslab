@@ -20,8 +20,7 @@ node_per_switch: 2     # スイッチあたり最大ホスト数 (0=無制限, 2
 # -----------------------------------------------------------------------------
 num: 4                         # 実験番号 (ログディレクトリ出力を有効化, null で無効)
 output_dir: "logs"             # ベース出力ディレクトリ
-timestamp: false               # true: 出力ディレクトリ名にタイムスタンプ付与
-legacy_layout: false           # true: カレントディレクトリに出力 (レガシー互換)
+timestamp: true              # true: 出力ディレクトリ名にタイムスタンプ付与
 topo_png: "topology.png"       # トポロジPNG出力パス (null で出力しない)
 topo_layout: "kamada_kawai"    # レイアウト: spring / kamada_kawai / circular
 script_log: "script.log"       # スクリプトログファイル名 (null でデフォルト名)
@@ -158,13 +157,14 @@ auto:
   - publishers: [11]
     consumers: "random:2"
     content_count: 2
-    uri_prefix: "ccnx:/test/data"
+    uri_prefix: "ccnx:/test/data1"
     consumer_per_content: 1
-  - publishers: [7]
+  - publishers: [3, 6, 8, 13]
     consumers: [0]
-    content_count: 1
-    uri: "ccnx:/test/live"
-    pub_opts: {}
+    content_count: 2
+    uri: "ccnx:/test/data2"
+    pub_opts:
+      lifetime: 10000
     sub_opts:
       wait: 5
 
@@ -178,53 +178,53 @@ auto:
 #   restore:  復元時に上書きするフィールド（dict）
 #   restore_type: 復元イベントの type（例: link_up）
 #   count:    繰り返し回数（null で無限）
-# events:
-#   - at: 15                       # 開始から15秒後
-#     type: link_down              # リンクダウン
-#     nodes: [1, 2]                # ノード1-2間
-#   - at: 25
-#     type: link_up
-#     nodes: [1, 2]
-#   - at: 30
-#     type: fib_del                # FIBエントリ削除
-#     host: 3
-#     prefix: "ccnx:/test/sample"
-#     protocol: udp
-#     next_hop: "192.168.1.1"
-#   - at: 40
-#     type: fib_add                # FIBエントリ追加
-#     host: 3
-#     prefix: "ccnx:/test/sample"
-#     protocol: udp
-#     next_hop: "192.168.1.1"
-#   - at: 50
-#     type: fib_enable             # FIBエントリ有効化
-#     host: 3
-#     prefix: "ccnx:/test/sample"
-#     protocol: udp
-#     next_hop: "192.168.1.1"
-#   - at: 60
-#     type: bw_set                 # 帯域変更（共有スイッチ全体に適用）
-#     nodes: [0, 3]                # ホストインデックスのペア
-#     bandwidth: 5                 # Mbps
-#   - at: 70
-#     type: bw_set                 # 周期的帯域劣化（repeat付き）
-#     nodes: [1, 5]
-#     bandwidth: 1
-#     repeat:
-#       interval: 30               # 30秒ごとに繰り返し
-#       duration: 10               # 10秒後に復元
-#       restore:
-#         bandwidth: 10            # 復元時の帯域
-#       count: 3                   # 3回繰り返し
-#   - at: 80
-#     type: link_down              # 周期的リンク断（repeat付き）
-#     nodes: [2, 4]
-#     repeat:
-#       interval: 45
-#       duration: 15
-#       restore_type: link_up      # 復旧イベントの type
-#       count: 3
+events:
+  - at: 15                       # 開始から15秒後
+    type: link_down              # リンクダウン
+    nodes: [1, 2]                # ノード1-2間
+  - at: 25
+    type: link_up
+    nodes: [1, 2]
+  - at: 30
+    type: fib_del                # FIBエントリ削除
+    host: 3
+    prefix: "ccnx:/test/sample"
+    protocol: udp
+    next_hop: "192.168.1.1"
+  - at: 40
+    type: fib_add                # FIBエントリ追加
+    host: 3
+    prefix: "ccnx:/test/sample"
+    protocol: udp
+    next_hop: "192.168.1.1"
+  - at: 50
+    type: fib_enable             # FIBエントリ有効化
+    host: 3
+    prefix: "ccnx:/test/sample"
+    protocol: udp
+    next_hop: "192.168.1.1"
+  - at: 60
+    type: bw_set                 # 帯域変更（共有スイッチ全体に適用）
+    nodes: [0, 3]                # ホストインデックスのペア
+    bandwidth: 5                 # Mbps
+  - at: 70
+    type: bw_set                 # 周期的帯域劣化（repeat付き）
+    nodes: [1, 5]
+    bandwidth: 1
+    repeat:
+      interval: 30               # 30秒ごとに繰り返し
+      duration: 10               # 10秒後に復元
+      restore:
+        bandwidth: 10            # 復元時の帯域
+      count: 3                   # 3回繰り返し
+  - at: 80
+    type: link_down              # 周期的リンク断（repeat付き）
+    nodes: [2, 4]
+    repeat:
+      interval: 45
+      duration: 15
+      restore_type: link_up      # 復旧イベントの type
+      count: 3
 #   - at: 90
 #     type: compute_call           # 外部API呼び出し（bridges設定で到達性確保が必要）
 #     host: 3
@@ -238,18 +238,18 @@ auto:
 # -----------------------------------------------------------------------------
 # モニタリング (定期収集)
 # -----------------------------------------------------------------------------
-# monitoring:
-#   interval: 5                    # 収集間隔 (秒)
-#   output_json: "monitor.json"    # JSON出力ファイル名
-#   output_csv: "monitor.csv"      # CSV出力ファイル名
-#   targets:
-#     - type: cefstatus            # cefstatus出力収集
-#       hosts: "all"               # "all", "cache", またはリスト [0, 1, 2]
-#     - type: csmgrstatus          # csmgrstatus出力収集
-#       hosts: "cache"             # キャッシュノードのみ
-#     - type: cefinfo              # cefinfo出力収集
-#       hosts: [0]
-#       name_prefix: "ccnx:/test"
+monitoring:
+  interval: 5                    # 収集間隔 (秒)
+  output_json: "monitor.json"    # JSON出力ファイル名
+  output_csv: "monitor.csv"      # CSV出力ファイル名
+  targets:
+    - type: cefstatus            # cefstatus出力収集
+      hosts: "all"               # "all", "cache", またはリスト [0, 1, 2]
+    - type: csmgrstatus          # csmgrstatus出力収集
+      hosts: "cache"             # キャッシュノードのみ
+    - type: cefinfo              # cefinfo出力収集
+      hosts: [0]
+      name_prefix: "ccnx:/test"
 
 # -----------------------------------------------------------------------------
 # ウォームアップ設定
@@ -265,7 +265,7 @@ auto:
 # -----------------------------------------------------------------------------
 # 実行制御
 # -----------------------------------------------------------------------------
-no_cli: false          # true: インタラクティブCLIをスキップ (自動テスト用)
+no_cli: true           # true: インタラクティブCLIをスキップ (自動テスト用)
 duration: 0            # 評価フェーズ時間 (秒, 0: シングルサイクル, no_cli時に使用)
 results_json: ""       # 結果JSONファイル名 (空文字で無効, 出力ディレクトリ内に配置)
 get_interval: 10       # cefgetfile実行間隔 (秒)

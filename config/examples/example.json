@@ -11,7 +11,6 @@
   "num": 1,
   "output_dir": "logs",
   "timestamp": false,
-  "legacy_layout": false,
   "topo_png": "topology.png",
   "topo_layout": "spring",
   "script_log": "script.log",

@@ -11,20 +11,15 @@ from src.core.paths import ensure_within_run_dir, resolve_run_dir, resolve_run_p
 # ── resolve_run_dir ──
 
 
-def test_resolve_run_dir_legacy():
-    args = SimpleNamespace(legacy_layout=True)
-    assert resolve_run_dir(args) == Path(".")
-
-
 def test_resolve_run_dir_no_num_no_output():
-    args = SimpleNamespace(legacy_layout=False, num=None, output_dir=None)
+    args = SimpleNamespace(num=None, output_dir=None)
     assert resolve_run_dir(args) == Path(".")
 
 
 def test_resolve_run_dir_with_num_and_seed(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     args = SimpleNamespace(
-        legacy_layout=False, num=1, seed=42, output_dir=None, timestamp=False,
+        num=1, seed=42, output_dir=None, timestamp=False,
     )
     result = resolve_run_dir(args)
     assert result == Path("logs/ex1_seed42")
@@ -34,7 +29,7 @@ def test_resolve_run_dir_with_num_and_seed(tmp_path, monkeypatch):
 def test_resolve_run_dir_custom_output(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     args = SimpleNamespace(
-        legacy_layout=False, num=None, seed=10, output_dir=str(tmp_path / "results"),
+        num=None, seed=10, output_dir=str(tmp_path / "results"),
         timestamp=False,
     )
     result = resolve_run_dir(args)

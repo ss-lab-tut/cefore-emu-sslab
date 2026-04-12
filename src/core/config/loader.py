@@ -111,8 +111,7 @@ def validate_config(config: dict[str, Any]) -> list[str]:
             errors.append("timestamp must be a boolean")
 
     if "legacy_layout" in config:
-        if not isinstance(config["legacy_layout"], bool):
-            errors.append("legacy_layout must be a boolean")
+        errors.append("legacy_layout has been removed; use output_dir and num instead")
 
     if "no_cli" in config:
         if not isinstance(config["no_cli"], bool):
@@ -744,7 +743,6 @@ def merge_cli_and_config(args: Any, config: dict[str, Any], parser=None) -> None
         "num",
         "output_dir",
         "timestamp",
-        "legacy_layout",
         "no_cli",
         "duration",
         "results_json",
