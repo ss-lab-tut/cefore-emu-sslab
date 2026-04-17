@@ -52,6 +52,7 @@ def test_host_num_one():
 
 
 def test_host_num_two():
+    # Minimal 2-host setup: no router needed, FIB alone handles forwarding
     roles = assign_roles(2, Random(0))
     assert roles[0] is CONSUMER
-    assert roles[1] is ROUTER
+    assert roles[1] is PUBLISHER

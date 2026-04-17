@@ -250,12 +250,53 @@ def validate_config(config: dict[str, Any]) -> list[str]:
                         errors.append(
                             f"auto[{idx}].publishers must be a list of host IDs"
                         )
+                    else:
+                        for pidx, p in enumerate(entry["publishers"]):
+                            if not isinstance(p, int):
+                                errors.append(
+                                    f"auto[{idx}].publishers[{pidx}] must be an integer (got {type(p).__name__!r})"
+                                )
                 if "consumers" in entry:
                     val = entry["consumers"]
-                    if not isinstance(val, (str, list)):
+                    if isinstance(val, str):
+                        if val.startswith("random:"):
+                            rest = val[len("random:"):]
+                            try:
+                                n = int(rest)
+                                if n <= 0:
+                                    errors.append(
+                                        f"auto[{idx}].consumers: random:N requires N to be a positive integer"
+                                    )
+                            except ValueError:
+                                errors.append(
+                                    f"auto[{idx}].consumers: random:N requires N to be a positive integer (got {rest!r})"
+                                )
+                    elif isinstance(val, list):
+                        for cidx, c in enumerate(val):
+                            if not isinstance(c, int):
+                                errors.append(
+                                    f"auto[{idx}].consumers[{cidx}] must be an integer (got {type(c).__name__!r})"
+                                )
+                    else:
                         errors.append(
                             f"auto[{idx}].consumers must be 'random:N' string or list of host IDs"
                         )
+                if "content_count" in entry:
+                    cc = entry["content_count"]
+                    if not isinstance(cc, int) or cc <= 0:
+                        errors.append(
+                            f"auto[{idx}].content_count must be a positive integer (got {cc!r})"
+                        )
+                if "consumer_per_content" in entry:
+                    cpc = entry["consumer_per_content"]
+                    if not isinstance(cpc, int) or cpc <= 0:
+                        errors.append(
+                            f"auto[{idx}].consumer_per_content must be a positive integer (got {cpc!r})"
+                        )
+                if "uri_prefix" in entry and not isinstance(entry["uri_prefix"], str):
+                    errors.append(f"auto[{idx}].uri_prefix must be a string")
+                if "file" in entry and not isinstance(entry["file"], str):
+                    errors.append(f"auto[{idx}].file must be a string")
                 if "sub_opts" in entry:
                     sub_opts = entry["sub_opts"]
                     if not isinstance(sub_opts, dict):
@@ -263,6 +304,12 @@ def validate_config(config: dict[str, Any]) -> list[str]:
                     else:
                         if "wait" in sub_opts and not isinstance(sub_opts["wait"], (int, float)):
                             errors.append(f"auto[{idx}].sub_opts.wait must be a number")
+                        if "consumer_per_content" in sub_opts:
+                            cpc = sub_opts["consumer_per_content"]
+                            if not isinstance(cpc, int) or cpc <= 0:
+                                errors.append(
+                                    f"auto[{idx}].sub_opts.consumer_per_content must be a positive integer"
+                                )
 
     if "cache_config" in config:
         cc = config["cache_config"]
@@ -630,7 +677,7 @@ def validate_config(config: dict[str, Any]) -> list[str]:
             if "interval" in mon:
                 if not isinstance(mon["interval"], (int, float)) or mon["interval"] <= 0:
                     errors.append("monitoring.interval must be a positive number")
-            valid_monitor_types = ("cefstatus", "csmgrstatus", "cefinfo")
+            valid_monitor_types = ("cefstatus", "csmgrstatus")
             targets = mon.get("targets", [])
             if not isinstance(targets, list):
                 errors.append("monitoring.targets must be a list")
@@ -701,6 +748,47 @@ def validate_config(config: dict[str, Any]) -> list[str]:
             errors.append(f"{key} must be a string")
 
     return errors
+
+
+def validate_merged_args(args: Any) -> list[str]:
+    """Validate the merged args namespace (after CLI overrides applied).
+
+    Builds a config-like dict from the args namespace and delegates to
+    validate_config.  Only includes keys that are present on args to avoid
+    false positives for optional parameters.
+
+    Args:
+        args: argparse Namespace object after merge_cli_and_config.
+
+    Returns:
+        List of error messages. Empty if valid.
+    """
+    scalar_keys = (
+        "hosts", "switches", "seed", "k", "num", "duration",
+        "cache_default_rct_ms", "cefnetd_timeout", "publisher_host",
+        "output_dir", "results_json", "script_log", "timestamp",
+        "no_cli", "no_script_log", "host_degree_min", "host_degree_max",
+        "switch_use_all",
+    )
+    structured_keys = (
+        "puts", "gets", "auto", "events", "monitoring", "routing",
+        "cache_config", "failure_scenarios", "priority_uris",
+    )
+    nullable_keys = {"seed", "results_json", "script_log", "cache_default_rct_ms", "publisher_host"}
+
+    config: dict[str, Any] = {}
+    for key in scalar_keys:
+        if hasattr(args, key):
+            val = getattr(args, key)
+            if val is not None or key in nullable_keys:
+                config[key] = val
+    for key in structured_keys:
+        if hasattr(args, key):
+            val = getattr(args, key)
+            if val:
+                config[key] = val
+
+    return validate_config(config)
 
 
 def merge_cli_and_config(args: Any, config: dict[str, Any], parser=None) -> None:

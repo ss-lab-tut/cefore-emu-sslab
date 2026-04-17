@@ -152,6 +152,13 @@ gets:
 #     wait: 10
 #     consumer_per_content: 1
 #
+# ■ NG例（validation error になる指定）:
+# auto:
+#   publishers: ["host0"]       # ← int でなければならない (got 'str')
+#   consumers: "random:abc"     # ← random:N の N は正の整数
+#   content_count: "many"       # ← 正の整数でなければならない (got 'str')
+#   consumer_per_content: 0     # ← 正の整数でなければならない (>= 1)
+#
 # ■ 複数エントリ (リスト形式)
 auto:
   - publishers: [11]
@@ -247,9 +254,7 @@ monitoring:
       hosts: "all"               # "all", "cache", またはリスト [0, 1, 2]
     - type: csmgrstatus          # csmgrstatus出力収集
       hosts: "cache"             # キャッシュノードのみ
-    - type: cefinfo              # cefinfo出力収集
-      hosts: [0]
-      name_prefix: "ccnx:/test"
+      uri: "ccnx:/"             # クエリURI [オプション]
 
 # -----------------------------------------------------------------------------
 # ウォームアップ設定

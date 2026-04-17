@@ -64,15 +64,24 @@ def wait_for_cefnetd(net, idx, timeout=10, interval=0.25):
     return False
 
 
-def start_csmgrd(net, idx):
+def start_csmgrd(net, idx, log_dir=None):
     """Start cache manager daemon for a host.
 
     Args:
         net: Mininet network instance.
         idx: Host index.
+        log_dir: Directory to write daemon log files (hN-csmgrd-log).
+                 If None, logs go to CWD.
     """
     node_name = f"h{idx}"
-    command = f"csmgrdstart -d ./{node_name} > /dev/null 2>&1"
+    if log_dir is not None:
+        abs_node_dir = os.path.abspath(f"./{node_name}")
+        command = (
+            f"cd {shlex.quote(str(log_dir))} && "
+            f"csmgrdstart -d {shlex.quote(abs_node_dir)} > /dev/null 2>&1"
+        )
+    else:
+        command = f"csmgrdstart -d ./{node_name} > /dev/null 2>&1"
     print(node_name, "command:", command)
     info(net.hosts[idx].cmd(command))
     time.sleep(1)
@@ -90,16 +99,25 @@ def stop_csmgrd(net, idx):
     net.hosts[idx].cmd(command)
 
 
-def start_cefnetd(net, idx):
+def start_cefnetd(net, idx, log_dir=None):
     """Start cefnetd forwarding daemon for a host.
 
     Args:
         net: Mininet network instance.
         idx: Host index.
+        log_dir: Directory to write daemon log files (hN-cefnetd-log).
+                 If None, logs go to CWD.
     """
     node_name = f"h{idx}"
     cleanup_cefnetd_socket(node_name, idx)
-    command = f"cefnetdstart -d ./{node_name} > /dev/null 2>&1"
+    if log_dir is not None:
+        abs_node_dir = os.path.abspath(f"./{node_name}")
+        command = (
+            f"cd {shlex.quote(str(log_dir))} && "
+            f"cefnetdstart -d {shlex.quote(abs_node_dir)} > /dev/null 2>&1"
+        )
+    else:
+        command = f"cefnetdstart -d ./{node_name} > /dev/null 2>&1"
     print(node_name, "command:", command)
     info(net.hosts[idx].cmd(command))
     time.sleep(1)
@@ -144,6 +162,9 @@ def run_cefputfile(
         valid_algo: Validation algorithm (crc32c or rsa-sha256).
         port_num: Port number.
         log_name: Name of the log file.
+
+    Returns:
+        exit_code: Exit code of the command.
     """
     node_name = f"h{host_idx}"
     cmd_parts = [f"cefputfile {shlex.quote(uri)} -f {shlex.quote(file_path)}"]
@@ -169,7 +190,8 @@ def run_cefputfile(
 
     command = " ".join(cmd_parts)
     print(node_name, "command:", command)
-    net.hosts[host_idx].cmd(command)
+    proc = net.hosts[host_idx].popen(command, shell=True)
+    return proc.wait()
 
 
 def run_cefgetfile(
@@ -439,60 +461,6 @@ def run_cefpubfile(
     print(node_name, "command:", command)
     proc = net.get(node_name).popen(command, shell=True, stderr=subprocess.DEVNULL)
     return proc
-
-
-def run_cefinfo(
-    net,
-    host_idx,
-    name_prefix,
-    cache_info=False,
-    full_discovery=False,
-    hop_count=None,
-    skip_hop=None,
-    port_num=None,
-    log_name=None,
-):
-    """Run cefinfo to query content information.
-
-    Args:
-        net: Mininet network instance.
-        host_idx: Host index.
-        name_prefix: Content name prefix to query.
-        cache_info: If True, add -c flag for cache information.
-        full_discovery: If True, add -f flag for full discovery.
-        hop_count: Maximum hop count (1-255).
-        skip_hop: Number of hops to skip (0-15).
-        port_num: Port number.
-        log_name: Name of the log file.
-
-    Returns:
-        Command output string.
-    """
-    node_name = f"h{host_idx}"
-    cmd_parts = [f"cefinfo {shlex.quote(name_prefix)}"]
-
-    if cache_info:
-        cmd_parts.append("-c")
-    if full_discovery:
-        cmd_parts.append("-f")
-    if hop_count is not None:
-        cmd_parts.append(f"-r {hop_count}")
-    if skip_hop is not None:
-        cmd_parts.append(f"-s {skip_hop}")
-    if port_num is not None:
-        cmd_parts.append(f"-p {port_num}")
-
-    cmd_parts.append(f"-d ./{node_name}")
-
-    if log_name:
-        cmd_parts.append(f"> {shlex.quote(log_name)}")
-
-    command = " ".join(cmd_parts)
-    print(node_name, "command:", command)
-    output = net.hosts[host_idx].cmd(command)
-    if not log_name:
-        info(output)
-    return output
 
 
 def run_csmgrstatus(

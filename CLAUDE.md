@@ -210,7 +210,6 @@ For topologies with >3 hosts, additional directories (h3, h4, ...) are generated
 - `run_cefsubfile()`: Subscribe to content via cefsubfile (pub/sub model)
 
 **Status/Info Commands:**
-- `run_cefinfo()`: Query content information via cefinfo (-c, -f, -r, -s, -p flags)
 - `run_csmgrstatus()`: Query cache manager status via csmgrstatus
 
 **FIB Route Management:**
@@ -290,9 +289,8 @@ monitoring:
   targets:
     - {type: cefstatus, hosts: "all"}
     - {type: csmgrstatus, hosts: "cache"}
-    - {type: cefinfo, hosts: [0], name_prefix: "ccnx:/test"}
 ```
-Supported types: `cefstatus`, `csmgrstatus`, `cefinfo`. Hosts can be `"all"`, `"cache"`, or a list of IDs.
+Supported types: `cefstatus`, `csmgrstatus`. Hosts can be `"all"`, `"cache"`, or a list of IDs.
 
 **JSON/YAML Configuration:**
 

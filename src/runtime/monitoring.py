@@ -8,7 +8,7 @@ from pathlib import Path
 
 from mininet.log import info
 
-from .cefore import run_cefinfo, run_cefstatus, run_csmgrstatus
+from .cefore import run_cefstatus, run_csmgrstatus
 
 
 def _resolve_hosts(spec, host_count, cache_nodes=None):
@@ -35,7 +35,7 @@ class Monitor:
     """Periodically collect status from Cefore daemons.
 
     Targets are dicts with ``type`` and ``hosts`` keys.
-    Supported types: cefstatus, csmgrstatus, cefinfo.
+    Supported types: cefstatus, csmgrstatus.
 
     Args:
         net: Mininet network instance.
@@ -104,13 +104,7 @@ class Monitor:
                 host_idx,
                 uri=target.get("uri"),
                 port_num=target.get("port_num"),
-            )
-        elif target_type == "cefinfo":
-            return run_cefinfo(
-                self.net,
-                host_idx,
-                target.get("name_prefix", "ccnx:/"),
-                cache_info=target.get("cache_info", False),
+                host=self.net.hosts[host_idx].IP(),
             )
         else:
             return f"unknown monitor type: {target_type}"

@@ -11,7 +11,6 @@ from .bandwidth import parse_bw_args, set_link_bandwidth
 from .debug import archive_node_dirs
 from .cefore import (
     run_cefgetfile,
-    run_cefinfo,
     run_cefputfile,
     run_cefstatus,
     run_cefstatus_all,
@@ -63,7 +62,6 @@ __all__ = [
     "run_cefgetfile",
     "run_cefstatus",
     "run_cefstatus_all",
-    "run_cefinfo",
     "run_csmgrstatus",
     # template
     "update_local_sock_id",

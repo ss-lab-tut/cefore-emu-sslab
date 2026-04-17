@@ -174,7 +174,6 @@ monitoring:
   targets:
     - {type: cefstatus, hosts: "all"}
     - {type: csmgrstatus, hosts: "cache"}
-    - {type: cefinfo, hosts: [0], name_prefix: "ccnx:/test"}
 ```
 
 **Warmup prefetch:**

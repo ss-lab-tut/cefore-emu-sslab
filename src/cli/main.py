@@ -13,7 +13,7 @@ import sys
 
 from mininet.log import setLogLevel
 
-from ..core.config.loader import load_config, merge_cli_and_config, validate_config
+from ..core.config.loader import load_config, merge_cli_and_config, validate_config, validate_merged_args
 from ..core.debug import build_debug_config
 from ..core.paths import resolve_run_dir, resolve_run_path
 from ..core.tee import Tee
@@ -57,18 +57,19 @@ def cmd_disaster(args):
     from pathlib import Path
 
     config_data = load_config(args.config)
-    errors = validate_config(config_data)
-    if errors:
-        for error in errors:
-            print(f"config error: {error}", file=sys.stderr)
-        sys.exit(1)
 
     # Build parser for CLI-precedence merge
     cli_parser = argparse.ArgumentParser()
     add_common_args(cli_parser)
     add_mesh_args(cli_parser)
     add_disaster_args(cli_parser)
+    # Merge first so CLI values take precedence, then validate the merged result
     merge_cli_and_config(args, config_data, cli_parser)
+    errors = validate_merged_args(args)
+    if errors:
+        for error in errors:
+            print(f"config error: {error}", file=sys.stderr)
+        sys.exit(1)
 
     run_dir = resolve_run_dir(args)
 

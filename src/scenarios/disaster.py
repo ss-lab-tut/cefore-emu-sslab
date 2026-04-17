@@ -247,7 +247,7 @@ class DisasterScenario(BaseScenario):
             manager.apply_configs(self.cache_node_set)
         else:
             cache_count = args.cache_count if args.cache_count > 0 else args.down_count + 1
-            cache_nodes = select_k_centers(host_graph, cache_count)
+            cache_nodes = select_k_centers(host_graph, cache_count, exclude=self.publisher_ids)
             if not cache_nodes and args.hosts > 0:
                 cache_nodes = [args.hosts - 1]
             self.cache_node_set = set(cache_nodes)
@@ -300,7 +300,7 @@ class DisasterScenario(BaseScenario):
             log_path = _artifact_path(
                 self.run_dir, op.get("log"), f"cefputfile_h{host}.log"
             )
-            run_cefputfile(
+            exit_code = run_cefputfile(
                 net, host, uri,
                 file_path=infile,
                 rate=op.get("rate"),
@@ -311,6 +311,9 @@ class DisasterScenario(BaseScenario):
                 port_num=op.get("port_num"),
                 log_name=str(log_path),
             )
+            if exit_code != 0:
+                info(f"[ERROR] cefputfile failed on h{host} (exit_code={exit_code})\n")
+                sys.exit(1)
             time.sleep(1)
 
     def _record_get_result(self, op, phase, exit_code, outfile_path, log_path, down_hosts):
@@ -514,17 +517,19 @@ class DisasterScenario(BaseScenario):
             if self.priority_manager:
                 auto_gets = [self.priority_manager.apply_to_get(op) for op in auto_gets]
             ops_get = ops_get + auto_gets
-        if not ops_get:
-            base_uri = self.ops_put[0]["uri"]
-            candidates = [h for h in range(args.hosts) if h != self.ops_put[0]["host"]]
-            for _ in range(1, 6):
-                consumer = self.rng.choice(candidates)
-                ops_get.append(
-                    {
-                        "host": consumer,
-                        "uri": base_uri,
-                        "file": f"recvfile_at_h{consumer}",
-                    }
+        normal_get_uris = {op["uri"] for op in ops_get if op.get("mode") != "pubsub"}
+        pubsub_get_uris = {op["uri"] for op in ops_get if op.get("mode") == "pubsub"}
+        for put_op in self.ops_put:
+            mode = put_op.get("mode", "putget")
+            if mode == "pubsub" and put_op["uri"] not in pubsub_get_uris:
+                print(
+                    f"[warning] pubsub put has no matching subscriber: "
+                    f"host={put_op['host']} uri={put_op['uri']}"
+                )
+            elif mode != "pubsub" and put_op["uri"] not in normal_get_uris:
+                print(
+                    f"[warning] no matching get for normal put: "
+                    f"host={put_op['host']} uri={put_op['uri']}"
                 )
         return ops_get
 

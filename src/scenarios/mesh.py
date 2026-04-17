@@ -17,6 +17,7 @@ from ..runtime.cefore import (
     stop_csmgrd,
     wait_for_cefnetd,
 )
+from ..core.roles import assign_roles
 from ..runtime.links import pick_publish_link
 from ..runtime.net_config import apply_fib, apply_ip_addr
 from ..runtime.template import ensure_node_dirs
@@ -55,8 +56,10 @@ class MeshScenario(BaseScenario):
         self.host_degree_max = host_degree_max
         self.switch_use_all = switch_use_all
         self.run_dir = run_dir or Path(".")
+        self.run_dir.mkdir(parents=True, exist_ok=True)
         self.debug_config = debug_config
         self.generated_node_dirs = []
+        self.roles = {}
 
         if host_num < 3:
             sys.exit("host count must be at least 3")
@@ -75,6 +78,9 @@ class MeshScenario(BaseScenario):
         self.topo = None
 
     def build_topology(self):
+        rng_state = self.rng.getstate()
+        self.roles = assign_roles(self.host_num, self.rng)
+        self.rng.setstate(rng_state)
         self.generated_node_dirs = ensure_node_dirs(self.host_num, self.rng)
         self.topo = MeshTopo(
             hosts=self.host_num,
@@ -95,11 +101,12 @@ class MeshScenario(BaseScenario):
             print(node_name, "command:", "ifconfig")
             info(net.hosts[idx].cmd("ifconfig"))
 
+        log_dir = str(self.run_dir) if self.run_dir != Path(".") else None
         for idx in range(self.host_num):
-            if idx % 2 == 1:
-                start_csmgrd(net, idx)
+            if self.roles.get(idx) and self.roles[idx].runs_csmgrd:
+                start_csmgrd(net, idx, log_dir=log_dir)
         for idx in range(self.host_num):
-            start_cefnetd(net, idx)
+            start_cefnetd(net, idx, log_dir=log_dir)
         for idx in range(self.host_num):
             if not wait_for_cefnetd(net, idx):
                 info(f"WARNING: h{idx} cefnetd not ready\n")
@@ -127,17 +134,25 @@ class MeshScenario(BaseScenario):
             else publish_link["host_a"]
         )
 
-        run_cefputfile(net, publisher, publish_uri)
+        put_log = str(self.run_dir / f"cefputfile_h{publisher}.log")
+        exit_code = run_cefputfile(net, publisher, publish_uri, log_name=put_log)
+        if exit_code != 0:
+            info(f"[ERROR] cefputfile failed on h{publisher} (exit_code={exit_code})\n")
+            sys.exit(1)
         time.sleep(5)
 
         recvfile_path = str(self.run_dir / f"recvfile_at_h{consumer}")
-        run_cefgetfile(net, consumer, publish_uri, recvfile_path)
+        get_log = str(self.run_dir / f"cefgetfile_h{consumer}.log")
+        exit_code = run_cefgetfile(net, consumer, publish_uri, recvfile_path, log_name=get_log)
+        if exit_code != 0:
+            info(f"[ERROR] cefgetfile failed on h{consumer} (exit_code={exit_code})\n")
+            sys.exit(1)
 
     def teardown(self, net):
         for idx in range(self.host_num):
             stop_cefnetd(net, idx)
         for idx in range(self.host_num):
-            if idx % 2 == 1:
+            if self.roles.get(idx) and self.roles[idx].runs_csmgrd:
                 stop_csmgrd(net, idx)
 
 

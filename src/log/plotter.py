@@ -59,7 +59,11 @@ def _get_metric(rec: dict[str, Any], *keys: str) -> float | None:
 
 
 def _filter_eval(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    return [record for record in records if str(record.get("phase", "")).lower() == "eval"]
+    # Records without a phase field (linear/mesh logs) are treated as eval records.
+    return [
+        record for record in records
+        if record.get("phase") is None or str(record["phase"]).lower() == "eval"
+    ]
 
 
 def _group_by_prefix(records: list[dict[str, Any]]) -> dict[str, list[dict[str, Any]]]:
@@ -71,14 +75,17 @@ def _group_by_prefix(records: list[dict[str, Any]]) -> dict[str, list[dict[str, 
 
 
 def _cycles(records: list[dict[str, Any]]) -> list[int]:
+    # Records without a cycle field (linear/mesh logs) are treated as cycle 0.
     values: set[int] = set()
     for record in records:
         cycle = record.get("cycle")
-        if cycle is not None and cycle != "":
+        if cycle is None or cycle == "":
+            values.add(0)
+        else:
             try:
                 values.add(int(cycle))
             except (ValueError, TypeError):
-                pass
+                values.add(0)
     return sorted(values)
 
 
@@ -139,7 +146,7 @@ def _grouped_bar_by_cycle(
         for cycle in cycles:
             cycle_records = [
                 record for record in by_prefix[prefix]
-                if _safe_int(record.get("cycle")) == cycle
+                if (_safe_int(record.get("cycle")) or 0) == cycle
             ]
             if is_success_rate:
                 total = len(cycle_records)

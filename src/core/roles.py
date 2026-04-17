@@ -39,6 +39,9 @@ def assign_roles(host_num, rng, publishers=None):
             roles[idx] = PUBLISHER
         elif idx == 0:
             roles[idx] = CONSUMER
+        elif host_num == 2 and idx == 1:
+            # Minimal 2-host setup: no router needed, h1 is publisher
+            roles[idx] = PUBLISHER
         elif idx == 1:
             roles[idx] = ROUTER
         elif idx == 2:

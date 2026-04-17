@@ -156,9 +156,7 @@ auto:
 #       hosts: "all"               # "all", "cache", またはリスト [0, 1, 2]
 #     - type: csmgrstatus          # csmgrstatus出力収集
 #       hosts: "cache"             # キャッシュノードのみ
-#     - type: cefinfo              # cefinfo出力収集
-#       hosts: [0]
-#       name_prefix: "ccnx:/test"
+#       uri: "ccnx:/"             # クエリURI [オプション]
 
 # -----------------------------------------------------------------------------
 # 実行制御
