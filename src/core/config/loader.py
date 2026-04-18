@@ -1,5 +1,6 @@
 """JSON/YAML configuration loader for cefore-emu."""
 
+import ipaddress
 import json
 import sys
 from pathlib import Path
@@ -693,6 +694,34 @@ def validate_config(config: dict[str, Any]) -> list[str]:
                             f"monitoring.targets[{idx}].type must be one of: "
                             f"{', '.join(valid_monitor_types)}"
                         )
+                    if "target_host" in target:
+                        th = target["target_host"]
+                        if not isinstance(th, str) or not th:
+                            errors.append(
+                                f"monitoring.targets[{idx}].target_host must be a non-empty string"
+                            )
+
+    if "addressing" in config:
+        addr = config["addressing"]
+        if not isinstance(addr, dict):
+            errors.append("addressing must be a dict")
+        else:
+            if "network_cidr" in addr:
+                val = addr["network_cidr"]
+                if not isinstance(val, str):
+                    errors.append("addressing.network_cidr must be a string")
+                else:
+                    try:
+                        net = ipaddress.ip_network(val, strict=False)
+                        if net.prefixlen != 16:
+                            errors.append(
+                                f"addressing.network_cidr must be an IPv4 /16 network "
+                                f"(got /{net.prefixlen})"
+                            )
+                    except ValueError:
+                        errors.append(
+                            f"addressing.network_cidr must be a valid CIDR (got {val!r})"
+                        )
 
     if "routing" in config:
         routing = config["routing"]
@@ -772,7 +801,7 @@ def validate_merged_args(args: Any) -> list[str]:
     )
     structured_keys = (
         "puts", "gets", "auto", "events", "monitoring", "routing",
-        "cache_config", "failure_scenarios", "priority_uris",
+        "cache_config", "failure_scenarios", "priority_uris", "addressing",
     )
     nullable_keys = {"seed", "results_json", "script_log", "cache_default_rct_ms", "publisher_host"}
 
@@ -844,6 +873,7 @@ def merge_cli_and_config(args: Any, config: dict[str, Any], parser=None) -> None
         "monitoring",
         "routing",
         "cefnetd_timeout",
+        "addressing",
     )
 
     _NULL_MEANS_DEFAULT = {

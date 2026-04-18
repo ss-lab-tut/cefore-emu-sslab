@@ -8,6 +8,7 @@ from pathlib import Path
 from mininet.log import info
 from mininet.util import irange
 
+from ..core.addressing import AddressingScheme
 from ..core.roles import assign_roles
 from ..runtime.cefore import (
     run_cefgetfile,
@@ -27,7 +28,7 @@ from .base import BaseScenario
 class LinearScenario(BaseScenario):
     """Linear topology scenario: h0-s0-h1-s1-...-sN-hN."""
 
-    def __init__(self, host_num, run_dir=None, debug_config=None):
+    def __init__(self, host_num, run_dir=None, debug_config=None, scheme=None):
         if host_num < 2:
             sys.exit("host count must be at least 2")
         self.host_num = host_num
@@ -37,6 +38,7 @@ class LinearScenario(BaseScenario):
         self.rng = random.Random()
         self.generated_node_dirs = []
         self.roles = {}
+        self.scheme = scheme if scheme is not None else AddressingScheme()
 
     def build_topology(self):
         # Compute roles first, then restore rng state so ensure_node_dirs
@@ -99,12 +101,12 @@ class LinearScenario(BaseScenario):
         for idx in irange(0, self.host_num - 1):
             node_name = f"h{idx}"
             if idx > 0:
-                left_ip = f"192.168.{idx - 1}.{idx + 1}"
+                left_ip = self.scheme.host_ip(idx - 1, idx)
                 command = f"ifconfig {node_name}-eth0 {left_ip}"
                 print(node_name, "command:", command)
                 net.hosts[idx].cmd(command)
             if idx < self.host_num - 1:
-                right_ip = f"192.168.{idx}.{idx + 1}"
+                right_ip = self.scheme.host_ip(idx, idx)
                 eth_name = "eth1" if idx > 0 else "eth0"
                 command = f"ifconfig {node_name}-{eth_name} {right_ip}"
                 print(node_name, "command:", command)
@@ -114,7 +116,7 @@ class LinearScenario(BaseScenario):
         """Set FIB for linear topology (forward toward publisher)."""
         for idx in irange(0, self.host_num - 2):
             node_name = f"h{idx}"
-            next_hop_ip = f"192.168.{idx}.{idx + 2}"
+            next_hop_ip = self.scheme.host_ip(idx, idx + 1)
             command = f"cefroute add ccnx:/test udp {next_hop_ip} -d ./{node_name}"
             print(node_name, "command:", command)
             info(net.hosts[idx].cmd(command))

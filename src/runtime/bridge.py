@@ -13,6 +13,8 @@ from mininet.log import info
 from mininet.net import Mininet
 from mininet.node import Node
 
+from ..core.addressing import AddressingScheme
+
 # Track created Linux bridges for cleanup
 _created_bridges = {}
 
@@ -349,17 +351,20 @@ def _resolve_root_ip(
     switch_name: str,
     root_ip: str | None,
     mesh_links: list[dict[str, Any]] | None,
+    scheme: AddressingScheme | None = None,
 ) -> str | None:
     """Auto-resolve root IP from mesh link subnet if set to 'auto'."""
     if root_ip and root_ip != "auto":
         return root_ip
     if not mesh_links:
         return root_ip
+    if scheme is None:
+        scheme = AddressingScheme()
     for link in mesh_links:
         if link.get("switch") == switch_name:
             subnet = link.get("subnet")
             if subnet is not None:
-                return f"192.168.{subnet}.254/24"
+                return scheme.root_gateway(subnet)
     return root_ip
 
 
@@ -386,6 +391,7 @@ def setup_bridges(
     bridge_configs: list[dict[str, Any]],
     host_num: int,
     mesh_links: list[dict[str, Any]] | None = None,
+    scheme: AddressingScheme | None = None,
 ) -> None:
     """Set up all bridge configurations.
 
@@ -395,10 +401,11 @@ def setup_bridges(
         bridge_configs: List of bridge configuration dicts.
         host_num: Total number of hosts in the network.
         mesh_links: Optional mesh link info for auto-resolving IPs and interfaces.
+        scheme: AddressingScheme for IP generation (defaults to 192.168.0.0/16).
     """
     for config in bridge_configs:
         switch = config["switch"]
-        root_ip = _resolve_root_ip(config["switch"], config.get("root_ip"), mesh_links)
+        root_ip = _resolve_root_ip(config["switch"], config.get("root_ip"), mesh_links, scheme=scheme)
         if not root_ip:
             info(f"*** Warning: root_ip not set for switch {switch}\n")
             continue

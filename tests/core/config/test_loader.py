@@ -915,3 +915,79 @@ def test_validate_script_log_non_string():
 def test_validate_no_script_log_non_boolean():
     errors = validate_config({"no_script_log": "yes"})
     assert any("no_script_log" in e for e in errors)
+
+
+# ---------------------------------------------------------------------------
+# addressing block validation
+# ---------------------------------------------------------------------------
+
+def test_validate_addressing_valid():
+    errors = validate_config({"addressing": {"network_cidr": "192.168.0.0/16"}})
+    assert errors == []
+
+
+def test_validate_addressing_custom_base():
+    errors = validate_config({"addressing": {"network_cidr": "172.20.0.0/16"}})
+    assert errors == []
+
+
+def test_validate_addressing_not_dict():
+    errors = validate_config({"addressing": "192.168.0.0/16"})
+    assert any("addressing" in e and "dict" in e for e in errors)
+
+
+def test_validate_addressing_network_cidr_not_string():
+    errors = validate_config({"addressing": {"network_cidr": 123}})
+    assert any("network_cidr" in e and "string" in e for e in errors)
+
+
+def test_validate_addressing_invalid_cidr():
+    errors = validate_config({"addressing": {"network_cidr": "not-a-cidr"}})
+    assert any("network_cidr" in e for e in errors)
+
+
+def test_validate_addressing_wrong_prefix_slash8():
+    errors = validate_config({"addressing": {"network_cidr": "10.0.0.0/8"}})
+    assert any("network_cidr" in e and "/16" in e for e in errors)
+
+
+def test_validate_addressing_wrong_prefix_slash24():
+    errors = validate_config({"addressing": {"network_cidr": "192.168.1.0/24"}})
+    assert any("network_cidr" in e and "/16" in e for e in errors)
+
+
+def test_validate_addressing_empty_dict():
+    # No network_cidr specified — valid (optional field)
+    errors = validate_config({"addressing": {}})
+    assert errors == []
+
+
+# ---------------------------------------------------------------------------
+# monitoring.targets.target_host validation
+# ---------------------------------------------------------------------------
+
+def test_validate_monitoring_target_host_valid():
+    errors = validate_config({
+        "monitoring": {
+            "targets": [{"type": "csmgrstatus", "target_host": "192.168.1.1"}]
+        }
+    })
+    assert errors == []
+
+
+def test_validate_monitoring_target_host_empty_string():
+    errors = validate_config({
+        "monitoring": {
+            "targets": [{"type": "csmgrstatus", "target_host": ""}]
+        }
+    })
+    assert any("target_host" in e for e in errors)
+
+
+def test_validate_monitoring_target_host_non_string():
+    errors = validate_config({
+        "monitoring": {
+            "targets": [{"type": "csmgrstatus", "target_host": 12345}]
+        }
+    })
+    assert any("target_host" in e for e in errors)

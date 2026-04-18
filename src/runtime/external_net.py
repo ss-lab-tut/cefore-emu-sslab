@@ -20,6 +20,7 @@ from mininet.link import Intf, TCLink
 from mininet.log import info, setLogLevel
 from mininet.net import Mininet
 
+from ..core.addressing import AddressingScheme, DEFAULT_NETWORK_CIDR
 from ..core.tee import Tee  # noqa: F401 (re-export for backward compat)
 from ..core.config.auto_gen import generate_operations
 from ..core.config.loader import load_config, merge_cli_and_config, validate_config
@@ -230,6 +231,9 @@ def run_connect(args, run_dir: Path = None, log_context=None):
 
     rng = random.Random(args.seed) if args.seed is not None else None
 
+    addr_cfg = getattr(args, "addressing", {}) or {}
+    scheme = AddressingScheme(addr_cfg.get("network_cidr", DEFAULT_NETWORK_CIDR))
+
     ops_put = args.puts or []
     auto_config = getattr(args, "auto", None)
     if auto_config and not ops_put:
@@ -251,14 +255,14 @@ def run_connect(args, run_dir: Path = None, log_context=None):
     net = Mininet(topo=topo, link=TCLink, waitConnected=True)
     net.start()
 
-    apply_ip_addr(net, topo.mesh_links)
+    apply_ip_addr(net, topo.mesh_links, scheme=scheme)
 
     bridge_manager = BridgeManager()
     bridge_configs = getattr(args, "bridges", None) or []
     if not bridge_configs:
         bridge_configs = parse_bridge_args(getattr(args, "bridge", None))
     if bridge_configs:
-        setup_bridges(net, bridge_manager, bridge_configs, args.hosts, topo.mesh_links)
+        setup_bridges(net, bridge_manager, bridge_configs, args.hosts, topo.mesh_links, scheme=scheme)
 
     for idx in range(args.hosts):
         info(net.hosts[idx].cmd("ifconfig"))
@@ -310,9 +314,9 @@ def run_connect(args, run_dir: Path = None, log_context=None):
         uri_publishers[op["uri"]] = op["host"]
 
     if uri_publishers:
-        apply_fib_for_uris(net, topo.mesh_links, args.k, uri_publishers)
+        apply_fib_for_uris(net, topo.mesh_links, args.k, uri_publishers, scheme=scheme)
     else:
-        apply_fib(net, topo.mesh_links, args.k)
+        apply_fib(net, topo.mesh_links, args.k, scheme=scheme)
 
     run_cefstatus_all(net, args.hosts)
     print_mesh_links(topo.mesh_links)

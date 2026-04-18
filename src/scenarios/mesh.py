@@ -17,6 +17,7 @@ from ..runtime.cefore import (
     stop_csmgrd,
     wait_for_cefnetd,
 )
+from ..core.addressing import AddressingScheme
 from ..core.roles import assign_roles
 from ..runtime.links import pick_publish_link
 from ..runtime.net_config import apply_fib, apply_ip_addr
@@ -44,6 +45,7 @@ class MeshScenario(BaseScenario):
         switch_use_all=False,
         run_dir=None,
         debug_config=None,
+        scheme=None,
     ):
         self.host_num = host_num
         self.swhich_num = swhich_num
@@ -60,6 +62,7 @@ class MeshScenario(BaseScenario):
         self.debug_config = debug_config
         self.generated_node_dirs = []
         self.roles = {}
+        self.scheme = scheme if scheme is not None else AddressingScheme()
 
         if host_num < 3:
             sys.exit("host count must be at least 3")
@@ -94,7 +97,7 @@ class MeshScenario(BaseScenario):
         return self.topo
 
     def configure(self, net):
-        apply_ip_addr(net, self.topo.mesh_links)
+        apply_ip_addr(net, self.topo.mesh_links, scheme=self.scheme)
 
         for idx in range(self.host_num):
             node_name = f"h{idx}"
@@ -111,7 +114,7 @@ class MeshScenario(BaseScenario):
             if not wait_for_cefnetd(net, idx):
                 info(f"WARNING: h{idx} cefnetd not ready\n")
 
-        apply_fib(net, self.topo.mesh_links, self.k_paths)
+        apply_fib(net, self.topo.mesh_links, self.k_paths, scheme=self.scheme)
         run_cefstatus_all(net, self.host_num)
         print_mesh_links(self.topo.mesh_links)
 

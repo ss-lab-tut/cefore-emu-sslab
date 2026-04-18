@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 import json
 import random
 import shlex
+import subprocess
 import sys
 import time
 from pathlib import Path
@@ -13,6 +14,7 @@ from mininet.cli import CLI
 from mininet.link import TCLink
 from mininet.log import info
 
+from ..core.addressing import AddressingScheme, DEFAULT_NETWORK_CIDR
 from ..core.config.auto_gen import generate_operations
 from ..core.config.priority_resolver import PriorityConfigManager
 from ..core.flap_state import FlapState
@@ -118,6 +120,9 @@ class DisasterScenario(BaseScenario):
         self.log_context = log_context
         self.debug_config = debug_config
 
+        addr_cfg = getattr(args, "addressing", {}) or {}
+        self.scheme = AddressingScheme(addr_cfg.get("network_cidr", DEFAULT_NETWORK_CIDR))
+
         self.rng = random.Random(args.seed) if args.seed is not None else random.Random()
         self.results = []
         self.bridge_manager = BridgeManager()
@@ -205,10 +210,10 @@ class DisasterScenario(BaseScenario):
         """Configure network: IP, bridges, bandwidth, daemons, FIB."""
         args = self.args
 
-        apply_ip_addr(net, self.topo.mesh_links)
+        apply_ip_addr(net, self.topo.mesh_links, scheme=self.scheme)
 
         if self.bridge_configs:
-            setup_bridges(net, self.bridge_manager, self.bridge_configs, args.hosts, self.topo.mesh_links)
+            setup_bridges(net, self.bridge_manager, self.bridge_configs, args.hosts, self.topo.mesh_links, scheme=self.scheme)
 
         for idx in range(args.hosts):
             info(net.hosts[idx].cmd("ifconfig"))
@@ -286,6 +291,7 @@ class DisasterScenario(BaseScenario):
             net, self.topo.mesh_links, routing_k,
             strategy=routing_strategy,
             uri_publishers=self.uri_publishers or None,
+            scheme=self.scheme,
         )
 
         run_cefstatus_all(net, args.hosts)
@@ -397,12 +403,20 @@ class DisasterScenario(BaseScenario):
             if idx < len(ops) - 1 and per_get_interval > 0:
                 time.sleep(per_get_interval)
 
-    def _start_pubsub_get_ops(self, net, pubsub_gets, phase, cycle_idx):
+    def _start_pubsub_get_ops(self, net, pubsub_gets, phase, cycle_idx, pubsub_puts=None):
         """Start cefsubfile processes in background.
 
-        Returns a list of pending dicts with proc, paths, and context needed
-        for result recording after waiting.
+        Returns a list of pending dicts with proc, paths, context, and absolute
+        deadline (time.monotonic()) needed for result recording after waiting.
         """
+        # Build URI → pub_opts map for per-subscriber deadline calculation.
+        pub_lifetime_by_uri: dict = {}
+        for put_op in (pubsub_puts or []):
+            pub_opts = put_op.get("pub_opts", {}) or {}
+            lifetime = pub_opts.get("lifetime")
+            if lifetime is not None:
+                pub_lifetime_by_uri[put_op["uri"]] = float(lifetime)
+
         pending = []
         for idx, op in enumerate(pubsub_gets):
             consumer = int(op["host"])
@@ -432,6 +446,14 @@ class DisasterScenario(BaseScenario):
                     ),
                 )
             sub_opts = op.get("sub_opts", {}) or {}
+            # Deadline priority: sub_opts.wait > matching publisher lifetime > 30s default.
+            if sub_opts.get("wait") is not None:
+                wait_sec = float(sub_opts["wait"])
+            elif uri in pub_lifetime_by_uri:
+                wait_sec = pub_lifetime_by_uri[uri] / 1000.0 + 5.0
+            else:
+                wait_sec = 30.0
+            started_at = time.monotonic()
             proc = start_cefsubfile(
                 net, consumer, uri,
                 output_path=str(outfile_path),
@@ -448,6 +470,7 @@ class DisasterScenario(BaseScenario):
                 "log_path": log_path,
                 "down_hosts": down_hosts,
                 "phase": phase,
+                "deadline": started_at + wait_sec,
             })
         return pending
 
@@ -476,13 +499,37 @@ class DisasterScenario(BaseScenario):
                 port_num=pub_opts.get("port_num"),
                 log_name=str(log_path),
             )
-            proc.wait()
+            lifetime_sec = (pub_opts.get("lifetime") or 10000) / 1000.0
+            pub_deadline = lifetime_sec + 5.0
+            try:
+                proc.wait(timeout=pub_deadline)
+            except subprocess.TimeoutExpired:
+                info(f"[WARN] cefpubfile on h{host} (uri={uri}) exceeded {pub_deadline:.1f}s; terminating\n")
+                proc.terminate()
+                try:
+                    proc.wait(timeout=2)
+                except subprocess.TimeoutExpired:
+                    proc.kill()
+                    proc.wait()
             time.sleep(1)
 
     def _wait_pubsub_get_ops(self, pending):
         """Wait for cefsubfile processes and record results."""
         for item in pending:
-            exit_code = item["proc"].wait()
+            remaining = max(0.0, item["deadline"] - time.monotonic())
+            try:
+                exit_code = item["proc"].wait(timeout=remaining if remaining > 0 else None)
+            except subprocess.TimeoutExpired:
+                sub_host = int(item["op"]["host"])
+                uri = item["op"]["uri"]
+                info(f"[WARN] cefsubfile on h{sub_host} (uri={uri}) timed out; terminating\n")
+                item["proc"].terminate()
+                try:
+                    item["proc"].wait(timeout=2)
+                except subprocess.TimeoutExpired:
+                    item["proc"].kill()
+                    item["proc"].wait()
+                exit_code = None
             self._record_get_result(
                 op=item["op"],
                 phase=item["phase"],
@@ -499,7 +546,7 @@ class DisasterScenario(BaseScenario):
         results are collected.  Normal gets follow in sequence.
         """
         if pubsub_gets:
-            pending = self._start_pubsub_get_ops(net, pubsub_gets, phase, cycle_idx)
+            pending = self._start_pubsub_get_ops(net, pubsub_gets, phase, cycle_idx, pubsub_puts)
             self._run_pubsub_put_ops(net, pubsub_puts)
             self._wait_pubsub_get_ops(pending)
         if normal_gets:

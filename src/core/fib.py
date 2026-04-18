@@ -3,6 +3,7 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
+from .addressing import AddressingScheme, DEFAULT_NETWORK_CIDR
 from .graph import dijkstra_all
 
 
@@ -62,16 +63,19 @@ def build_graph_and_subnets(mesh_links):
     return host_num, graph, link_subnets
 
 
-def compute_fib(mesh_links, k_paths):
+def compute_fib(mesh_links, k_paths, scheme=None):
     """Compute FIB routes for all destinations with multiple next hops.
 
     Args:
         mesh_links: List of link definitions.
         k_paths: Number of best next hops per destination.
+        scheme: AddressingScheme for IP generation (defaults to 192.168.0.0/16).
 
     Returns:
         List of Route objects.
     """
+    if scheme is None:
+        scheme = AddressingScheme()
     host_num, graph, link_subnets = build_graph_and_subnets(mesh_links)
     all_dist = []
     for src in range(host_num):
@@ -98,7 +102,7 @@ def compute_fib(mesh_links, k_paths):
             for next_hop in next_hops:
                 link_key = tuple(sorted((src, next_hop)))
                 subnet = link_subnets[link_key]
-                next_hop_ip = f"192.168.{subnet}.{next_hop + 1}"
+                next_hop_ip = scheme.host_ip(subnet, next_hop)
                 routes.append(Route(
                     source=src,
                     prefix=prefix,
@@ -108,17 +112,20 @@ def compute_fib(mesh_links, k_paths):
     return routes
 
 
-def compute_fib_for_uris(mesh_links, k_paths, uri_publishers):
+def compute_fib_for_uris(mesh_links, k_paths, uri_publishers, scheme=None):
     """Compute FIB routes for multiple URIs with their respective publishers.
 
     Args:
         mesh_links: List of link definitions.
         k_paths: Number of shortest paths per destination.
         uri_publishers: Dict mapping URI prefix to publisher host ID.
+        scheme: AddressingScheme for IP generation (defaults to 192.168.0.0/16).
 
     Returns:
         List of Route objects.
     """
+    if scheme is None:
+        scheme = AddressingScheme()
     host_num, graph, link_subnets = build_graph_and_subnets(mesh_links)
     all_dist = []
     for src in range(host_num):
@@ -145,7 +152,7 @@ def compute_fib_for_uris(mesh_links, k_paths, uri_publishers):
             for next_hop in next_hops:
                 link_key = tuple(sorted((src, next_hop)))
                 subnet = link_subnets[link_key]
-                next_hop_ip = f"192.168.{subnet}.{next_hop + 1}"
+                next_hop_ip = scheme.host_ip(subnet, next_hop)
                 routes.append(Route(
                     source=src,
                     prefix=uri_prefix,
@@ -168,6 +175,7 @@ class RoutingStrategy(ABC):
         mesh_links,
         k_paths,
         uri_publishers=None,
+        scheme=None,
     ) -> list[Route]:
         """Compute FIB routes.
 
@@ -176,6 +184,7 @@ class RoutingStrategy(ABC):
             k_paths: Number of best next hops per destination.
             uri_publishers: Optional dict mapping URI prefix to publisher host ID.
                 If None, default prefixes (ccnx:/test/exampleN) are used.
+            scheme: AddressingScheme for IP generation (defaults to 192.168.0.0/16).
 
         Returns:
             List of Route objects.
@@ -186,25 +195,27 @@ class RoutingStrategy(ABC):
 class DijkstraStrategy(RoutingStrategy):
     """Default: per-source Dijkstra with k best next hops."""
 
-    def compute_routes(self, mesh_links, k_paths, uri_publishers=None):
+    def compute_routes(self, mesh_links, k_paths, uri_publishers=None, scheme=None):
         if uri_publishers:
-            return compute_fib_for_uris(mesh_links, k_paths, uri_publishers)
-        return compute_fib(mesh_links, k_paths)
+            return compute_fib_for_uris(mesh_links, k_paths, uri_publishers, scheme=scheme)
+        return compute_fib(mesh_links, k_paths, scheme=scheme)
 
 
 class ShortestPathOnlyStrategy(RoutingStrategy):
     """Single shortest path per destination (k=1 fixed)."""
 
-    def compute_routes(self, mesh_links, k_paths, uri_publishers=None):
+    def compute_routes(self, mesh_links, k_paths, uri_publishers=None, scheme=None):
         if uri_publishers:
-            return compute_fib_for_uris(mesh_links, 1, uri_publishers)
-        return compute_fib(mesh_links, 1)
+            return compute_fib_for_uris(mesh_links, 1, uri_publishers, scheme=scheme)
+        return compute_fib(mesh_links, 1, scheme=scheme)
 
 
 class EqualCostMultiPathStrategy(RoutingStrategy):
     """ECMP: all equal-cost next hops, k_paths is ignored."""
 
-    def compute_routes(self, mesh_links, k_paths, uri_publishers=None):
+    def compute_routes(self, mesh_links, k_paths, uri_publishers=None, scheme=None):
+        if scheme is None:
+            scheme = AddressingScheme()
         host_num, graph, link_subnets = build_graph_and_subnets(mesh_links)
         all_dist = [dijkstra_all(graph, src)[0] for src in range(host_num)]
         routes = []
@@ -234,7 +245,7 @@ class EqualCostMultiPathStrategy(RoutingStrategy):
                     subnet = link_subnets[key]
                     routes.append(Route(
                         src, prefix, neighbor,
-                        f"192.168.{subnet}.{neighbor + 1}",
+                        scheme.host_ip(subnet, neighbor),
                     ))
         return routes
 
