@@ -109,7 +109,7 @@ puts:
     # port_num: 9695                # ポート番号 [オプション]
     # mode: "pubsub"               # Pub/Subモデル時: cefpubfileを使用 [オプション]
     # pub_opts:                     # Pub/Sub用パブリッシャーオプション [オプション]
-    #   lifetime: 5000
+    #   lifetime: 5                # Trigger Interest ライフタイム (秒)
 
 # -----------------------------------------------------------------------------
 # コンテンツ操作: gets (cefgetfile / cefsubfile)
@@ -149,7 +149,7 @@ gets:
 #   content_count: 2
 #   uri: "ccnx:/test/stream"        # URI (pubsub形式)
 #   pub_opts:                        # パブリッシャーオプション
-#     lifetime: 5000
+#     lifetime: 5
 #   sub_opts:                        # サブスクライバーオプション
 #     wait: 10
 #     consumer_per_content: 1
@@ -173,7 +173,7 @@ auto:
     content_count: 2
     uri: "ccnx:/test/data2"
     pub_opts:
-      lifetime: 10000
+      lifetime: 10
     sub_opts:
       wait: 5
 

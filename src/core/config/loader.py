@@ -175,6 +175,12 @@ def validate_config(config: dict[str, Any]) -> list[str]:
                         for field in ("lifetime", "retry_limit"):
                             if field in pub_opts and not isinstance(pub_opts[field], (int, float)):
                                 errors.append(f"puts[{idx}].pub_opts.{field} must be a number")
+                        if "lifetime" in pub_opts:
+                            lifetime = pub_opts["lifetime"]
+                            if isinstance(lifetime, (int, float)) and not 0 <= lifetime <= 64:
+                                errors.append(
+                                    f"puts[{idx}].pub_opts.lifetime must be between 0 and 64 seconds"
+                                )
                         if "target" in pub_opts and pub_opts["target"] not in ("trg", "ref", "both"):
                             errors.append(
                                 f"puts[{idx}].pub_opts.target must be 'trg', 'ref', or 'both'"
@@ -530,6 +536,12 @@ def validate_config(config: dict[str, Any]) -> list[str]:
                             errors.append(
                                 f"priority_uris.{level_name}.{field} must be an integer"
                             )
+                if "lifetime" in level_cfg and level_cfg["lifetime"] is not None:
+                    lifetime = level_cfg["lifetime"]
+                    if isinstance(lifetime, int) and not 0 <= lifetime <= 64:
+                        errors.append(
+                            f"priority_uris.{level_name}.lifetime must be between 0 and 64 seconds"
+                        )
 
                 for field in ("valid_algo", "ti_valid_algo", "rd_valid_algo", "ri_valid_algo", "td_valid_algo"):
                     if field in level_cfg and level_cfg[field] is not None:

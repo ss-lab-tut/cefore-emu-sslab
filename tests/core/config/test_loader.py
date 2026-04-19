@@ -538,6 +538,20 @@ def test_validate_puts_pubsub_pub_opts_lifetime_non_number():
     assert any("lifetime" in e for e in errors)
 
 
+def test_validate_puts_pubsub_pub_opts_lifetime_out_of_range():
+    errors = validate_config({
+        "puts": [{"host": 0, "uri": "x", "mode": "pubsub", "pub_opts": {"lifetime": 65}}]
+    })
+    assert any("between 0 and 64 seconds" in e for e in errors)
+
+
+def test_validate_puts_pubsub_pub_opts_lifetime_accepts_seconds():
+    errors = validate_config({
+        "puts": [{"host": 0, "uri": "x", "mode": "pubsub", "pub_opts": {"lifetime": 8}}]
+    })
+    assert errors == []
+
+
 def test_validate_puts_pubsub_pub_opts_invalid_target():
     errors = validate_config({
         "puts": [{"host": 0, "uri": "x", "mode": "pubsub", "pub_opts": {"target": "invalid"}}]

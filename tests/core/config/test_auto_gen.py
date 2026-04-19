@@ -56,12 +56,12 @@ def test_generate_pubsub_mode():
         "publishers": [3],
         "consumers": [0],
         "content_count": 1,
-        "pub_opts": {"lifetime": 5000},
+        "pub_opts": {"lifetime": 5},
         "sub_opts": {"consumer_per_content": 1},
     }
     puts, gets = generate_operations(auto, 5, seed=42)
     assert puts[0].get("mode") == "pubsub"
-    assert puts[0]["pub_opts"]["lifetime"] == 5000
+    assert puts[0]["pub_opts"]["lifetime"] == 5
 
 
 def test_generate_excludes_publishers():

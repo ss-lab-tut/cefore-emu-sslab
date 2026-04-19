@@ -27,7 +27,7 @@ puts:
     file: "./sample-putfile"
     mode: "pubsub"
     pub_opts:
-      lifetime: 8000
+      lifetime: 8
 
 gets:
   - host: 0

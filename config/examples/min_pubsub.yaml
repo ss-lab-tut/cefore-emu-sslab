@@ -22,7 +22,7 @@ puts:
     file: "./sample-putfile"
     mode: "pubsub"
     pub_opts:
-      lifetime: 8000   # Trigger Interest ライフタイム (ms)
+      lifetime: 8   # Trigger Interest ライフタイム (秒)
 
 gets:
   - host: 0

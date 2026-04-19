@@ -97,6 +97,42 @@ def _detect_sub_success(exit_code: int, output_dir: Path, log_path: Path) -> dic
     }
 
 
+def _resolve_pubsub_wait_seconds(sub_opts: dict, uri: str, pub_lifetime_by_uri: dict) -> float:
+    """Resolve how long to wait for a cefsubfile process.
+
+    Timing units follow the Cefore CLI: ``cefpubfile -l`` uses seconds.
+    """
+    if sub_opts.get("wait") is not None:
+        return float(sub_opts["wait"])
+    if uri in pub_lifetime_by_uri:
+        return float(pub_lifetime_by_uri[uri]) + 5.0
+    return 30.0
+
+
+def _resolve_pubsub_publish_deadline_seconds(
+    uri: str, pub_opts: dict, sub_wait_by_uri: dict
+) -> float:
+    """Resolve how long to wait before terminating cefpubfile."""
+    lifetime_sec = float(pub_opts.get("lifetime", 3))
+    resolved_sub_wait = float(sub_wait_by_uri.get(uri, 30.0))
+    return max(resolved_sub_wait, lifetime_sec) + 5.0
+
+
+def _wait_pubsub_process(proc, deadline: float) -> int | None:
+    """Wait for a pub/sub process until its absolute deadline."""
+    remaining = max(0.0, deadline - time.monotonic())
+    try:
+        return proc.wait(timeout=remaining)
+    except subprocess.TimeoutExpired:
+        proc.terminate()
+        try:
+            proc.wait(timeout=2)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+            proc.wait()
+        return None
+
+
 def _resolve_results_path(args, run_dir: Path):
     """Resolve results.json path from args."""
     raw = getattr(args, "results_json", None)
@@ -415,7 +451,8 @@ class DisasterScenario(BaseScenario):
         """Start cefsubfile processes in background.
 
         Returns a list of pending dicts with proc, paths, context, and absolute
-        deadline (time.monotonic()) needed for result recording after waiting.
+        deadline (time.monotonic()) needed for result recording after waiting,
+        plus the resolved per-URI subscriber waits for publisher deadlines.
         """
         # Build URI → pub_opts map for per-subscriber deadline calculation.
         pub_lifetime_by_uri: dict = {}
@@ -426,6 +463,7 @@ class DisasterScenario(BaseScenario):
                 pub_lifetime_by_uri[put_op["uri"]] = float(lifetime)
 
         pending = []
+        sub_wait_by_uri: dict = {}
         for idx, op in enumerate(pubsub_gets):
             consumer = int(op["host"])
             uri = op["uri"]
@@ -455,13 +493,8 @@ class DisasterScenario(BaseScenario):
                     ),
                 )
             sub_opts = op.get("sub_opts", {}) or {}
-            # Deadline priority: sub_opts.wait > matching publisher lifetime > 30s default.
-            if sub_opts.get("wait") is not None:
-                wait_sec = float(sub_opts["wait"])
-            elif uri in pub_lifetime_by_uri:
-                wait_sec = pub_lifetime_by_uri[uri] / 1000.0 + 5.0
-            else:
-                wait_sec = 30.0
+            wait_sec = _resolve_pubsub_wait_seconds(sub_opts, uri, pub_lifetime_by_uri)
+            sub_wait_by_uri[uri] = max(sub_wait_by_uri.get(uri, 0.0), wait_sec)
             started_at = time.monotonic()
             proc = start_cefsubfile(
                 net, consumer, uri,
@@ -481,10 +514,13 @@ class DisasterScenario(BaseScenario):
                 "phase": phase,
                 "deadline": started_at + wait_sec,
             })
-        return pending
+        return pending, sub_wait_by_uri
 
-    def _run_pubsub_put_ops(self, net, pubsub_puts, phase="eval", cycle_idx=0):
+    def _run_pubsub_put_ops(
+        self, net, pubsub_puts, phase="eval", cycle_idx=0, sub_wait_by_uri=None
+    ):
         """Execute pubsub put operations (cefpubfile) and wait for each to finish."""
+        sub_wait_by_uri = sub_wait_by_uri or {}
         for idx, op in enumerate(pubsub_puts):
             host = int(op["host"])
             uri = op["uri"]
@@ -520,8 +556,9 @@ class DisasterScenario(BaseScenario):
                 port_num=pub_opts.get("port_num"),
                 log_name=str(log_path),
             )
-            lifetime_sec = (pub_opts.get("lifetime") or 10000) / 1000.0
-            pub_deadline = lifetime_sec + 5.0
+            pub_deadline = _resolve_pubsub_publish_deadline_seconds(
+                uri, pub_opts, sub_wait_by_uri
+            )
             try:
                 proc.wait(timeout=pub_deadline)
             except subprocess.TimeoutExpired:
@@ -537,20 +574,11 @@ class DisasterScenario(BaseScenario):
     def _wait_pubsub_get_ops(self, pending):
         """Wait for cefsubfile processes and record results."""
         for item in pending:
-            remaining = max(0.0, item["deadline"] - time.monotonic())
-            try:
-                exit_code = item["proc"].wait(timeout=remaining if remaining > 0 else None)
-            except subprocess.TimeoutExpired:
+            exit_code = _wait_pubsub_process(item["proc"], item["deadline"])
+            if exit_code is None:
                 sub_host = int(item["op"]["host"])
                 uri = item["op"]["uri"]
                 info(f"[WARN] cefsubfile on h{sub_host} (uri={uri}) timed out; terminating\n")
-                item["proc"].terminate()
-                try:
-                    item["proc"].wait(timeout=2)
-                except subprocess.TimeoutExpired:
-                    item["proc"].kill()
-                    item["proc"].wait()
-                exit_code = None
             self._record_get_result(
                 op=item["op"],
                 phase=item["phase"],
@@ -567,8 +595,16 @@ class DisasterScenario(BaseScenario):
         results are collected.  Normal gets follow in sequence.
         """
         if pubsub_gets:
-            pending = self._start_pubsub_get_ops(net, pubsub_gets, phase, cycle_idx, pubsub_puts)
-            self._run_pubsub_put_ops(net, pubsub_puts, phase=phase, cycle_idx=cycle_idx)
+            pending, sub_wait_by_uri = self._start_pubsub_get_ops(
+                net, pubsub_gets, phase, cycle_idx, pubsub_puts
+            )
+            self._run_pubsub_put_ops(
+                net,
+                pubsub_puts,
+                phase=phase,
+                cycle_idx=cycle_idx,
+                sub_wait_by_uri=sub_wait_by_uri,
+            )
             self._wait_pubsub_get_ops(pending)
         if normal_gets:
             self._run_get_ops(net, normal_gets, phase, self.args.get_interval, cycle_idx=cycle_idx)
