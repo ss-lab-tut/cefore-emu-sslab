@@ -267,7 +267,12 @@ Runs experiment without interactive CLI and saves structured results to JSON.
 ```
 
 **Pub/Sub Model:**
-Put operations with `"mode": "pubsub"` use `cefpubfile` instead of `cefputfile`. Get operations with `"mode": "pubsub"` use `cefsubfile` instead of `cefgetfile`. Pub/Sub success detection uses exit code + output file presence (no log text matching).
+Put operations with `"mode": "pubsub"` use `cefpubfile` instead of `cefputfile`. Get operations with `"mode": "pubsub"` use `cefsubfile` instead of `cefgetfile`.
+
+- `gets[].file` in pubsub mode is treated as an **output directory** (not a file). `cefsubfile -f` requires a directory, and creates `RNP0x<hex>.out` files inside it with session-derived names that cannot be predicted in advance.
+- Success detection for pubsub uses exit code + presence of a non-empty `RNP0x*.out` file in the output directory (no log text matching).
+- All cefore command wrappers redirect stdout **and stderr** to the same log file (`> logfile 2>&1`). This ensures failure diagnostics from stderr are always captured.
+- `cefpubfile` log names are unique per cycle/index: `cefpubfile_seed{seed}_downhosts{...}_phase{phase}_cycle{N}_idx{N}_h{host}.log` — same format as `cefsubfile` logs.
 
 **Event Scheduler (`src/runtime/scheduler.py`):**
 Timed events configured via `events` key in YAML/JSON. Events execute in a background thread.

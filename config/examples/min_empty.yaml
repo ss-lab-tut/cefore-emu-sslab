@@ -1,0 +1,16 @@
+# 最小検証用: puts/gets 未設定 (デフォルト挙動の確認)
+# Usage: sudo .venv/bin/python3 -m src disaster --config config/examples/min_empty.yaml
+#
+# puts/gets を省略すると最終ホストをパブリッシャーとするデフォルト put が使われる。
+# gets がないため results.json は空配列になる (エラーなく完走すれば OK)。
+hosts: 3
+switches: 3
+seed: 42
+k: 1
+down_interval: 0
+down_count: 0
+num: 9903
+output_dir: "logs/verify"
+no_cli: true
+duration: 20
+results_json: "results.json"

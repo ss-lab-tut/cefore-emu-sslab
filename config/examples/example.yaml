@@ -125,6 +125,8 @@ gets:
     # valid_algo: "crc32c"          # バリデーションアルゴリズム [オプション]
     # port_num: 9695                # ポート番号 [オプション]
     # mode: "pubsub"               # Pub/Subモデル時: cefsubfileを使用 [オプション]
+    # file: "recv_dir"             # pubsubモードでは出力ディレクトリとして扱う [オプション]
+    #                              # cefsubfileは <dir>/RNP0x<hex>.out を動的命名で生成する
     # sub_opts:                     # Pub/Sub用サブスクライバーオプション [オプション]
     #   wait: 10
     #   consumer_per_content: 2

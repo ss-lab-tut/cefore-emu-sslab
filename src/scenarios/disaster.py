@@ -80,18 +80,20 @@ def _detect_get_success(log_path: Path, out_path: Path, exit_code: int) -> dict:
     }
 
 
-def _detect_sub_success(exit_code: int, out_path: Path, log_path: Path) -> dict:
-    """Evaluate cefsubfile success using exit code and output file.
+def _detect_sub_success(exit_code: int, output_dir: Path, log_path: Path) -> dict:
+    """Evaluate cefsubfile success using exit code and output directory.
 
-    cefsubfile logs do not contain "Completed to get all the chunks.",
-    so success is determined by exit code and output file presence only.
+    cefsubfile writes ``RNP0x<hex>.out`` files under the output directory;
+    the exact name is session-dependent and cannot be predicted in advance.
     """
-    has_out = out_path.exists() and out_path.stat().st_size > 0
-    success = exit_code == 0 and has_out
+    artifacts = sorted(output_dir.glob("RNP0x*.out")) if output_dir.is_dir() else []
+    non_empty = [p for p in artifacts if p.stat().st_size > 0]
+    has_out = bool(non_empty)
     return {
-        "success": success,
+        "success": exit_code == 0 and has_out,
         "has_completed_log": False,
         "has_output_file": has_out,
+        "artifact_path": str(non_empty[0]) if non_empty else None,
     }
 
 
@@ -322,14 +324,20 @@ class DisasterScenario(BaseScenario):
                 sys.exit(1)
             time.sleep(1)
 
-    def _record_get_result(self, op, phase, exit_code, outfile_path, log_path, down_hosts):
-        """Append a single get/sub result to self.results."""
+    def _record_get_result(self, op, phase, exit_code, artifact_ref, log_path, down_hosts):
+        """Append a single get/sub result to self.results.
+
+        artifact_ref is the output file for normal gets and the output directory
+        for pubsub gets (cefsubfile -f takes a directory).
+        """
         uri = op["uri"]
         consumer = int(op["host"])
         if op.get("mode") == "pubsub":
-            verdict = _detect_sub_success(exit_code, outfile_path, log_path)
+            verdict = _detect_sub_success(exit_code, artifact_ref, log_path)
+            out_file = verdict.get("artifact_path") or str(artifact_ref)
         else:
-            verdict = _detect_get_success(log_path, outfile_path, exit_code)
+            verdict = _detect_get_success(log_path, artifact_ref, exit_code)
+            out_file = str(artifact_ref)
         publisher_host = op.get("publisher_host")
         if publisher_host is None:
             publisher_host = getattr(self.args, "publisher_host", None)
@@ -344,7 +352,7 @@ class DisasterScenario(BaseScenario):
                 "phase": phase,
                 "host": consumer,
                 "uri": uri,
-                "out_file": str(outfile_path),
+                "out_file": out_file,
                 "log_file": str(log_path),
                 "exit_code": exit_code,
                 "down_hosts": down_hosts,
@@ -421,11 +429,12 @@ class DisasterScenario(BaseScenario):
         for idx, op in enumerate(pubsub_gets):
             consumer = int(op["host"])
             uri = op["uri"]
-            outfile_path = _artifact_path(
+            output_dir = _artifact_path(
                 self.run_dir,
                 op.get("file"),
-                f"{phase}_recvfile_h{consumer}_idx{idx}",
+                f"{phase}_recvdir_h{consumer}_idx{idx}",
             )
+            output_dir.mkdir(parents=True, exist_ok=True)
             down_hosts = self.flap_state.snapshot()
             if op.get("log"):
                 log_path = _artifact_path(
@@ -456,7 +465,7 @@ class DisasterScenario(BaseScenario):
             started_at = time.monotonic()
             proc = start_cefsubfile(
                 net, consumer, uri,
-                output_path=str(outfile_path),
+                output_path=str(output_dir),
                 pipeline=sub_opts.get("pipeline"),
                 ri_valid_algo=sub_opts.get("ri_valid_algo"),
                 td_valid_algo=sub_opts.get("td_valid_algo"),
@@ -466,7 +475,7 @@ class DisasterScenario(BaseScenario):
             pending.append({
                 "op": op,
                 "proc": proc,
-                "outfile_path": outfile_path,
+                "output_dir": output_dir,
                 "log_path": log_path,
                 "down_hosts": down_hosts,
                 "phase": phase,
@@ -474,15 +483,27 @@ class DisasterScenario(BaseScenario):
             })
         return pending
 
-    def _run_pubsub_put_ops(self, net, pubsub_puts):
+    def _run_pubsub_put_ops(self, net, pubsub_puts, phase="eval", cycle_idx=0):
         """Execute pubsub put operations (cefpubfile) and wait for each to finish."""
-        for op in pubsub_puts:
+        for idx, op in enumerate(pubsub_puts):
             host = int(op["host"])
             uri = op["uri"]
             infile = op.get("file", "./sample-putfile")
-            log_path = _artifact_path(
-                self.run_dir, op.get("log"), f"cefpubfile_h{host}.log"
-            )
+            if op.get("log"):
+                log_path = _artifact_path(self.run_dir, op["log"], None)
+            else:
+                down_hosts = self.flap_state.snapshot()
+                down_label = "none" if not down_hosts else ",".join(
+                    str(h) for h in sorted(down_hosts)
+                )
+                log_path = _artifact_path(
+                    self.run_dir,
+                    None,
+                    (
+                        f"cefpubfile_seed{self.seed_label}_downhosts{down_label}_"
+                        f"phase{phase}_cycle{cycle_idx}_idx{idx}_h{host}.log"
+                    ),
+                )
             pub_opts = op.get("pub_opts", {}) or {}
             proc = run_cefpubfile(
                 net, host, uri,
@@ -534,7 +555,7 @@ class DisasterScenario(BaseScenario):
                 op=item["op"],
                 phase=item["phase"],
                 exit_code=exit_code,
-                outfile_path=item["outfile_path"],
+                artifact_ref=item["output_dir"],
                 log_path=item["log_path"],
                 down_hosts=item["down_hosts"],
             )
@@ -547,7 +568,7 @@ class DisasterScenario(BaseScenario):
         """
         if pubsub_gets:
             pending = self._start_pubsub_get_ops(net, pubsub_gets, phase, cycle_idx, pubsub_puts)
-            self._run_pubsub_put_ops(net, pubsub_puts)
+            self._run_pubsub_put_ops(net, pubsub_puts, phase=phase, cycle_idx=cycle_idx)
             self._wait_pubsub_get_ops(pending)
         if normal_gets:
             self._run_get_ops(net, normal_gets, phase, self.args.get_interval, cycle_idx=cycle_idx)

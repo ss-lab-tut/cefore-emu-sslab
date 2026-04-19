@@ -1,0 +1,32 @@
+# 最小検証用: pub/sub のみ (cefpubfile / cefsubfile)
+# Usage: sudo .venv/bin/python3 -m src disaster --config config/examples/min_pubsub.yaml
+#
+# gets[].file は pubsub モードでは出力ディレクトリとして扱われる。
+# cefsubfile は <dir>/RNP0x<hex>.out を動的命名で生成する。
+hosts: 3
+switches: 3
+seed: 42
+k: 1
+down_interval: 0
+down_count: 0
+num: 9902
+output_dir: "logs/verify"
+no_cli: true
+duration: 25
+results_json: "results.json"
+publisher_host: 2
+
+puts:
+  - host: 2
+    uri: "ccnx:/test/stream"
+    file: "./sample-putfile"
+    mode: "pubsub"
+    pub_opts:
+      lifetime: 8000   # Trigger Interest ライフタイム (ms)
+
+gets:
+  - host: 0
+    uri: "ccnx:/test/stream"
+    mode: "pubsub"
+    sub_opts:
+      wait: 15   # cefsubfile の待機時間 (秒)

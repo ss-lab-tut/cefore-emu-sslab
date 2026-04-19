@@ -2,7 +2,6 @@
 
 import os
 import shlex
-import subprocess
 import time
 
 from mininet.log import info
@@ -186,7 +185,7 @@ def run_cefputfile(
 
     if not log_name:
         log_name = f"cefputfile-h{host_idx}.log"
-    cmd_parts.append(f"> {shlex.quote(log_name)}")
+    cmd_parts.append(f"> {shlex.quote(log_name)} 2>&1")
 
     command = " ".join(cmd_parts)
     print(node_name, "command:", command)
@@ -245,7 +244,7 @@ def run_cefgetfile(
 
     if not log_name:
         log_name = f"cefgetfile-h{host_idx}.log"
-    cmd_parts.append(f"> {shlex.quote(log_name)}")
+    cmd_parts.append(f"> {shlex.quote(log_name)} 2>&1")
 
     command = " ".join(cmd_parts)
     print(node_name, "command:", command)
@@ -297,7 +296,8 @@ def run_cefsubfile(
         net: Mininet network instance.
         host_idx: Subscriber host index.
         uri: Content URI.
-        output_path: Directory path to output content (use "-" for stdout).
+        output_path: Directory path to output content. cefsubfile creates files
+            named ``RNP0x<hex>.out`` under this directory (use "-" for stdout).
         pipeline: Number of pipeline.
         ri_valid_algo: Validation algorithm for Reflexive Interest (crc32c or rsa-sha256).
         td_valid_algo: Validation algorithm for Trigger Data (crc32c or rsa-sha256).
@@ -325,7 +325,7 @@ def run_cefsubfile(
 
     if not log_name:
         log_name = f"cefsubfile-h{host_idx}.log"
-    cmd_parts.append(f"> {shlex.quote(log_name)}")
+    cmd_parts.append(f"> {shlex.quote(log_name)} 2>&1")
 
     command = " ".join(cmd_parts)
     print(node_name, "command:", command)
@@ -356,7 +356,8 @@ def start_cefsubfile(
         net: Mininet network instance.
         host_idx: Subscriber host index.
         uri: Content URI.
-        output_path: Directory path to output content (use "-" for stdout).
+        output_path: Directory path to output content. cefsubfile creates files
+            named ``RNP0x<hex>.out`` under this directory (use "-" for stdout).
         pipeline: Number of pipeline.
         ri_valid_algo: Validation algorithm for Reflexive Interest.
         td_valid_algo: Validation algorithm for Trigger Data.
@@ -384,7 +385,7 @@ def start_cefsubfile(
 
     if not log_name:
         log_name = f"cefsubfile-h{host_idx}.log"
-    cmd_parts.append(f"> {shlex.quote(log_name)}")
+    cmd_parts.append(f"> {shlex.quote(log_name)} 2>&1")
 
     command = " ".join(cmd_parts)
     print(node_name, "command:", command)
@@ -455,11 +456,11 @@ def run_cefpubfile(
 
     if not log_name:
         log_name = f"cefpubfile-h{host_idx}.log"
-    cmd_parts.append(f"> {shlex.quote(log_name)}")
+    cmd_parts.append(f"> {shlex.quote(log_name)} 2>&1")
 
     command = " ".join(cmd_parts)
     print(node_name, "command:", command)
-    proc = net.get(node_name).popen(command, shell=True, stderr=subprocess.DEVNULL)
+    proc = net.get(node_name).popen(command, shell=True)
     return proc
 
 
