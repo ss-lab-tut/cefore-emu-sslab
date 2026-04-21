@@ -141,6 +141,17 @@ def _resolve_results_path(args, run_dir: Path):
     return _artifact_path(run_dir, raw, "results.json")
 
 
+def _warn_if_no_content_operations(ops_put, ops_get) -> bool:
+    """Print a warning when no content operations are configured."""
+    if ops_put or ops_get:
+        return False
+    print(
+        "[warning] no content operations configured; "
+        "skipping publish/retrieve phase"
+    )
+    return True
+
+
 class DisasterScenario(BaseScenario):
     """Mesh topology with periodic host failure simulation.
 
@@ -206,18 +217,6 @@ class DisasterScenario(BaseScenario):
             self.ops_put = self.ops_put + auto_puts
         if self.priority_manager:
             self.ops_put = [self.priority_manager.apply_to_put(op) for op in self.ops_put]
-
-        if not self.ops_put:
-            publisher = args.hosts - 1
-            publish_uri = f"ccnx:/test/example{publisher + 1}/test.py"
-            self.ops_put = [
-                {
-                    "host": publisher,
-                    "uri": publish_uri,
-                    "file": "./sample-putfile",
-                    "log": "cefputfile_default.log",
-                }
-            ]
 
         self.publisher_ids = set(op["host"] for op in self.ops_put)
         for op in self.ops_put:
@@ -648,6 +647,7 @@ class DisasterScenario(BaseScenario):
         normal_gets = [op for op in self.ops_get if op.get("mode") != "pubsub"]
         pubsub_gets = [op for op in self.ops_get if op.get("mode") == "pubsub"]
 
+        _warn_if_no_content_operations(self.ops_put, self.ops_get)
         self._run_put_ops(net, normal_puts)
 
         # Start host flapping

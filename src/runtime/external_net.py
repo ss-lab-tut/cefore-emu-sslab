@@ -44,7 +44,7 @@ from .cefore import (
     stop_csmgrd,
     wait_for_cefnetd,
 )
-from .links import pick_publish_link, set_node_links_state
+from .links import set_node_links_state
 from .net_config import apply_fib, apply_fib_for_uris, apply_ip_addr
 from .template import apply_cache_node_settings, cleanup_node_dirs, ensure_node_dirs
 from .topo import MeshTopo
@@ -216,6 +216,31 @@ def attach_external_interface_intf(net, host_name, intf_name, ip=None, mtu=None)
     info(f"attached {intf_name} to {host_name}\n")
 
 
+def _resolve_connect_content_ops(args, run_dir: Path):
+    """Resolve explicit and auto-generated content operations."""
+    ops_put = args.puts or []
+    auto_config = getattr(args, "auto", None)
+    if auto_config and not ops_put:
+        ops_put, _ = generate_operations(auto_config, args.hosts, args.seed, run_dir)
+
+    ops_get = args.gets or []
+    if auto_config and not ops_get:
+        _, ops_get = generate_operations(auto_config, args.hosts, args.seed, run_dir)
+
+    return ops_put, ops_get
+
+
+def _warn_if_no_content_operations(ops_put, ops_get) -> bool:
+    """Print a warning when no content operations are configured."""
+    if ops_put or ops_get:
+        return False
+    print(
+        "[warning] no content operations configured; "
+        "skipping publish/retrieve phase"
+    )
+    return True
+
+
 def run_connect(args, run_dir: Path = None, log_context=None):
     """Run mesh topology with external bridge support.
 
@@ -234,10 +259,7 @@ def run_connect(args, run_dir: Path = None, log_context=None):
     addr_cfg = getattr(args, "addressing", {}) or {}
     scheme = AddressingScheme(addr_cfg.get("network_cidr", DEFAULT_NETWORK_CIDR))
 
-    ops_put = args.puts or []
-    auto_config = getattr(args, "auto", None)
-    if auto_config and not ops_put:
-        ops_put, _ = generate_operations(auto_config, args.hosts, args.seed, run_dir)
+    ops_put, ops_get = _resolve_connect_content_ops(args, run_dir)
 
     publisher_ids = set(op["host"] for op in ops_put) if ops_put else None
 
@@ -285,30 +307,6 @@ def run_connect(args, run_dir: Path = None, log_context=None):
         if not wait_for_cefnetd(net, idx):
             info(f"WARNING: h{idx} cefnetd not ready\n")
 
-    ops_get = args.gets or []
-
-    if auto_config and not ops_get:
-        _, ops_get = generate_operations(auto_config, args.hosts, args.seed, run_dir)
-
-    if not ops_put:
-        publisher = args.hosts - 1
-        publish_link = pick_publish_link(topo.mesh_links, publisher)
-        publish_uri = f"ccnx:/test/example{publisher + 1}/test.py"
-        seed_label = "none" if args.seed is None else str(args.seed)
-        down_host_label = "none"
-        log_name = (
-            f"cefputfile_{args.hosts}_{args.switches}_{seed_label}_"
-            f"{args.down_interval}_{args.down_duration}_{down_host_label}.log"
-        )
-        ops_put = [
-            {
-                "host": publisher,
-                "uri": publish_uri,
-                "file": "./sample-putfile",
-                "log": log_name,
-            }
-        ]
-
     uri_publishers = {}
     for op in ops_put:
         uri_publishers[op["uri"]] = op["host"]
@@ -334,6 +332,7 @@ def run_connect(args, run_dir: Path = None, log_context=None):
         seed=args.seed,
         layout=args.topo_layout,
     )
+    _warn_if_no_content_operations(ops_put, ops_get)
     if cache_nodes:
         info("cache nodes: " + ", ".join(f"h{idx}" for idx in cache_nodes) + "\n")
     time.sleep(1)
