@@ -67,6 +67,7 @@ class BaseScenario(ABC):
 
     def execute(self):
         """Run the full scenario lifecycle with guaranteed teardown."""
+        from ..runtime.cleanup import cleanup_all
         from ..runtime.template import cleanup_node_dirs
         net = None
         try:
@@ -85,6 +86,9 @@ class BaseScenario(ABC):
                     self.teardown(net)
                 except Exception as exc:
                     info(f"Error during teardown: {exc}\n")
-                net.stop()
             self.collect_debug_post_teardown()
-            cleanup_node_dirs(getattr(self, "generated_node_dirs", []))
+            generated_dirs = getattr(self, "generated_node_dirs", [])
+            if net is not None:
+                cleanup_all(net, generated_dirs)
+            else:
+                cleanup_node_dirs(generated_dirs)

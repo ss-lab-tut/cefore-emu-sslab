@@ -8,6 +8,7 @@ from .bridge import (
     parse_ext_args,
 )
 from .bandwidth import parse_bw_args, set_link_bandwidth
+from .cleanup import cleanup_all, kill_cef_processes
 from .debug import archive_node_dirs
 from .cefore import (
     run_cefgetfile,
@@ -63,6 +64,9 @@ __all__ = [
     "run_cefstatus",
     "run_cefstatus_all",
     "run_csmgrstatus",
+    # cleanup
+    "cleanup_all",
+    "kill_cef_processes",
     # template
     "update_local_sock_id",
     "update_node_name",

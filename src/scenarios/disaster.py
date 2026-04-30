@@ -9,7 +9,6 @@ import sys
 import time
 from pathlib import Path
 
-from mininet.clean import cleanup as mn_cleanup
 from mininet.cli import CLI
 from mininet.link import TCLink
 from mininet.log import info
@@ -32,6 +31,7 @@ from ..runtime.bridge import (
 )
 from ..runtime.monitoring import Monitor
 from ..runtime.scheduler import EventScheduler
+from ..runtime.cleanup import cleanup_all
 from ..runtime.cefore import (
     run_cefgetfile,
     run_cefpubfile,
@@ -749,11 +749,12 @@ class DisasterScenario(BaseScenario):
                     self.teardown(net)
                 except Exception as exc:
                     info(f"Error during teardown: {exc}\n")
-                net.stop()
-                mn_cleanup()
 
             self.collect_debug_post_teardown()
-            cleanup_node_dirs(self.generated_node_dirs)
+            if net is not None:
+                cleanup_all(net, self.generated_node_dirs)
+            else:
+                cleanup_node_dirs(self.generated_node_dirs)
 
             if self.results_path is not None:
                 self.results_path.write_text(
