@@ -17,7 +17,7 @@ PYTEST_TARGETS = (
     "tests/runtime/test_cefore.py",
     "tests/scenarios/test_disaster_pubsub.py",
 )
-SMOKE_CONFIGS = ("min_putget", "min_pubsub", "min_empty", "min_mixed")
+SMOKE_CONFIGS = ("min_putget", "min_pubsub", "min_pubsub_verify", "min_empty", "min_mixed")
 
 
 @dataclass(frozen=True)
@@ -165,6 +165,7 @@ def build_smoke_cases() -> list[SmokeCase]:
     return [
         SmokeCase("min_putget", "config/examples/min_putget.yaml"),
         SmokeCase("min_pubsub", "config/examples/min_pubsub.yaml"),
+        SmokeCase("min_pubsub_verify", "config/examples/min_pubsub_verify.yaml"),
         SmokeCase("min_empty", "config/examples/min_empty.yaml"),
         SmokeCase("min_mixed", "config/examples/min_mixed.yaml"),
     ]
@@ -243,6 +244,7 @@ def validate_results(case_name: str, data: list[dict]) -> None:
     validators = {
         "min_putget": validate_min_putget,
         "min_pubsub": validate_min_pubsub,
+        "min_pubsub_verify": validate_min_pubsub,
         "min_empty": validate_min_empty,
         "min_mixed": validate_min_mixed,
     }

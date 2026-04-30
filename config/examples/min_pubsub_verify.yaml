@@ -1,0 +1,36 @@
+# 手動検証 (min_empty トポロジ + h0→publish / h2→subscribe) の自動再現用
+# Usage: sudo .venv/bin/python3 -m src disaster --config config/examples/min_pubsub_verify.yaml
+#
+# min_empty.yaml と同一トポロジ (hosts=3, switches=6, k=2) で
+# h0 が publisher、h2 が subscriber として pub/sub が成立することを確認する。
+hosts: 3
+switches: 6
+seed: 42
+k: 2
+host_degree_min: 2
+host_degree_max: 5
+node_per_switch: 2
+
+down_interval: 0
+down_count: 0
+num: 9905
+output_dir: "logs/verify"
+no_cli: true
+duration: 25
+results_json: "results.json"
+publisher_host: 0
+
+puts:
+  - host: 0
+    uri: "ccnx:/test/example2"
+    file: "./sample-putfile"
+    mode: "pubsub"
+    pub_opts:
+      lifetime: 8
+
+gets:
+  - host: 2
+    uri: "ccnx:/test/example2"
+    mode: "pubsub"
+    sub_opts:
+      wait: 15

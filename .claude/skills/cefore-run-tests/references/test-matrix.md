@@ -28,6 +28,17 @@
   - every row keeps `has_completed_log == false`
   - every `out_file` points at a discovered `RNP0x*.out` artifact
 
+### `min_pubsub_verify`
+
+- File: `config/examples/min_pubsub_verify.yaml`
+- 手動検証の自動再現: min_empty トポロジ (hosts=3, switches=6, k=2)、h0→publisher / h2→subscriber、URI `ccnx:/test/example2`
+- Expected `results.json`: one or more cycle entries
+- Required checks:
+  - every row has `success == true`
+  - every row has `has_output_file == true`
+  - every row keeps `has_completed_log == false`
+  - every `out_file` points at a discovered `RNP0x*.out` artifact
+
 ### `min_empty`
 
 - File: `config/examples/min_empty.yaml`

@@ -1,6 +1,6 @@
 ---
 name: cefore-run-tests
-description: Run the CeforeEmu regression checks that cover runtime wrapper logging behavior and disaster pub/sub success detection, plus minimal end-to-end `src disaster --config ... --no-cli` smoke runs with `config/examples/min_putget.yaml`, `min_pubsub.yaml`, `min_empty.yaml`, and `min_mixed.yaml`. Use when Codex needs to validate recent code changes, reproduce a failing test, or sanity-check this repository before or after edits.
+description: Run the CeforeEmu regression checks that cover runtime wrapper logging behavior and disaster pub/sub success detection, plus minimal end-to-end `src disaster --config ... --no-cli` smoke runs with `config/examples/min_putget.yaml`, `min_pubsub.yaml`, `min_pubsub_verify.yaml`, `min_empty.yaml`, and `min_mixed.yaml`. Use when Codex needs to validate recent code changes, reproduce a failing test, or sanity-check this repository before or after edits.
 ---
 
 # Cefore Run Tests
@@ -39,6 +39,7 @@ rtk ./.venv/bin/python3 <skill-dir>/scripts/run_cefore_checks.py --repo-root . -
 - `tests/scenarios/test_disaster_pubsub.py`
 - `config/examples/min_putget.yaml`
 - `config/examples/min_pubsub.yaml`
+- `config/examples/min_pubsub_verify.yaml`
 - `config/examples/min_empty.yaml`
 - `config/examples/min_mixed.yaml`
 
