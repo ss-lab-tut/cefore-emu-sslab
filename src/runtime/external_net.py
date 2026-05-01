@@ -20,6 +20,7 @@ from mininet.link import Intf, TCLink
 from mininet.log import info, setLogLevel
 from mininet.net import Mininet
 
+from ..core.addressing import AddressingScheme, DEFAULT_NETWORK_CIDR
 from ..core.tee import Tee  # noqa: F401 (re-export for backward compat)
 from ..core.config.auto_gen import generate_operations
 from ..core.config.loader import load_config, merge_cli_and_config, validate_config
@@ -43,7 +44,7 @@ from .cefore import (
     stop_csmgrd,
     wait_for_cefnetd,
 )
-from .links import pick_publish_link, set_node_links_state
+from .links import set_node_links_state
 from .net_config import apply_fib, apply_fib_for_uris, apply_ip_addr
 from .template import apply_cache_node_settings, cleanup_node_dirs, ensure_node_dirs
 from .topo import MeshTopo
@@ -209,10 +210,35 @@ def attach_external_interface_intf(net, host_name, intf_name, ip=None, mtu=None)
     host = net.get(host_name)
     Intf(intf_name, node=host)
     if mtu:
-        host.cmd(f"ifconfig {intf_name} mtu {mtu}")
+        host.cmd(f"ifconfig {shlex.quote(intf_name)} mtu {mtu}")
     if ip:
-        host.cmd(f"ifconfig {intf_name} {ip}")
+        host.cmd(f"ifconfig {shlex.quote(intf_name)} {shlex.quote(ip)}")
     info(f"attached {intf_name} to {host_name}\n")
+
+
+def _resolve_connect_content_ops(args, run_dir: Path):
+    """Resolve explicit and auto-generated content operations."""
+    ops_put = args.puts or []
+    auto_config = getattr(args, "auto", None)
+    if auto_config and not ops_put:
+        ops_put, _ = generate_operations(auto_config, args.hosts, args.seed, run_dir)
+
+    ops_get = args.gets or []
+    if auto_config and not ops_get:
+        _, ops_get = generate_operations(auto_config, args.hosts, args.seed, run_dir)
+
+    return ops_put, ops_get
+
+
+def _warn_if_no_content_operations(ops_put, ops_get) -> bool:
+    """Print a warning when no content operations are configured."""
+    if ops_put or ops_get:
+        return False
+    print(
+        "[warning] no content operations configured; "
+        "skipping publish/retrieve phase"
+    )
+    return True
 
 
 def run_connect(args, run_dir: Path = None, log_context=None):
@@ -230,14 +256,14 @@ def run_connect(args, run_dir: Path = None, log_context=None):
 
     rng = random.Random(args.seed) if args.seed is not None else None
 
-    ops_put = args.puts or []
-    auto_config = getattr(args, "auto", None)
-    if auto_config and not ops_put:
-        ops_put, _ = generate_operations(auto_config, args.hosts, args.seed, run_dir)
+    addr_cfg = getattr(args, "addressing", {}) or {}
+    scheme = AddressingScheme(addr_cfg.get("network_cidr", DEFAULT_NETWORK_CIDR))
+
+    ops_put, ops_get = _resolve_connect_content_ops(args, run_dir)
 
     publisher_ids = set(op["host"] for op in ops_put) if ops_put else None
 
-    ensure_node_dirs(args.hosts, rng or random.Random(), publisher_ids)
+    generated_node_dirs = ensure_node_dirs(args.hosts, rng or random.Random(), publisher_ids)
 
     topo = MeshTopo(
         hosts=args.hosts,
@@ -251,14 +277,14 @@ def run_connect(args, run_dir: Path = None, log_context=None):
     net = Mininet(topo=topo, link=TCLink, waitConnected=True)
     net.start()
 
-    apply_ip_addr(net, topo.mesh_links)
+    apply_ip_addr(net, topo.mesh_links, scheme=scheme)
 
     bridge_manager = BridgeManager()
     bridge_configs = getattr(args, "bridges", None) or []
     if not bridge_configs:
         bridge_configs = parse_bridge_args(getattr(args, "bridge", None))
     if bridge_configs:
-        setup_bridges(net, bridge_manager, bridge_configs, args.hosts, topo.mesh_links)
+        setup_bridges(net, bridge_manager, bridge_configs, args.hosts, topo.mesh_links, scheme=scheme)
 
     for idx in range(args.hosts):
         info(net.hosts[idx].cmd("ifconfig"))
@@ -269,7 +295,7 @@ def run_connect(args, run_dir: Path = None, log_context=None):
     if not cache_nodes and args.hosts > 0:
         cache_nodes = [args.hosts - 1]
     cache_node_set = set(cache_nodes)
-    apply_cache_node_settings(args.hosts, cache_node_set, None)
+    apply_cache_node_settings(args.hosts, cache_node_set, None, publishers=publisher_ids)
 
     for idx in sorted(cache_node_set):
         start_csmgrd(net, idx)
@@ -278,40 +304,17 @@ def run_connect(args, run_dir: Path = None, log_context=None):
         start_cefnetd(net, idx)
 
     for idx in range(args.hosts):
-        wait_for_cefnetd(net, idx)
-
-    ops_get = args.gets or []
-
-    if auto_config and not ops_get:
-        _, ops_get = generate_operations(auto_config, args.hosts, args.seed, run_dir)
-
-    if not ops_put:
-        publisher = args.hosts - 1
-        publish_link = pick_publish_link(topo.mesh_links, publisher)
-        publish_uri = f"ccnx:/test/example{publisher + 1}/test.py"
-        seed_label = "none" if args.seed is None else str(args.seed)
-        down_host_label = "none"
-        log_name = (
-            f"cefputfile_{args.hosts}_{args.switches}_{seed_label}_"
-            f"{args.down_interval}_{args.down_duration}_{down_host_label}.log"
-        )
-        ops_put = [
-            {
-                "host": publisher,
-                "uri": publish_uri,
-                "file": "./sample-putfile",
-                "log": log_name,
-            }
-        ]
+        if not wait_for_cefnetd(net, idx):
+            info(f"WARNING: h{idx} cefnetd not ready\n")
 
     uri_publishers = {}
     for op in ops_put:
         uri_publishers[op["uri"]] = op["host"]
 
     if uri_publishers:
-        apply_fib_for_uris(net, topo.mesh_links, args.k, uri_publishers)
+        apply_fib_for_uris(net, topo.mesh_links, args.k, uri_publishers, scheme=scheme)
     else:
-        apply_fib(net, topo.mesh_links, args.k)
+        apply_fib(net, topo.mesh_links, args.k, scheme=scheme)
 
     run_cefstatus_all(net, args.hosts)
     print_mesh_links(topo.mesh_links)
@@ -329,6 +332,7 @@ def run_connect(args, run_dir: Path = None, log_context=None):
         seed=args.seed,
         layout=args.topo_layout,
     )
+    _warn_if_no_content_operations(ops_put, ops_get)
     if cache_nodes:
         info("cache nodes: " + ", ".join(f"h{idx}" for idx in cache_nodes) + "\n")
     time.sleep(1)
@@ -347,7 +351,7 @@ def run_connect(args, run_dir: Path = None, log_context=None):
             resolve_run_path(run_dir, op.get("log"), f"cefputfile_h{host}.log")
         )
         command = (
-            f"cefputfile {uri} -f {shlex.quote(infile)} -t 3000 -e 3000 -d ./h{host} > {log_path}"
+            f"cefputfile {shlex.quote(uri)} -f {shlex.quote(infile)} -t 3000 -e 3000 -d ./h{host} > {shlex.quote(log_path)}"
         )
         print(f"h{host}", "command:", command)
         run_host_command(net, host, command)
@@ -378,7 +382,7 @@ def run_connect(args, run_dir: Path = None, log_context=None):
 
     net.stop()
     mn_cleanup()
-    cleanup_node_dirs()
+    cleanup_node_dirs(generated_node_dirs)
 
 
 def main():
@@ -414,7 +418,6 @@ def main():
     parser.add_argument("--num", type=int, default=None)
     parser.add_argument("--output-dir", type=str, default="logs")
     parser.add_argument("--timestamp", action="store_true")
-    parser.add_argument("--legacy", action="store_true", dest="legacy_layout")
     parser.add_argument("--no-cli", action="store_true")
     args = parser.parse_args()
 
@@ -425,9 +428,6 @@ def main():
             print(f"config error: {error}", file=sys.stderr)
         sys.exit(1)
     merge_cli_and_config(args, config_data)
-
-    if args.legacy_layout:
-        sys.exit("--legacy is disabled for deterministic output isolation")
 
     run_dir = resolve_run_dir(args)
     run_dir = run_dir.resolve()

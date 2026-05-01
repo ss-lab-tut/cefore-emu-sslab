@@ -14,6 +14,11 @@ from mininet.log import info
 from ..core.paths import TEMPLATE_ROOT
 from ..core.roles import assign_roles
 
+# Marker file written inside every hN directory created by ensure_node_dirs().
+# cleanup_node_dirs() only removes directories that carry this stamp,
+# preventing accidental deletion of manually created directories.
+STAMP_FILENAME = ".ceforeemu-node-dir"
+
 
 def update_local_sock_id(node_dir, idx):
     """Update LOCAL_SOCK_ID in cefnetd.conf and csmgrd.conf."""
@@ -67,38 +72,76 @@ def update_node_name(node_dir, idx, base_uri="example.com/xxx/router-"):
 from .cefore import cleanup_cefnetd_socket, read_port_num  # noqa: F401 (re-export)
 
 
-def ensure_node_dirs(host_num, rng, publishers=None):
+def ensure_node_dirs(host_num, rng, publishers=None) -> list[Path]:
     """Create node directories from templates based on assigned roles.
+
+    Each created directory receives a stamp file (STAMP_FILENAME) so that
+    cleanup_node_dirs() can safely identify generated directories.
+
+    If a directory already exists without the stamp, the function exits with
+    an error to avoid destroying unmanaged content.
 
     Args:
         host_num: Total number of hosts.
         rng: Random number generator.
         publishers: Set of host IDs designated as publishers.
+
+    Returns:
+        List of Path objects for every directory that was created or refreshed.
     """
     roles = assign_roles(host_num, rng, publishers)
+    generated: list[Path] = []
     for idx in range(host_num):
-        node_dir = f"h{idx}"
+        node_dir = Path(f"h{idx}")
         template = TEMPLATE_ROOT / roles[idx].template
         if not template.exists():
             sys.exit(f"missing template directory: {template}")
-        if node_dir != str(template):
-            if os.path.isdir(node_dir):
-                shutil.rmtree(node_dir)
-            shutil.copytree(template, node_dir)
-        update_local_sock_id(node_dir, idx)
+        if node_dir.is_dir():
+            stamp = node_dir / STAMP_FILENAME
+            if not stamp.exists():
+                sys.exit(
+                    f"{node_dir} exists but was not created by ceforeemu "
+                    f"(no {STAMP_FILENAME} stamp). Remove it manually before running."
+                )
+            shutil.rmtree(node_dir)
+        shutil.copytree(template, node_dir)
+        (node_dir / STAMP_FILENAME).touch()
+        update_local_sock_id(str(node_dir), idx)
+        generated.append(node_dir)
+    return generated
 
 
-def cleanup_node_dirs():
-    """Remove dynamically created node directories (h3 and above)."""
-    for name in os.listdir("."):
-        if not name.startswith("h"):
+def cleanup_node_dirs(generated_dirs: list[Path]) -> None:
+    """Remove generated node directories identified by their stamp file.
+
+    Only directories that contain the STAMP_FILENAME marker are removed.
+    Directories without the stamp are silently skipped.
+
+    Args:
+        generated_dirs: List of Path objects returned by ensure_node_dirs().
+    """
+    for node_dir in generated_dirs:
+        if not node_dir.is_dir():
             continue
-        suffix = name[1:]
-        if not suffix.isdigit():
-            continue
-        idx = int(suffix)
-        if idx >= 3 and os.path.isdir(name):
-            shutil.rmtree(name)
+        stamp = node_dir / STAMP_FILENAME
+        if stamp.exists():
+            shutil.rmtree(node_dir)
+
+
+def _read_config_value(path: Path, key: str) -> str | None:
+    """Read the current value of KEY from a config file.
+
+    Returns the value string if found, or None if the key is not present
+    or is commented out.
+    """
+    if not path.exists():
+        return None
+    pattern = re.compile(rf"^\s*{re.escape(key)}\s*=\s*(.*)$")
+    for line in path.read_text(encoding="utf-8").splitlines():
+        m = pattern.match(line)
+        if m:
+            return m.group(1).strip()
+    return None
 
 
 def _set_config_value(path: Path, key: str, value: str) -> None:
@@ -131,12 +174,15 @@ def apply_cache_node_settings(
     cache_capacity: int | None = None,
     cache_algorithm: str | None = None,
     cache_type: str | None = None,
+    publishers: set[int] | None = None,
 ) -> None:
     """Apply cache-related runtime overrides to generated host configs.
 
-    - Cache nodes only: force ``CS_MODE=2`` (external CS via csmgrd).
-    - Non-cache nodes: keep template-selected CS_MODE untouched.
-    - Optional parameters override csmgrd.conf values for all cache nodes.
+    - Cache nodes: force ``CS_MODE=2`` (external CS via csmgrd).
+    - Publisher nodes (non-cache): force ``CS_MODE=1`` (local CS for content serving).
+    - Other non-cache nodes: preserve template CS_MODE (0 or 1).
+      If the template set CS_MODE=2 but the node is not a cache node,
+      downgrade to CS_MODE=0 to prevent csmgrd-wait hang.
 
     Args:
         host_num: Total number of hosts.
@@ -145,7 +191,10 @@ def apply_cache_node_settings(
         cache_capacity: CACHE_CAPACITY value in bytes.
         cache_algorithm: CACHE_ALGORITHM value (e.g. LRU, LFU, FIFO).
         cache_type: CACHE_TYPE value (e.g. memory, filesystem).
+        publishers: Set of host indices designated as publishers.
     """
+    publishers = publishers or set()
+
     for idx in sorted(cache_nodes):
         if idx < 0 or idx >= host_num:
             continue
@@ -160,3 +209,20 @@ def apply_cache_node_settings(
             _set_config_value(conf_path, "CACHE_ALGORITHM", str(cache_algorithm))
         if cache_type is not None:
             _set_config_value(conf_path, "CACHE_TYPE", str(cache_type))
+
+    for idx in range(host_num):
+        if idx in cache_nodes:
+            continue
+        node_dir = Path(f"h{idx}")
+        cefnetd_conf = node_dir / "cefnetd.conf"
+        if not cefnetd_conf.exists():
+            continue
+        if idx in publishers:
+            _set_config_value(cefnetd_conf, "CS_MODE", "1")
+        else:
+            # Preserve template CS_MODE (0 or 1) from assign_roles.
+            # Only downgrade CS_MODE=2 → 0 to prevent csmgrd-wait hang
+            # on nodes that are not cache nodes.
+            current = _read_config_value(cefnetd_conf, "CS_MODE")
+            if current == "2":
+                _set_config_value(cefnetd_conf, "CS_MODE", "0")

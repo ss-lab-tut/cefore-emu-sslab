@@ -14,11 +14,23 @@ dependencies = [
 
 [project.scripts]
 ceforeemu = "src.cli.main:main"
+ceforeemu-log = "src.log.cli:main"
+ceforeemu-connect = "src.runtime.external_net:main"
 
 [dependency-groups]
 dev = [
     "mypy>=1.0",
     "ruff>=0.1",
+    "pytest>=8.0",
+    "pytest-cov>=6.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-ra"
+markers = [
+    "integration: requires root/Mininet/Cefore (deselect with '-m not integration')",
 ]
 
 [tool.setuptools.packages.find]

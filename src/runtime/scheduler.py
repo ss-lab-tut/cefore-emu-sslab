@@ -1,10 +1,16 @@
 """Event scheduler for timed network operations."""
 
+import heapq
+import shlex
 import threading
 import time
 
 from mininet.log import info
 
+from ..core.protocols import normalize_route_protocol
+from .bandwidth import set_switch_bandwidth
+from .compute_client import check_external_connectivity
+from .compute_client import compute_call as _do_compute_call
 from .links import link_down, link_up
 from .net_config import cefroute_del, cefroute_enable
 
@@ -13,23 +19,53 @@ def _cefroute_add(net, host_idx, prefix, protocol, next_hop):
     """Add a FIB entry via cefroute add."""
     node_name = f"h{host_idx}"
     node_dir = f"./{node_name}"
-    command = f"cefroute add {prefix} {protocol} {next_hop} -d {node_dir}"
+    protocol_arg = shlex.quote(normalize_route_protocol(protocol))
+    command = f"cefroute add {shlex.quote(prefix)} {protocol_arg} {shlex.quote(next_hop)} -d {node_dir}"
     print(node_name, "command:", command)
     info(net.hosts[host_idx].cmd(command))
 
 
+def _handle_compute_call(net, event, mesh_links, ctx):
+    """Handle compute_call event with connectivity check."""
+    host_idx = event["host"]
+    endpoint = event["endpoint"]
+
+    if not check_external_connectivity(net, host_idx, endpoint):
+        info(
+            f"[scheduler] compute_call: h{host_idx} cannot reach {endpoint}. "
+            f"Ensure ext/bridges are configured for this host.\n"
+        )
+        return
+
+    exit_code, stdout = _do_compute_call(
+        net, host_idx, endpoint,
+        method=event.get("method", "GET"),
+        payload=event.get("payload"),
+        output_file=event.get("output_file"),
+        publish_uri=event.get("publish_uri"),
+        run_dir=ctx.get("run_dir"),
+        timeout=event.get("timeout", 30),
+    )
+    if exit_code != 0:
+        info(f"[scheduler] compute_call failed for h{host_idx}: exit={exit_code}\n")
+
+
 _EVENT_HANDLERS = {
-    "link_down": lambda net, ev, ml: link_down(net, ev["nodes"][0], ev["nodes"][1], ml),
-    "link_up": lambda net, ev, ml: link_up(net, ev["nodes"][0], ev["nodes"][1], ml),
-    "fib_add": lambda net, ev, _: _cefroute_add(
-        net, ev["host"], ev["prefix"], ev.get("protocol", "udp"), ev["next_hop"]
+    "link_down": lambda net, ev, ml, ctx: link_down(net, ml, ev["nodes"][0], ev["nodes"][1]),
+    "link_up": lambda net, ev, ml, ctx: link_up(net, ml, ev["nodes"][0], ev["nodes"][1]),
+    "fib_add": lambda net, ev, _, ctx: _cefroute_add(
+        net, ev["host"], ev["prefix"], ev.get("protocol"), ev["next_hop"]
     ),
-    "fib_del": lambda net, ev, _: cefroute_del(
-        net, ev["host"], ev["prefix"], ev.get("protocol", "udp"), ev["next_hop"]
+    "fib_del": lambda net, ev, _, ctx: cefroute_del(
+        net, ev["host"], ev["prefix"], ev.get("protocol"), ev["next_hop"]
     ),
-    "fib_enable": lambda net, ev, _: cefroute_enable(
-        net, ev["host"], ev["prefix"], ev.get("protocol", "udp"), ev["next_hop"]
+    "fib_enable": lambda net, ev, _, ctx: cefroute_enable(
+        net, ev["host"], ev["prefix"], ev.get("protocol"), ev["next_hop"]
     ),
+    "bw_set": lambda net, ev, ml, ctx: set_switch_bandwidth(
+        net, ml, ev["nodes"][0], ev["nodes"][1], ev["bandwidth"]
+    ),
+    "compute_call": _handle_compute_call,
 }
 
 
@@ -44,40 +80,105 @@ class EventScheduler:
         - fib_add: requires ``host``, ``prefix``, ``next_hop`` (protocol defaults to udp)
         - fib_del: requires ``host``, ``prefix``, ``next_hop``
         - fib_enable: requires ``host``, ``prefix``, ``next_hop``
+        - bw_set: requires ``nodes: [a, b]``, ``bandwidth``
+        - compute_call: requires ``host``, ``endpoint``
+
+    Events may include a ``repeat`` dict for periodic execution:
+        - interval: seconds between repetitions
+        - duration: seconds before restore event fires
+        - restore: dict of fields to override in the restore event
+        - restore_type: event type for the restore event
+        - count: number of repetitions (null = infinite)
     """
 
-    def __init__(self, net, events, mesh_links=None):
+    def __init__(self, net, events, mesh_links=None, run_dir=None):
         self.net = net
-        self.events = sorted(events, key=lambda e: e["at"])
         self.mesh_links = mesh_links
+        self._context = {"run_dir": run_dir}
         self._stop_event = threading.Event()
         self._thread = None
 
+        self._heap = []
+        self._seq = 0
+        self._start_time = None
+
+        for event in events:
+            self._push_event(event["at"], event)
+
+    def _push_event(self, at_sec, event):
+        """Push event into the priority queue."""
+        heapq.heappush(self._heap, (at_sec, self._seq, event))
+        self._seq += 1
+
+    def _handle_repeat(self, event, scheduled_at):
+        """Schedule restore and next repetition if repeat is configured.
+
+        Args:
+            event: The event dict that was just executed.
+            scheduled_at: The SCHEDULED time (at_sec from heap), not actual
+                execution time. This ensures periodic events maintain a stable
+                cadence even if handler execution is slow.
+        """
+        repeat = event.get("repeat")
+        if not repeat:
+            return
+
+        interval = repeat.get("interval", 0)
+        duration = repeat.get("duration")
+        count = repeat.get("count")
+
+        if duration is not None and duration > 0:
+            restore_at = scheduled_at + duration
+            if "restore" in repeat:
+                restore_event = {**event, **repeat["restore"]}
+                restore_event.pop("repeat", None)
+                self._push_event(restore_at, restore_event)
+            elif "restore_type" in repeat:
+                restore_event = {**event, "type": repeat["restore_type"]}
+                restore_event.pop("repeat", None)
+                self._push_event(restore_at, restore_event)
+
+        if interval > 0:
+            if count is not None:
+                remaining = count - 1
+                if remaining <= 0:
+                    return
+                new_repeat = {**repeat, "count": remaining}
+            else:
+                new_repeat = repeat
+            next_at = scheduled_at + interval
+            next_event = {**event, "repeat": new_repeat}
+            self._push_event(next_at, next_event)
+
     def _run(self):
-        start = time.time()
-        for event in self.events:
-            if self._stop_event.is_set():
-                break
-            delay = event["at"] - (time.time() - start)
+        self._start_time = time.time()
+        while self._heap and not self._stop_event.is_set():
+            at_sec, _seq, event = self._heap[0]
+            elapsed = time.time() - self._start_time
+            delay = at_sec - elapsed
             if delay > 0:
                 if self._stop_event.wait(timeout=delay):
                     break
 
+            heapq.heappop(self._heap)
             event_type = event.get("type")
             handler = _EVENT_HANDLERS.get(event_type)
             if handler is None:
                 info(f"[scheduler] unknown event type: {event_type}\n")
                 continue
 
-            info(f"[scheduler] t={time.time() - start:.1f}s  {event_type} {event}\n")
+            elapsed = time.time() - self._start_time
+            info(f"[scheduler] t={elapsed:.1f}s  {event_type} {event}\n")
             try:
-                handler(self.net, event, self.mesh_links)
+                handler(self.net, event, self.mesh_links, self._context)
             except Exception as exc:
                 info(f"[scheduler] error handling {event_type}: {exc}\n")
 
+            self._handle_repeat(event, at_sec)
+
     def start(self):
         """Start background event execution thread."""
-        if not self.events:
+        if not self._heap:
             return
         self._thread = threading.Thread(target=self._run, daemon=True)
         self._thread.start()

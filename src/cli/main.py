@@ -13,23 +13,27 @@ import sys
 
 from mininet.log import setLogLevel
 
-from ..core.config.loader import load_config, merge_cli_and_config, validate_config
+from ..core.config.loader import load_config, merge_cli_and_config, validate_config, validate_merged_args
+from ..core.debug import build_debug_config
 from ..core.paths import resolve_run_dir, resolve_run_path
 from ..core.tee import Tee
-from .args import add_common_args, add_disaster_args, add_mesh_args
+from .args import add_common_args, add_debug_args, add_disaster_args, add_mesh_args
 
 
 def cmd_linear(args):
     """Run linear topology scenario."""
     from ..scenarios.linear import run_linear_scenario
+    run_dir = resolve_run_dir(args)
+    debug_config = build_debug_config(args)
     setLogLevel("info")
-    run_linear_scenario(args.hosts)
+    run_linear_scenario(args.hosts, run_dir=run_dir, debug_config=debug_config)
 
 
 def cmd_mesh(args):
     """Run mesh topology scenario."""
     from ..scenarios.mesh import run_mesh_scenario
     run_dir = resolve_run_dir(args)
+    debug_config = build_debug_config(args)
     setLogLevel("info")
     run_mesh_scenario(
         host_num=args.hosts,
@@ -43,6 +47,7 @@ def cmd_mesh(args):
         host_degree_max=args.host_degree_max,
         switch_use_all=args.switch_use_all,
         run_dir=run_dir,
+        debug_config=debug_config,
     )
 
 
@@ -52,18 +57,19 @@ def cmd_disaster(args):
     from pathlib import Path
 
     config_data = load_config(args.config)
-    errors = validate_config(config_data)
-    if errors:
-        for error in errors:
-            print(f"config error: {error}", file=sys.stderr)
-        sys.exit(1)
 
     # Build parser for CLI-precedence merge
     cli_parser = argparse.ArgumentParser()
     add_common_args(cli_parser)
     add_mesh_args(cli_parser)
     add_disaster_args(cli_parser)
+    # Merge first so CLI values take precedence, then validate the merged result
     merge_cli_and_config(args, config_data, cli_parser)
+    errors = validate_merged_args(args)
+    if errors:
+        for error in errors:
+            print(f"config error: {error}", file=sys.stderr)
+        sys.exit(1)
 
     run_dir = resolve_run_dir(args)
 
@@ -110,9 +116,11 @@ def cmd_disaster(args):
             "tee_stderr": tee_stderr,
         }
 
+    debug_config = build_debug_config(args, config_data.get("debug"))
+
     try:
         setLogLevel("info")
-        run_disaster_scenario(args, run_dir, log_context=log_context)
+        run_disaster_scenario(args, run_dir, log_context=log_context, debug_config=debug_config)
     finally:
         if log_fp:
             sys.stdout = original_stdout
@@ -133,6 +141,19 @@ def main():
         "linear", help="linear topology (h0-s0-h1-s1-...-sN-hN)"
     )
     linear_parser.add_argument("--hosts", type=int, default=5, help="number of hosts")
+    linear_parser.add_argument(
+        "--num", type=int, default=None,
+        help="experiment number (enables log directory output)",
+    )
+    linear_parser.add_argument(
+        "--output-dir", type=str, default="logs",
+        help="base output directory (default: logs)",
+    )
+    linear_parser.add_argument(
+        "--timestamp", action="store_true",
+        help="add timestamp to output directory name",
+    )
+    add_debug_args(linear_parser)
     linear_parser.set_defaults(func=cmd_linear)
 
     # mesh subcommand
@@ -141,6 +162,7 @@ def main():
     )
     add_common_args(mesh_parser)
     add_mesh_args(mesh_parser)
+    add_debug_args(mesh_parser)
     mesh_parser.set_defaults(func=cmd_mesh)
 
     # disaster subcommand
@@ -150,6 +172,7 @@ def main():
     add_common_args(disaster_parser)
     add_mesh_args(disaster_parser)
     add_disaster_args(disaster_parser)
+    add_debug_args(disaster_parser)
     disaster_parser.set_defaults(func=cmd_disaster)
 
     args = parser.parse_args()

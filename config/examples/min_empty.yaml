@@ -1,0 +1,34 @@
+# 最小検証用: puts/gets 未設定 (デフォルト挙動の確認)
+# Usage: sudo .venv/bin/python3 -m src disaster --config config/examples/min_empty.yaml
+#
+# puts/gets/auto を省略すると content operation は実行されない。
+# warning を表示して完走し、gets がないため results.json は空配列になる。
+#
+# -----------------------------------------------------------------------------
+# トポロジ基本設定
+# -----------------------------------------------------------------------------
+hosts: 3              # ホスト数 (>=3)
+switches: 6            # スイッチ数 (>=2, 最大 n*(n-1)/2)
+seed: 42               # 乱数シード (null でランダム)
+k: 2                   # 宛先ごとの最短パス数 (マルチパスルーティング)
+host_degree_min: 2     # ホストあたり最小スイッチ接続数 (>=1)
+host_degree_max: 5     # ホストあたり最大スイッチ接続数 (>= host_degree_min)
+switch_use_all: false   # true: --switches個までスイッチを作り余分なリンクを均等配分
+node_per_switch: 2     # スイッチあたり最大ホスト数 (0=無制限, 2=リンクごとに1スイッチ)
+
+# -----------------------------------------------------------------------------
+# 出力設定
+# -----------------------------------------------------------------------------
+num: 9903                      # 実験番号 (ログディレクトリ出力を有効化, null で無効)
+output_dir: "logs"             # ベース出力ディレクトリ
+timestamp: true              # true: 出力ディレクトリ名にタイムスタンプ付与
+topo_png: "topology.png"       # トポロジPNG出力パス (null で出力しない)
+topo_layout: "kamada_kawai"    # レイアウト: spring / kamada_kawai / circular
+script_log: "script.log"       # スクリプトログファイル名 (null でデフォルト名)
+no_script_log: false           # true: スクリプトログ出力を無効化
+
+down_interval: 0
+down_count: 0
+output_dir: "logs/verify"
+no_cli: false
+results_json: "results.json"

@@ -34,69 +34,104 @@ CeforeEmu is a network emulator based on Mininet for testing Cefore (Content-Cen
 ```
 cefore-emu/
 ├── src/                           # Main source code
-│   ├── config/                    # Configuration utilities
+│   ├── __init__.py
+│   ├── __main__.py                # python -m src entry point
+│   ├── cli/                       # CLI interface
 │   │   ├── __init__.py
-│   │   ├── loader.py              # JSON/YAML config loader
-│   │   └── auto_generator.py      # Auto put/get generation
+│   │   ├── main.py                # Subcommand dispatcher
+│   │   └── args.py                # Argument parser definitions
+│   ├── core/                      # Core logic and algorithms
+│   │   ├── __init__.py
+│   │   ├── config/                # Configuration utilities
+│   │   │   ├── __init__.py
+│   │   │   ├── loader.py          # JSON/YAML config loader
+│   │   │   ├── auto_gen.py        # Auto put/get generation
+│   │   │   └── priority_resolver.py  # Config priority resolution
+│   │   ├── fib.py                 # FIB route computation
+│   │   ├── flap_state.py          # Host flap state tracking
+│   │   ├── graph.py               # Graph algorithms (Dijkstra, k-center)
+│   │   ├── paths.py               # Output path resolution
+│   │   ├── roles.py               # Node role assignment
+│   │   └── tee.py                 # Tee stdout/stderr to file
 │   ├── log/                       # Log parsing and CSV summarization
 │   │   ├── __init__.py            # Exports
 │   │   ├── filename.py            # Filename pattern → metadata extraction
 │   │   ├── parser.py              # Log text → dict parser
+│   │   ├── plotter.py             # Log data plotting
 │   │   ├── summarizer.py          # Directory walk + CSV output
 │   │   └── cli.py                 # argparse CLI
-│   └── topo/                      # Topology implementations
-│       ├── simple_three_nodes_two_switch.py   # 3-node linear topology
-│       ├── five_node_two_switch.py            # Scalable linear topology
-│       ├── mesh_nodes_switches.py             # Random mesh topology
-│       └── mesh_disaster_topology.py          # Mesh with disaster simulation
+│   ├── runtime/                   # Runtime operations
+│   │   ├── __init__.py
+│   │   ├── bandwidth.py           # Link bandwidth control
+│   │   ├── base.py                # Base runtime utilities
+│   │   ├── bridge.py              # Linux bridge & root NS bridging
+│   │   ├── cache_manager.py       # Cache manager operations
+│   │   ├── cefore.py              # Cefore daemon start/stop/wait
+│   │   ├── external_net.py        # External network mesh scenario
+│   │   ├── failure_manager.py     # Host failure simulation
+│   │   ├── links.py               # Link state control (up/down)
+│   │   ├── monitoring.py          # Periodic status collection
+│   │   ├── net_config.py          # IP address & FIB application
+│   │   ├── scheduler.py           # Timed event scheduler
+│   │   ├── template.py            # Host directory template management
+│   │   ├── topo.py                # Mininet Topo subclass (MeshTopo)
+│   │   └── viz.py                 # Topology visualization & PNG output
+│   └── scenarios/                 # Scenario implementations
+│       ├── __init__.py
+│       ├── base.py                # Shared scenario utilities
+│       ├── linear.py              # Linear topology scenario
+│       ├── mesh.py                # Mesh topology scenario
+│       └── disaster.py            # Mesh with disaster simulation
 │
-├── configs/                       # Configuration
+├── config/                        # Configuration
 │   ├── templates/                 # Host templates
 │   │   ├── h0/                    # Consumer template (CS_MODE=0)
 │   │   ├── h1/                    # Router template (CS_MODE=2)
-│   │   └── h2/                    # Publisher template (CS_MODE=0)
+│   │   └── h2/                    # Publisher template (CS_MODE=1)
 │   └── examples/                  # Example configurations
-│       ├── example.yaml               # Full config reference (all args, commented)
-│       └── example.json               # Same config in JSON format
+│       ├── example.yaml           # Full config reference (all args, commented)
+│       ├── example.json           # Same config in JSON format
+│       └── auto_experiment.yaml   # Auto-experiment configuration
 │
-├── log-summarize.py               # Log CSV summarization entry point
-├── *.py (root)                    # Entry point wrappers for src/topo/
-├── buffer.sh                      # UDP buffer configuration
+├── doc/                           # Design documents
+│   ├── autotest_plan_reviewed.md  # Autotest implementation plan
+│   ├── cefore_emu_autotest_spec.md # Autotest specification
+│   └── branch-retirement-feature-test.md
+├── tools/
+│   └── autotest/                  # Batch experiment runner
+│
+├── sample-putfile                 # Test data (root exception)
+├── buffer.sh                      # UDP buffer configuration (root exception)
 ├── pyproject.toml                 # Package configuration
 └── CLAUDE.md                      # This file
 ```
 
 ## Running Topology Scripts
 
-**Simple 3-node linear topology (consumer-router-publisher):**
+**Linear topology:**
 ```bash
-sudo python3 simple-three-nodes-two-switch.py
+sudo python3 -m src linear --hosts 7
 ```
 
-**Configurable linear topology:**
+**Mesh topology:**
 ```bash
-sudo python3 five-node-two-switch.py --hosts 7
+sudo python3 -m src mesh --hosts 8 --switches 12 --k 3 --seed 42
 ```
 
-**Configurable mesh topology:**
+**Disaster topology with host failures:**
 ```bash
-sudo python3 mesh-nodes-switches.py --hosts 8 --switches 12 --k 3 --seed 42
-```
-- `--hosts`: Number of hosts (min 3)
-- `--switches`: Number of random links (min 2, max n*(n-1)/2)
-- `--k`: Number of shortest paths per destination for multipath routing (default 2)
-- `--seed`: Random seed for deterministic topology generation
-
-**Mesh disaster topology with host failures:**
-```bash
-sudo python3 mesh-disaster-topology.py --hosts 10 --switches 15 --seed 42 \
+sudo python3 -m src disaster --hosts 10 --switches 15 --seed 42 \
     --down-interval 30 --down-duration 10 --down-count 2
 ```
 
 **Using JSON/YAML configuration:**
 ```bash
-sudo python3 -m src disaster --config configs/examples/example.yaml
-sudo python3 -m src disaster --config configs/examples/example.json
+sudo python3 -m src disaster --config config/examples/example.yaml
+```
+
+If installed via `uv` / `pip install -e .`, the `ceforeemu` command is also available:
+```bash
+sudo ceforeemu disaster --config config/examples/example.yaml
 ```
 
 **Exiting Mininet:**
@@ -130,7 +165,7 @@ All topology scripts follow a common pattern:
 
 ### Host Configuration Templates
 
-Templates are located in `configs/templates/`:
+Templates are located in `config/templates/`:
 
 - `h0/` - Consumer template (CS_MODE=0, no caching)
 - `h1/` - Router template (CS_MODE=2, external cache manager)
@@ -175,7 +210,6 @@ For topologies with >3 hosts, additional directories (h3, h4, ...) are generated
 - `run_cefsubfile()`: Subscribe to content via cefsubfile (pub/sub model)
 
 **Status/Info Commands:**
-- `run_cefinfo()`: Query content information via cefinfo (-c, -f, -r, -s, -p flags)
 - `run_csmgrstatus()`: Query cache manager status via csmgrstatus
 
 **FIB Route Management:**
@@ -184,7 +218,7 @@ For topologies with >3 hosts, additional directories (h3, h4, ...) are generated
 
 ### Mesh Topology Features
 
-The mesh topologies (`mesh-nodes-switches.py`, `mesh-disaster-topology.py`) implement advanced features:
+The mesh topologies (`src/scenarios/mesh.py`, `src/scenarios/disaster.py`) implement advanced features:
 
 - **Multipath routing**: k-shortest paths per destination for redundancy
 - **Link control**: `link_up()` and `link_down()` functions to simulate failures
@@ -196,7 +230,7 @@ The mesh topologies (`mesh-nodes-switches.py`, `mesh-disaster-topology.py`) impl
 
 ### Disaster Topology Features
 
-The disaster topology (`mesh-disaster-topology.py`) adds:
+The disaster topology (`src/scenarios/disaster.py`) adds:
 
 **Host Failure Simulation:**
 ```bash
@@ -222,17 +256,9 @@ Connects Mininet switches to the root namespace for cross-VM communication. Brid
 
 **Autotest Mode (--no-cli + --results-json):**
 ```bash
-sudo python3 -m src disaster --config configs/examples/example.yaml --no-cli --duration 120 --results-json results.json
+sudo ceforeemu disaster --config config/examples/example.yaml --no-cli --duration 120 --results-json results.json
 ```
 Runs experiment without interactive CLI and saves structured results to JSON.
-
-**Warmup Operations:**
-```bash
---warmup-get-interval 5          # Interval between warmup gets
---warmup-only-cache-nodes        # Restrict warmup to cache nodes (default)
---warmup-all-hosts               # Warmup on all hosts
---hot-uris uri1,uri2             # URIs to pre-cache during warmup
-```
 
 **Cache Configuration:**
 ```bash
@@ -241,7 +267,12 @@ Runs experiment without interactive CLI and saves structured results to JSON.
 ```
 
 **Pub/Sub Model:**
-Put operations with `"mode": "pubsub"` use `cefpubfile` instead of `cefputfile`. Get operations with `"mode": "pubsub"` use `cefsubfile` instead of `cefgetfile`. Pub/Sub success detection uses exit code + output file presence (no log text matching).
+Put operations with `"mode": "pubsub"` use `cefpubfile` instead of `cefputfile`. Get operations with `"mode": "pubsub"` use `cefsubfile` instead of `cefgetfile`.
+
+- `gets[].file` in pubsub mode is treated as an **output directory** (not a file). `cefsubfile -f` requires a directory, and creates `RNP0x<hex>.out` files inside it with session-derived names that cannot be predicted in advance.
+- Success detection for pubsub uses exit code + presence of a non-empty `RNP0x*.out` file in the output directory (no log text matching).
+- All cefore command wrappers redirect stdout **and stderr** to the same log file (`> logfile 2>&1`). This ensures failure diagnostics from stderr are always captured.
+- `cefpubfile` log names are unique per cycle/index: `cefpubfile_seed{seed}_downhosts{...}_phase{phase}_cycle{N}_idx{N}_h{host}.log` — same format as `cefsubfile` logs.
 
 **Event Scheduler (`src/runtime/scheduler.py`):**
 Timed events configured via `events` key in YAML/JSON. Events execute in a background thread.
@@ -263,9 +294,8 @@ monitoring:
   targets:
     - {type: cefstatus, hosts: "all"}
     - {type: csmgrstatus, hosts: "cache"}
-    - {type: cefinfo, hosts: [0], name_prefix: "ccnx:/test"}
 ```
-Supported types: `cefstatus`, `csmgrstatus`, `cefinfo`. Hosts can be `"all"`, `"cache"`, or a list of IDs.
+Supported types: `cefstatus`, `csmgrstatus`. Hosts can be `"all"`, `"cache"`, or a list of IDs.
 
 **JSON/YAML Configuration:**
 
@@ -340,22 +370,24 @@ The `auto` configuration automatically generates put/get operations:
 
 ## Log Summarization
 
-The `log-summarize.py` tool collects cefputfile/cefgetfile/cefpubfile/cefsubfile logs from experiment directories and outputs per-command CSV files.
+The `ceforeemu-log` command collects cefputfile/cefgetfile/cefpubfile/cefsubfile logs from experiment directories and outputs per-command CSV files.
 
 **Basic usage:**
 ```bash
-python3 log-summarize.py logs/ex1_seed42/
+ceforeemu-log logs/ex1_seed42/
 ```
 
 **Multiple directories (cross-experiment comparison):**
 ```bash
-python3 log-summarize.py logs/ex1_seed42/ logs/ex5_seed42/ -o results/
+ceforeemu-log logs/ex1_seed42/ logs/ex5_seed42/ -o results/
 ```
 
 **Pipe-friendly stdout output:**
 ```bash
-python3 log-summarize.py logs/ex1_seed42/ --stdout | head -20
+ceforeemu-log logs/ex1_seed42/ --stdout | head -20
 ```
+
+If not installed, use `uv run ceforeemu-log` instead.
 
 ### Supported Log Filename Patterns
 
@@ -405,7 +437,7 @@ Modify `select_template()` in the topology script to return appropriate template
 Update the `ccnx:/test` prefix in `setFib()` or `set_fib()` and corresponding `cefputfile`/`cefgetfile` commands. For disaster topology, use `--config` JSON or `--puts`/`--gets` options.
 
 **Adjusting cache behavior:**
-Edit `configs/templates/h1/csmgrd.conf` template (applies to all router nodes).
+Edit `config/templates/h1/csmgrd.conf` template (applies to all router nodes).
 
 **Testing link failures:**
 - Basic: Use `link_down()` function in mesh scripts
@@ -421,6 +453,13 @@ uv sync              # Install dependencies
 uv run python3 ...   # Run with managed environment
 ```
 
+**CLI entry points** (`pyproject.toml [project.scripts]`):
+- `ceforeemu` — main CLI (`src.cli.main:main`)
+- `ceforeemu-log` — log summarization (`src.log.cli:main`)
+- `ceforeemu-connect` — external network (`src.runtime.external_net:main`)
+
+After modifying `[project.scripts]`, run `uv pip install -e .` to register new entry points.
+
 **Dependencies:**
 - mininet>=2.3.0
 - networkx>=3.6.1 (for topology algorithms and PNG output)
@@ -429,10 +468,10 @@ uv run python3 ...   # Run with managed environment
 
 ## Security Notes
 
-- `configs/templates/h*/default-private-key` files contain sensitive cryptographic material - do not commit changes or share
+- `config/templates/h*/default-private-key` files contain sensitive cryptographic material - do not commit changes or share
 - All scripts require root privileges due to Mininet's network namespace manipulation
 - Only run in trusted/isolated environments (VMs recommended)
 
 ## MCP Tool Settings
 
-When using Codex MCP, specify model `gpt-5.2-codex` (reasoning medium, summaries auto).
+When using Codex MCP, specify model `gpt-5.5` (reasoning medium, summaries auto).

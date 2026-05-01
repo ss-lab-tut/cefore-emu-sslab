@@ -177,9 +177,10 @@ def compute_distances(graph, source, weight_fn=None):
     return distances
 
 
-def select_k_centers(graph, k, weight_fn=None):
+def select_k_centers(graph, k, weight_fn=None, exclude=None):
     """Select k center nodes using greedy farthest-first algorithm."""
-    nodes = sorted(graph.keys())
+    exclude = exclude or set()
+    nodes = [n for n in sorted(graph.keys()) if n not in exclude]
     if not nodes or k <= 0:
         return []
     centers = [nodes[0]]

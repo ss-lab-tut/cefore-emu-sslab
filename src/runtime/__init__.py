@@ -8,9 +8,10 @@ from .bridge import (
     parse_ext_args,
 )
 from .bandwidth import parse_bw_args, set_link_bandwidth
+from .cleanup import cleanup_all, kill_cef_processes
+from .debug import archive_node_dirs
 from .cefore import (
     run_cefgetfile,
-    run_cefinfo,
     run_cefputfile,
     run_cefstatus,
     run_cefstatus_all,
@@ -62,8 +63,10 @@ __all__ = [
     "run_cefgetfile",
     "run_cefstatus",
     "run_cefstatus_all",
-    "run_cefinfo",
     "run_csmgrstatus",
+    # cleanup
+    "cleanup_all",
+    "kill_cef_processes",
     # template
     "update_local_sock_id",
     "update_node_name",
@@ -71,6 +74,8 @@ __all__ = [
     "cleanup_cefnetd_socket",
     "ensure_node_dirs",
     "cleanup_node_dirs",
+    # debug
+    "archive_node_dirs",
     # bridge
     "attach_external_via_bridge",
     "attach_external_interface",

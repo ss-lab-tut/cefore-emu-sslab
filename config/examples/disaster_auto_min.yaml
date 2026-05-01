@@ -1,0 +1,72 @@
+## Minimal starter config for disaster + auto
+## Usage:
+##   sudo python3 -m src disaster --config config/examples/disaster_auto_min.yaml
+
+# Topology
+hosts: 5
+switches: 9
+seed: 42
+k: 4
+
+# Auto-generate puts/gets (cefputfile/cefgetfile)
+auto:
+  publishers: [4]
+  consumers: "random:5"
+  content_count: 3
+  uri_prefix: "ccnx:/test/experiment"
+  consumer_per_content: 2
+
+# Output (optional but recommended)
+num: 1
+output_dir: "logs"
+timestamp: false
+legacy_layout: false
+topo_png: "topology.png"
+topo_layout: "spring"
+
+# Start with failures disabled (turn on later)
+down_interval: 0
+
+# -----------------------------------------------------------------------------
+# Optional: enable failure simulation (legacy knobs)
+# -----------------------------------------------------------------------------
+# down_interval: 30     # seconds between down cycles (0 disables)
+# down_duration: 10     # seconds to keep hosts down
+# down_count: 2         # number of hosts down per cycle
+# down_stagger: 2       # stagger seconds within a cycle
+# down_exclude: "0"     # comma-separated host IDs to exclude
+
+# -----------------------------------------------------------------------------
+# Optional: run in non-interactive mode + emit results
+# -----------------------------------------------------------------------------
+# no_cli: true
+# duration: 120
+# results_json: "results.json"
+
+# -----------------------------------------------------------------------------
+# Optional: monitoring (periodic status collection)
+# -----------------------------------------------------------------------------
+# monitoring:
+#   interval: 5
+#   output_json: "monitor.json"
+#   output_csv: "monitor.csv"
+#   targets:
+#     - type: cefstatus
+#       hosts: "all"
+#     - type: csmgrstatus
+#       hosts: "cache"
+#     - type: cefinfo
+#       hosts: [0]
+#       name_prefix: "ccnx:/test"
+
+# -----------------------------------------------------------------------------
+# Optional: timed events (link/fib/bw)
+# -----------------------------------------------------------------------------
+# events:
+#   - at: 15
+#     type: link_down
+#     nodes: [1, 2]
+#   - at: 25
+#     type: link_up
+#     nodes: [1, 2]
+

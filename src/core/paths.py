@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Any
 
 ROOT_DIR = Path(__file__).resolve().parent.parent.parent
-TEMPLATE_ROOT = ROOT_DIR / "configs" / "templates"
+TEMPLATE_ROOT = ROOT_DIR / "config" / "templates"
 
 
 def resolve_run_dir(args: Any) -> Path:
@@ -13,15 +13,12 @@ def resolve_run_dir(args: Any) -> Path:
 
     Args:
         args: Parsed arguments with optional num, seed, output_dir,
-              timestamp, and legacy_layout attributes.
+              and timestamp attributes.
 
     Returns:
         Path to the run directory. Returns current directory (".")
-        for legacy layout or when neither num nor output_dir is specified.
+        when neither num nor output_dir is specified.
     """
-    if getattr(args, "legacy_layout", False):
-        return Path(".")
-
     num = getattr(args, "num", None)
     output_dir = getattr(args, "output_dir", None)
 

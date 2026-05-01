@@ -38,7 +38,7 @@ def cleanup_cefnetd_socket(node_dir, idx):
             info(f"failed to remove stale socket {sock_path}\n")
 
 
-def wait_for_cefnetd(net, idx, timeout=5, interval=0.25):
+def wait_for_cefnetd(net, idx, timeout=10, interval=0.25):
     """Wait for cefnetd to become ready.
 
     Args:
@@ -63,15 +63,24 @@ def wait_for_cefnetd(net, idx, timeout=5, interval=0.25):
     return False
 
 
-def start_csmgrd(net, idx):
+def start_csmgrd(net, idx, log_dir=None):
     """Start cache manager daemon for a host.
 
     Args:
         net: Mininet network instance.
         idx: Host index.
+        log_dir: Directory to write daemon log files (hN-csmgrd-log).
+                 If None, logs go to CWD.
     """
     node_name = f"h{idx}"
-    command = f"csmgrdstart -d ./{node_name} > /dev/null 2>&1"
+    if log_dir is not None:
+        abs_node_dir = os.path.abspath(f"./{node_name}")
+        command = (
+            f"cd {shlex.quote(str(log_dir))} && "
+            f"csmgrdstart -d {shlex.quote(abs_node_dir)} > /dev/null 2>&1"
+        )
+    else:
+        command = f"csmgrdstart -d ./{node_name} > /dev/null 2>&1"
     print(node_name, "command:", command)
     info(net.hosts[idx].cmd(command))
     time.sleep(1)
@@ -89,16 +98,25 @@ def stop_csmgrd(net, idx):
     net.hosts[idx].cmd(command)
 
 
-def start_cefnetd(net, idx):
+def start_cefnetd(net, idx, log_dir=None):
     """Start cefnetd forwarding daemon for a host.
 
     Args:
         net: Mininet network instance.
         idx: Host index.
+        log_dir: Directory to write daemon log files (hN-cefnetd-log).
+                 If None, logs go to CWD.
     """
     node_name = f"h{idx}"
     cleanup_cefnetd_socket(node_name, idx)
-    command = f"cefnetdstart -d ./{node_name} > /dev/null 2>&1"
+    if log_dir is not None:
+        abs_node_dir = os.path.abspath(f"./{node_name}")
+        command = (
+            f"cd {shlex.quote(str(log_dir))} && "
+            f"cefnetdstart -d {shlex.quote(abs_node_dir)} > /dev/null 2>&1"
+        )
+    else:
+        command = f"cefnetdstart -d ./{node_name} > /dev/null 2>&1"
     print(node_name, "command:", command)
     info(net.hosts[idx].cmd(command))
     time.sleep(1)
@@ -143,9 +161,12 @@ def run_cefputfile(
         valid_algo: Validation algorithm (crc32c or rsa-sha256).
         port_num: Port number.
         log_name: Name of the log file.
+
+    Returns:
+        exit_code: Exit code of the command.
     """
     node_name = f"h{host_idx}"
-    cmd_parts = [f"cefputfile {uri} -f {shlex.quote(file_path)}"]
+    cmd_parts = [f"cefputfile {shlex.quote(uri)} -f {shlex.quote(file_path)}"]
 
     if rate is not None:
         cmd_parts.append(f"-r {rate}")
@@ -156,7 +177,7 @@ def run_cefputfile(
     if cache_time is not None:
         cmd_parts.append(f"-t {cache_time}")
     if valid_algo is not None:
-        cmd_parts.append(f"-v {valid_algo}")
+        cmd_parts.append(f"-v {shlex.quote(valid_algo)}")
     if port_num is not None:
         cmd_parts.append(f"-p {port_num}")
 
@@ -164,11 +185,12 @@ def run_cefputfile(
 
     if not log_name:
         log_name = f"cefputfile-h{host_idx}.log"
-    cmd_parts.append(f"> {log_name}")
+    cmd_parts.append(f"> {shlex.quote(log_name)} 2>&1")
 
     command = " ".join(cmd_parts)
     print(node_name, "command:", command)
-    net.hosts[host_idx].cmd(command)
+    proc = net.hosts[host_idx].popen(command, shell=True)
+    return proc.wait()
 
 
 def run_cefgetfile(
@@ -203,7 +225,7 @@ def run_cefgetfile(
         exit_code: Exit code of the command.
     """
     node_name = f"h{host_idx}"
-    cmd_parts = [f"cefgetfile {uri} -f {shlex.quote(output_path)}"]
+    cmd_parts = [f"cefgetfile {shlex.quote(uri)} -f {shlex.quote(output_path)}"]
 
     if owner_only:
         cmd_parts.append("-o")
@@ -212,7 +234,7 @@ def run_cefgetfile(
     if pipeline is not None:
         cmd_parts.append(f"-s {pipeline}")
     if valid_algo is not None:
-        cmd_parts.append(f"-v {valid_algo}")
+        cmd_parts.append(f"-v {shlex.quote(valid_algo)}")
     if port_num is not None:
         cmd_parts.append(f"-p {port_num}")
     if sg is not None:
@@ -222,7 +244,7 @@ def run_cefgetfile(
 
     if not log_name:
         log_name = f"cefgetfile-h{host_idx}.log"
-    cmd_parts.append(f"> {log_name}")
+    cmd_parts.append(f"> {shlex.quote(log_name)} 2>&1")
 
     command = " ".join(cmd_parts)
     print(node_name, "command:", command)
@@ -274,7 +296,8 @@ def run_cefsubfile(
         net: Mininet network instance.
         host_idx: Subscriber host index.
         uri: Content URI.
-        output_path: Directory path to output content (use "-" for stdout).
+        output_path: Directory path to output content. cefsubfile creates files
+            named ``RNP0x<hex>.out`` under this directory (use "-" for stdout).
         pipeline: Number of pipeline.
         ri_valid_algo: Validation algorithm for Reflexive Interest (crc32c or rsa-sha256).
         td_valid_algo: Validation algorithm for Trigger Data (crc32c or rsa-sha256).
@@ -285,16 +308,16 @@ def run_cefsubfile(
         exit_code: Exit code of the command.
     """
     node_name = f"h{host_idx}"
-    cmd_parts = [f"cefsubfile {uri}"]
+    cmd_parts = [f"cefsubfile {shlex.quote(uri)}"]
 
     if output_path is not None:
         cmd_parts.append(f"-f {shlex.quote(output_path)}")
     if pipeline is not None:
         cmd_parts.append(f"-s {pipeline}")
     if ri_valid_algo is not None:
-        cmd_parts.append(f"-v_RI {ri_valid_algo}")
+        cmd_parts.append(f"-v_RI {shlex.quote(ri_valid_algo)}")
     if td_valid_algo is not None:
-        cmd_parts.append(f"-v_TD {td_valid_algo}")
+        cmd_parts.append(f"-v_TD {shlex.quote(td_valid_algo)}")
     if port_num is not None:
         cmd_parts.append(f"-p {port_num}")
 
@@ -302,7 +325,7 @@ def run_cefsubfile(
 
     if not log_name:
         log_name = f"cefsubfile-h{host_idx}.log"
-    cmd_parts.append(f"> {log_name}")
+    cmd_parts.append(f"> {shlex.quote(log_name)} 2>&1")
 
     command = " ".join(cmd_parts)
     print(node_name, "command:", command)
@@ -310,6 +333,63 @@ def run_cefsubfile(
     exit_code = proc.wait()
 
     return exit_code
+
+
+def start_cefsubfile(
+    net,
+    host_idx,
+    uri,
+    output_path=None,
+    pipeline=None,
+    ri_valid_algo=None,
+    td_valid_algo=None,
+    port_num=None,
+    log_name=None,
+):
+    """Start cefsubfile in background (non-blocking).
+
+    Identical command construction to run_cefsubfile but returns the Popen
+    process immediately without waiting.  Caller is responsible for calling
+    proc.wait() to collect the exit code.
+
+    Args:
+        net: Mininet network instance.
+        host_idx: Subscriber host index.
+        uri: Content URI.
+        output_path: Directory path to output content. cefsubfile creates files
+            named ``RNP0x<hex>.out`` under this directory (use "-" for stdout).
+        pipeline: Number of pipeline.
+        ri_valid_algo: Validation algorithm for Reflexive Interest.
+        td_valid_algo: Validation algorithm for Trigger Data.
+        port_num: Port number.
+        log_name: Name of the log file.
+
+    Returns:
+        Popen process object.
+    """
+    node_name = f"h{host_idx}"
+    cmd_parts = [f"cefsubfile {shlex.quote(uri)}"]
+
+    if output_path is not None:
+        cmd_parts.append(f"-f {shlex.quote(output_path)}")
+    if pipeline is not None:
+        cmd_parts.append(f"-s {pipeline}")
+    if ri_valid_algo is not None:
+        cmd_parts.append(f"-v_RI {shlex.quote(ri_valid_algo)}")
+    if td_valid_algo is not None:
+        cmd_parts.append(f"-v_TD {shlex.quote(td_valid_algo)}")
+    if port_num is not None:
+        cmd_parts.append(f"-p {port_num}")
+
+    cmd_parts.append(f"-d ./{node_name}")
+
+    if not log_name:
+        log_name = f"cefsubfile-h{host_idx}.log"
+    cmd_parts.append(f"> {shlex.quote(log_name)} 2>&1")
+
+    command = " ".join(cmd_parts)
+    print(node_name, "command:", command)
+    return net.hosts[host_idx].popen(command, shell=True)
 
 
 def run_cefpubfile(
@@ -349,7 +429,7 @@ def run_cefpubfile(
         log_name: Name of the log file.
     """
     node_name = f"h{host_idx}"
-    cmd_parts = [f"cefpubfile {uri} -f {shlex.quote(file_path)}"]
+    cmd_parts = [f"cefpubfile {shlex.quote(uri)} -f {shlex.quote(file_path)}"]
 
     if rate is not None:
         cmd_parts.append(f"-r {rate}")
@@ -364,11 +444,11 @@ def run_cefpubfile(
     if retry_limit is not None:
         cmd_parts.append(f"-m {retry_limit}")
     if target is not None:
-        cmd_parts.append(f"-z {target}")
+        cmd_parts.append(f"-z {shlex.quote(target)}")
     if ti_valid_algo is not None:
-        cmd_parts.append(f"-v_TI {ti_valid_algo}")
+        cmd_parts.append(f"-v_TI {shlex.quote(ti_valid_algo)}")
     if rd_valid_algo is not None:
-        cmd_parts.append(f"-v_RD {rd_valid_algo}")
+        cmd_parts.append(f"-v_RD {shlex.quote(rd_valid_algo)}")
     if port_num is not None:
         cmd_parts.append(f"-p {port_num}")
 
@@ -376,65 +456,12 @@ def run_cefpubfile(
 
     if not log_name:
         log_name = f"cefpubfile-h{host_idx}.log"
-    cmd_parts.append(f"> {log_name}")
+    cmd_parts.append(f"> {shlex.quote(log_name)} 2>&1")
 
     command = " ".join(cmd_parts)
     print(node_name, "command:", command)
-    net.get(node_name).cmd(command)
-
-
-def run_cefinfo(
-    net,
-    host_idx,
-    name_prefix,
-    cache_info=False,
-    full_discovery=False,
-    hop_count=None,
-    skip_hop=None,
-    port_num=None,
-    log_name=None,
-):
-    """Run cefinfo to query content information.
-
-    Args:
-        net: Mininet network instance.
-        host_idx: Host index.
-        name_prefix: Content name prefix to query.
-        cache_info: If True, add -c flag for cache information.
-        full_discovery: If True, add -f flag for full discovery.
-        hop_count: Maximum hop count (1-255).
-        skip_hop: Number of hops to skip (0-15).
-        port_num: Port number.
-        log_name: Name of the log file.
-
-    Returns:
-        Command output string.
-    """
-    node_name = f"h{host_idx}"
-    cmd_parts = [f"cefinfo {name_prefix}"]
-
-    if cache_info:
-        cmd_parts.append("-c")
-    if full_discovery:
-        cmd_parts.append("-f")
-    if hop_count is not None:
-        cmd_parts.append(f"-r {hop_count}")
-    if skip_hop is not None:
-        cmd_parts.append(f"-s {skip_hop}")
-    if port_num is not None:
-        cmd_parts.append(f"-p {port_num}")
-
-    cmd_parts.append(f"-d ./{node_name}")
-
-    if log_name:
-        cmd_parts.append(f"> {log_name}")
-
-    command = " ".join(cmd_parts)
-    print(node_name, "command:", command)
-    output = net.hosts[host_idx].cmd(command)
-    if not log_name:
-        info(output)
-    return output
+    proc = net.get(node_name).popen(command, shell=True)
+    return proc
 
 
 def run_csmgrstatus(
@@ -462,16 +489,14 @@ def run_csmgrstatus(
     cmd_parts = ["csmgrstatus"]
 
     if uri is not None:
-        cmd_parts.append(uri)
+        cmd_parts.append(shlex.quote(uri))
     if port_num is not None:
         cmd_parts.append(f"-p {port_num}")
     if host is not None:
-        cmd_parts.append(f"-h {host}")
-
-    cmd_parts.append(f"-d ./{node_name}")
+        cmd_parts.append(f"-h {shlex.quote(host)}")
 
     if log_name:
-        cmd_parts.append(f"> {log_name}")
+        cmd_parts.append(f"> {shlex.quote(log_name)}")
 
     command = " ".join(cmd_parts)
     print(node_name, "command:", command)

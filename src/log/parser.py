@@ -40,6 +40,8 @@ _FAILURE_PATTERNS = (
 
 
 def _detect_success(text: str) -> bool:
+    if not text.strip():
+        return False
     for pat in _FAILURE_PATTERNS:
         if pat in text:
             return False
@@ -78,7 +80,9 @@ def parse_cefputfile(text: str) -> dict[str, Any]:
         else:
             record[key] = None
 
-    record["success"] = _detect_success(text)
+    record["success"] = _detect_success(text) and any(
+        v is not None for k, v in record.items() if k not in ("timestamp", "success")
+    )
     return record
 
 
@@ -121,7 +125,9 @@ def parse_cefgetfile(text: str) -> dict[str, Any]:
         else:
             record[key] = None
 
-    record["success"] = _detect_success(text)
+    record["success"] = _detect_success(text) and any(
+        v is not None for k, v in record.items() if k not in ("timestamp", "success")
+    )
     return record
 
 

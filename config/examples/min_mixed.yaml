@@ -1,0 +1,39 @@
+# 最小検証用: normal put/get と pub/sub を同一実験で検証
+# Usage: sudo .venv/bin/python3 -m src disaster --config config/examples/min_mixed.yaml
+#
+# 両モードのログが互いに上書きされないこと、両エントリが success になることを確認する。
+hosts: 4
+switches: 6
+seed: 42
+k: 1
+host_degree_min: 2
+down_interval: 0
+down_count: 0
+num: 9904
+output_dir: "logs/verify"
+no_cli: true
+duration: 30
+results_json: "results.json"
+publisher_host: 3
+
+puts:
+  - host: 3
+    uri: "ccnx:/test/file"
+    file: "./sample-putfile"
+    expiry: 3000
+    cache_time: 3000
+  - host: 3
+    uri: "ccnx:/test/stream"
+    file: "./sample-putfile"
+    mode: "pubsub"
+    pub_opts:
+      lifetime: 8
+
+gets:
+  - host: 0
+    uri: "ccnx:/test/file"
+  - host: 0
+    uri: "ccnx:/test/stream"
+    mode: "pubsub"
+    sub_opts:
+      wait: 15

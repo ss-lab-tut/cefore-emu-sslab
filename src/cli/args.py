@@ -2,6 +2,29 @@
 
 import argparse
 
+_DEBUG_ARTIFACT_CHOICES = ("node_dirs", "fib_dump", "daemon_logs")
+
+
+def add_debug_args(parser):
+    """Add debug artifact collection arguments."""
+    parser.add_argument(
+        "--debug",
+        action="store_true",
+        help="enable all debug artifact collection (equivalent to all --debug-artifact choices)",
+    )
+    parser.add_argument(
+        "--debug-artifact",
+        action="append",
+        default=[],
+        choices=_DEBUG_ARTIFACT_CHOICES,
+        dest="debug_artifact",
+        metavar="ARTIFACT",
+        help=(
+            "collect a specific debug artifact (repeatable): "
+            + ", ".join(_DEBUG_ARTIFACT_CHOICES)
+        ),
+    )
+
 
 def add_common_args(parser):
     """Add arguments common to all topology types."""
@@ -26,10 +49,6 @@ def add_common_args(parser):
     parser.add_argument(
         "--timestamp", action="store_true",
         help="add timestamp to output directory name",
-    )
-    parser.add_argument(
-        "--legacy", action="store_true", dest="legacy_layout",
-        help="use legacy layout (output to current directory)",
     )
 
 
@@ -133,19 +152,7 @@ def add_disaster_args(parser):
     )
     parser.add_argument(
         "--results-json", type=str, default="",
-        help="write warmup/eval get results to JSON under output directory",
-    )
-    parser.add_argument(
-        "--warmup-get-interval", type=int, default=0,
-        help="seconds between warmup get operations",
-    )
-    parser.add_argument(
-        "--warmup-only-cache-nodes", action="store_true", default=True,
-        help="restrict warmup prefetch to selected cache nodes",
-    )
-    parser.add_argument(
-        "--warmup-all-hosts", action="store_false", dest="warmup_only_cache_nodes",
-        help="run warmup prefetch on all hosts instead of cache nodes only",
+        help="write eval get results to JSON under output directory",
     )
     parser.add_argument(
         "--cache-default-rct-ms", type=int, default=None,
@@ -154,12 +161,4 @@ def add_disaster_args(parser):
     parser.add_argument(
         "--publisher-host", type=int, default=None,
         help="explicit publisher host used for publisher-down metric",
-    )
-    parser.add_argument(
-        "--hot-uris", type=str, default="",
-        help="comma-separated hot URIs for warmup generation",
-    )
-    parser.add_argument(
-        "--warmup-gets", type=str, default="",
-        help="JSON list of warmup get ops (host,uri,file,log)",
     )

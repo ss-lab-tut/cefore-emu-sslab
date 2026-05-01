@@ -5,10 +5,11 @@ import json
 import threading
 import time
 from pathlib import Path
+from typing import Callable
 
 from mininet.log import info
 
-from .cefore import run_cefinfo, run_cefstatus, run_csmgrstatus
+from .cefore import run_cefstatus, run_csmgrstatus
 
 
 def _resolve_hosts(spec, host_count, cache_nodes=None):
@@ -35,7 +36,12 @@ class Monitor:
     """Periodically collect status from Cefore daemons.
 
     Targets are dicts with ``type`` and ``hosts`` keys.
-    Supported types: cefstatus, csmgrstatus, cefinfo.
+    Supported types: cefstatus, csmgrstatus.
+
+    For csmgrstatus targets, csmgrd is queried via loopback (127.0.0.1) by
+    default because csmgrstatus runs in the same netns as csmgrd.  Provide
+    ``csmgr_host_resolver`` only when a non-loopback address is needed.
+    Priority for csmgrd address: explicit target_host > resolver > 127.0.0.1.
 
     Args:
         net: Mininet network instance.
@@ -46,6 +52,8 @@ class Monitor:
         cache_nodes: Set of cache node indices.
         output_json: JSON output filename (relative to output_dir).
         output_csv: CSV output filename (relative to output_dir).
+        csmgr_host_resolver: Optional callable [[int], str] that maps host_idx
+            to the csmgrd listen IP.  Defaults to 127.0.0.1 when omitted.
     """
 
     def __init__(
@@ -58,6 +66,7 @@ class Monitor:
         cache_nodes=None,
         output_json=None,
         output_csv=None,
+        csmgr_host_resolver: Callable[[int], str] | None = None,
     ):
         self.net = net
         self.targets = targets
@@ -67,6 +76,7 @@ class Monitor:
         self.cache_nodes = cache_nodes or set()
         self.output_json = output_json
         self.output_csv = output_csv
+        self._csmgr_host_resolver = csmgr_host_resolver
         self._stop_event = threading.Event()
         self._thread = None
         self._records = []
@@ -75,8 +85,9 @@ class Monitor:
         """Run one collection cycle."""
         for target in self.targets:
             target_type = target.get("type")
+            default_hosts = "cache" if target_type == "csmgrstatus" else "all"
             hosts = _resolve_hosts(
-                target.get("hosts", "all"), self.host_count, self.cache_nodes
+                target.get("hosts", default_hosts), self.host_count, self.cache_nodes
             )
             for host_idx in hosts:
                 try:
@@ -98,18 +109,20 @@ class Monitor:
             node_name = f"h{host_idx}"
             return self.net.hosts[host_idx].cmd(f"cefstatus -d ./{node_name}")
         elif target_type == "csmgrstatus":
+            # Use explicit target_host if provided; otherwise use resolver.
+            explicit = target.get("target_host")
+            if isinstance(explicit, str) and explicit:
+                csmgr_host = explicit
+            elif self._csmgr_host_resolver is not None:
+                csmgr_host = self._csmgr_host_resolver(host_idx)
+            else:
+                csmgr_host = "127.0.0.1"
             return run_csmgrstatus(
                 self.net,
                 host_idx,
                 uri=target.get("uri"),
                 port_num=target.get("port_num"),
-            )
-        elif target_type == "cefinfo":
-            return run_cefinfo(
-                self.net,
-                host_idx,
-                target.get("name_prefix", "ccnx:/"),
-                cache_info=target.get("cache_info", False),
+                host=csmgr_host,
             )
         else:
             return f"unknown monitor type: {target_type}"

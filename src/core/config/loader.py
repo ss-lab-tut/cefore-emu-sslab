@@ -1,9 +1,12 @@
 """JSON/YAML configuration loader for cefore-emu."""
 
+import ipaddress
 import json
 import sys
 from pathlib import Path
 from typing import Any
+
+from ..protocols import VALID_ROUTE_PROTOCOLS, normalize_route_protocol
 
 HAVE_YAML = True
 try:
@@ -109,8 +112,7 @@ def validate_config(config: dict[str, Any]) -> list[str]:
             errors.append("timestamp must be a boolean")
 
     if "legacy_layout" in config:
-        if not isinstance(config["legacy_layout"], bool):
-            errors.append("legacy_layout must be a boolean")
+        errors.append("legacy_layout has been removed; use output_dir and num instead")
 
     if "no_cli" in config:
         if not isinstance(config["no_cli"], bool):
@@ -120,50 +122,21 @@ def validate_config(config: dict[str, Any]) -> list[str]:
         if not isinstance(config["duration"], int) or config["duration"] < 0:
             errors.append("duration must be an integer >= 0")
 
-    if "warmup_get_interval" in config:
-        if (
-            not isinstance(config["warmup_get_interval"], int)
-            or config["warmup_get_interval"] < 0
-        ):
-            errors.append("warmup_get_interval must be an integer >= 0")
-
-    if "warmup_only_cache_nodes" in config:
-        if not isinstance(config["warmup_only_cache_nodes"], bool):
-            errors.append("warmup_only_cache_nodes must be a boolean")
-
     if "cache_default_rct_ms" in config:
         value = config["cache_default_rct_ms"]
         if value is not None and (not isinstance(value, int) or value < 1000):
             errors.append("cache_default_rct_ms must be an integer >= 1000 or null")
+
+    if "cefnetd_timeout" in config:
+        value = config["cefnetd_timeout"]
+        if not isinstance(value, (int, float)) or value <= 0:
+            errors.append("cefnetd_timeout must be a positive number")
 
     if "publisher_host" in config:
         if config["publisher_host"] is not None and not isinstance(
             config["publisher_host"], int
         ):
             errors.append("publisher_host must be an integer or null")
-
-    if "hot_uris" in config:
-        value = config["hot_uris"]
-        if isinstance(value, str):
-            pass
-        elif isinstance(value, list):
-            if not all(isinstance(uri, str) for uri in value):
-                errors.append("hot_uris must be a string or list of strings")
-        else:
-            errors.append("hot_uris must be a string or list of strings")
-
-    if "warmup_gets" in config:
-        if not isinstance(config["warmup_gets"], list):
-            errors.append("warmup_gets must be a list")
-        else:
-            for idx, op in enumerate(config["warmup_gets"]):
-                if not isinstance(op, dict):
-                    errors.append(f"warmup_gets[{idx}] must be a dict")
-                    continue
-                if "host" not in op:
-                    errors.append(f"warmup_gets[{idx}] missing required field 'host'")
-                if "uri" not in op:
-                    errors.append(f"warmup_gets[{idx}] missing required field 'uri'")
 
     if "puts" in config:
         if not isinstance(config["puts"], list):
@@ -202,6 +175,12 @@ def validate_config(config: dict[str, Any]) -> list[str]:
                         for field in ("lifetime", "retry_limit"):
                             if field in pub_opts and not isinstance(pub_opts[field], (int, float)):
                                 errors.append(f"puts[{idx}].pub_opts.{field} must be a number")
+                        if "lifetime" in pub_opts:
+                            lifetime = pub_opts["lifetime"]
+                            if isinstance(lifetime, (int, float)) and not 0 <= lifetime <= 64:
+                                errors.append(
+                                    f"puts[{idx}].pub_opts.lifetime must be between 0 and 64 seconds"
+                                )
                         if "target" in pub_opts and pub_opts["target"] not in ("trg", "ref", "both"):
                             errors.append(
                                 f"puts[{idx}].pub_opts.target must be 'trg', 'ref', or 'both'"
@@ -240,7 +219,7 @@ def validate_config(config: dict[str, Any]) -> list[str]:
                     else:
                         _SUB_OPTS_ALLOWED = {
                             "pipeline", "ri_valid_algo", "td_valid_algo",
-                            "consumer_per_content", "port_num",
+                            "consumer_per_content", "port_num", "wait",
                         }
                         unknown = set(sub_opts.keys()) - _SUB_OPTS_ALLOWED
                         if unknown:
@@ -255,6 +234,8 @@ def validate_config(config: dict[str, Any]) -> list[str]:
                                 errors.append(
                                     f"gets[{idx}].sub_opts.{field} must be 'crc32c' or 'rsa-sha256'"
                                 )
+                        if "wait" in sub_opts and not isinstance(sub_opts["wait"], (int, float)):
+                            errors.append(f"gets[{idx}].sub_opts.wait must be a number")
 
     if "auto" in config:
         auto = config["auto"]
@@ -276,12 +257,66 @@ def validate_config(config: dict[str, Any]) -> list[str]:
                         errors.append(
                             f"auto[{idx}].publishers must be a list of host IDs"
                         )
+                    else:
+                        for pidx, p in enumerate(entry["publishers"]):
+                            if not isinstance(p, int):
+                                errors.append(
+                                    f"auto[{idx}].publishers[{pidx}] must be an integer (got {type(p).__name__!r})"
+                                )
                 if "consumers" in entry:
                     val = entry["consumers"]
-                    if not isinstance(val, (str, list)):
+                    if isinstance(val, str):
+                        if val.startswith("random:"):
+                            rest = val[len("random:"):]
+                            try:
+                                n = int(rest)
+                                if n <= 0:
+                                    errors.append(
+                                        f"auto[{idx}].consumers: random:N requires N to be a positive integer"
+                                    )
+                            except ValueError:
+                                errors.append(
+                                    f"auto[{idx}].consumers: random:N requires N to be a positive integer (got {rest!r})"
+                                )
+                    elif isinstance(val, list):
+                        for cidx, c in enumerate(val):
+                            if not isinstance(c, int):
+                                errors.append(
+                                    f"auto[{idx}].consumers[{cidx}] must be an integer (got {type(c).__name__!r})"
+                                )
+                    else:
                         errors.append(
                             f"auto[{idx}].consumers must be 'random:N' string or list of host IDs"
                         )
+                if "content_count" in entry:
+                    cc = entry["content_count"]
+                    if not isinstance(cc, int) or cc <= 0:
+                        errors.append(
+                            f"auto[{idx}].content_count must be a positive integer (got {cc!r})"
+                        )
+                if "consumer_per_content" in entry:
+                    cpc = entry["consumer_per_content"]
+                    if not isinstance(cpc, int) or cpc <= 0:
+                        errors.append(
+                            f"auto[{idx}].consumer_per_content must be a positive integer (got {cpc!r})"
+                        )
+                if "uri_prefix" in entry and not isinstance(entry["uri_prefix"], str):
+                    errors.append(f"auto[{idx}].uri_prefix must be a string")
+                if "file" in entry and not isinstance(entry["file"], str):
+                    errors.append(f"auto[{idx}].file must be a string")
+                if "sub_opts" in entry:
+                    sub_opts = entry["sub_opts"]
+                    if not isinstance(sub_opts, dict):
+                        errors.append(f"auto[{idx}].sub_opts must be a dict")
+                    else:
+                        if "wait" in sub_opts and not isinstance(sub_opts["wait"], (int, float)):
+                            errors.append(f"auto[{idx}].sub_opts.wait must be a number")
+                        if "consumer_per_content" in sub_opts:
+                            cpc = sub_opts["consumer_per_content"]
+                            if not isinstance(cpc, int) or cpc <= 0:
+                                errors.append(
+                                    f"auto[{idx}].sub_opts.consumer_per_content must be a positive integer"
+                                )
 
     if "cache_config" in config:
         cc = config["cache_config"]
@@ -488,11 +523,6 @@ def validate_config(config: dict[str, Any]) -> list[str]:
                 if mode is not None and mode not in valid_modes:
                     errors.append(f"priority_uris.{level_name}.mode must be 'putget' or 'pubsub'")
 
-                if "prefetch_to_cache" in level_cfg and not isinstance(level_cfg["prefetch_to_cache"], bool):
-                    errors.append(
-                        f"priority_uris.{level_name}.prefetch_to_cache must be a boolean"
-                    )
-
                 for field in ("expiry", "cache_time", "rate"):
                     if field in level_cfg and level_cfg[field] is not None:
                         if not isinstance(level_cfg[field], (int, float)):
@@ -506,6 +536,12 @@ def validate_config(config: dict[str, Any]) -> list[str]:
                             errors.append(
                                 f"priority_uris.{level_name}.{field} must be an integer"
                             )
+                if "lifetime" in level_cfg and level_cfg["lifetime"] is not None:
+                    lifetime = level_cfg["lifetime"]
+                    if isinstance(lifetime, int) and not 0 <= lifetime <= 64:
+                        errors.append(
+                            f"priority_uris.{level_name}.lifetime must be between 0 and 64 seconds"
+                        )
 
                 for field in ("valid_algo", "ti_valid_algo", "rd_valid_algo", "ri_valid_algo", "td_valid_algo"):
                     if field in level_cfg and level_cfg[field] is not None:
@@ -534,6 +570,11 @@ def validate_config(config: dict[str, Any]) -> list[str]:
                     errors.append(f"bridges[{idx}] missing required field 'root_ip'")
                 if "local_routes" not in bridge:
                     errors.append(f"bridges[{idx}] missing required field 'local_routes'")
+                elif not isinstance(bridge["local_routes"], str):
+                    errors.append(
+                        f"bridges[{idx}].local_routes must be a string"
+                        " (e.g. '192.168.0.0/16')"
+                    )
                 if "nat" in bridge and not isinstance(bridge["nat"], bool):
                     errors.append(f"bridges[{idx}].nat must be a boolean")
                 if "nat_out" in bridge and not isinstance(bridge["nat_out"], str):
@@ -543,7 +584,11 @@ def validate_config(config: dict[str, Any]) -> list[str]:
         if not isinstance(config["events"], list):
             errors.append("events must be a list")
         else:
-            valid_event_types = ("link_down", "link_up", "fib_add", "fib_del", "fib_enable")
+            valid_event_types = (
+                "link_down", "link_up", "fib_add", "fib_del", "fib_enable",
+                "bw_set", "compute_call",
+            )
+            host_count = config.get("hosts")
             for idx, event in enumerate(config["events"]):
                 if not isinstance(event, dict):
                     errors.append(f"events[{idx}] must be a dict")
@@ -564,10 +609,78 @@ def validate_config(config: dict[str, Any]) -> list[str]:
                         nodes = event.get("nodes")
                         if not isinstance(nodes, list) or len(nodes) != 2:
                             errors.append(f"events[{idx}].nodes must be a list of 2 elements")
+                        elif isinstance(host_count, int):
+                            for n in nodes:
+                                if isinstance(n, int) and (n < 0 or n >= host_count):
+                                    errors.append(
+                                        f"events[{idx}].nodes contains out-of-range host index {n}"
+                                    )
+                    elif etype == "bw_set":
+                        nodes = event.get("nodes")
+                        if not isinstance(nodes, list) or len(nodes) != 2:
+                            errors.append(f"events[{idx}].nodes must be a list of 2 host indices")
+                        elif isinstance(host_count, int):
+                            for n in nodes:
+                                if isinstance(n, int) and (n < 0 or n >= host_count):
+                                    errors.append(
+                                        f"events[{idx}].nodes contains out-of-range host index {n}"
+                                    )
+                        if "bandwidth" not in event:
+                            errors.append(f"events[{idx}] missing required field 'bandwidth'")
+                        elif not isinstance(event["bandwidth"], (int, float)) or event["bandwidth"] < 0:
+                            errors.append(f"events[{idx}].bandwidth must be a non-negative number")
+                    elif etype == "compute_call":
+                        for field in ("host", "endpoint"):
+                            if field not in event:
+                                errors.append(f"events[{idx}] missing required field '{field}'")
+                        if "host" in event and not isinstance(event["host"], int):
+                            errors.append(f"events[{idx}].host must be an integer")
+                        if "endpoint" in event and not isinstance(event["endpoint"], str):
+                            errors.append(f"events[{idx}].endpoint must be a string")
+                        if "method" in event and event["method"] not in ("GET", "POST"):
+                            errors.append(f"events[{idx}].method must be 'GET' or 'POST'")
+                        if "timeout" in event:
+                            if not isinstance(event["timeout"], (int, float)) or event["timeout"] <= 0:
+                                errors.append(f"events[{idx}].timeout must be a positive number")
                     elif etype in ("fib_add", "fib_del", "fib_enable"):
                         for field in ("host", "prefix", "next_hop"):
                             if field not in event:
                                 errors.append(f"events[{idx}] missing required field '{field}'")
+                        if "protocol" in event:
+                            try:
+                                normalize_route_protocol(event["protocol"])
+                            except (TypeError, ValueError):
+                                errors.append(
+                                    f"events[{idx}].protocol must be one of: "
+                                    f"{', '.join(VALID_ROUTE_PROTOCOLS)}"
+                                )
+
+                    # host range check for fib/compute_call events
+                    if "host" in event and isinstance(event["host"], int) and isinstance(host_count, int):
+                        if event["host"] < 0 or event["host"] >= host_count:
+                            errors.append(
+                                f"events[{idx}].host is out of range (0..{host_count - 1})"
+                            )
+
+                # repeat validation (all event types)
+                if "repeat" in event:
+                    rep = event["repeat"]
+                    if not isinstance(rep, dict):
+                        errors.append(f"events[{idx}].repeat must be a dict")
+                    else:
+                        if "interval" in rep:
+                            if not isinstance(rep["interval"], (int, float)) or rep["interval"] <= 0:
+                                errors.append(f"events[{idx}].repeat.interval must be a positive number")
+                        if "duration" in rep:
+                            if not isinstance(rep["duration"], (int, float)) or rep["duration"] < 0:
+                                errors.append(f"events[{idx}].repeat.duration must be a non-negative number")
+                        if "count" in rep and rep["count"] is not None:
+                            if not isinstance(rep["count"], int) or rep["count"] < 1:
+                                errors.append(f"events[{idx}].repeat.count must be a positive integer or null")
+                        if "restore" in rep and not isinstance(rep["restore"], dict):
+                            errors.append(f"events[{idx}].repeat.restore must be a dict")
+                        if "restore_type" in rep and rep["restore_type"] not in valid_event_types:
+                            errors.append(f"events[{idx}].repeat.restore_type must be a valid event type")
 
     if "monitoring" in config:
         mon = config["monitoring"]
@@ -577,7 +690,7 @@ def validate_config(config: dict[str, Any]) -> list[str]:
             if "interval" in mon:
                 if not isinstance(mon["interval"], (int, float)) or mon["interval"] <= 0:
                     errors.append("monitoring.interval must be a positive number")
-            valid_monitor_types = ("cefstatus", "csmgrstatus", "cefinfo")
+            valid_monitor_types = ("cefstatus", "csmgrstatus")
             targets = mon.get("targets", [])
             if not isinstance(targets, list):
                 errors.append("monitoring.targets must be a list")
@@ -593,14 +706,73 @@ def validate_config(config: dict[str, Any]) -> list[str]:
                             f"monitoring.targets[{idx}].type must be one of: "
                             f"{', '.join(valid_monitor_types)}"
                         )
+                    if "target_host" in target:
+                        th = target["target_host"]
+                        if not isinstance(th, str) or not th:
+                            errors.append(
+                                f"monitoring.targets[{idx}].target_host must be a non-empty string"
+                            )
+
+    if "addressing" in config:
+        addr = config["addressing"]
+        if not isinstance(addr, dict):
+            errors.append("addressing must be a dict")
+        else:
+            if "network_cidr" in addr:
+                val = addr["network_cidr"]
+                if not isinstance(val, str):
+                    errors.append("addressing.network_cidr must be a string")
+                else:
+                    try:
+                        net = ipaddress.ip_network(val, strict=False)
+                        if net.prefixlen != 16:
+                            errors.append(
+                                f"addressing.network_cidr must be an IPv4 /16 network "
+                                f"(got /{net.prefixlen})"
+                            )
+                    except ValueError:
+                        errors.append(
+                            f"addressing.network_cidr must be a valid CIDR (got {val!r})"
+                        )
+
+    if "routing" in config:
+        routing = config["routing"]
+        if not isinstance(routing, dict):
+            errors.append("routing must be a dict")
+        else:
+            strategy = routing.get("strategy", "dijkstra")
+            valid_routing = ("dijkstra", "shortest_path", "ecmp")
+            if strategy not in valid_routing:
+                errors.append(f"routing.strategy must be one of {valid_routing}")
+            if "k" in routing:
+                if not isinstance(routing["k"], int) or routing["k"] < 1:
+                    errors.append("routing.k must be a positive integer")
+
+    if "debug" in config:
+        debug = config["debug"]
+        if not isinstance(debug, (bool, dict)):
+            errors.append("debug must be a boolean or dict")
+        elif isinstance(debug, dict):
+            artifacts = debug.get("artifacts", [])
+            if not isinstance(artifacts, list):
+                errors.append("debug.artifacts must be a list")
+            else:
+                _valid_artifacts = {"node_dirs", "fib_dump", "daemon_logs"}
+                for art in artifacts:
+                    if art not in _valid_artifacts:
+                        errors.append(
+                            f"debug.artifacts contains unknown artifact: {art!r}"
+                        )
+            if "output_subdir" in debug and not isinstance(debug["output_subdir"], str):
+                errors.append("debug.output_subdir must be a string")
 
     # Boolean keys
-    for key in ("no_cli", "no_script_log", "warmup_only_cache_nodes"):
+    for key in ("no_cli", "no_script_log"):
         if key in config and not isinstance(config[key], bool):
             errors.append(f"{key} must be a boolean")
 
     # Non-negative integer keys
-    for key in ("duration", "warmup_get_interval"):
+    for key in ("duration",):
         if key in config:
             if not isinstance(config[key], int) or config[key] < 0:
                 errors.append(f"{key} must be an integer >= 0")
@@ -616,11 +788,48 @@ def validate_config(config: dict[str, Any]) -> list[str]:
         if key in config and config[key] is not None and not isinstance(config[key], str):
             errors.append(f"{key} must be a string")
 
-    if "warmup_gets" in config:
-        if not isinstance(config["warmup_gets"], list):
-            errors.append("warmup_gets must be a list")
-
     return errors
+
+
+def validate_merged_args(args: Any) -> list[str]:
+    """Validate the merged args namespace (after CLI overrides applied).
+
+    Builds a config-like dict from the args namespace and delegates to
+    validate_config.  Only includes keys that are present on args to avoid
+    false positives for optional parameters.
+
+    Args:
+        args: argparse Namespace object after merge_cli_and_config.
+
+    Returns:
+        List of error messages. Empty if valid.
+    """
+    scalar_keys = (
+        "hosts", "switches", "seed", "k", "num", "duration",
+        "cache_default_rct_ms", "cefnetd_timeout", "publisher_host",
+        "output_dir", "results_json", "script_log", "timestamp",
+        "no_cli", "no_script_log", "host_degree_min", "host_degree_max",
+        "switch_use_all",
+    )
+    structured_keys = (
+        "puts", "gets", "auto", "events", "monitoring", "routing",
+        "cache_config", "failure_scenarios", "priority_uris", "addressing",
+    )
+    nullable_keys = {"seed", "results_json", "script_log", "cache_default_rct_ms", "publisher_host"}
+
+    config: dict[str, Any] = {}
+    for key in scalar_keys:
+        if hasattr(args, key):
+            val = getattr(args, key)
+            if val is not None or key in nullable_keys:
+                config[key] = val
+    for key in structured_keys:
+        if hasattr(args, key):
+            val = getattr(args, key)
+            if val:
+                config[key] = val
+
+    return validate_config(config)
 
 
 def merge_cli_and_config(args: Any, config: dict[str, Any], parser=None) -> None:
@@ -658,31 +867,25 @@ def merge_cli_and_config(args: Any, config: dict[str, Any], parser=None) -> None
         "no_cli",
         "duration",
         "results_json",
-        "warmup_get_interval",
-        "warmup_only_cache_nodes",
-        "warmup_gets",
         "cache_default_rct_ms",
         "publisher_host",
-        "hot_uris",
         "num",
         "output_dir",
         "timestamp",
-        "legacy_layout",
         "no_cli",
         "duration",
         "results_json",
         "script_log",
         "no_script_log",
-        "warmup_get_interval",
-        "warmup_only_cache_nodes",
-        "warmup_gets",
-        "hot_uris",
         "cache_default_rct_ms",
         "publisher_host",
         "failure_scenarios",
         "priority_uris",
         "events",
         "monitoring",
+        "routing",
+        "cefnetd_timeout",
+        "addressing",
     )
 
     _NULL_MEANS_DEFAULT = {
@@ -724,21 +927,6 @@ def merge_cli_and_config(args: Any, config: dict[str, Any], parser=None) -> None
         args.bw = [args.bw]
     if isinstance(args.ext, str) and args.ext:
         args.ext = [args.ext]
-
-    # Parse warmup_gets / hot_uris
-    warmup_gets = getattr(args, "warmup_gets", "")
-    if isinstance(warmup_gets, str) and warmup_gets:
-        args.warmup_gets = json.loads(warmup_gets)
-    elif not warmup_gets:
-        args.warmup_gets = []
-
-    hot_uris = getattr(args, "hot_uris", "")
-    if isinstance(hot_uris, str) and hot_uris:
-        args.hot_uris = [u.strip() for u in hot_uris.split(",") if u.strip()]
-    elif isinstance(hot_uris, list):
-        pass  # Already a list from YAML
-    else:
-        args.hot_uris = []
 
     # Ensure puts/gets are lists
     if not hasattr(args, "puts") or args.puts is None or args.puts == "":

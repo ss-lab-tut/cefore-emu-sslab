@@ -47,7 +47,18 @@ def _parse_consumers(entry: dict[str, Any], host_count: int, rng: random.Random,
     cons = entry.get("consumers")
     if cons is None:
         return []
-    cons_list = parse_consumer_spec(cons, host_count, rng) if isinstance(cons, str) else [int(c) for c in cons]
+    if isinstance(cons, str):
+        if cons.startswith("random"):
+            num_str = cons.split(":")[1] if ":" in cons else cons.replace("random", "", 1)
+            try:
+                count = int(num_str)
+            except (ValueError, IndexError):
+                return []
+            available = [h for h in range(host_count) if h not in publishers]
+            count = min(count, len(available))
+            return rng.sample(available, count)
+        return []
+    cons_list = [int(c) for c in cons]
     cons_list = [c for c in cons_list if c not in publishers]
     for c in cons_list:
         if c < 0 or c >= host_count:

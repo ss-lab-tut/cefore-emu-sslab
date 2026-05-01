@@ -1,0 +1,4 @@
+interface:
+  display_name: "Cefore Test Runner"
+  short_description: "Run pytest plus minimal disaster smoke checks"
+  default_prompt: "Use $cefore-run-tests to run the targeted pytest suite and minimal disaster config smoke checks in this repo."
