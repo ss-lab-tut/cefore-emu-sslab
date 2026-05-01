@@ -20,6 +20,7 @@ Three topology types are available via a unified CLI:
 * Mininet version 2.3.0 ([https://mininet.org/](https://mininet.org/))
 * Python >= 3.12
 * curl (required for `compute_call` events)
+* uv (required for python package management)
 
 ```bash
 uv sync   # Install dependencies
