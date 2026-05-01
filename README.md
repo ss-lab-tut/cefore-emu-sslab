@@ -1,5 +1,7 @@
 # CeforeEmu
 
+[README.md(ja)](./README_ja.md)
+
 ## Overview
 
 CeforeEmu is a network emulator based on Mininet for testing Cefore (Content-Centric Networking framework) deployments on Ubuntu 22.04. It creates virtual network topologies with virtual hosts running Cefore daemons (*cefnetd*) to simulate content distribution scenarios.
