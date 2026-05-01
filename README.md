@@ -20,6 +20,7 @@ Three topology types are available via a unified CLI:
 * Mininet version 2.3.0 ([https://mininet.org/](https://mininet.org/))
 * Python >= 3.12
 * curl (required for `compute_call` events)
+* uv (required for python package management)
 
 ```bash
 uv sync   # Install dependencies
@@ -29,16 +30,16 @@ uv sync   # Install dependencies
 
 ```bash
 # Linear topology (3 nodes by default)
-sudo python3 -m src linear
+sudo .venv/bin/python3 -m src linear
 
 # Linear topology with 7 hosts
-sudo python3 -m src linear --hosts 7
+sudo .venv/bin/python3 -m src linear --hosts 7
 
 # Mesh topology
-sudo python3 -m src mesh --hosts 8 --switches 12 --seed 42 --k 3
+sudo .venv/bin/python3 -m src mesh --hosts 8 --switches 12 --seed 42 --k 3
 
 # Disaster topology with config file
-sudo python3 -m src disaster --config config/examples/example.yaml
+sudo .venv/bin/python3 -m src disaster --config config/examples/example.yaml
 
 # Exit Mininet CLI
 mininet> exit
@@ -64,7 +65,7 @@ sudo ceforeemu disaster --config config/examples/example.yaml
 Simple linear chain: h0 (consumer) - s0 - h1 (router) - s1 - ... - hN (publisher).
 
 ```bash
-sudo python3 -m src linear --hosts 5
+sudo .venv/bin/python3 -m src linear --hosts 5
 ```
 
 ### mesh
@@ -72,7 +73,7 @@ sudo python3 -m src linear --hosts 5
 Random mesh of hosts connected by switches. Each destination host hX maps to prefix `ccnx:/test/example{X+1}` and uses k-shortest paths for FIB.
 
 ```bash
-sudo python3 -m src mesh --hosts 8 --switches 12 --seed 42 --k 3
+sudo .venv/bin/python3 -m src mesh --hosts 8 --switches 12 --seed 42 --k 3
 ```
 
 Key options:
@@ -94,7 +95,7 @@ Key options:
 Mesh topology with periodic host down/up cycles, bandwidth control, external interface attachment, and repeated `cefgetfile` logging.
 
 ```bash
-sudo python3 -m src disaster --hosts 10 --switches 15 --seed 42 \
+sudo .venv/bin/python3 -m src disaster --hosts 10 --switches 15 --seed 42 \
   --down-interval 30 --down-duration 10 --down-count 2
 ```
 
@@ -204,20 +205,20 @@ logs/ex{num}_seed{seed}/
 
 ```bash
 # Enable log directory output
-sudo python3 -m src disaster --num 1 --hosts 10 --switches 15 --seed 42
+sudo .venv/bin/python3 -m src disaster --num 1 --hosts 10 --switches 15 --seed 42
 
 # Custom output directory
-sudo python3 -m src disaster --config config.yaml --output-dir experiments
+sudo .venv/bin/python3 -m src disaster --config config.yaml --output-dir experiments
 
 # Add timestamp to directory name
-sudo python3 -m src disaster --config config.yaml --timestamp
+sudo .venv/bin/python3 -m src disaster --config config.yaml --timestamp
 ```
 
 ## Autotest (Non-Interactive)
 
 Single run:
 ```bash
-sudo python3 -m src disaster \
+sudo .venv/bin/python3 -m src disaster \
   --config config/examples/example.yaml \
   --no-cli \
   --duration 120 \
@@ -227,7 +228,7 @@ sudo python3 -m src disaster \
 
 Batch runner:
 ```bash
-sudo python3 tools/autotest/run.py \
+sudo .venv/bin/python3 tools/autotest/run.py \
   --base-config config/examples/example.yaml \
   --runs 5 \
   --duration 120 \

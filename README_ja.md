@@ -20,6 +20,7 @@ CeforeEmu は、Ubuntu 22.04 上で Cefore（コンテンツ指向ネットワ�
 * Mininet バージョン 2.3.0 ([https://mininet.org/](https://mininet.org/))
 * Python >= 3.12
 * curl（`compute_call` イベントに必要）
+* uv (pythonのパッケージ管理に必要)
 
 ```bash
 uv sync   # 依存パッケージのインストール
@@ -29,16 +30,16 @@ uv sync   # 依存パッケージのインストール
 
 ```bash
 # 線形トポロジ（デフォルト 3 ノード）
-sudo python3 -m src linear
+sudo .venv/bin/python3 -m src linear
 
 # 7 ホストの線形トポロジ
-sudo python3 -m src linear --hosts 7
+sudo .venv/bin/python3 -m src linear --hosts 7
 
 # メッシュトポロジ
-sudo python3 -m src mesh --hosts 8 --switches 12 --seed 42 --k 3
+sudo .venv/bin/python3 -m src mesh --hosts 8 --switches 12 --seed 42 --k 3
 
 # 設定ファイルを使ったディザスタートポロジ
-sudo python3 -m src disaster --config config/examples/example.yaml
+sudo .venv/bin/python3 -m src disaster --config config/examples/example.yaml
 
 # Mininet CLI の終了
 mininet> exit
@@ -64,7 +65,7 @@ sudo ceforeemu disaster --config config/examples/example.yaml
 単純な線形チェーン：h0（コンシューマ）- s0 - h1（ルータ）- s1 - ... - hN（パブリッシャ）。
 
 ```bash
-sudo python3 -m src linear --hosts 5
+sudo .venv/bin/python3 -m src linear --hosts 5
 ```
 
 ### mesh
@@ -72,7 +73,7 @@ sudo python3 -m src linear --hosts 5
 スイッチで接続されたホストのランダムメッシュ。各宛先ホスト hX はプレフィックス `ccnx:/test/example{X+1}` にマッピングされ、k 最短パスを FIB に使用します。
 
 ```bash
-sudo python3 -m src mesh --hosts 8 --switches 12 --seed 42 --k 3
+sudo .venv/bin/python3 -m src mesh --hosts 8 --switches 12 --seed 42 --k 3
 ```
 
 主なオプション：
@@ -94,7 +95,7 @@ sudo python3 -m src mesh --hosts 8 --switches 12 --seed 42 --k 3
 定期的なホストの停止/復旧サイクル、帯域制御、外部インタフェースの接続、および繰り返し `cefgetfile` ログを持つメッシュトポロジ。
 
 ```bash
-sudo python3 -m src disaster --hosts 10 --switches 15 --seed 42 \
+sudo .venv/bin/python3 -m src disaster --hosts 10 --switches 15 --seed 42 \
   --down-interval 30 --down-duration 10 --down-count 2
 ```
 
@@ -204,20 +205,20 @@ logs/ex{num}_seed{seed}/
 
 ```bash
 # ログディレクトリ出力を有効化
-sudo python3 -m src disaster --num 1 --hosts 10 --switches 15 --seed 42
+sudo .venv/bin/python3 -m src disaster --num 1 --hosts 10 --switches 15 --seed 42
 
 # 出力ディレクトリをカスタム指定
-sudo python3 -m src disaster --config config.yaml --output-dir experiments
+sudo .venv/bin/python3 -m src disaster --config config.yaml --output-dir experiments
 
 # ディレクトリ名にタイムスタンプを付加
-sudo python3 -m src disaster --config config.yaml --timestamp
+sudo .venv/bin/python3 -m src disaster --config config.yaml --timestamp
 ```
 
 ## 自動テスト（非対話モード）
 
 単発実行:
 ```bash
-sudo python3 -m src disaster \
+sudo .venv/bin/python3 -m src disaster \
   --config config/examples/example.yaml \
   --no-cli \
   --duration 120 \
@@ -227,7 +228,7 @@ sudo python3 -m src disaster \
 
 バッチ実行:
 ```bash
-sudo python3 tools/autotest/run.py \
+sudo .venv/bin/python3 tools/autotest/run.py \
   --base-config config/examples/example.yaml \
   --runs 5 \
   --duration 120 \
