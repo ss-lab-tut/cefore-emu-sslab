@@ -20,6 +20,7 @@ CeforeEmu は、Ubuntu 22.04 上で Cefore（コンテンツ指向ネットワ�
 * Mininet バージョン 2.3.0 ([https://mininet.org/](https://mininet.org/))
 * Python >= 3.12
 * curl（`compute_call` イベントに必要）
+* uv (pythonのパッケージ管理に必要)
 
 ```bash
 uv sync   # 依存パッケージのインストール
