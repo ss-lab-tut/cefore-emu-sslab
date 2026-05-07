@@ -17,7 +17,10 @@ PYTEST_TARGETS = (
     "tests/runtime/test_cefore.py",
     "tests/scenarios/test_disaster_pubsub.py",
 )
-SMOKE_CONFIGS = ("min_putget", "min_pubsub", "min_pubsub_verify", "min_empty", "min_mixed")
+SMOKE_CONFIGS = (
+    "min_putget", "min_pubsub", "min_pubsub_verify", "min_empty", "min_mixed",
+    "min_event_putget", "min_event_pubsub",
+)
 
 
 @dataclass(frozen=True)
@@ -168,6 +171,8 @@ def build_smoke_cases() -> list[SmokeCase]:
         SmokeCase("min_pubsub_verify", "config/examples/min_pubsub_verify.yaml"),
         SmokeCase("min_empty", "config/examples/min_empty.yaml"),
         SmokeCase("min_mixed", "config/examples/min_mixed.yaml"),
+        SmokeCase("min_event_putget", "config/examples/min_event_putget.yaml"),
+        SmokeCase("min_event_pubsub", "config/examples/min_event_pubsub.yaml"),
     ]
 
 
@@ -239,6 +244,34 @@ def validate_min_mixed(data: list[dict]) -> None:
         raise RuntimeError("min_mixed stream URI should keep has_completed_log == false")
 
 
+def validate_min_event_putget(data: list[dict]) -> None:
+    """Validate event-based put/get output."""
+    get_rows = [row for row in data if row.get("phase") == "event"]
+    if not get_rows:
+        raise RuntimeError("min_event_putget expected at least 1 event-phase result")
+    for row in get_rows:
+        if not row.get("success"):
+            raise RuntimeError(f"min_event_putget has an unsuccessful event result: {row}")
+        if not row.get("has_completed_log"):
+            raise RuntimeError("min_event_putget event result missing completed-log marker")
+        if not row.get("has_output_file"):
+            raise RuntimeError("min_event_putget event result missing output artifact")
+
+
+def validate_min_event_pubsub(data: list[dict]) -> None:
+    """Validate event-based pub/sub output."""
+    event_rows = [row for row in data if row.get("phase") == "event"]
+    if not event_rows:
+        raise RuntimeError("min_event_pubsub expected at least 1 event-phase result")
+    for row in event_rows:
+        if not row.get("success"):
+            raise RuntimeError(f"min_event_pubsub has an unsuccessful event result: {row}")
+        if not row.get("has_output_file"):
+            raise RuntimeError("min_event_pubsub event result missing output artifact")
+        if "RNP0x" not in str(row.get("out_file", "")):
+            raise RuntimeError("min_event_pubsub out_file does not point to an RNP0x*.out artifact")
+
+
 def validate_results(case_name: str, data: list[dict]) -> None:
     """Dispatch per-config result validation."""
     validators = {
@@ -247,6 +280,8 @@ def validate_results(case_name: str, data: list[dict]) -> None:
         "min_pubsub_verify": validate_min_pubsub,
         "min_empty": validate_min_empty,
         "min_mixed": validate_min_mixed,
+        "min_event_putget": validate_min_event_putget,
+        "min_event_pubsub": validate_min_event_pubsub,
     }
     validators[case_name](data)
 

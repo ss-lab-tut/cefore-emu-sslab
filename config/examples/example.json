@@ -60,23 +60,12 @@
     }
   ],
 
+  "pubsub_sub_startup_grace": 1.0,
+
   "events": [
-    {
-      "at": 15,
-      "type": "link_down",
-      "nodes": [1, 2]
-    },
-    {
-      "at": 25,
-      "type": "link_up",
-      "nodes": [1, 2]
-    },
-    {
-      "at": 30,
-      "type": "bw_set",
-      "nodes": [0, 3],
-      "bandwidth": 5
-    },
+    { "at": 15, "type": "link_down", "nodes": [1, 2] },
+    { "at": 25, "type": "link_up",   "nodes": [1, 2] },
+    { "at": 30, "type": "bw_set", "nodes": [0, 3], "bandwidth": 5 },
     {
       "at": 40,
       "type": "bw_set",
@@ -88,6 +77,34 @@
         "restore": { "bandwidth": 10 },
         "count": 3
       }
+    },
+    {
+      "at": 35,
+      "type": "put",
+      "host": 4,
+      "uri": "ccnx:/test/event_data",
+      "file": "./sample-putfile"
+    },
+    {
+      "at": 45,
+      "type": "get",
+      "host": 0,
+      "uri": "ccnx:/test/event_data"
+    },
+    {
+      "at": 55,
+      "type": "pubsub_sub",
+      "host": 0,
+      "uri": "ccnx:/test/event_stream",
+      "sub_opts": { "wait": 20 }
+    },
+    {
+      "at": 55,
+      "type": "pubsub_pub",
+      "host": 4,
+      "uri": "ccnx:/test/event_stream",
+      "file": "./sample-putfile",
+      "pub_opts": { "lifetime": 8 }
     }
   ],
 

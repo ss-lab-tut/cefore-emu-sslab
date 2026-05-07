@@ -8,7 +8,7 @@
 # -----------------------------------------------------------------------------
 hosts: 15               # ホスト数 (>=3)
 switches: 48            # スイッチ数 (>=2, 最大 n*(n-1)/2)
-seed: 42               # 乱数シード (null でランダム)
+seed: null              # 乱数シード (null でランダム)
 k: 2                   # 宛先ごとの最短パス数 (マルチパスルーティング)
 host_degree_min: 2     # ホストあたり最小スイッチ接続数 (>=1)
 host_degree_max: 5     # ホストあたり最大スイッチ接続数 (>= host_degree_min)
@@ -18,7 +18,7 @@ node_per_switch: 2     # スイッチあたり最大ホスト数 (0=無制限, 2
 # -----------------------------------------------------------------------------
 # 出力設定
 # -----------------------------------------------------------------------------
-num: 4                         # 実験番号 (ログディレクトリ出力を有効化, null で無効)
+num: 2                         # 実験番号 (ログディレクトリ出力を有効化, null で無効)
 output_dir: "logs"             # ベース出力ディレクトリ
 timestamp: true              # true: 出力ディレクトリ名にタイムスタンプ付与
 topo_png: "topology.png"       # トポロジPNG出力パス (null で出力しない)
@@ -76,60 +76,60 @@ cache_default_rct_ms: 10000    # キャッシュノードの CACHE_DEFAULT_RCT (
 # failure_scenarios を指定すると down_interval/down_duration 等より優先される
 # -----------------------------------------------------------------------------
 failure_scenarios:
-  strategy: "cyclic"           # simple / cyclic / random / manual
+  strategy: "simple"           # simple / cyclic / random / manual
   simple:                      # simple 戦略用
     interval: 30
     duration: 10
     count: 2
     stagger: 2
     exclude: [0, 4]
-  cycles:                    # cyclic/random/manual 戦略用
-    - interval: 30
-      duration: 10
-      count: 2
-      exclude: [4]
-    - interval: 60
-      duration: 15
-      count: 1
-  #     target: [1, 3]         # manual 戦略: 対象ホスト指定
-      allow_publishers: false
+#   cycles:                    # cyclic/random/manual 戦略用
+#     - interval: 30
+#       duration: 10
+#       count: 2
+#       exclude: [4]
+#     - interval: 60
+#       duration: 15
+#       count: 1
+#   #     target: [1, 3]         # manual 戦略: 対象ホスト指定
+#       allow_publishers: false
 
 # -----------------------------------------------------------------------------
 # コンテンツ操作: puts (cefputfile / cefpubfile)
 # -----------------------------------------------------------------------------
-puts:
-  - host: 4                        # パブリッシャーホストID
-    uri: "ccnx:/test/sample"       # コンテンツURI
-    file: "./sample-putfile"        # パブリッシュするファイルパス
-    rate: 10                        # 転送レート (Mbps) [オプション]
-    block_size: 1024                # 最大ペイロード長 (bytes) [オプション]
-    expiry: 3000                    # Content Objectライフタイム (秒) [オプション]
-    cache_time: 3000                # キャッシュ削除期間 (秒) [オプション]
+puts: []                           # 災害中に実行する場合は events の type: put/pub を使う
+# - host: 4                        # パブリッシャーホストID
+#   uri: "ccnx:/test/sample"       # コンテンツURI
+#   file: "./sample-putfile"       # パブリッシュするファイルパス
+#   rate: 10                       # 転送レート (Mbps) [オプション]
+#   block_size: 1024               # 最大ペイロード長 (bytes) [オプション]
+#   expiry: 3000                   # Content Objectライフタイム (秒) [オプション]
+#   cache_time: 3000               # キャッシュ削除期間 (秒) [オプション]
 #     valid_algo: "crc32c"            # バリデーションアルゴリズム: crc32c / rsa-sha256 [オプション]
-    # port_num: 9695                # ポート番号 [オプション]
-    # mode: "pubsub"               # Pub/Subモデル時: cefpubfileを使用 [オプション]
-    # pub_opts:                     # Pub/Sub用パブリッシャーオプション [オプション]
-    #   lifetime: 5                # Trigger Interest ライフタイム (秒)
+#   port_num: 9695                 # ポート番号 [オプション]
+#   mode: "pubsub"                 # Pub/Subモデル時: cefpubfileを使用 [オプション]
+#   pub_opts:                      # Pub/Sub用パブリッシャーオプション [オプション]
+#     lifetime: 5000
 
 # -----------------------------------------------------------------------------
 # コンテンツ操作: gets (cefgetfile / cefsubfile)
 # -----------------------------------------------------------------------------
-gets:
-  - host: 0                        # コンシューマーホストID
-    uri: "ccnx:/test/sample"       # 取得するコンテンツURI
-    # file: "./recvfile"            # 受信ファイル保存パス [オプション]
-    # owner_only: false             # オーナー限定モード [オプション]
-    # chunk: 100                    # 最大チャンク取得数 [オプション]
-    # pipeline: 4                   # パイプライン数 [オプション]
-    # sg: 1                         # Send Long Life Interest [オプション]
-    # valid_algo: "crc32c"          # バリデーションアルゴリズム [オプション]
-    # port_num: 9695                # ポート番号 [オプション]
-    # mode: "pubsub"               # Pub/Subモデル時: cefsubfileを使用 [オプション]
-    # file: "recv_dir"             # pubsubモードでは出力ディレクトリとして扱う [オプション]
-    #                              # cefsubfileは <dir>/RNP0x<hex>.out を動的命名で生成する
-    # sub_opts:                     # Pub/Sub用サブスクライバーオプション [オプション]
-    #   wait: 10
-    #   consumer_per_content: 2
+gets: []                           # 災害中に実行する場合は events の type: get/sub を使う
+# - host: 0                        # コンシューマーホストID
+#   uri: "ccnx:/test/sample"       # 取得するコンテンツURI
+#   file: "./recvfile"             # 受信ファイル保存パス [オプション]
+#   owner_only: false              # オーナー限定モード [オプション]
+#   chunk: 100                     # 最大チャンク取得数 [オプション]
+#   pipeline: 4                    # パイプライン数 [オプション]
+#   sg: 1                          # Send Long Life Interest [オプション]
+#   valid_algo: "crc32c"           # バリデーションアルゴリズム [オプション]
+#   port_num: 9695                 # ポート番号 [オプション]
+#   mode: "pubsub"                 # Pub/Subモデル時: cefsubfileを使用 [オプション]
+#   file: "recv_dir"               # pubsubモードでは出力ディレクトリとして扱う [オプション]
+#                                  # cefsubfileは <dir>/RNP0x<hex>.out を動的命名で生成する
+#   sub_opts:                      # Pub/Sub用サブスクライバーオプション [オプション]
+#     wait: 10
+#     consumer_per_content: 2
 
 # -----------------------------------------------------------------------------
 # Auto生成 (puts/getsを自動生成, 手動のputs/getsと併用可能)
@@ -149,7 +149,7 @@ gets:
 #   content_count: 2
 #   uri: "ccnx:/test/stream"        # URI (pubsub形式)
 #   pub_opts:                        # パブリッシャーオプション
-#     lifetime: 5
+#     lifetime: 5000
 #   sub_opts:                        # サブスクライバーオプション
 #     wait: 10
 #     consumer_per_content: 1
@@ -162,34 +162,13 @@ gets:
 #   consumer_per_content: 0     # ← 正の整数でなければならない (>= 1)
 #
 # ■ 複数エントリ (リスト形式)
-auto:
-  - publishers: [11]
-    consumers: "random:2"
-    content_count: 2
-    uri_prefix: "ccnx:/test/data1"
-    consumer_per_content: 1
-  - publishers: [3, 6, 8, 13]
-    consumers: [0]
-    content_count: 2
-    uri: "ccnx:/test/data2"
-    pub_opts:
-      lifetime: 10
-    sub_opts:
-      wait: 5
+# 災害中に実行する場合は top-level auto ではなく events の type: auto を使う
 
 # -----------------------------------------------------------------------------
 # イベントスケジューラ (時限イベント)
 # -----------------------------------------------------------------------------
-# ネットワーク系イベント type: link_down, link_up, fib_add, fib_del, fib_enable,
-#                              bw_set, compute_call
-# コンテンツ操作イベント type: put, get, pubsub_pub, pubsub_sub
-#   put       : host, uri, file が必須。フラッピング中など任意のタイミングで put。
-#   get       : host, uri が必須。results.json に記録される。
-#   pubsub_sub: host, uri が必須。sub_opts (wait 等) で購読待機時間を指定。
-#   pubsub_pub: host, uri, file が必須。pub_opts (lifetime 等) を指定可能。
-#               同じ at 時刻に pubsub_sub と pubsub_pub を書いた場合、sub が先に起動される。
-#               起動後 pubsub_sub_startup_grace 秒待ってから pub が送信される。
-#
+# type: link_down, link_up, fib_add, fib_del, fib_enable, bw_set, compute_call,
+#       put, get, pub, sub, auto
 # repeat: 繰り返し設定（全イベントタイプで使用可能）
 #   interval: 繰り返し間隔（秒）
 #   duration: restore イベントまでの時間（秒）
@@ -197,14 +176,42 @@ auto:
 #   restore_type: 復元イベントの type（例: link_up）
 #   count:    繰り返し回数（null で無限）
 events:
-  # 注意: nodes のペアはトポロジ上に存在するリンクでなければならない。
-  # topo_png の画像や起動ログの adjacency matrix で実際のリンクを確認すること。
+  - at: 10
+    type: put
+    host: 4
+    uri: "ccnx:/test/sample"
+    file: "./sample-putfile"
+    rate: 10
+    block_size: 1024
+    expiry: 3000
+    cache_time: 3000
   - at: 15                       # 開始から15秒後
     type: link_down              # リンクダウン
-    nodes: [0, 1]                # h0-h1 間 (seed=42 で s5 経由)
+    nodes: [1, 2]                # ノード1-2間
+  - at: 18
+    type: get
+    host: 0
+    uri: "ccnx:/test/sample"
+    file: "recv_during_link_down_h0"
   - at: 25
     type: link_up
-    nodes: [0, 1]
+    nodes: [1, 2]
+  - at: 28
+    type: auto
+    auto:
+      - publishers: [11]
+        consumers: "random:2"
+        content_count: 2
+        uri_prefix: "ccnx:/test/data1"
+        consumer_per_content: 1
+      - publishers: [3, 6, 8, 13]
+        consumers: [0]
+        content_count: 2
+        uri: "ccnx:/test/data2"
+        pub_opts:
+          lifetime: 10000
+        sub_opts:
+          wait: 5
   - at: 30
     type: fib_del                # FIBエントリ削除
     host: 3
@@ -245,44 +252,6 @@ events:
       duration: 15
       restore_type: link_up      # 復旧イベントの type
       count: 3
-
-  # --- コンテンツ操作イベント (put / get) -----------------------------------
-  # put イベント: フラッピング中などネットワーク不安定な状況で任意タイミングにコンテンツを配信
-  # ・FIBは put/pubsub_pub イベントのhost/uriから自動設定される（putsトップレベルと同様）
-  - at: 35
-    type: put
-    host: 4                      # パブリッシャーホストID
-    uri: "ccnx:/test/event_data"
-    file: "./sample-putfile"
-    # rate: 10                   # 転送レート (Mbps) [オプション]
-    # expiry: 3000               # Content Objectライフタイム (秒) [オプション]
-    # cache_time: 3000           # キャッシュ削除期間 (秒) [オプション]
-
-  # get イベント: put より後の時刻を指定。結果は results.json に記録される（phase: "event"）
-  - at: 45
-    type: get
-    host: 0
-    uri: "ccnx:/test/event_data"
-    # pipeline: 4                # パイプライン数 [オプション]
-
-  # --- コンテンツ操作イベント (pubsub_sub / pubsub_pub) --------------------
-  # 同じ at 時刻でも pubsub_sub が先に起動される（優先度制御）。
-  # pubsub_sub 起動後 pubsub_sub_startup_grace 秒待機してから pubsub_pub が送信される。
-  - at: 55
-    type: pubsub_sub
-    host: 0
-    uri: "ccnx:/test/event_stream"
-    sub_opts:
-      wait: 20                   # cefsubfile 待機時間 (秒)
-
-  - at: 55
-    type: pubsub_pub
-    host: 4
-    uri: "ccnx:/test/event_stream"
-    file: "./sample-putfile"
-    pub_opts:
-      lifetime: 8                # Trigger Interest ライフタイム (秒)
-
 #   - at: 90
 #     type: compute_call           # 外部API呼び出し（bridges設定で到達性確保が必要）
 #     host: 3
@@ -296,16 +265,16 @@ events:
 # -----------------------------------------------------------------------------
 # モニタリング (定期収集)
 # -----------------------------------------------------------------------------
-monitoring:
-  interval: 5                    # 収集間隔 (秒)
-  output_json: "monitor.json"    # JSON出力ファイル名
-  output_csv: "monitor.csv"      # CSV出力ファイル名
-  targets:
-    - type: cefstatus            # cefstatus出力収集
-      hosts: "all"               # "all", "cache", またはリスト [0, 1, 2]
-    - type: csmgrstatus          # csmgrstatus出力収集
-      hosts: "cache"             # キャッシュノードのみ
-      uri: "ccnx:/"             # クエリURI [オプション]
+# monitoring:
+#   interval: 5                    # 収集間隔 (秒)
+#   output_json: "monitor.json"    # JSON出力ファイル名
+#   output_csv: "monitor.csv"      # CSV出力ファイル名
+#   targets:
+#     - type: cefstatus            # cefstatus出力収集
+#       hosts: "all"               # "all", "cache", またはリスト [0, 1, 2]
+#     - type: csmgrstatus          # csmgrstatus出力収集
+#       hosts: "cache"             # キャッシュノードのみ
+#       uri: "ccnx:/"             # クエリURI [オプション]
 
 # -----------------------------------------------------------------------------
 # ウォームアップ設定
@@ -321,15 +290,10 @@ monitoring:
 # -----------------------------------------------------------------------------
 # 実行制御
 # -----------------------------------------------------------------------------
-no_cli: true           # true: インタラクティブCLIをスキップ (自動テスト用)
+no_cli: false          # true: インタラクティブCLIをスキップ (自動テスト用)
 duration: 0            # 評価フェーズ時間 (秒, 0: シングルサイクル, no_cli時に使用)
-results_json: ""       # 結果JSONファイル名 (空文字で無効, 出力ディレクトリ内に配置)
+results_json: "out.json"       # 結果JSONファイル名 (空文字で無効, 出力ディレクトリ内に配置)
 get_interval: 10       # cefgetfile実行間隔 (秒)
-
-# pubsub_sub_startup_grace: サブスクライバー起動後にパブリッシャーを送信するまでの待機時間 (秒)
-# cefsubfile 起動直後は cefnetd 内の Reflexive Interest 受付準備が整っていないため、
-# grace 秒待機することで startup race を回避する。
-pubsub_sub_startup_grace: 1.0
 
 publisher_host: 4                  # パブリッシャーホスト (publisher-downメトリクス用)
 

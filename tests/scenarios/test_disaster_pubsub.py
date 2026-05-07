@@ -7,11 +7,10 @@ from unittest.mock import MagicMock
 
 import pytest
 
+from src.runtime.result_detect import detect_sub_success as _detect_sub_success, wait_pubsub_process as _wait_pubsub_process
 from src.scenarios.disaster import (
-    _detect_sub_success,
     _resolve_pubsub_publish_deadline_seconds,
     _resolve_pubsub_wait_seconds,
-    _wait_pubsub_process,
 )
 
 

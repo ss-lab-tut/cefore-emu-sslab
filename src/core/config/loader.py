@@ -580,6 +580,11 @@ def validate_config(config: dict[str, Any]) -> list[str]:
                 if "nat_out" in bridge and not isinstance(bridge["nat_out"], str):
                     errors.append(f"bridges[{idx}].nat_out must be a string")
 
+    if "pubsub_sub_startup_grace" in config:
+        v = config["pubsub_sub_startup_grace"]
+        if not isinstance(v, (int, float)) or v < 0:
+            errors.append("pubsub_sub_startup_grace must be a non-negative number")
+
     if "events" in config:
         if not isinstance(config["events"], list):
             errors.append("events must be a list")
@@ -587,6 +592,7 @@ def validate_config(config: dict[str, Any]) -> list[str]:
             valid_event_types = (
                 "link_down", "link_up", "fib_add", "fib_del", "fib_enable",
                 "bw_set", "compute_call",
+                "put", "get", "pubsub_pub", "pubsub_sub",
             )
             host_count = config.get("hosts")
             for idx, event in enumerate(config["events"]):
@@ -654,6 +660,25 @@ def validate_config(config: dict[str, Any]) -> list[str]:
                                     f"events[{idx}].protocol must be one of: "
                                     f"{', '.join(VALID_ROUTE_PROTOCOLS)}"
                                 )
+
+                    elif etype in ("put", "pubsub_pub"):
+                        for field in ("host", "uri", "file"):
+                            if field not in event:
+                                errors.append(f"events[{idx}] missing required field '{field}'")
+                        if "host" in event and not isinstance(event["host"], int):
+                            errors.append(f"events[{idx}].host must be an integer")
+                        if "uri" in event and not isinstance(event["uri"], str):
+                            errors.append(f"events[{idx}].uri must be a string")
+                        if "file" in event and not isinstance(event["file"], str):
+                            errors.append(f"events[{idx}].file must be a string")
+                    elif etype in ("get", "pubsub_sub"):
+                        for field in ("host", "uri"):
+                            if field not in event:
+                                errors.append(f"events[{idx}] missing required field '{field}'")
+                        if "host" in event and not isinstance(event["host"], int):
+                            errors.append(f"events[{idx}].host must be an integer")
+                        if "uri" in event and not isinstance(event["uri"], str):
+                            errors.append(f"events[{idx}].uri must be a string")
 
                     # host range check for fib/compute_call events
                     if "host" in event and isinstance(event["host"], int) and isinstance(host_count, int):
@@ -809,7 +834,7 @@ def validate_merged_args(args: Any) -> list[str]:
         "cache_default_rct_ms", "cefnetd_timeout", "publisher_host",
         "output_dir", "results_json", "script_log", "timestamp",
         "no_cli", "no_script_log", "host_degree_min", "host_degree_max",
-        "switch_use_all",
+        "switch_use_all", "pubsub_sub_startup_grace",
     )
     structured_keys = (
         "puts", "gets", "auto", "events", "monitoring", "routing",
@@ -886,6 +911,7 @@ def merge_cli_and_config(args: Any, config: dict[str, Any], parser=None) -> None
         "routing",
         "cefnetd_timeout",
         "addressing",
+        "pubsub_sub_startup_grace",
     )
 
     _NULL_MEANS_DEFAULT = {

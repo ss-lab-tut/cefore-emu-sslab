@@ -38,7 +38,9 @@ def _handle_compute_call(net, event, mesh_links, ctx):
         return
 
     exit_code, stdout = _do_compute_call(
-        net, host_idx, endpoint,
+        net,
+        host_idx,
+        endpoint,
         method=event.get("method", "GET"),
         payload=event.get("payload"),
         output_file=event.get("output_file"),
@@ -50,9 +52,28 @@ def _handle_compute_call(net, event, mesh_links, ctx):
         info(f"[scheduler] compute_call failed for h{host_idx}: exit={exit_code}\n")
 
 
+def _handle_content_op(op_type):
+    """Return a scheduler handler that delegates to the ContentOperationRunner."""
+
+    def _handler(net, ev, ml, ctx):
+        runner = ctx.get("content_runner")
+        if runner is None:
+            info(
+                f"[scheduler] no content_runner in context; ignoring {op_type} event\n"
+            )
+            return
+        runner.submit(op_type, ev)
+
+    return _handler
+
+
 _EVENT_HANDLERS = {
-    "link_down": lambda net, ev, ml, ctx: link_down(net, ml, ev["nodes"][0], ev["nodes"][1]),
-    "link_up": lambda net, ev, ml, ctx: link_up(net, ml, ev["nodes"][0], ev["nodes"][1]),
+    "link_down": lambda net, ev, ml, ctx: link_down(
+        net, ml, ev["nodes"][0], ev["nodes"][1]
+    ),
+    "link_up": lambda net, ev, ml, ctx: link_up(
+        net, ml, ev["nodes"][0], ev["nodes"][1]
+    ),
     "fib_add": lambda net, ev, _, ctx: _cefroute_add(
         net, ev["host"], ev["prefix"], ev.get("protocol"), ev["next_hop"]
     ),
@@ -66,6 +87,19 @@ _EVENT_HANDLERS = {
         net, ml, ev["nodes"][0], ev["nodes"][1], ev["bandwidth"]
     ),
     "compute_call": _handle_compute_call,
+    "put": _handle_content_op("put"),
+    "get": _handle_content_op("get"),
+    "pubsub_sub": _handle_content_op("pubsub_sub"),
+    "pubsub_pub": _handle_content_op("pubsub_pub"),
+}
+
+# Same-time priority: lower value fires first.
+# pubsub_sub must start before pubsub_pub; put before get.
+_EVENT_PRIORITY = {
+    "pubsub_sub": 0,
+    "put": 1,
+    "pubsub_pub": 2,
+    "get": 3,
 }
 
 
@@ -91,10 +125,10 @@ class EventScheduler:
         - count: number of repetitions (null = infinite)
     """
 
-    def __init__(self, net, events, mesh_links=None, run_dir=None):
+    def __init__(self, net, events, mesh_links=None, run_dir=None, content_runner=None):
         self.net = net
         self.mesh_links = mesh_links
-        self._context = {"run_dir": run_dir}
+        self._context = {"run_dir": run_dir, "content_runner": content_runner}
         self._stop_event = threading.Event()
         self._thread = None
 
@@ -106,8 +140,14 @@ class EventScheduler:
             self._push_event(event["at"], event)
 
     def _push_event(self, at_sec, event):
-        """Push event into the priority queue."""
-        heapq.heappush(self._heap, (at_sec, self._seq, event))
+        """Push event into the priority queue.
+
+        Heap entry is (at_sec, priority, seq, event).  Same-time events are
+        ordered by priority first (lower = sooner), then insertion order.
+        This guarantees pubsub_sub fires before pubsub_pub at equal timestamps.
+        """
+        priority = _EVENT_PRIORITY.get(event.get("type", ""), 5)
+        heapq.heappush(self._heap, (at_sec, priority, self._seq, event))
         self._seq += 1
 
     def _handle_repeat(self, event, scheduled_at):
@@ -153,7 +193,7 @@ class EventScheduler:
     def _run(self):
         self._start_time = time.time()
         while self._heap and not self._stop_event.is_set():
-            at_sec, _seq, event = self._heap[0]
+            at_sec, _priority, _seq, event = self._heap[0]
             elapsed = time.time() - self._start_time
             delay = at_sec - elapsed
             if delay > 0:
@@ -173,6 +213,11 @@ class EventScheduler:
                 handler(self.net, event, self.mesh_links, self._context)
             except Exception as exc:
                 info(f"[scheduler] error handling {event_type}: {exc}\n")
+            except BaseException as exc:
+                info(
+                    f"[scheduler] fatal error handling {event_type}: {exc}; stopping\n"
+                )
+                break
 
             self._handle_repeat(event, at_sec)
 
