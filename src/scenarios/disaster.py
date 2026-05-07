@@ -7,6 +7,7 @@ import subprocess
 import sys
 import threading
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
 from mininet.cli import CLI
@@ -484,7 +485,7 @@ class DisasterScenario(BaseScenario):
             output_dir = _artifact_path(
                 self.run_dir,
                 op.get("file"),
-                f"{phase}_recvdir_h{consumer}_idx{idx}",
+                f"{phase}_recvdir_h{consumer}_cycle{cycle_idx}_idx{idx}",
             )
             output_dir.mkdir(parents=True, exist_ok=True)
             down_hosts = self.flap_state.snapshot()
@@ -545,9 +546,15 @@ class DisasterScenario(BaseScenario):
     def _run_pubsub_put_ops(
         self, net, pubsub_puts, phase="eval", cycle_idx=0, sub_wait_by_uri=None
     ):
-        """Execute pubsub put operations (cefpubfile) and wait for each to finish."""
+        """Execute pubsub put operations (cefpubfile), parallelising across hosts.
+
+        Publishers on different hosts run concurrently so that all subscriber PIT
+        entries are still fresh when each publisher starts.  Publishers on the same
+        host run sequentially to avoid cefnetd contention.
+        """
         sub_wait_by_uri = sub_wait_by_uri or {}
-        for idx, op in enumerate(pubsub_puts):
+
+        def _run_one(idx, op):
             host = int(op["host"])
             uri = op["uri"]
             infile = op.get("file", "./sample-putfile")
@@ -592,7 +599,6 @@ class DisasterScenario(BaseScenario):
             info(
                 f"[pubsub] waiting for cefpubfile h{host} uri={uri} deadline={pub_deadline:.1f}s\n"
             )
-            pub_exit = None
             try:
                 pub_exit = proc.wait(timeout=pub_deadline)
                 info(f"[pubsub] cefpubfile h{host} uri={uri} exit_code={pub_exit}\n")
@@ -606,7 +612,27 @@ class DisasterScenario(BaseScenario):
                 except subprocess.TimeoutExpired:
                     proc.kill()
                     proc.wait()
-            time.sleep(1)
+
+        # Group ops by host; preserve insertion order within each group.
+        host_groups: dict[int, list] = {}
+        for idx, op in enumerate(pubsub_puts):
+            host_groups.setdefault(int(op["host"]), []).append((idx, op))
+
+        def _run_host_group(ops):
+            for idx, op in ops:
+                _run_one(idx, op)
+                time.sleep(1)
+
+        if len(host_groups) <= 1:
+            for ops in host_groups.values():
+                _run_host_group(ops)
+        else:
+            with ThreadPoolExecutor(max_workers=len(host_groups)) as exe:
+                futures = [
+                    exe.submit(_run_host_group, ops) for ops in host_groups.values()
+                ]
+                for f in as_completed(futures):
+                    f.result()
 
     def _wait_pubsub_get_ops(self, pending):
         """Wait for cefsubfile processes and record results."""

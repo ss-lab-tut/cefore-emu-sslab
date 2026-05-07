@@ -96,6 +96,8 @@ class Monitor:
                 target.get("hosts", default_hosts), self.host_count, self.cache_nodes
             )
             for host_idx in hosts:
+                if self._stop_event.is_set():
+                    return
                 try:
                     output = self._collect_target(target_type, host_idx, target)
                 except Exception as exc:
