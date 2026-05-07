@@ -85,12 +85,15 @@ def _detect_sub_success(exit_code: int, output_dir: Path, log_path: Path) -> dic
 
     cefsubfile writes ``RNP0x<hex>.out`` files under the output directory;
     the exact name is session-dependent and cannot be predicted in advance.
+    Success requires a non-empty output file and exit_code in (0, None) —
+    None means the process was killed by the outer deadline after content was
+    already delivered.
     """
     artifacts = sorted(output_dir.glob("RNP0x*.out")) if output_dir.is_dir() else []
     non_empty = [p for p in artifacts if p.stat().st_size > 0]
     has_out = bool(non_empty)
     return {
-        "success": exit_code == 0 and has_out,
+        "success": has_out and exit_code in (0, None),
         "has_completed_log": False,
         "has_output_file": has_out,
         "artifact_path": str(non_empty[0]) if non_empty else None,

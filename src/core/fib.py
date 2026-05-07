@@ -115,6 +115,9 @@ def compute_fib(mesh_links, k_paths, scheme=None):
 def compute_fib_for_uris(mesh_links, k_paths, uri_publishers, scheme=None):
     """Compute FIB routes for multiple URIs with their respective publishers.
 
+    Routes are bidirectional: non-publishers → publisher (for RI/TD) and
+    publisher → all others (for TI in Reflexive Forwarding).
+
     Args:
         mesh_links: List of link definitions.
         k_paths: Number of shortest paths per destination.
@@ -133,32 +136,48 @@ def compute_fib_for_uris(mesh_links, k_paths, uri_publishers, scheme=None):
         all_dist.append(distances)
 
     routes = []
+    seen = set()
+
+    def _add_routes(src, dest, uri_prefix):
+        candidates = []
+        for neighbor in graph[src]:
+            dist_to_dest = all_dist[neighbor].get(dest)
+            if dist_to_dest is None:
+                continue
+            cost = 1 + dist_to_dest
+            candidates.append((cost, neighbor))
+        if not candidates:
+            return
+        candidates.sort()
+        next_hops = [neighbor for _cost, neighbor in candidates[:k_paths]]
+        for next_hop in next_hops:
+            link_key = tuple(sorted((src, next_hop)))
+            subnet = link_subnets[link_key]
+            next_hop_ip = scheme.host_ip(subnet, next_hop)
+            key = (src, uri_prefix, next_hop_ip)
+            if key in seen:
+                continue
+            seen.add(key)
+            routes.append(Route(
+                source=src,
+                prefix=uri_prefix,
+                next_hop=next_hop,
+                next_hop_ip=next_hop_ip,
+            ))
+
     for uri_prefix, publisher in uri_publishers.items():
-        dest = publisher
+        # Pass 1: non-publisher → publisher (RI / TD routing)
         for src in range(host_num):
-            if src == dest:
+            if src == publisher:
                 continue
-            candidates = []
-            for neighbor in graph[src]:
-                dist_to_dest = all_dist[neighbor].get(dest)
-                if dist_to_dest is None:
-                    continue
-                cost = 1 + dist_to_dest
-                candidates.append((cost, neighbor))
-            if not candidates:
+            _add_routes(src, publisher, uri_prefix)
+
+        # Pass 2: publisher → all others (TI routing for Reflexive Forwarding)
+        for dest in range(host_num):
+            if dest == publisher:
                 continue
-            candidates.sort()
-            next_hops = [neighbor for _cost, neighbor in candidates[:k_paths]]
-            for next_hop in next_hops:
-                link_key = tuple(sorted((src, next_hop)))
-                subnet = link_subnets[link_key]
-                next_hop_ip = scheme.host_ip(subnet, next_hop)
-                routes.append(Route(
-                    source=src,
-                    prefix=uri_prefix,
-                    next_hop=next_hop,
-                    next_hop_ip=next_hop_ip,
-                ))
+            _add_routes(publisher, dest, uri_prefix)
+
     return routes
 
 
@@ -219,6 +238,30 @@ class EqualCostMultiPathStrategy(RoutingStrategy):
         host_num, graph, link_subnets = build_graph_and_subnets(mesh_links)
         all_dist = [dijkstra_all(graph, src)[0] for src in range(host_num)]
         routes = []
+        seen = set()
+
+        def _add_ecmp(src, dest, prefix):
+            candidates = []
+            for neighbor in graph[src]:
+                dist = all_dist[neighbor].get(dest)
+                if dist is not None:
+                    candidates.append((1 + dist, neighbor))
+            if not candidates:
+                return
+            candidates.sort()
+            min_cost = candidates[0][0]
+            for cost, neighbor in candidates:
+                if cost > min_cost:
+                    break
+                link_key = tuple(sorted((src, neighbor)))
+                subnet = link_subnets[link_key]
+                next_hop_ip = scheme.host_ip(subnet, neighbor)
+                key = (src, prefix, next_hop_ip)
+                if key in seen:
+                    continue
+                seen.add(key)
+                routes.append(Route(src, prefix, neighbor, next_hop_ip))
+
         if uri_publishers:
             destinations = list(uri_publishers.items())
         else:
@@ -229,24 +272,16 @@ class EqualCostMultiPathStrategy(RoutingStrategy):
             for src in range(host_num):
                 if src == dest:
                     continue
-                candidates = []
-                for neighbor in graph[src]:
-                    dist = all_dist[neighbor].get(dest)
-                    if dist is not None:
-                        candidates.append((1 + dist, neighbor))
-                if not candidates:
-                    continue
-                candidates.sort()
-                min_cost = candidates[0][0]
-                for cost, neighbor in candidates:
-                    if cost > min_cost:
-                        break
-                    key = tuple(sorted((src, neighbor)))
-                    subnet = link_subnets[key]
-                    routes.append(Route(
-                        src, prefix, neighbor,
-                        scheme.host_ip(subnet, neighbor),
-                    ))
+                _add_ecmp(src, dest, prefix)
+
+        # Pass 2: publisher → all others (TI routing for Reflexive Forwarding)
+        if uri_publishers:
+            for prefix, publisher in uri_publishers.items():
+                for dest in range(host_num):
+                    if dest == publisher:
+                        continue
+                    _add_ecmp(publisher, dest, prefix)
+
         return routes
 
 
