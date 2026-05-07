@@ -16,21 +16,21 @@ Use this skill to run the narrow pytest suite and the config-driven smoke checks
 3. Run the bundled helper from the active skill directory. For the repo-local copy:
 
 ```bash
-rtk ./.venv/bin/python3 .claude/skills/cefore-run-tests/scripts/run_cefore_checks.py --repo-root .
+./.venv/bin/python3 .claude/skills/cefore-run-tests/scripts/run_cefore_checks.py --repo-root .
 ```
 
 For the home-skill copy:
 
 ```bash
-rtk ./.venv/bin/python3 ~/.codex/skills/cefore-run-tests/scripts/run_cefore_checks.py --repo-root .
+./.venv/bin/python3 ~/.codex/skills/cefore-run-tests/scripts/run_cefore_checks.py --repo-root .
 ```
 
 4. Use focused modes when needed. Replace the script path with the copy you are using:
 
 ```bash
-rtk ./.venv/bin/python3 <skill-dir>/scripts/run_cefore_checks.py --repo-root . --skip-smoke
-rtk ./.venv/bin/python3 <skill-dir>/scripts/run_cefore_checks.py --repo-root . --skip-pytest
-rtk ./.venv/bin/python3 <skill-dir>/scripts/run_cefore_checks.py --repo-root . --configs min_pubsub min_mixed
+./.venv/bin/python3 <skill-dir>/scripts/run_cefore_checks.py --repo-root . --skip-smoke
+./.venv/bin/python3 <skill-dir>/scripts/run_cefore_checks.py --repo-root . --skip-pytest
+./.venv/bin/python3 <skill-dir>/scripts/run_cefore_checks.py --repo-root . --configs min_pubsub min_mixed
 ```
 
 ## What The Script Verifies
