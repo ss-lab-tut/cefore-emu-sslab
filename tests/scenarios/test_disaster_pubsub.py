@@ -1,13 +1,15 @@
 """Unit tests for pub/sub helpers in disaster scenario."""
 
-from pathlib import Path
 import subprocess
 import time
 from unittest.mock import MagicMock
 
-import pytest
 
-from src.runtime.result_detect import detect_sub_success as _detect_sub_success, wait_pubsub_process as _wait_pubsub_process
+from src.runtime.result_detect import (
+    clear_sub_output_artifacts as _clear_sub_output_artifacts,
+    detect_sub_success as _detect_sub_success,
+    wait_pubsub_process as _wait_pubsub_process,
+)
 from src.scenarios.disaster import (
     _resolve_pubsub_publish_deadline_seconds,
     _resolve_pubsub_wait_seconds,
@@ -17,6 +19,7 @@ from src.scenarios.disaster import (
 # ---------------------------------------------------------------------------
 # _detect_sub_success
 # ---------------------------------------------------------------------------
+
 
 class TestDetectSubSuccess:
     def test_empty_directory_is_failure(self, tmp_path):
@@ -79,8 +82,34 @@ class TestDetectSubSuccess:
 
 
 # ---------------------------------------------------------------------------
+# _clear_sub_output_artifacts
+# ---------------------------------------------------------------------------
+
+
+class TestClearSubOutputArtifacts:
+    def test_removes_only_rnp_out_files(self, tmp_path):
+        output_dir = tmp_path / "recvdir"
+        output_dir.mkdir()
+        stale = output_dir / "RNP0xabc.out"
+        stale.write_bytes(b"old")
+        keep_log = output_dir / "cefsubfile.log"
+        keep_log.write_text("log", encoding="utf-8")
+        keep_other = output_dir / "RNP0xabc.tmp"
+        keep_other.write_bytes(b"tmp")
+
+        removed = _clear_sub_output_artifacts(output_dir)
+
+        assert removed == 1
+        assert not stale.exists()
+        assert keep_log.exists()
+        assert keep_other.exists()
+        assert output_dir.exists()
+
+
+# ---------------------------------------------------------------------------
 # pub/sub timeout resolution
 # ---------------------------------------------------------------------------
+
 
 class TestPubsubTimingResolution:
     def test_explicit_sub_wait_takes_priority(self):

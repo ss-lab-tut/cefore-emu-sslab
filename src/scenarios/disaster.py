@@ -2,7 +2,6 @@
 
 import json
 import random
-import shlex
 import subprocess
 import sys
 import threading
@@ -32,6 +31,7 @@ from ..runtime.bridge import (
 )
 from ..runtime.content_ops import ContentOperationRunner
 from ..runtime.result_detect import (
+    clear_sub_output_artifacts,
     detect_get_success,
     detect_sub_success,
     timestamp_utc,
@@ -54,13 +54,12 @@ from ..runtime.cefore import (
 )
 from ..runtime.external_net import parse_int_list
 from ..runtime.failure_manager import FlexibleFailureManager, periodic_host_flap
-from ..runtime.net_config import apply_fib, apply_ip_addr
+from ..runtime.net_config import apply_fib, apply_fib_routes, apply_ip_addr
 from ..runtime.template import (
     apply_cache_node_settings,
     cleanup_node_dirs,
     ensure_node_dirs,
 )
-from ..runtime.debug import archive_node_dirs
 from ..runtime.topo import MeshTopo
 from ..runtime.viz import build_host_graph, print_mesh_links, render_topology_png
 
@@ -155,6 +154,7 @@ class DisasterScenario(BaseScenario):
         self.content_runner = None
         self.monitor = None
         self.generated_node_dirs = []
+        self._fib_routes = []
 
         priority_uris = getattr(args, "priority_uris", None)
         if isinstance(priority_uris, dict) and priority_uris:
@@ -321,7 +321,7 @@ class DisasterScenario(BaseScenario):
         routing_config = getattr(args, "routing", None) or {}
         routing_strategy = routing_config.get("strategy", "dijkstra")
         routing_k = routing_config.get("k", args.k)
-        apply_fib(
+        self._fib_routes = apply_fib(
             net,
             self.topo.mesh_links,
             routing_k,
@@ -488,6 +488,9 @@ class DisasterScenario(BaseScenario):
                 f"{phase}_recvdir_h{consumer}_cycle{cycle_idx}_idx{idx}",
             )
             output_dir.mkdir(parents=True, exist_ok=True)
+            removed = clear_sub_output_artifacts(output_dir)
+            if removed:
+                info(f"[pubsub] cleared {removed} stale artifacts from {output_dir}\n")
             down_hosts = self.flap_state.snapshot()
             if op.get("log"):
                 log_path = _artifact_path(
@@ -727,6 +730,17 @@ class DisasterScenario(BaseScenario):
                 )
         return ops_get
 
+    def _restore_fib_for_host(self, net, host_idx: int):
+        """Re-apply dynamic FIB routes for a host after it comes back up."""
+        if not self._fib_routes:
+            return
+        timeout = getattr(self.args, "cefnetd_timeout", None) or 10
+        if not wait_for_cefnetd(net, host_idx, timeout=timeout):
+            info(f"[failure] h{host_idx} cefnetd not ready; skipping FIB restore\n")
+            return
+        apply_fib_routes(net, self._fib_routes, source=host_idx)
+        info(f"[failure] restored dynamic FIB entries for h{host_idx}\n")
+
     def run_experiment(self, net):
         """Run the disaster experiment: puts, flapping, gets."""
         args = self.args
@@ -750,6 +764,7 @@ class DisasterScenario(BaseScenario):
                 host_count=args.hosts,
                 rng=self.rng,
                 publisher_ids=self.publisher_ids,
+                on_host_up=lambda host_idx: self._restore_fib_for_host(net, host_idx),
             )
             self.stop_event, self.stop_thread = failure_manager.start(
                 net, self.flap_state, quiet=use_cli
@@ -769,6 +784,7 @@ class DisasterScenario(BaseScenario):
                 args.down_count,
                 args.down_stagger,
                 quiet=use_cli,
+                on_host_up=lambda host_idx: self._restore_fib_for_host(net, host_idx),
             )
 
         # Start event scheduler (with content runner for put/get/pubsub events)

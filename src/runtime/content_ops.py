@@ -14,7 +14,13 @@ from .cefore import (
     run_cefputfile,
     start_cefsubfile,
 )
-from .result_detect import detect_get_success, detect_sub_success, timestamp_utc, wait_pubsub_process
+from .result_detect import (
+    clear_sub_output_artifacts,
+    detect_get_success,
+    detect_sub_success,
+    timestamp_utc,
+    wait_pubsub_process,
+)
 
 
 def _safe_uri_label(uri):
@@ -58,7 +64,9 @@ class ContentOperationRunner:
         self._pending_subs = {}  # uri -> list of pending sub dicts
         self._pending_subs_lock = threading.Lock()
         self._stop_event = threading.Event()
-        self._thread = threading.Thread(target=self._run, daemon=True, name="ContentOpRunner")
+        self._thread = threading.Thread(
+            target=self._run, daemon=True, name="ContentOpRunner"
+        )
 
     def start(self):
         """Start the background worker thread."""
@@ -135,7 +143,9 @@ class ContentOperationRunner:
         log_path = self._log_path("cefputfile", host, uri)
         info(f"[content_runner] put h{host} uri={uri}\n")
         run_cefputfile(
-            self._net, host, uri,
+            self._net,
+            host,
+            uri,
             file_path=infile,
             rate=event.get("rate"),
             block_size=event.get("block_size"),
@@ -159,7 +169,9 @@ class ContentOperationRunner:
         down_hosts = self._flap_state.snapshot()
         info(f"[content_runner] get h{host} uri={uri}\n")
         exit_code = run_cefgetfile(
-            self._net, host, uri,
+            self._net,
+            host,
+            uri,
             str(out_path),
             owner_only=event.get("owner_only", False),
             chunk=event.get("chunk"),
@@ -171,22 +183,26 @@ class ContentOperationRunner:
         )
         verdict = detect_get_success(log_path, out_path, exit_code)
         publisher_host = event.get("publisher_host") or self._uri_publishers.get(uri)
-        publisher_down = publisher_host in down_hosts if publisher_host is not None else False
-        self._result_callback({
-            "ts": timestamp_utc(),
-            "phase": "event",
-            "host": host,
-            "uri": uri,
-            "out_file": str(out_path),
-            "log_file": str(log_path),
-            "exit_code": exit_code,
-            "down_hosts": down_hosts,
-            "publisher_host": publisher_host,
-            "publisher_down": publisher_down,
-            "success": verdict["success"],
-            "has_completed_log": verdict["has_completed_log"],
-            "has_output_file": verdict["has_output_file"],
-        })
+        publisher_down = (
+            publisher_host in down_hosts if publisher_host is not None else False
+        )
+        self._result_callback(
+            {
+                "ts": timestamp_utc(),
+                "phase": "event",
+                "host": host,
+                "uri": uri,
+                "out_file": str(out_path),
+                "log_file": str(log_path),
+                "exit_code": exit_code,
+                "down_hosts": down_hosts,
+                "publisher_host": publisher_host,
+                "publisher_down": publisher_down,
+                "success": verdict["success"],
+                "has_completed_log": verdict["has_completed_log"],
+                "has_output_file": verdict["has_output_file"],
+            }
+        )
 
     # ------------------------------------------------------------------
     # pubsub_sub
@@ -200,11 +216,18 @@ class ContentOperationRunner:
         label = _safe_uri_label(uri)
         output_dir = self._run_dir / f"event_recvdir_h{host}_{label}"
         output_dir.mkdir(parents=True, exist_ok=True)
+        removed = clear_sub_output_artifacts(output_dir)
+        if removed:
+            info(
+                f"[content_runner] cleared {removed} stale pubsub artifacts from {output_dir}\n"
+            )
         log_path = self._log_path("cefsubfile", host, uri)
         down_hosts = self._flap_state.snapshot()
         started_at = time.monotonic()
         proc = start_cefsubfile(
-            self._net, host, uri,
+            self._net,
+            host,
+            uri,
             output_path=str(output_dir),
             pipeline=sub_opts.get("pipeline"),
             ri_valid_algo=sub_opts.get("ri_valid_algo"),
@@ -242,7 +265,9 @@ class ContentOperationRunner:
         log_path = self._log_path("cefpubfile", host, uri)
 
         if self._startup_grace > 0:
-            info(f"[content_runner] pubsub_pub grace {self._startup_grace:.1f}s h{host} uri={uri}\n")
+            info(
+                f"[content_runner] pubsub_pub grace {self._startup_grace:.1f}s h{host} uri={uri}\n"
+            )
             time.sleep(self._startup_grace)
 
         # Compute publisher deadline based on pending subscriber waits.
@@ -256,9 +281,13 @@ class ContentOperationRunner:
         lifetime_sec = float(pub_opts.get("lifetime", 3))
         pub_deadline = max(remaining_sub_wait, lifetime_sec) + 5.0
 
-        info(f"[content_runner] pubsub_pub h{host} uri={uri} deadline={pub_deadline:.1f}s\n")
+        info(
+            f"[content_runner] pubsub_pub h{host} uri={uri} deadline={pub_deadline:.1f}s\n"
+        )
         proc = run_cefpubfile(
-            self._net, host, uri,
+            self._net,
+            host,
+            uri,
             file_path=infile,
             rate=pub_opts.get("rate"),
             block_size=pub_opts.get("block_size"),
@@ -274,9 +303,13 @@ class ContentOperationRunner:
         )
         try:
             pub_exit = proc.wait(timeout=pub_deadline)
-            info(f"[content_runner] cefpubfile h{host} uri={uri} exit_code={pub_exit}\n")
+            info(
+                f"[content_runner] cefpubfile h{host} uri={uri} exit_code={pub_exit}\n"
+            )
         except subprocess.TimeoutExpired:
-            info(f"[WARN] content_runner: cefpubfile h{host} uri={uri} exceeded {pub_deadline:.1f}s; terminating\n")
+            info(
+                f"[WARN] content_runner: cefpubfile h{host} uri={uri} exceeded {pub_deadline:.1f}s; terminating\n"
+            )
             proc.terminate()
             try:
                 proc.wait(timeout=2)
@@ -286,7 +319,11 @@ class ContentOperationRunner:
 
         for item in sub_entries:
             exit_code = wait_pubsub_process(item["proc"], item["deadline"])
-            artifacts = sorted(item["output_dir"].glob("RNP0x*.out")) if item["output_dir"].is_dir() else []
+            artifacts = (
+                sorted(item["output_dir"].glob("RNP0x*.out"))
+                if item["output_dir"].is_dir()
+                else []
+            )
             non_empty = [p for p in artifacts if p.stat().st_size > 0]
             info(
                 f"[content_runner] cefsubfile h{int(item['op']['host'])} uri={uri} "
@@ -303,20 +340,23 @@ class ContentOperationRunner:
         out_file = verdict.get("artifact_path") or str(item["output_dir"])
         publisher_host = op.get("publisher_host") or self._uri_publishers.get(uri)
         down_hosts = item["down_hosts"]
-        publisher_down = publisher_host in down_hosts if publisher_host is not None else False
-        self._result_callback({
-            "ts": timestamp_utc(),
-            "phase": "event",
-            "host": host,
-            "uri": uri,
-            "out_file": out_file,
-            "log_file": str(item["log_path"]),
-            "exit_code": exit_code,
-            "down_hosts": down_hosts,
-            "publisher_host": publisher_host,
-            "publisher_down": publisher_down,
-            "success": verdict["success"],
-            "has_completed_log": verdict["has_completed_log"],
-            "has_output_file": verdict["has_output_file"],
-        })
-
+        publisher_down = (
+            publisher_host in down_hosts if publisher_host is not None else False
+        )
+        self._result_callback(
+            {
+                "ts": timestamp_utc(),
+                "phase": "event",
+                "host": host,
+                "uri": uri,
+                "out_file": out_file,
+                "log_file": str(item["log_path"]),
+                "exit_code": exit_code,
+                "down_hosts": down_hosts,
+                "publisher_host": publisher_host,
+                "publisher_down": publisher_down,
+                "success": verdict["success"],
+                "has_completed_log": verdict["has_completed_log"],
+                "has_output_file": verdict["has_output_file"],
+            }
+        )

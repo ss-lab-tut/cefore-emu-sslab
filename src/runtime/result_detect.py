@@ -25,6 +25,19 @@ def detect_get_success(log_path: Path, out_path: Path, exit_code: int) -> dict:
     }
 
 
+def clear_sub_output_artifacts(output_dir: Path) -> int:
+    """Remove stale cefsubfile output artifacts from an existing directory."""
+    if not output_dir.is_dir():
+        return 0
+    removed = 0
+    for artifact in output_dir.glob("RNP0x*.out"):
+        if not artifact.is_file():
+            continue
+        artifact.unlink()
+        removed += 1
+    return removed
+
+
 def detect_sub_success(exit_code, output_dir: Path, log_path: Path) -> dict:
     """Evaluate cefsubfile success using exit code and output directory.
 
