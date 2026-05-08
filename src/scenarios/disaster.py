@@ -137,6 +137,7 @@ class DisasterScenario(BaseScenario):
         )
         self.results = []
         self._results_lock = threading.Lock()
+        self._host_cmd_locks: dict[int, threading.Lock] = {}
         self.bridge_manager = BridgeManager()
         self.stop_event = None
         self.started_csmgrd_hosts = set()
@@ -173,6 +174,11 @@ class DisasterScenario(BaseScenario):
             sys.exit("autotest mode forbids ext/bridge configuration")
 
         self._prepare_ops()
+
+    def _host_lock(self, host_idx: int) -> threading.Lock:
+        if host_idx not in self._host_cmd_locks:
+            self._host_cmd_locks[host_idx] = threading.Lock()
+        return self._host_cmd_locks[host_idx]
 
     def _prepare_ops(self):
         """Prepare put/get operations from args and auto config."""
@@ -671,6 +677,22 @@ class DisasterScenario(BaseScenario):
                 down_hosts=item["down_hosts"],
             )
 
+    def _reset_pubsub_subscribers(self, net, pubsub_gets):
+        """Restart subscriber cefnetd processes to clear stale App FIB faces."""
+        for host_idx in sorted({int(op["host"]) for op in pubsub_gets}):
+            if host_idx in self.flap_state.snapshot():
+                info(f"[pubsub] skip reset for h{host_idx}; host is currently down\n")
+                continue
+            with self._host_lock(host_idx):
+                stop_cefnetd(net, host_idx)
+                start_cefnetd(net, host_idx)
+                if not wait_for_cefnetd(net, host_idx, timeout=10):
+                    raise RuntimeError(
+                        f"h{host_idx} cefnetd not ready after pubsub reset"
+                    )
+                if self._fib_routes:
+                    apply_fib_routes(net, self._fib_routes, source=host_idx)
+
     def _run_eval_cycle(
         self, net, normal_gets, pubsub_gets, pubsub_puts, phase, cycle_idx
     ):
@@ -680,6 +702,8 @@ class DisasterScenario(BaseScenario):
         results are collected.  Normal gets follow in sequence.
         """
         if pubsub_gets:
+            if cycle_idx > 0:
+                self._reset_pubsub_subscribers(net, pubsub_gets)
             pending, sub_wait_by_uri = self._start_pubsub_get_ops(
                 net, pubsub_gets, phase, cycle_idx, pubsub_puts
             )
@@ -735,11 +759,12 @@ class DisasterScenario(BaseScenario):
         if not self._fib_routes:
             return
         timeout = getattr(self.args, "cefnetd_timeout", None) or 10
-        if not wait_for_cefnetd(net, host_idx, timeout=timeout):
-            info(f"[failure] h{host_idx} cefnetd not ready; skipping FIB restore\n")
-            return
-        apply_fib_routes(net, self._fib_routes, source=host_idx)
-        info(f"[failure] restored dynamic FIB entries for h{host_idx}\n")
+        with self._host_lock(host_idx):
+            if not wait_for_cefnetd(net, host_idx, timeout=timeout):
+                info(f"[failure] h{host_idx} cefnetd not ready; skipping FIB restore\n")
+                return
+            apply_fib_routes(net, self._fib_routes, source=host_idx)
+            info(f"[failure] restored dynamic FIB entries for h{host_idx}\n")
 
     def run_experiment(self, net):
         """Run the disaster experiment: puts, flapping, gets."""

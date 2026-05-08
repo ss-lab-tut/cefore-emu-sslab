@@ -117,6 +117,8 @@ class Monitor:
             self._down_hosts_getter is not None
             and host_idx in self._down_hosts_getter()
         ):
+            if target_type == "csmgrstatus":
+                info(f"[monitor] h{host_idx} is down, skipping csmgrstatus\n")
             return "skipped: host down"
         if target_type == "cefstatus":
             node_name = f"h{host_idx}"
