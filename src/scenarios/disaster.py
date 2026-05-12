@@ -677,21 +677,57 @@ class DisasterScenario(BaseScenario):
                 down_hosts=item["down_hosts"],
             )
 
-    def _reset_pubsub_subscribers(self, net, pubsub_gets):
-        """Restart subscriber cefnetd processes to clear stale App FIB faces."""
-        for host_idx in sorted({int(op["host"]) for op in pubsub_gets}):
-            if host_idx in self.flap_state.snapshot():
-                info(f"[pubsub] skip reset for h{host_idx}; host is currently down\n")
-                continue
+    def _reset_pubsub_hosts(self, net, host_ids, reason="pubsub reset"):
+        """Restart cefnetd processes to clear stale pub/sub App FIB faces.
+
+        cefnetdstop -F kills all cefnetd processes globally, so all stops must
+        complete before any start to avoid killing freshly started daemons.
+        """
+        down = self.flap_state.snapshot()
+        active = [h for h in sorted(set(host_ids)) if h not in down]
+        for h in sorted(set(host_ids) - set(active)):
+            info(f"[pubsub] skip reset for h{h}; host is currently down\n")
+        if not active:
+            return
+        # Phase 1: stop all (cefnetdstop -F is global, one call suffices, but
+        # calling per-host preserves the lock discipline and is explicit).
+        for host_idx in active:
             with self._host_lock(host_idx):
                 stop_cefnetd(net, host_idx)
+        # Phase 2: start all
+        for host_idx in active:
+            with self._host_lock(host_idx):
                 start_cefnetd(net, host_idx)
+        # Phase 3: wait for all to be ready, then apply FIB
+        for host_idx in active:
+            with self._host_lock(host_idx):
                 if not wait_for_cefnetd(net, host_idx, timeout=10):
                     raise RuntimeError(
-                        f"h{host_idx} cefnetd not ready after pubsub reset"
+                        f"h{host_idx} cefnetd not ready after {reason}"
                     )
                 if self._fib_routes:
                     apply_fib_routes(net, self._fib_routes, source=host_idx)
+
+    def _pubsub_route_hosts(self, pubsub_gets, pubsub_puts):
+        """Return all host IDs involved in routing pub/sub URIs."""
+        pubsub_uris = {op["uri"] for op in pubsub_gets} | {
+            op["uri"] for op in pubsub_puts
+        }
+        hosts = {int(op["host"]) for op in pubsub_gets}
+        hosts |= {int(op["host"]) for op in pubsub_puts}
+        hosts |= {
+            route.source
+            for route in self._fib_routes
+            if route.prefix in pubsub_uris
+        }
+        return hosts
+
+    def _reset_pubsub_subscribers(self, net, pubsub_gets):
+        self._reset_pubsub_hosts(
+            net,
+            {int(op["host"]) for op in pubsub_gets},
+            reason="pubsub subscriber reset",
+        )
 
     def _run_eval_cycle(
         self, net, normal_gets, pubsub_gets, pubsub_puts, phase, cycle_idx
@@ -703,7 +739,9 @@ class DisasterScenario(BaseScenario):
         """
         if pubsub_gets:
             if cycle_idx > 0:
-                self._reset_pubsub_subscribers(net, pubsub_gets)
+                self._reset_pubsub_hosts(
+                    net, self._pubsub_route_hosts(pubsub_gets, pubsub_puts)
+                )
             pending, sub_wait_by_uri = self._start_pubsub_get_ops(
                 net, pubsub_gets, phase, cycle_idx, pubsub_puts
             )
