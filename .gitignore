@@ -16,6 +16,7 @@ link-audio.sh
 style.css
 
 logs/
+config/ex*.yaml
 
 # node-modules
 node_modules

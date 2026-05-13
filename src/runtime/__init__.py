@@ -31,7 +31,14 @@ from .links import (
     set_node_links_state,
 )
 from .failure_manager import FlexibleFailureManager, periodic_host_flap
-from .net_config import apply_fib, apply_fib_for_uris, apply_ip_addr, cefroute_del, cefroute_enable
+from .net_config import (
+    apply_fib,
+    apply_fib_for_uris,
+    apply_fib_routes,
+    apply_ip_addr,
+    cefroute_del,
+    cefroute_enable,
+)
 from .template import (
     cleanup_cefnetd_socket,
     cleanup_node_dirs,
@@ -40,7 +47,13 @@ from .template import (
     update_local_sock_id,
     update_node_name,
 )
-from .topo import LineTopo, MeshTopo, SimpleLinkTopo, max_possible_links, min_required_links
+from .topo import (
+    LineTopo,
+    MeshTopo,
+    SimpleLinkTopo,
+    max_possible_links,
+    min_required_links,
+)
 from .viz import (
     build_host_graph,
     build_tree,
@@ -96,6 +109,7 @@ __all__ = [
     # net_config
     "apply_ip_addr",
     "apply_fib",
+    "apply_fib_routes",
     "apply_fib_for_uris",
     "cefroute_del",
     "cefroute_enable",

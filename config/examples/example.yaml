@@ -180,7 +180,16 @@ auto:
 # -----------------------------------------------------------------------------
 # イベントスケジューラ (時限イベント)
 # -----------------------------------------------------------------------------
-# type: link_down, link_up, fib_add, fib_del, fib_enable, bw_set, compute_call
+# ネットワーク系イベント type: link_down, link_up, fib_add, fib_del, fib_enable,
+#                              bw_set, compute_call
+# コンテンツ操作イベント type: put, get, pubsub_pub, pubsub_sub
+#   put       : host, uri, file が必須。フラッピング中など任意のタイミングで put。
+#   get       : host, uri が必須。results.json に記録される。
+#   pubsub_sub: host, uri が必須。sub_opts (wait 等) で購読待機時間を指定。
+#   pubsub_pub: host, uri, file が必須。pub_opts (lifetime 等) を指定可能。
+#               同じ at 時刻に pubsub_sub と pubsub_pub を書いた場合、sub が先に起動される。
+#               起動後 pubsub_sub_startup_grace 秒待ってから pub が送信される。
+#
 # repeat: 繰り返し設定（全イベントタイプで使用可能）
 #   interval: 繰り返し間隔（秒）
 #   duration: restore イベントまでの時間（秒）
@@ -188,12 +197,14 @@ auto:
 #   restore_type: 復元イベントの type（例: link_up）
 #   count:    繰り返し回数（null で無限）
 events:
+  # 注意: nodes のペアはトポロジ上に存在するリンクでなければならない。
+  # topo_png の画像や起動ログの adjacency matrix で実際のリンクを確認すること。
   - at: 15                       # 開始から15秒後
     type: link_down              # リンクダウン
-    nodes: [1, 2]                # ノード1-2間
+    nodes: [0, 1]                # h0-h1 間 (seed=42 で s5 経由)
   - at: 25
     type: link_up
-    nodes: [1, 2]
+    nodes: [0, 1]
   - at: 30
     type: fib_del                # FIBエントリ削除
     host: 3
@@ -234,6 +245,44 @@ events:
       duration: 15
       restore_type: link_up      # 復旧イベントの type
       count: 3
+
+  # --- コンテンツ操作イベント (put / get) -----------------------------------
+  # put イベント: フラッピング中などネットワーク不安定な状況で任意タイミングにコンテンツを配信
+  # ・FIBは put/pubsub_pub イベントのhost/uriから自動設定される（putsトップレベルと同様）
+  - at: 35
+    type: put
+    host: 4                      # パブリッシャーホストID
+    uri: "ccnx:/test/event_data"
+    file: "./sample-putfile"
+    # rate: 10                   # 転送レート (Mbps) [オプション]
+    # expiry: 3000               # Content Objectライフタイム (秒) [オプション]
+    # cache_time: 3000           # キャッシュ削除期間 (秒) [オプション]
+
+  # get イベント: put より後の時刻を指定。結果は results.json に記録される（phase: "event"）
+  - at: 45
+    type: get
+    host: 0
+    uri: "ccnx:/test/event_data"
+    # pipeline: 4                # パイプライン数 [オプション]
+
+  # --- コンテンツ操作イベント (pubsub_sub / pubsub_pub) --------------------
+  # 同じ at 時刻でも pubsub_sub が先に起動される（優先度制御）。
+  # pubsub_sub 起動後 pubsub_sub_startup_grace 秒待機してから pubsub_pub が送信される。
+  - at: 55
+    type: pubsub_sub
+    host: 0
+    uri: "ccnx:/test/event_stream"
+    sub_opts:
+      wait: 20                   # cefsubfile 待機時間 (秒)
+
+  - at: 55
+    type: pubsub_pub
+    host: 4
+    uri: "ccnx:/test/event_stream"
+    file: "./sample-putfile"
+    pub_opts:
+      lifetime: 8                # Trigger Interest ライフタイム (秒)
+
 #   - at: 90
 #     type: compute_call           # 外部API呼び出し（bridges設定で到達性確保が必要）
 #     host: 3
@@ -276,6 +325,11 @@ no_cli: true           # true: インタラクティブCLIをスキップ (自�
 duration: 0            # 評価フェーズ時間 (秒, 0: シングルサイクル, no_cli時に使用)
 results_json: ""       # 結果JSONファイル名 (空文字で無効, 出力ディレクトリ内に配置)
 get_interval: 10       # cefgetfile実行間隔 (秒)
+
+# pubsub_sub_startup_grace: サブスクライバー起動後にパブリッシャーを送信するまでの待機時間 (秒)
+# cefsubfile 起動直後は cefnetd 内の Reflexive Interest 受付準備が整っていないため、
+# grace 秒待機することで startup race を回避する。
+pubsub_sub_startup_grace: 1.0
 
 publisher_host: 4                  # パブリッシャーホスト (publisher-downメトリクス用)
 

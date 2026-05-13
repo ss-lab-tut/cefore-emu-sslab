@@ -5,7 +5,7 @@ import shlex
 from mininet.log import info
 
 from ..core.addressing import AddressingScheme
-from ..core.fib import compute_fib, compute_fib_for_uris, get_routing_strategy
+from ..core.fib import get_routing_strategy
 from ..core.protocols import normalize_route_protocol
 
 
@@ -46,7 +46,27 @@ def apply_ip_addr(net, mesh_links, scheme=None):
             net.hosts[host_idx].cmd(command)
 
 
-def apply_fib(net, mesh_links, k_paths, strategy="dijkstra", uri_publishers=None, scheme=None):
+def apply_fib_routes(net, routes, source: int | None = None):
+    """Apply precomputed FIB route entries.
+
+    Args:
+        net: Mininet network instance.
+        routes: Iterable of Route objects.
+        source: Optional host index filter. When provided, only routes for that
+            source host are applied.
+    """
+    for route in routes:
+        if source is not None and route.source != source:
+            continue
+        node_name = f"h{route.source}"
+        command = f"cefroute add {shlex.quote(route.prefix)} udp {shlex.quote(route.next_hop_ip)} -d ./{node_name}"
+        print(node_name, "command:", command)
+        info(net.hosts[route.source].cmd(command))
+
+
+def apply_fib(
+    net, mesh_links, k_paths, strategy="dijkstra", uri_publishers=None, scheme=None
+):
     """Apply FIB entries using the specified routing strategy.
 
     Args:
@@ -59,11 +79,8 @@ def apply_fib(net, mesh_links, k_paths, strategy="dijkstra", uri_publishers=None
     """
     strat = get_routing_strategy(strategy)
     routes = strat.compute_routes(mesh_links, k_paths, uri_publishers, scheme=scheme)
-    for route in routes:
-        node_name = f"h{route.source}"
-        command = f"cefroute add {shlex.quote(route.prefix)} udp {shlex.quote(route.next_hop_ip)} -d ./{node_name}"
-        print(node_name, "command:", command)
-        info(net.hosts[route.source].cmd(command))
+    apply_fib_routes(net, routes)
+    return routes
 
 
 def cefroute_del(net, host_idx, prefix, protocol, next_hop, node_dir=None):

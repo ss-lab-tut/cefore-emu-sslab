@@ -15,6 +15,7 @@ no_cli: true
 duration: 25
 results_json: "results.json"
 publisher_host: 2
+pubsub_sub_startup_grace: 2.0
 
 puts:
   - host: 2

@@ -23,7 +23,12 @@ def kill_cef_processes(net) -> None:
     info("*** Killing remaining Cefore processes\n")
     for host in net.hosts:
         for pattern in _CEF_PATTERNS:
-            host.cmd(f'pkill -9 -f "{pattern}" || true')
+            try:
+                host.cmd(f'pkill -9 -f "{pattern}" || true')
+            except AssertionError:
+                info(
+                    f"[warn] kill_cef_processes: {host.name} shell busy, skipping {pattern}\n"
+                )
 
 
 def cleanup_all(net, generated_dirs) -> None:

@@ -54,6 +54,10 @@ class Monitor:
         output_csv: CSV output filename (relative to output_dir).
         csmgr_host_resolver: Optional callable [[int], str] that maps host_idx
             to the csmgrd listen IP.  Defaults to 127.0.0.1 when omitted.
+        down_hosts_getter: Optional callable [[], list[int]] returning the
+            current set of downed host indices. When provided, collection is
+            skipped for hosts that are currently down to avoid concurrent
+            Mininet shell access conflicts.
     """
 
     def __init__(
@@ -67,6 +71,7 @@ class Monitor:
         output_json=None,
         output_csv=None,
         csmgr_host_resolver: Callable[[int], str] | None = None,
+        down_hosts_getter: Callable[[], list] | None = None,
     ):
         self.net = net
         self.targets = targets
@@ -77,6 +82,7 @@ class Monitor:
         self.output_json = output_json
         self.output_csv = output_csv
         self._csmgr_host_resolver = csmgr_host_resolver
+        self._down_hosts_getter = down_hosts_getter
         self._stop_event = threading.Event()
         self._thread = None
         self._records = []
@@ -90,6 +96,8 @@ class Monitor:
                 target.get("hosts", default_hosts), self.host_count, self.cache_nodes
             )
             for host_idx in hosts:
+                if self._stop_event.is_set():
+                    return
                 try:
                     output = self._collect_target(target_type, host_idx, target)
                 except Exception as exc:
@@ -105,6 +113,13 @@ class Monitor:
 
     def _collect_target(self, target_type, host_idx, target):
         """Collect a single target output."""
+        if (
+            self._down_hosts_getter is not None
+            and host_idx in self._down_hosts_getter()
+        ):
+            if target_type == "csmgrstatus":
+                info(f"[monitor] h{host_idx} is down, skipping csmgrstatus\n")
+            return "skipped: host down"
         if target_type == "cefstatus":
             node_name = f"h{host_idx}"
             return self.net.hosts[host_idx].cmd(f"cefstatus -d ./{node_name}")

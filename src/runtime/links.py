@@ -1,7 +1,5 @@
 """Link state operations for mesh topologies."""
 
-import sys
-
 from mininet.log import info
 
 
@@ -21,7 +19,7 @@ def set_link_state(net, mesh_links, host_a, host_b, state):
     """Set link state between two hosts."""
     link = find_link(mesh_links, host_a, host_b)
     if link is None:
-        sys.exit(f"link not found between h{host_a} and h{host_b}")
+        raise RuntimeError(f"link not found between h{host_a} and h{host_b}")
     switch_name = link["switch"]
     host_a_name = f"h{host_a}"
     host_b_name = f"h{host_b}"
@@ -56,7 +54,7 @@ def pick_publish_link(mesh_links, publisher):
             continue
         if publisher in (link["host_a"], link["host_b"]):
             return link
-    sys.exit(f"publisher h{publisher} has no links")
+    raise RuntimeError(f"publisher h{publisher} has no links")
 
 
 def set_node_links_state(net, node_name, state):

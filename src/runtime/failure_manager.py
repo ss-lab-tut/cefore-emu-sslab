@@ -1,7 +1,7 @@
 """Failure scenario managers for disaster topology."""
 
 import threading
-from typing import Any
+from typing import Any, Callable
 
 from mininet.log import info
 
@@ -20,6 +20,7 @@ def periodic_host_flap(
     down_count: int,
     stagger: int,
     quiet: bool = False,
+    on_host_up: Callable[[int], None] | None = None,
 ):
     """Start periodic host flapping in background thread."""
     host_ids = [idx for idx in range(host_num) if idx not in exclude]
@@ -51,6 +52,13 @@ def periodic_host_flap(
                     info(f"\n[flap] up {host_name}\n")
                 try:
                     set_node_links_state(net, host_name, "up")
+                    if on_host_up is not None:
+                        try:
+                            on_host_up(host_idx)
+                        except Exception as exc:
+                            info(
+                                f"\n[flap] host-up callback failed for {host_name}: {exc}\n"
+                            )
                 except (AssertionError, OSError) as exc:
                     if not quiet:
                         info(f"\n[flap] failed to up {host_name}: {exc}\n")
@@ -107,6 +115,7 @@ class FlexibleFailureManager:
         host_count: int,
         rng,
         publisher_ids: set[int],
+        on_host_up: Callable[[int], None] | None = None,
     ):
         self.strategy = scenario_config.get("strategy", "simple")
         self.cycles = scenario_config.get("cycles", [])
@@ -114,6 +123,7 @@ class FlexibleFailureManager:
         self.host_count = host_count
         self.rng = rng
         self.publisher_ids = publisher_ids
+        self.on_host_up = on_host_up
 
     def start(self, net, state: FlapState, quiet: bool = False):
         if self.strategy == "simple":
@@ -131,7 +141,9 @@ class FlexibleFailureManager:
         interval = self.simple.get("interval") or 30
         duration = self.simple.get("duration") or 10
         count = self.simple.get("count") if self.simple.get("count") is not None else 2
-        stagger = self.simple.get("stagger") if self.simple.get("stagger") is not None else 0
+        stagger = (
+            self.simple.get("stagger") if self.simple.get("stagger") is not None else 0
+        )
         exclude_list = self.simple.get("exclude") or []
 
         if interval <= 0 or duration <= 0:
@@ -150,6 +162,7 @@ class FlexibleFailureManager:
             count,
             stagger,
             quiet=quiet,
+            on_host_up=self.on_host_up,
         )
         return stop_event, None
 
@@ -170,8 +183,16 @@ class FlexibleFailureManager:
 
                 interval = cycle_config.get("interval") or 30
                 duration = cycle_config.get("duration") or 10
-                count = cycle_config.get("count") if cycle_config.get("count") is not None else 2
-                stagger = cycle_config.get("stagger") if cycle_config.get("stagger") is not None else 0
+                count = (
+                    cycle_config.get("count")
+                    if cycle_config.get("count") is not None
+                    else 2
+                )
+                stagger = (
+                    cycle_config.get("stagger")
+                    if cycle_config.get("stagger") is not None
+                    else 0
+                )
                 exclude_list = cycle_config.get("exclude") or []
                 target_list = cycle_config.get("target")
                 allow_publishers = cycle_config.get("allow_publishers", False)
@@ -186,7 +207,9 @@ class FlexibleFailureManager:
                     exclude_set |= self.publisher_ids
 
                 if not quiet:
-                    info(f"[failure] cycle {cycle_idx}: waiting {interval}s before down\n")
+                    info(
+                        f"[failure] cycle {cycle_idx}: waiting {interval}s before down\n"
+                    )
                 if stop_event.wait(interval):
                     return
 
@@ -195,14 +218,16 @@ class FlexibleFailureManager:
 
                 if target_list is not None and self.strategy == "manual":
                     chosen = [
-                        host for host in target_list
+                        host
+                        for host in target_list
                         if host not in exclude_set and host not in down_snapshot
                     ]
                     if len(chosen) < len(target_list) and not quiet:
                         info(f"[failure] cycle {cycle_idx}: some targets excluded\n")
                 else:
                     available = [
-                        host for host in range(self.host_count)
+                        host
+                        for host in range(self.host_count)
                         if host not in exclude_set and host not in down_snapshot
                     ]
                     if not available:
@@ -257,6 +282,14 @@ class FlexibleFailureManager:
                             try:
                                 set_node_links_state(net, host_name, "up")
                                 restored_hosts.append(host_idx)
+                                if self.on_host_up is not None:
+                                    try:
+                                        self.on_host_up(host_idx)
+                                    except Exception as exc:
+                                        info(
+                                            f"[failure] cycle {cycle_num}: "
+                                            f"host-up callback failed for {host_name}: {exc}\n"
+                                        )
                             except (AssertionError, OSError) as exc:
                                 if not quiet:
                                     info(

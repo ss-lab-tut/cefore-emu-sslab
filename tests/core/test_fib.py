@@ -6,6 +6,8 @@ from src.core.fib import (
     build_graph_and_subnets,
     compute_fib,
     compute_fib_for_uris,
+    EqualCostMultiPathStrategy,
+    ShortestPathOnlyStrategy,
 )
 
 
@@ -110,8 +112,8 @@ def test_compute_fib_no_self_routes(sample_mesh_links):
 def test_compute_fib_for_uris_single(sample_mesh_links):
     uri_pubs = {"ccnx:/test/video": 2}
     routes = compute_fib_for_uris(sample_mesh_links, 1, uri_pubs)
-    # 2 sources (0 and 1) route to publisher 2
-    assert len(routes) == 2
+    # bidirectional: 2 non-publisher → publisher + 2 publisher → others
+    assert len(routes) == 4
     assert all(r.prefix == "ccnx:/test/video" for r in routes)
 
 
@@ -120,12 +122,51 @@ def test_compute_fib_for_uris_multi(sample_mesh_links):
     routes = compute_fib_for_uris(sample_mesh_links, 1, uri_pubs)
     a_routes = [r for r in routes if r.prefix == "ccnx:/a"]
     b_routes = [r for r in routes if r.prefix == "ccnx:/b"]
-    assert len(a_routes) == 2  # nodes 1, 2 -> publisher 0
-    assert len(b_routes) == 2  # nodes 0, 1 -> publisher 2
+    assert len(a_routes) == 4  # 2 toward pub 0 + 2 from pub 0
+    assert len(b_routes) == 4  # 2 toward pub 2 + 2 from pub 2
 
 
-def test_compute_fib_for_uris_publisher_excluded(sample_mesh_links):
+def test_compute_fib_for_uris_bidirectional(sample_mesh_links):
     uri_pubs = {"ccnx:/test/data": 1}
     routes = compute_fib_for_uris(sample_mesh_links, 1, uri_pubs)
     sources = {r.source for r in routes}
-    assert 1 not in sources  # publisher doesn't route to itself
+    # publisher (1) is also a source for TI routing (Reflexive Forwarding)
+    assert 1 in sources
+    # publisher routes only to other nodes, never to itself
+    for r in routes:
+        if r.source == 1:
+            assert r.next_hop != 1
+    # no duplicate (source, prefix, next_hop_ip) entries
+    keys = [(r.source, r.prefix, r.next_hop_ip) for r in routes]
+    assert len(keys) == len(set(keys))
+    # all routes use the same URI prefix
+    assert all(r.prefix == "ccnx:/test/data" for r in routes)
+
+
+def test_compute_fib_for_uris_no_duplicates_multi_publisher(sample_mesh_links):
+    # two publishers sharing all 3 nodes: no route should appear twice
+    uri_pubs = {"ccnx:/x": 0, "ccnx:/y": 1}
+    routes = compute_fib_for_uris(sample_mesh_links, 2, uri_pubs)
+    keys = [(r.source, r.prefix, r.next_hop_ip) for r in routes]
+    assert len(keys) == len(set(keys))
+
+
+def test_ecmp_strategy_bidirectional(sample_mesh_links):
+    strat = EqualCostMultiPathStrategy()
+    uri_pubs = {"ccnx:/test/stream": 2}
+    routes = strat.compute_routes(sample_mesh_links, 1, uri_publishers=uri_pubs)
+    sources = {r.source for r in routes}
+    # publisher (2) must appear as a source
+    assert 2 in sources
+    # no duplicate entries
+    keys = [(r.source, r.prefix, r.next_hop_ip) for r in routes]
+    assert len(keys) == len(set(keys))
+
+
+def test_shortest_path_strategy_bidirectional(sample_mesh_links):
+    strat = ShortestPathOnlyStrategy()
+    uri_pubs = {"ccnx:/test/stream": 0}
+    routes = strat.compute_routes(sample_mesh_links, 1, uri_publishers=uri_pubs)
+    sources = {r.source for r in routes}
+    # publisher (0) must appear as a source (k=1 forced)
+    assert 0 in sources

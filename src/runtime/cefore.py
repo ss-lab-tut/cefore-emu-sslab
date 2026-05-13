@@ -63,6 +63,29 @@ def wait_for_cefnetd(net, idx, timeout=10, interval=0.25):
     return False
 
 
+def wait_for_csmgrd(net, idx, timeout=10, interval=0.5):
+    """Wait for csmgrd to become ready.
+
+    Args:
+        net: Mininet network instance.
+        idx: Host index.
+        timeout: Maximum wait time in seconds.
+        interval: Check interval in seconds.
+
+    Returns:
+        True if ready, False if timeout.
+    """
+    node_name = f"h{idx}"
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        result = net.hosts[idx].cmd("sh -c 'csmgrstatus >/dev/null 2>&1; echo $?'")
+        if result.strip().endswith("0"):
+            return True
+        time.sleep(interval)
+    info(f"{node_name} csmgrd not ready; check {node_name}-csmgrd-log\n")
+    return False
+
+
 def start_csmgrd(net, idx, log_dir=None):
     """Start cache manager daemon for a host.
 
@@ -83,7 +106,7 @@ def start_csmgrd(net, idx, log_dir=None):
         command = f"csmgrdstart -d ./{node_name} > /dev/null 2>&1"
     print(node_name, "command:", command)
     info(net.hosts[idx].cmd(command))
-    time.sleep(1)
+    wait_for_csmgrd(net, idx)
 
 
 def stop_csmgrd(net, idx):

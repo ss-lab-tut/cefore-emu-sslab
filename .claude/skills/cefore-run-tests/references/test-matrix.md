@@ -63,7 +63,7 @@
 Run the bundled helper from the repository root:
 
 ```bash
-rtk ./.venv/bin/python3 <skill-dir>/scripts/run_cefore_checks.py --repo-root .
+./.venv/bin/python3 <skill-dir>/scripts/run_cefore_checks.py --repo-root .
 ```
 
 Add `--skip-smoke` for unit-only validation.

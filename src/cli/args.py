@@ -162,3 +162,8 @@ def add_disaster_args(parser):
         "--publisher-host", type=int, default=None,
         help="explicit publisher host used for publisher-down metric",
     )
+    parser.add_argument(
+        "--pubsub-sub-startup-grace", type=float, default=1.0,
+        dest="pubsub_sub_startup_grace",
+        help="seconds to wait after starting cefsubfile before launching cefpubfile (default: 1.0)",
+    )
