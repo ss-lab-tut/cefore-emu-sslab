@@ -72,6 +72,7 @@ class Monitor:
         output_csv=None,
         csmgr_host_resolver: Callable[[int], str] | None = None,
         down_hosts_getter: Callable[[], list] | None = None,
+        on_record: Callable[[dict], None] | None = None,
     ):
         self.net = net
         self.targets = targets
@@ -83,6 +84,7 @@ class Monitor:
         self.output_csv = output_csv
         self._csmgr_host_resolver = csmgr_host_resolver
         self._down_hosts_getter = down_hosts_getter
+        self._on_record = on_record
         self._stop_event = threading.Event()
         self._thread = None
         self._records = []
@@ -102,14 +104,18 @@ class Monitor:
                     output = self._collect_target(target_type, host_idx, target)
                 except Exception as exc:
                     output = f"error: {exc}"
-                self._records.append(
-                    {
-                        "elapsed_sec": round(elapsed, 1),
-                        "type": target_type,
-                        "host": host_idx,
-                        "output": output,
-                    }
-                )
+                record = {
+                    "elapsed_sec": round(elapsed, 1),
+                    "type": target_type,
+                    "host": host_idx,
+                    "output": output,
+                }
+                self._records.append(record)
+                if self._on_record is not None:
+                    try:
+                        self._on_record(record)
+                    except Exception as exc:
+                        info(f"[monitor] on_record callback failed: {exc}\n")
 
     def _collect_target(self, target_type, host_idx, target):
         """Collect a single target output."""

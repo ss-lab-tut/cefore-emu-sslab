@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CeforeEmu Dashboard</title>
+  <script src="/assets/vendor/chart.umd.min.js"></script>
+  <link rel="stylesheet" href="/assets/vendor/vis-network.min.css">
+  <script src="/assets/vendor/vis-network.min.js"></script>
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: monospace; background: #1a1a2e; color: #eee; margin: 0; padding: 8px; }
+    header { background: #16213e; padding: 10px 16px; margin-bottom: 8px; border-radius: 4px; display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+    header span { white-space: nowrap; }
+    #hdr-conn { margin-left: auto; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .panel { background: #16213e; border-radius: 4px; padding: 12px; }
+    .panel b { display: block; margin-bottom: 8px; color: #90e0ef; }
+    #host-grid { display: flex; flex-wrap: wrap; gap: 6px; }
+    .host-card { padding: 6px 10px; border-radius: 4px; min-width: 90px; text-align: center; cursor: default; }
+    .host-up   { background: #1b4332; border: 1px solid #40916c; }
+    .host-down { background: #6b1212; border: 1px solid #c62828; }
+    .badge { display: inline-block; font-size: 10px; border-radius: 3px; padding: 1px 4px; margin: 1px; }
+    .badge-ok  { background: #2d6a4f; color: #b7e4c7; }
+    .badge-err { background: #7b2d2d; color: #ffcdd2; }
+    .badge-na  { background: #444; color: #aaa; }
+    #topology-canvas { height: 340px; background: #0d0d1a; border-radius: 4px; }
+    #chart-area { height: 200px; }
+    table { width: 100%; border-collapse: collapse; font-size: 11px; }
+    th { padding: 4px 6px; border-bottom: 2px solid #333; text-align: left; color: #90e0ef; }
+    td { padding: 3px 6px; border-bottom: 1px solid #2a2a3e; }
+    tr:hover td { background: #1e1e3a; }
+    .ok   { color: #40916c; font-weight: bold; }
+    .fail { color: #ef5350; font-weight: bold; }
+    .na   { color: #888; }
+    .tag  { display: inline-block; font-size: 10px; border-radius: 3px; padding: 1px 5px; }
+    .tag-get { background: #1a3a5c; color: #90caf9; }
+    .tag-sub { background: #2d1a5c; color: #ce93d8; }
+    .tag-put { background: #1a3a1a; color: #a5d6a7; }
+    .tag-pub { background: #3a2a1a; color: #ffcc80; }
+    @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+
+<!-- ① ヘッダー -->
+<header>
+  <span><b style="color:#90e0ef">CeforeEmu</b> Dashboard</span>
+  <span>seed=<b id="hdr-seed">-</b></span>
+  <span>hosts=<b id="hdr-hosts">-</b></span>
+  <span>cache=[<span id="hdr-cache">-</span>]</span>
+  <span>down=[<span id="hdr-down" style="color:#ef9a9a">-</span>]</span>
+  <span>elapsed=<b id="hdr-elapsed">-</b>s</span>
+  <span id="hdr-conn" style="color:#40916c">● connecting...</span>
+</header>
+
+<!-- ② ホストグリッド -->
+<div class="panel" style="margin-bottom:8px">
+  <b>Hosts</b>
+  <div id="host-grid"><span class="na">waiting for data...</span></div>
+</div>
+
+<!-- ③④ トポロジー + 成功率チャート -->
+<div class="grid" style="margin-bottom:8px">
+  <div class="panel">
+    <b>Network Topology</b>
+    <div id="topology-canvas"></div>
+  </div>
+  <div class="panel">
+    <b>Success Rate (get/sub)</b>
+    <canvas id="chart-area"></canvas>
+  </div>
+</div>
+
+<!-- ⑤ 操作結果テーブル -->
+<div class="panel">
+  <b>Recent Operations <span class="na" style="font-weight:normal">(last 50)</span></b>
+  <table>
+    <thead>
+      <tr>
+        <th>Time</th>
+        <th>Type</th>
+        <th>Host</th>
+        <th>URI</th>
+        <th>Result</th>
+        <th>Down</th>
+      </tr>
+    </thead>
+    <tbody id="ops-tbody">
+      <tr><td colspan="6" class="na">waiting for operations...</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<script>
+// ===== vis-network 初期化 =====
+const hasVis = typeof window.vis !== "undefined";
+const visNodes = hasVis ? new vis.DataSet() : null;
+const visEdges = hasVis ? new vis.DataSet() : null;
+let network = null;
+
+(function initTopology() {
+  const container = document.getElementById("topology-canvas");
+  if (!hasVis) {
+    container.innerHTML = '<div class="na" style="padding:12px">topology renderer unavailable</div>';
+    return;
+  }
+  network = new vis.Network(
+    container,
+    { nodes: visNodes, edges: visEdges },
+    {
+      physics: {
+        enabled: true,
+        solver: "forceAtlas2Based",
+        forceAtlas2Based: { gravitationalConstant: -60, springLength: 80 },
+        stabilization: { iterations: 150 },
+      },
+      nodes: {
+        shape: "dot",
+        size: 16,
+        font: { color: "#eee", size: 13 },
+        borderWidth: 2,
+      },
+      edges: { color: { color: "#444", highlight: "#90e0ef" }, width: 1.5 },
+      interaction: { hover: true, tooltipDelay: 200 },
+    }
+  );
+})();
+
+// ===== Chart.js 初期化 =====
+let successChart = null;
+(function initChart() {
+  const canvas = document.getElementById("chart-area");
+  if (typeof window.Chart === "undefined") {
+    const fallback = document.createElement("div");
+    fallback.className = "na";
+    fallback.textContent = "chart renderer unavailable";
+    fallback.style.height = "200px";
+    fallback.style.padding = "12px";
+    canvas.replaceWith(fallback);
+    return;
+  }
+  const ctx = canvas.getContext("2d");
+  successChart = new Chart(ctx, {
+    type: "line",
+    data: {
+      labels: [],
+      datasets: [{
+        label: "Success Rate",
+        data: [],
+        borderColor: "#40916c",
+        backgroundColor: "rgba(64,145,108,0.12)",
+        tension: 0.3,
+        fill: true,
+        pointRadius: 2,
+        pointHoverRadius: 4,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: false,
+      scales: {
+        x: {
+          ticks: { color: "#888", maxTicksLimit: 8, font: { size: 10 } },
+          grid: { color: "#2a2a3e" },
+        },
+        y: {
+          min: 0, max: 1,
+          ticks: { color: "#888", font: { size: 10 } },
+          grid: { color: "#2a2a3e" },
+        }
+      },
+      plugins: {
+        legend: { labels: { color: "#aaa", font: { size: 11 } } },
+        tooltip: { callbacks: { label: c => ` ${(c.parsed.y * 100).toFixed(1)}%` } }
+      }
+    }
+  });
+})();
+
+// ===== トポロジー (一度だけロード) =====
+let topologyLoaded = false;
+function applyTopology(topo) {
+  if (!hasVis) return;
+  if (topologyLoaded || !topo || !topo.nodes || !topo.nodes.length) return;
+  visNodes.clear();
+  visEdges.clear();
+  visNodes.add(topo.nodes.map(n => ({
+    id:    n.id,
+    label: n.label,
+    color: { background: "#40916c", border: "#52b788" },
+    title: n.label,
+  })));
+  visEdges.add(topo.edges.map((e, i) => ({ id: i, from: e.from, to: e.to })));
+  topologyLoaded = true;
+}
+
+// ===== ノード色更新 =====
+function updateNodeColors(hosts) {
+  if (!hasVis || !topologyLoaded) return;
+  const updates = [];
+  for (const [idStr, h] of Object.entries(hosts)) {
+    const id = parseInt(idStr);
+    updates.push({
+      id,
+      color: {
+        background: h.up ? "#40916c" : "#c62828",
+        border:     h.up ? "#52b788" : "#ef5350",
+      },
+      title: `h${id} ${h.up ? "UP" : "DOWN"}\ncefnetd: ${h.cefnetd_ok ? "OK" : "ERROR"}\n` +
+             (h.is_cache ? `csmgrd: ${h.csmgrd_ok ? "OK" : "ERROR"}` : ""),
+    });
+  }
+  visNodes.update(updates);
+}
+
+// ===== ホストグリッド更新 =====
+function updateHostGrid(hosts) {
+  const grid = document.getElementById("host-grid");
+  const sortedIds = Object.keys(hosts).map(Number).sort((a, b) => a - b);
+  if (!sortedIds.length) return;
+  grid.innerHTML = sortedIds.map(id => {
+    const h = hosts[String(id)];
+    const upClass = h.up ? "host-up" : "host-down";
+    const cefBadge = `<span class="badge ${h.cefnetd_ok ? "badge-ok" : "badge-err"}">cefnetd</span>`;
+    const csmBadge = h.is_cache
+      ? `<span class="badge ${h.csmgrd_ok ? "badge-ok" : "badge-err"}">csmgrd</span>`
+      : `<span class="badge badge-na">-</span>`;
+    const statusText = h.up ? "" : `<div style="font-size:9px;color:#ef9a9a">DOWN</div>`;
+    const title = `cefstatus:\n${h.last_cefstatus || "(no data)"}`;
+    return `<div class="host-card ${upClass}" title="${title.replace(/"/g,"'")}">`
+      + `<div style="font-weight:bold">h${id}</div>`
+      + statusText
+      + cefBadge + csmBadge
+      + `</div>`;
+  }).join("");
+}
+
+// ===== 操作テーブル更新 =====
+const OP_TAG = {
+  get: '<span class="tag tag-get">get</span>',
+  sub: '<span class="tag tag-sub">sub</span>',
+  put: '<span class="tag tag-put">put</span>',
+  pub: '<span class="tag tag-pub">pub</span>',
+};
+function updateOpsTable(operations) {
+  const ops = operations.slice(-50).reverse();
+  const tbody = document.getElementById("ops-tbody");
+  if (!ops.length) return;
+  tbody.innerHTML = ops.map(op => {
+    const t   = op.ts ? new Date(op.ts).toLocaleTimeString() : "-";
+    const tag = OP_TAG[op.op_type] || op.op_type || "-";
+    const res = op.success === null
+      ? `<span class="na">launched</span>`
+      : op.success
+        ? `<span class="ok">OK</span>`
+        : `<span class="fail">FAIL(${op.exit_code ?? "?"})</span>`;
+    const down = (op.down_hosts || []).map(h => `h${h}`).join(",") || "-";
+    const uri  = (op.uri || "-").replace(/&/g,"&amp;").replace(/</g,"&lt;");
+    return `<tr>`
+      + `<td>${t}</td>`
+      + `<td>${tag}</td>`
+      + `<td>h${op.host}</td>`
+      + `<td style="max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${uri}">${uri}</td>`
+      + `<td>${res}</td>`
+      + `<td style="color:#aaa">${down}</td>`
+      + `</tr>`;
+  }).join("");
+}
+
+// ===== 成功率チャート更新 =====
+function updateChart(history) {
+  if (!successChart) return;
+  const pts = history.slice(-100);
+  successChart.data.labels             = pts.map(p => p.elapsed + "s");
+  successChart.data.datasets[0].data   = pts.map(p => p.rate);
+  successChart.update("none");
+}
+
+// ===== SSE 接続 =====
+function connect() {
+  const es = new EventSource("/events");
+  es.onopen = () => {
+    const el = document.getElementById("hdr-conn");
+    el.textContent = "● connected";
+    el.style.color  = "#40916c";
+  };
+  es.onerror = () => {
+    const el = document.getElementById("hdr-conn");
+    el.textContent = "● disconnected — retrying...";
+    el.style.color  = "#ef5350";
+    es.close();
+    setTimeout(connect, 5000);
+  };
+  es.onmessage = e => {
+    let data;
+    try { data = JSON.parse(e.data); } catch { return; }
+
+    const m = data.meta || {};
+    document.getElementById("hdr-seed").textContent    = m.seed ?? "-";
+    document.getElementById("hdr-hosts").textContent   = m.host_count ?? "-";
+    document.getElementById("hdr-cache").textContent   = (m.cache_nodes || []).map(h => `h${h}`).join(",") || "-";
+    document.getElementById("hdr-down").textContent    = (data.down_hosts || []).map(h => `h${h}`).join(",") || "none";
+    document.getElementById("hdr-elapsed").textContent = data.elapsed_sec ?? "-";
+
+    applyTopology(data.topology);
+    updateNodeColors(data.hosts || {});
+    updateHostGrid(data.hosts || {});
+    updateOpsTable(data.operations || []);
+    updateChart(data.success_history || []);
+  };
+}
+connect();
+</script>
+</body>
+</html>

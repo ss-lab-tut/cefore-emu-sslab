@@ -167,3 +167,11 @@ def add_disaster_args(parser):
         dest="pubsub_sub_startup_grace",
         help="seconds to wait after starting cefsubfile before launching cefpubfile (default: 1.0)",
     )
+    parser.add_argument(
+        "--webui-port",
+        type=int,
+        default=None,
+        metavar="PORT",
+        dest="webui_port",
+        help="start live dashboard on this port (disabled by default; recommended: 5080)",
+    )
