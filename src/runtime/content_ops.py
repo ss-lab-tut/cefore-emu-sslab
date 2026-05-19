@@ -188,6 +188,7 @@ class ContentOperationRunner:
         )
         self._result_callback(
             {
+                "op_type": "get",
                 "ts": timestamp_utc(),
                 "phase": "event",
                 "host": host,
@@ -301,12 +302,15 @@ class ContentOperationRunner:
             port_num=pub_opts.get("port_num"),
             log_name=str(log_path),
         )
+        pub_exit = None
+        timed_out = False
         try:
             pub_exit = proc.wait(timeout=pub_deadline)
             info(
                 f"[content_runner] cefpubfile h{host} uri={uri} exit_code={pub_exit}\n"
             )
         except subprocess.TimeoutExpired:
+            timed_out = True
             info(
                 f"[WARN] content_runner: cefpubfile h{host} uri={uri} exceeded {pub_deadline:.1f}s; terminating\n"
             )
@@ -316,6 +320,25 @@ class ContentOperationRunner:
             except subprocess.TimeoutExpired:
                 proc.kill()
                 proc.wait()
+            pub_exit = proc.returncode
+
+        # Record pub completion before waiting on subscribers
+        self._result_callback({
+            "op_type":           "pub",
+            "ts":                timestamp_utc(),
+            "phase":             "event",
+            "host":              host,
+            "uri":               uri,
+            "out_file":          str(log_path),
+            "log_file":          str(log_path),
+            "exit_code":         pub_exit,
+            "down_hosts":        self._flap_state.snapshot(),
+            "publisher_host":    host,
+            "publisher_down":    False,
+            "success":           pub_exit == 0 and not timed_out,
+            "has_completed_log": False,
+            "has_output_file":   False,
+        })
 
         for item in sub_entries:
             exit_code = wait_pubsub_process(item["proc"], item["deadline"])
@@ -345,6 +368,7 @@ class ContentOperationRunner:
         )
         self._result_callback(
             {
+                "op_type": "sub",
                 "ts": timestamp_utc(),
                 "phase": "event",
                 "host": host,

@@ -45,6 +45,7 @@ from ..runtime.cefore import (
     run_cefpubfile,
     run_cefputfile,
     run_cefstatus_all,
+    run_csmgrstatus,
     start_cefsubfile,
     start_cefnetd,
     start_csmgrd,
@@ -154,6 +155,8 @@ class DisasterScenario(BaseScenario):
         self.event_scheduler = None
         self.content_runner = None
         self.monitor = None
+        self.dashboard = None
+        self.webui = None
         self.generated_node_dirs = []
         self._fib_routes = []
 
@@ -339,6 +342,34 @@ class DisasterScenario(BaseScenario):
         run_cefstatus_all(net, args.hosts)
         print_mesh_links(self.topo.mesh_links)
 
+        webui_port = getattr(args, "webui_port", None)
+        if webui_port:
+            import time as _time
+            from ..webui.state import DashboardState
+            from ..webui.server import WebUIServer
+            self.dashboard = DashboardState(
+                host_count=args.hosts,
+                cache_nodes=self.cache_node_set,
+                seed=args.seed,
+                started_at=_time.time(),
+                flap_state_getter=self.flap_state.snapshot,
+            )
+            self.dashboard.set_topology(self.topo.mesh_links)
+            self.webui = WebUIServer(self.dashboard, port=webui_port)
+            self.webui.start()
+            info(f"[webui] dashboard: http://0.0.0.0:{webui_port}/\n")
+            # Pre-populate initial host state before Monitor starts polling
+            for idx in range(args.hosts):
+                output = net.hosts[idx].cmd(f"cefstatus -d ./h{idx}")
+                self.dashboard.record_monitor({
+                    "elapsed_sec": 0.0, "type": "cefstatus", "host": idx, "output": output,
+                })
+            for idx in sorted(self.cache_node_set):
+                output = run_csmgrstatus(net, idx, host="127.0.0.1")
+                self.dashboard.record_monitor({
+                    "elapsed_sec": 0.0, "type": "csmgrstatus", "host": idx, "output": output,
+                })
+
     def _run_put_ops(self, net, ops=None):
         """Execute normal (cefputfile) put operations."""
         for op in ops if ops is not None else self.ops_put:
@@ -364,6 +395,8 @@ class DisasterScenario(BaseScenario):
             if exit_code != 0:
                 info(f"[ERROR] cefputfile failed on h{host} (exit_code={exit_code})\n")
                 sys.exit(1)
+            if self.dashboard is not None:
+                self.dashboard.record_launch("put", host, uri)
             time.sleep(1)
 
     def _record_get_result(
@@ -376,7 +409,8 @@ class DisasterScenario(BaseScenario):
         """
         uri = op["uri"]
         consumer = int(op["host"])
-        if op.get("mode") == "pubsub":
+        is_pubsub = op.get("mode") == "pubsub"
+        if is_pubsub:
             verdict = detect_sub_success(exit_code, artifact_ref, log_path)
             out_file = verdict.get("artifact_path") or str(artifact_ref)
         else:
@@ -392,6 +426,7 @@ class DisasterScenario(BaseScenario):
         )
         self._append_result(
             {
+                "op_type": "sub" if is_pubsub else "get",
                 "ts": timestamp_utc(),
                 "phase": phase,
                 "host": consumer,
@@ -412,6 +447,8 @@ class DisasterScenario(BaseScenario):
         """Thread-safe append to results list."""
         with self._results_lock:
             self.results.append(record)
+        if self.dashboard is not None:
+            self.dashboard.record_operation(record)
 
     def _run_get_ops(self, net, ops, phase, per_get_interval, cycle_idx=0):
         """Execute normal (non-pubsub) get operations with flap state tracking."""
@@ -608,10 +645,13 @@ class DisasterScenario(BaseScenario):
             info(
                 f"[pubsub] waiting for cefpubfile h{host} uri={uri} deadline={pub_deadline:.1f}s\n"
             )
+            pub_exit = None
+            timed_out = False
             try:
                 pub_exit = proc.wait(timeout=pub_deadline)
                 info(f"[pubsub] cefpubfile h{host} uri={uri} exit_code={pub_exit}\n")
             except subprocess.TimeoutExpired:
+                timed_out = True
                 info(
                     f"[WARN] cefpubfile on h{host} (uri={uri}) exceeded {pub_deadline:.1f}s; terminating\n"
                 )
@@ -621,6 +661,18 @@ class DisasterScenario(BaseScenario):
                 except subprocess.TimeoutExpired:
                     proc.kill()
                     proc.wait()
+                pub_exit = proc.returncode
+            if self.dashboard is not None:
+                self.dashboard.record_operation({
+                    "op_type":    "pub",
+                    "ts":         timestamp_utc(),
+                    "phase":      phase,
+                    "host":       host,
+                    "uri":        uri,
+                    "exit_code":  pub_exit,
+                    "success":    pub_exit == 0 and not timed_out,
+                    "down_hosts": self.flap_state.snapshot(),
+                })
 
         # Group ops by host; preserve insertion order within each group.
         host_groups: dict[int, list] = {}
@@ -879,8 +931,16 @@ class DisasterScenario(BaseScenario):
             self.event_scheduler.start()
 
         # Start monitoring
-        monitoring_config = getattr(args, "monitoring", None) or {}
-        if monitoring_config and monitoring_config.get("targets"):
+        monitoring_config = dict(getattr(args, "monitoring", None) or {})
+        if self.dashboard is not None and not monitoring_config.get("targets"):
+            # --webui-port active but no monitoring targets → auto-start defaults
+            # Preserve any user-supplied interval/output_json/output_csv via setdefault
+            monitoring_config["targets"] = [
+                {"type": "cefstatus",   "hosts": "all"},
+                {"type": "csmgrstatus", "hosts": "cache"},
+            ]
+            monitoring_config.setdefault("interval", 5)
+        if monitoring_config.get("targets"):
             self.monitor = Monitor(
                 net,
                 targets=monitoring_config["targets"],
@@ -891,6 +951,7 @@ class DisasterScenario(BaseScenario):
                 output_json=monitoring_config.get("output_json"),
                 output_csv=monitoring_config.get("output_csv"),
                 down_hosts_getter=self.flap_state.snapshot,
+                on_record=self.dashboard.record_monitor if self.dashboard else None,
             )
             self.monitor.start()
 
@@ -940,6 +1001,8 @@ class DisasterScenario(BaseScenario):
         finally:
             if self.monitor is not None:
                 self.monitor.stop()
+            if self.webui is not None:
+                self.webui.stop()
             if self.event_scheduler is not None:
                 self.event_scheduler.stop()
             if self.content_runner is not None:
