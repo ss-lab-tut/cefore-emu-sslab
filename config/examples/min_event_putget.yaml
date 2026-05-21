@@ -14,7 +14,6 @@ duration: 40
 results_json: "results.json"
 
 # events: セクションで時刻を指定して put/get を実行
-# (トップレベルの puts/gets と併用可能。hosts フラップ中でも動作)
 events:
   - {at: 5,  type: put,  host: 2, uri: "ccnx:/test/event_sample", file: "./sample-putfile"}
   - {at: 15, type: get,  host: 0, uri: "ccnx:/test/event_sample"}

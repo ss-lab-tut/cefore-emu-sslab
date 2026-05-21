@@ -1,6 +1,6 @@
 ---
 name: cefore-run-tests
-description: Run the CeforeEmu regression checks that cover runtime wrapper logging behavior and disaster pub/sub success detection, plus minimal end-to-end `src disaster --config ... --no-cli` smoke runs with `config/examples/min_putget.yaml`, `min_pubsub.yaml`, `min_pubsub_verify.yaml`, `min_empty.yaml`, and `min_mixed.yaml`. Use when Codex needs to validate recent code changes, reproduce a failing test, or sanity-check this repository before or after edits.
+description: Run the CeforeEmu regression checks that cover runtime wrapper logging behavior and disaster pub/sub success detection, plus minimal end-to-end `src disaster --config ... --no-cli` smoke runs with `config/examples/min_putget.yaml`, `min_pubsub.yaml`, `min_pubsub_verify.yaml`, `min_empty.yaml`, `min_mixed.yaml`, `min_event_putget.yaml`, and `min_event_pubsub.yaml`. Use when Codex needs to validate recent code changes, reproduce a failing test, or sanity-check this repository before or after edits.
 ---
 
 # Cefore Run Tests
@@ -42,6 +42,8 @@ For the home-skill copy:
 - `config/examples/min_pubsub_verify.yaml`
 - `config/examples/min_empty.yaml`
 - `config/examples/min_mixed.yaml`
+- `config/examples/min_event_putget.yaml`
+- `config/examples/min_event_pubsub.yaml`
 
 The smoke phase validates `results.json` contents after each run instead of only trusting exit codes. Expected result shapes are summarized in `references/test-matrix.md`.
 

@@ -58,6 +58,26 @@
   - every `op_type == "sub"` row has `has_output_file == true`
   - every `op_type == "sub"` row keeps `has_completed_log == false`
 
+### `min_event_putget`
+
+- File: `config/examples/min_event_putget.yaml`
+- イベント指定 put/get の最小サンプル: events セクションで時刻を指定して put (at=5) / get (at=15) を実行
+- Expected `results.json`: one or more entries (put + get rows)
+- Required checks:
+  - every row has `success == true`
+  - every `op_type == "get"` row has `has_completed_log == true`
+  - every `op_type == "get"` row has `has_output_file == true`
+
+### `min_event_pubsub`
+
+- File: `config/examples/min_event_pubsub.yaml`
+- イベント指定 pub/sub の最小サンプル: events セクションで時刻を指定して pubsub_sub / pubsub_pub (at=10) を実行
+- Expected `results.json`: one or more entries (pub + sub rows)
+- Required checks:
+  - every row has `success == true`
+  - every `op_type == "sub"` row has `has_output_file == true`
+  - every `op_type == "sub"` `out_file` points at a discovered `RNP0x*.out` artifact
+
 ## Helper Script
 
 Run the bundled helper from the repository root:
