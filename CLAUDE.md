@@ -250,6 +250,21 @@ The disaster topology (`src/scenarios/disaster.py`) adds:
 --ext host,ifname[,ip][,mtu]   # Attach external interface to host
 ```
 
+**Addressing for External Connectivity:**
+When connecting to external physical Cefore devices via `ext`/`bridges`, the default `192.168.0.0/16` conflicts with common LAN addressing. In Class C Ethernet environments, packets may be dropped (no route on external device) or misrouted to wrong hosts sharing the same subnet.
+
+Use `addressing.network_cidr` to select a non-conflicting /16:
+
+| Address Range | Recommendation | Rationale |
+|---------------|----------------|-----------|
+| `100.64.0.0/16` | Primary | RFC 6598 CGNAT space — virtually never used on LANs |
+| `172.20.0.0/16` | Fallback | RFC 1918 Class B — less common than 192.168.x.x but used in some enterprise LANs |
+
+External devices must also add a static route to the Mininet internal range:
+```bash
+ip route add 100.64.0.0/16 via <bridge_root_ns_ip>
+```
+
 **Root Namespace Bridging (runtime/bridge.py - BridgeManager):**
 Connects Mininet switches to the root namespace for cross-VM communication. BridgeManager handles veth pairs, IP routes, forwarding, NAT, and cleanup.
 
@@ -439,10 +454,12 @@ Edit `config/templates/h1/csmgrd.conf` template (applies to all router nodes).
 
 **Package management:**
 The project uses `pyproject.toml` with uv for dependency management.
+System `python3` does not have project dependencies (yaml, networkx, etc.). Always use `.venv/bin/python3` or `uv run python3` to run scripts and one-off commands.
 
 ```bash
-uv sync              # Install dependencies
-uv run python3 ...   # Run with managed environment
+uv sync                    # Install dependencies
+uv run python3 ...         # Run with managed environment
+.venv/bin/python3 ...      # Direct venv invocation (equivalent)
 ```
 
 **CLI entry points** (`pyproject.toml [project.scripts]`):

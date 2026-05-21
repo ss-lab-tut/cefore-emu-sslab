@@ -314,6 +314,32 @@ cefore-emu/
 
 For topologies with >3 hosts, additional host directories are generated dynamically from templates and cleaned up after script completion.
 
+## Addressing for External Connectivity
+
+When connecting Mininet hosts to external physical Cefore devices via `--ext` or `bridges`, the default internal address space `192.168.0.0/16` is likely to conflict with the physical LAN. If the external device has no explicit route to the Mininet range, packets are silently dropped. In Class C Ethernet environments where other devices also use `192.168.x.x`, responses may be misrouted to the wrong host.
+
+Change the internal address range via `addressing.network_cidr` in your config file:
+
+| Address Range | Recommendation | Rationale |
+|---------------|----------------|-----------|
+| `100.64.0.0/16` | Primary | RFC 6598 Shared Address Space (CGNAT) — virtually never used on LANs, lowest collision risk |
+| `172.20.0.0/16` | Fallback | RFC 1918 Class B private — less common than 192.168.x.x, but used in some enterprise LANs |
+
+> **Note:** `network_cidr` accepts only `/16`. Specify `100.64.0.0/16`, not the full CGNAT block `100.64.0.0/10`.
+
+```yaml
+addressing:
+  network_cidr: "100.64.0.0/16"
+```
+
+The external device must also have a static route pointing the Mininet range at the bridge gateway:
+
+```bash
+ip route add 100.64.0.0/16 via <bridge_root_ns_ip>
+```
+
+See `config/examples/example.yaml` for full details.
+
 ## Security Notes
 
 - `config/templates/h*/default-private-key` files contain sensitive cryptographic material
