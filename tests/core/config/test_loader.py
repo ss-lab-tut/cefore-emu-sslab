@@ -1,12 +1,15 @@
 """Tests for src.core.config.loader."""
-
-import json
 from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
 
-from src.core.config.loader import load_config, merge_cli_and_config, validate_config
+from src.core.config.loader import (
+    load_config,
+    merge_cli_and_config,
+    validate_config,
+    warn_ignored_legacy_content_keys,
+)
 
 
 # ── load_config ──
@@ -74,53 +77,34 @@ def test_validate_switches_below_min():
     assert any("switches" in e for e in errors)
 
 
-def test_validate_puts_missing_host():
-    errors = validate_config({"puts": [{"uri": "ccnx:/test"}]})
-    assert any("puts[0]" in e and "host" in e for e in errors)
+def test_legacy_content_keys_are_not_validated():
+    errors = validate_config(
+        {
+            "puts": "not-a-list",
+            "gets": [{"host": "bad", "sub_opts": "bad"}],
+            "auto": {"consumers": object()},
+        }
+    )
+    assert not any("puts" in e or "gets" in e or "auto" in e for e in errors)
 
 
-def test_validate_puts_missing_uri():
-    errors = validate_config({"puts": [{"host": 0}]})
-    assert any("puts[0]" in e and "uri" in e for e in errors)
+def test_warn_ignored_legacy_content_keys(capsys):
+    warned = warn_ignored_legacy_content_keys(
+        {"puts": "bad", "gets": [], "auto": {"bad": object()}}
+    )
+    captured = capsys.readouterr()
+    assert warned is True
+    assert "auto" in captured.err
+    assert "gets" in captured.err
+    assert "puts" in captured.err
+    assert "Use events" in captured.err
 
 
-def test_validate_puts_invalid_rate():
-    errors = validate_config({"puts": [{"host": 0, "uri": "x", "rate": "fast"}]})
-    assert any("rate" in e for e in errors)
-
-
-def test_validate_puts_pubsub_pub_opts():
-    errors = validate_config({
-        "puts": [{"host": 0, "uri": "x", "mode": "pubsub", "pub_opts": {"unknown_key": 1}}]
-    })
-    assert any("unknown keys" in e for e in errors)
-
-
-def test_validate_gets_missing_uri():
-    errors = validate_config({"gets": [{"host": 0}]})
-    assert any("gets[0]" in e and "uri" in e for e in errors)
-
-
-def test_validate_gets_invalid_owner_only():
-    errors = validate_config({"gets": [{"host": 0, "uri": "x", "owner_only": "yes"}]})
-    assert any("owner_only" in e for e in errors)
-
-
-def test_validate_gets_pubsub_sub_opts():
-    errors = validate_config({
-        "gets": [{"host": 0, "uri": "x", "mode": "pubsub", "sub_opts": {"bad_key": 1}}]
-    })
-    assert any("unknown keys" in e for e in errors)
-
-
-def test_validate_auto_dict():
-    errors = validate_config({"auto": {"publishers": [9]}})
-    assert errors == []
-
-
-def test_validate_auto_invalid_type():
-    errors = validate_config({"auto": "invalid"})
-    assert any("auto" in e for e in errors)
+def test_warn_ignored_legacy_content_keys_noop(capsys):
+    warned = warn_ignored_legacy_content_keys({"events": []})
+    captured = capsys.readouterr()
+    assert warned is False
+    assert captured.err == ""
 
 
 def test_validate_events_invalid_type():
@@ -157,14 +141,6 @@ def test_validate_failure_scenarios_simple():
 def test_validate_failure_scenarios_cyclic_no_cycles():
     errors = validate_config({"failure_scenarios": {"strategy": "cyclic"}})
     assert any("cycles" in e for e in errors)
-
-
-def test_validate_priority_uris():
-    errors = validate_config({
-        "priority_uris": {"high": {"patterns": [], "mode": "invalid"}}
-    })
-    assert any("patterns" in e and "empty" in e for e in errors)
-    assert any("mode" in e for e in errors)
 
 
 def test_validate_monitoring():
@@ -226,16 +202,6 @@ def test_validate_results_json_non_string():
 def test_validate_cache_default_rct_ms_too_low():
     errors = validate_config({"cache_default_rct_ms": 500})
     assert any("cache_default_rct_ms" in e for e in errors)
-
-
-def test_validate_puts_valid_algo_non_string():
-    errors = validate_config({"puts": [{"host": 0, "uri": "x", "valid_algo": 123}]})
-    assert any("valid_algo" in e for e in errors)
-
-
-def test_validate_gets_chunk_non_integer():
-    errors = validate_config({"gets": [{"host": 0, "uri": "x", "chunk": "all"}]})
-    assert any("chunk" in e for e in errors)
 
 
 def test_validate_events_valid():
@@ -301,19 +267,6 @@ def test_validate_bridges_valid():
     assert errors == []
 
 
-def test_validate_priority_uris_valid():
-    errors = validate_config({
-        "priority_uris": {
-            "high": {
-                "patterns": ["ccnx:/test/*"],
-                "mode": "putget",
-                "expiry": 5000,
-            }
-        }
-    })
-    assert errors == []
-
-
 def test_validate_example_json():
     example = Path("config/examples/example.json")
     if example.exists():
@@ -328,7 +281,7 @@ def test_validate_example_json():
 def _make_args(**kwargs):
     defaults = {
         "hosts": None, "switches": None, "seed": None, "k": None,
-        "puts": "", "gets": "", "bw": "", "ext": "",
+        "bw": "", "ext": "",
     }
     defaults.update(kwargs)
     return SimpleNamespace(**defaults)
@@ -348,20 +301,6 @@ def test_merge_cli_precedence():
     assert args.hosts == 10
 
 
-def test_merge_json_string_puts():
-    args = _make_args(puts='[{"host": 0, "uri": "x"}]')
-    merge_cli_and_config(args, {})
-    assert isinstance(args.puts, list)
-    assert args.puts[0]["host"] == 0
-
-
-def test_merge_empty_puts_gets():
-    args = _make_args()
-    merge_cli_and_config(args, {})
-    assert args.puts == []
-    assert args.gets == []
-
-
 def test_merge_cli_precedence_with_parser():
     """When parser is provided, CLI values override config values."""
     import argparse
@@ -371,8 +310,6 @@ def test_merge_cli_precedence_with_parser():
     parser.add_argument("--seed", type=int, default=None)
     parser.add_argument("--switches", type=int, default=None)
     parser.add_argument("--k", type=int, default=None)
-    parser.add_argument("--puts", default="")
-    parser.add_argument("--gets", default="")
     parser.add_argument("--bw", default="")
     parser.add_argument("--ext", default="")
 
@@ -390,8 +327,6 @@ def test_merge_null_means_default():
     parser = argparse.ArgumentParser()
     parser.add_argument("--seed", type=int, default=None)
     parser.add_argument("--results_json", default=None)
-    parser.add_argument("--puts", default="")
-    parser.add_argument("--gets", default="")
     parser.add_argument("--bw", default="")
     parser.add_argument("--ext", default="")
 
@@ -482,149 +417,6 @@ def test_validate_cache_default_rct_ms_non_integer():
 def test_validate_publisher_host_non_integer():
     errors = validate_config({"publisher_host": "h0"})
     assert any("publisher_host" in e for e in errors)
-
-
-def test_validate_puts_port_num_non_integer():
-    errors = validate_config({"puts": [{"host": 0, "uri": "x", "port_num": "80"}]})
-    assert any("port_num" in e for e in errors)
-
-
-def test_validate_puts_non_list():
-    errors = validate_config({"puts": "not_a_list"})
-    assert any("puts" in e for e in errors)
-
-
-def test_validate_puts_non_dict_entry():
-    errors = validate_config({"puts": ["not_a_dict"]})
-    assert any("puts[0]" in e for e in errors)
-
-
-def test_validate_gets_non_list():
-    errors = validate_config({"gets": "not_a_list"})
-    assert any("gets" in e for e in errors)
-
-
-def test_validate_gets_non_dict_entry():
-    errors = validate_config({"gets": ["not_a_dict"]})
-    assert any("gets[0]" in e for e in errors)
-
-
-def test_validate_gets_pipeline_non_integer():
-    errors = validate_config({"gets": [{"host": 0, "uri": "x", "pipeline": "fast"}]})
-    assert any("pipeline" in e for e in errors)
-
-
-def test_validate_gets_sg_non_integer():
-    errors = validate_config({"gets": [{"host": 0, "uri": "x", "sg": "1"}]})
-    assert any("sg" in e for e in errors)
-
-
-def test_validate_gets_port_num_non_integer():
-    errors = validate_config({"gets": [{"host": 0, "uri": "x", "port_num": "80"}]})
-    assert any("port_num" in e for e in errors)
-
-
-def test_validate_puts_pubsub_pub_opts_non_dict():
-    errors = validate_config({
-        "puts": [{"host": 0, "uri": "x", "mode": "pubsub", "pub_opts": "bad"}]
-    })
-    assert any("pub_opts" in e and "dict" in e for e in errors)
-
-
-def test_validate_puts_pubsub_pub_opts_lifetime_non_number():
-    errors = validate_config({
-        "puts": [{"host": 0, "uri": "x", "mode": "pubsub", "pub_opts": {"lifetime": "long"}}]
-    })
-    assert any("lifetime" in e for e in errors)
-
-
-def test_validate_puts_pubsub_pub_opts_lifetime_out_of_range():
-    errors = validate_config({
-        "puts": [{"host": 0, "uri": "x", "mode": "pubsub", "pub_opts": {"lifetime": 65}}]
-    })
-    assert any("between 0 and 64 seconds" in e for e in errors)
-
-
-def test_validate_puts_pubsub_pub_opts_lifetime_accepts_seconds():
-    errors = validate_config({
-        "puts": [{"host": 0, "uri": "x", "mode": "pubsub", "pub_opts": {"lifetime": 8}}]
-    })
-    assert errors == []
-
-
-def test_validate_puts_pubsub_pub_opts_invalid_target():
-    errors = validate_config({
-        "puts": [{"host": 0, "uri": "x", "mode": "pubsub", "pub_opts": {"target": "invalid"}}]
-    })
-    assert any("target" in e for e in errors)
-
-
-def test_validate_puts_pubsub_pub_opts_invalid_valid_algo():
-    errors = validate_config({
-        "puts": [{
-            "host": 0, "uri": "x", "mode": "pubsub",
-            "pub_opts": {"ti_valid_algo": "md5", "rd_valid_algo": "sha1"}
-        }]
-    })
-    assert any("ti_valid_algo" in e for e in errors)
-    assert any("rd_valid_algo" in e for e in errors)
-
-
-def test_validate_gets_pubsub_sub_opts_non_dict():
-    errors = validate_config({
-        "gets": [{"host": 0, "uri": "x", "mode": "pubsub", "sub_opts": "bad"}]
-    })
-    assert any("sub_opts" in e and "dict" in e for e in errors)
-
-
-def test_validate_gets_pubsub_sub_opts_pipeline_non_integer():
-    errors = validate_config({
-        "gets": [{"host": 0, "uri": "x", "mode": "pubsub", "sub_opts": {"pipeline": "fast"}}]
-    })
-    assert any("pipeline" in e for e in errors)
-
-
-def test_validate_gets_pubsub_sub_opts_invalid_valid_algo():
-    errors = validate_config({
-        "gets": [{
-            "host": 0, "uri": "x", "mode": "pubsub",
-            "sub_opts": {"ri_valid_algo": "md5", "td_valid_algo": "sha1"}
-        }]
-    })
-    assert any("ri_valid_algo" in e for e in errors)
-    assert any("td_valid_algo" in e for e in errors)
-
-
-def test_validate_gets_pubsub_sub_opts_wait_non_number():
-    errors = validate_config({
-        "gets": [{"host": 0, "uri": "x", "mode": "pubsub", "sub_opts": {"wait": "forever"}}]
-    })
-    assert any("wait" in e for e in errors)
-
-
-def test_validate_auto_list():
-    errors = validate_config({"auto": [{"publishers": [9]}]})
-    assert errors == []
-
-
-def test_validate_auto_list_non_dict_entry():
-    errors = validate_config({"auto": ["not_a_dict"]})
-    assert any("auto[0]" in e for e in errors)
-
-
-def test_validate_auto_consumers_invalid():
-    errors = validate_config({"auto": {"consumers": 123}})
-    assert any("consumers" in e for e in errors)
-
-
-def test_validate_auto_sub_opts_non_dict():
-    errors = validate_config({"auto": {"sub_opts": "bad"}})
-    assert any("sub_opts" in e for e in errors)
-
-
-def test_validate_auto_sub_opts_wait_non_number():
-    errors = validate_config({"auto": {"sub_opts": {"wait": "forever"}}})
-    assert any("wait" in e for e in errors)
 
 
 def test_validate_events_missing_at():
@@ -793,81 +585,6 @@ def test_validate_failure_scenarios_cyclic_entry_fields():
     assert any("exclude" in e for e in errors)
     assert any("target" in e for e in errors)
     assert any("allow_publishers" in e for e in errors)
-
-
-def test_validate_priority_uris_non_dict():
-    errors = validate_config({"priority_uris": "bad"})
-    assert any("priority_uris" in e for e in errors)
-
-
-def test_validate_priority_uris_level_non_dict():
-    errors = validate_config({"priority_uris": {"high": "bad"}})
-    assert any("high" in e for e in errors)
-
-
-def test_validate_priority_uris_patterns_string():
-    errors = validate_config({
-        "priority_uris": {"high": {"patterns": "ccnx:/test/*"}}
-    })
-    assert errors == []
-
-
-def test_validate_priority_uris_patterns_empty_string():
-    errors = validate_config({
-        "priority_uris": {"high": {"patterns": "  "}}
-    })
-    assert any("empty" in e for e in errors)
-
-
-def test_validate_priority_uris_patterns_list_with_empty():
-    errors = validate_config({
-        "priority_uris": {"high": {"patterns": ["ccnx:/test/*", "  "]}}
-    })
-    assert any("empty strings" in e for e in errors)
-
-
-def test_validate_priority_uris_patterns_list_with_non_string():
-    errors = validate_config({
-        "priority_uris": {"high": {"patterns": [123]}}
-    })
-    assert any("patterns" in e for e in errors)
-
-
-def test_validate_priority_uris_patterns_non_list_non_string():
-    errors = validate_config({
-        "priority_uris": {"high": {"patterns": 123}}
-    })
-    assert any("patterns" in e for e in errors)
-
-
-def test_validate_priority_uris_numeric_fields():
-    errors = validate_config({
-        "priority_uris": {"high": {"patterns": ["x"], "expiry": "slow", "rate": "fast"}}
-    })
-    assert any("expiry" in e for e in errors)
-    assert any("rate" in e for e in errors)
-
-
-def test_validate_priority_uris_integer_fields():
-    errors = validate_config({
-        "priority_uris": {"high": {"patterns": ["x"], "block_size": "big", "pipeline": "fast"}}
-    })
-    assert any("block_size" in e for e in errors)
-    assert any("pipeline" in e for e in errors)
-
-
-def test_validate_priority_uris_valid_algo_non_string():
-    errors = validate_config({
-        "priority_uris": {"high": {"patterns": ["x"], "valid_algo": 123}}
-    })
-    assert any("valid_algo" in e for e in errors)
-
-
-def test_validate_priority_uris_target_invalid():
-    errors = validate_config({
-        "priority_uris": {"high": {"patterns": ["x"], "target": "invalid"}}
-    })
-    assert any("target" in e for e in errors)
 
 
 def test_validate_monitoring_non_dict():

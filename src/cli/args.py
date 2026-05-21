@@ -1,7 +1,5 @@
 """Common argparse definitions for cefore-emu CLI."""
 
-import argparse
-
 _DEBUG_ARTIFACT_CHOICES = ("node_dirs", "fib_dump", "daemon_logs")
 
 
@@ -119,20 +117,8 @@ def add_disaster_args(parser):
         help="root ns bridge: switch,root_ip,local_routes[,ext_routes,gateway] (repeatable)",
     )
     parser.add_argument(
-        "--get-interval", type=int, default=10,
-        help="seconds between cefgetfile runs",
-    )
-    parser.add_argument(
         "--config", type=str, default="",
         help="JSON/YAML config file to override parameters",
-    )
-    parser.add_argument(
-        "--puts", type=str, default="",
-        help="JSON list of put ops (host,uri,file,log)",
-    )
-    parser.add_argument(
-        "--gets", type=str, default="",
-        help="JSON list of get ops (host,uri,file,log)",
     )
     parser.add_argument(
         "--script-log", type=str, default=None,

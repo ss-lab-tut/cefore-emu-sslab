@@ -12,32 +12,32 @@
 ### `min_putget`
 
 - File: `config/examples/min_putget.yaml`
-- Expected `results.json`: one or more cycle entries
+- Expected `results.json`: one or more entries (put + get rows)
 - Required checks:
   - every row has `success == true`
-  - every row has `has_completed_log == true`
-  - every row has `has_output_file == true`
+  - every `op_type == "get"` row has `has_completed_log == true`
+  - every `op_type == "get"` row has `has_output_file == true`
 
 ### `min_pubsub`
 
 - File: `config/examples/min_pubsub.yaml`
-- Expected `results.json`: one or more cycle entries
+- Expected `results.json`: one or more entries (pub + sub rows)
 - Required checks:
   - every row has `success == true`
-  - every row has `has_output_file == true`
-  - every row keeps `has_completed_log == false`
-  - every `out_file` points at a discovered `RNP0x*.out` artifact
+  - every `op_type == "sub"` row has `has_output_file == true`
+  - every `op_type == "sub"` row keeps `has_completed_log == false`
+  - every `op_type == "sub"` `out_file` points at a discovered `RNP0x*.out` artifact
 
 ### `min_pubsub_verify`
 
 - File: `config/examples/min_pubsub_verify.yaml`
 - 手動検証の自動再現: min_empty トポロジ (hosts=3, switches=6, k=2)、h0→publisher / h2→subscriber、URI `ccnx:/test/example2`
-- Expected `results.json`: one or more cycle entries
+- Expected `results.json`: one or more entries (pub + sub rows)
 - Required checks:
   - every row has `success == true`
-  - every row has `has_output_file == true`
-  - every row keeps `has_completed_log == false`
-  - every `out_file` points at a discovered `RNP0x*.out` artifact
+  - every `op_type == "sub"` row has `has_output_file == true`
+  - every `op_type == "sub"` row keeps `has_completed_log == false`
+  - every `op_type == "sub"` `out_file` points at a discovered `RNP0x*.out` artifact
 
 ### `min_empty`
 
@@ -51,12 +51,12 @@
 ### `min_mixed`
 
 - File: `config/examples/min_mixed.yaml`
-- Expected `results.json`: one or more entries per cycle for both URIs
+- Expected `results.json`: one or more entries (put + get + pub + sub rows)
 - Required checks:
   - all entries have `success == true`
-  - every row for URI `ccnx:/test/file` has `has_completed_log == true`
-  - every row for URI `ccnx:/test/stream` has `has_output_file == true`
-  - every row for URI `ccnx:/test/stream` keeps `has_completed_log == false`
+  - every `op_type == "get"` row has `has_completed_log == true`
+  - every `op_type == "sub"` row has `has_output_file == true`
+  - every `op_type == "sub"` row keeps `has_completed_log == false`
 
 ## Helper Script
 

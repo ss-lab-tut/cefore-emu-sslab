@@ -1,7 +1,7 @@
 # 最小検証用: pub/sub のみ (cefpubfile / cefsubfile)
 # Usage: sudo .venv/bin/python3 -m src disaster --config config/examples/min_pubsub.yaml
 #
-# gets[].file は pubsub モードでは出力ディレクトリとして扱われる。
+# pubsub_sub の file は出力ディレクトリとして扱われる。
 # cefsubfile は <dir>/RNP0x<hex>.out を動的命名で生成する。
 hosts: 3
 switches: 3
@@ -17,17 +17,17 @@ results_json: "results.json"
 publisher_host: 2
 pubsub_sub_startup_grace: 2.0
 
-puts:
-  - host: 2
+events:
+  - at: 5
+    type: pubsub_sub
+    host: 0
     uri: "ccnx:/test/stream"
-    file: "./sample-putfile"
-    mode: "pubsub"
-    pub_opts:
-      lifetime: 8   # Trigger Interest ライフタイム (秒)
-
-gets:
-  - host: 0
-    uri: "ccnx:/test/stream"
-    mode: "pubsub"
     sub_opts:
       wait: 15   # cefsubfile の待機時間 (秒)
+  - at: 5
+    type: pubsub_pub
+    host: 2
+    uri: "ccnx:/test/stream"
+    file: "./sample-putfile"
+    pub_opts:
+      lifetime: 8   # Trigger Interest ライフタイム (秒)

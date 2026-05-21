@@ -95,89 +95,6 @@ failure_scenarios:
       allow_publishers: false
 
 # -----------------------------------------------------------------------------
-# コンテンツ操作: puts (cefputfile / cefpubfile)
-# -----------------------------------------------------------------------------
-puts:
-  - host: 4                        # パブリッシャーホストID
-    uri: "ccnx:/test/sample"       # コンテンツURI
-    file: "./sample-putfile"        # パブリッシュするファイルパス
-    rate: 10                        # 転送レート (Mbps) [オプション]
-    block_size: 1024                # 最大ペイロード長 (bytes) [オプション]
-    expiry: 3000                    # Content Objectライフタイム (秒) [オプション]
-    cache_time: 3000                # キャッシュ削除期間 (秒) [オプション]
-#     valid_algo: "crc32c"            # バリデーションアルゴリズム: crc32c / rsa-sha256 [オプション]
-    # port_num: 9695                # ポート番号 [オプション]
-    # mode: "pubsub"               # Pub/Subモデル時: cefpubfileを使用 [オプション]
-    # pub_opts:                     # Pub/Sub用パブリッシャーオプション [オプション]
-    #   lifetime: 5                # Trigger Interest ライフタイム (秒)
-
-# -----------------------------------------------------------------------------
-# コンテンツ操作: gets (cefgetfile / cefsubfile)
-# -----------------------------------------------------------------------------
-gets:
-  - host: 0                        # コンシューマーホストID
-    uri: "ccnx:/test/sample"       # 取得するコンテンツURI
-    # file: "./recvfile"            # 受信ファイル保存パス [オプション]
-    # owner_only: false             # オーナー限定モード [オプション]
-    # chunk: 100                    # 最大チャンク取得数 [オプション]
-    # pipeline: 4                   # パイプライン数 [オプション]
-    # sg: 1                         # Send Long Life Interest [オプション]
-    # valid_algo: "crc32c"          # バリデーションアルゴリズム [オプション]
-    # port_num: 9695                # ポート番号 [オプション]
-    # mode: "pubsub"               # Pub/Subモデル時: cefsubfileを使用 [オプション]
-    # file: "recv_dir"             # pubsubモードでは出力ディレクトリとして扱う [オプション]
-    #                              # cefsubfileは <dir>/RNP0x<hex>.out を動的命名で生成する
-    # sub_opts:                     # Pub/Sub用サブスクライバーオプション [オプション]
-    #   wait: 10
-    #   consumer_per_content: 2
-
-# -----------------------------------------------------------------------------
-# Auto生成 (puts/getsを自動生成, 手動のputs/getsと併用可能)
-# -----------------------------------------------------------------------------
-# ■ Simple形式 (uri_prefix): 通常のcefputfile/cefgetfileを生成
-# auto:
-#   publishers: [4]                 # パブリッシャーホストIDリスト
-#   consumers: "random:3"           # コンシューマー: "random:N" またはリスト [0, 1, 2]
-#   content_count: 3                # パブリッシャーあたりコンテンツ数
-#   uri_prefix: "ccnx:/test"        # URIプレフィックス
-#   consumer_per_content: 2          # コンテンツあたりのget操作数
-#
-# ■ Pub/Sub形式 (uri): cefpubfile/cefsubfileを生成
-# auto:
-#   publishers: [4]
-#   consumers: [0, 1, 2]
-#   content_count: 2
-#   uri: "ccnx:/test/stream"        # URI (pubsub形式)
-#   pub_opts:                        # パブリッシャーオプション
-#     lifetime: 5
-#   sub_opts:                        # サブスクライバーオプション
-#     wait: 10
-#     consumer_per_content: 1
-#
-# ■ NG例（validation error になる指定）:
-# auto:
-#   publishers: ["host0"]       # ← int でなければならない (got 'str')
-#   consumers: "random:abc"     # ← random:N の N は正の整数
-#   content_count: "many"       # ← 正の整数でなければならない (got 'str')
-#   consumer_per_content: 0     # ← 正の整数でなければならない (>= 1)
-#
-# ■ 複数エントリ (リスト形式)
-auto:
-  - publishers: [11]
-    consumers: "random:2"
-    content_count: 2
-    uri_prefix: "ccnx:/test/data1"
-    consumer_per_content: 1
-  - publishers: [3, 6, 8, 13]
-    consumers: [0]
-    content_count: 2
-    uri: "ccnx:/test/data2"
-    pub_opts:
-      lifetime: 10
-    sub_opts:
-      wait: 5
-
-# -----------------------------------------------------------------------------
 # イベントスケジューラ (時限イベント)
 # -----------------------------------------------------------------------------
 # ネットワーク系イベント type: link_down, link_up, fib_add, fib_del, fib_enable,
@@ -248,7 +165,7 @@ events:
 
   # --- コンテンツ操作イベント (put / get) -----------------------------------
   # put イベント: フラッピング中などネットワーク不安定な状況で任意タイミングにコンテンツを配信
-  # ・FIBは put/pubsub_pub イベントのhost/uriから自動設定される（putsトップレベルと同様）
+  # ・FIBは put/pubsub_pub イベントのhost/uriから自動設定される
   - at: 35
     type: put
     host: 4                      # パブリッシャーホストID
@@ -308,23 +225,11 @@ monitoring:
       uri: "ccnx:/"             # クエリURI [オプション]
 
 # -----------------------------------------------------------------------------
-# ウォームアップ設定
-# -----------------------------------------------------------------------------
-# warmup_get_interval: 3       # ウォームアップ取得間隔 (秒)
-# warmup_only_cache_nodes: true  # true: キャッシュノードのみでウォームアップ
-# hot_uris:                     # プリキャッシュ対象URI
-#   - "ccnx:/test/sample"
-# warmup_gets:                  # 明示的なウォームアップ操作リスト（hot_uris より優先）
-#   - host: 1
-#     uri: "ccnx:/test/sample"
-
-# -----------------------------------------------------------------------------
 # 実行制御
 # -----------------------------------------------------------------------------
 no_cli: true           # true: インタラクティブCLIをスキップ (自動テスト用)
 duration: 0            # 評価フェーズ時間 (秒, 0: シングルサイクル, no_cli時に使用)
 results_json: ""       # 結果JSONファイル名 (空文字で無効, 出力ディレクトリ内に配置)
-get_interval: 10       # cefgetfile実行間隔 (秒)
 
 # pubsub_sub_startup_grace: サブスクライバー起動後にパブリッシャーを送信するまでの待機時間 (秒)
 # cefsubfile 起動直後は cefnetd 内の Reflexive Interest 受付準備が整っていないため、

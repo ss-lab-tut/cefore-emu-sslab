@@ -51,6 +51,7 @@ class ContentOperationRunner:
         seed_label,
         uri_publishers=None,
         startup_grace=1.0,
+        pub_lifetime_by_uri=None,
     ):
         self._net = net
         self._run_dir = Path(run_dir)
@@ -59,6 +60,7 @@ class ContentOperationRunner:
         self._seed_label = seed_label
         self._uri_publishers = uri_publishers or {}
         self._startup_grace = float(startup_grace)
+        self._pub_lifetime_by_uri = pub_lifetime_by_uri or {}
 
         self._queue = queue.Queue()
         self._pending_subs = {}  # uri -> list of pending sub dicts
@@ -213,7 +215,12 @@ class ContentOperationRunner:
         host = int(event["host"])
         uri = event["uri"]
         sub_opts = event.get("sub_opts", {}) or {}
-        wait_sec = float(sub_opts.get("wait", 30.0))
+        if sub_opts.get("wait") is not None:
+            wait_sec = float(sub_opts["wait"])
+        elif uri in self._pub_lifetime_by_uri:
+            wait_sec = float(self._pub_lifetime_by_uri[uri]) + 5.0
+        else:
+            wait_sec = 30.0
         label = _safe_uri_label(uri)
         output_dir = self._run_dir / f"event_recvdir_h{host}_{label}"
         output_dir.mkdir(parents=True, exist_ok=True)

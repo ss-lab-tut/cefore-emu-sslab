@@ -78,10 +78,8 @@ failure_scenarios:
 #       count: 3
 
 # -----------------------------------------------------------------------------
-# Auto生成（コンテンツ操作の自動生成）
+# コンテンツ操作
 # -----------------------------------------------------------------------------
-auto:
-  - uri: "ccnx:/test/content"   # コンテンツURI（pubsub形式）
-    publishers: [11]             # パブリッシャーホストIDリスト
-    consumers: "random:5"        # ランダムに5ノードをコンシューマーに
-    content_count: 3             # パブリッシャーあたりコンテンツ数
+events:
+  - {at: 5, type: put, host: 11, uri: "ccnx:/test/content/content1", file: "./sample-putfile"}
+  - {at: 10, type: get, host: 0, uri: "ccnx:/test/content/content1"}

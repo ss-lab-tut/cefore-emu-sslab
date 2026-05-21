@@ -2,17 +2,13 @@
 
 import subprocess
 import time
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
-
+from src.runtime.content_ops import ContentOperationRunner
 from src.runtime.result_detect import (
     clear_sub_output_artifacts as _clear_sub_output_artifacts,
     detect_sub_success as _detect_sub_success,
     wait_pubsub_process as _wait_pubsub_process,
-)
-from src.scenarios.disaster import (
-    _resolve_pubsub_publish_deadline_seconds,
-    _resolve_pubsub_wait_seconds,
 )
 
 
@@ -107,46 +103,67 @@ class TestClearSubOutputArtifacts:
 
 
 # ---------------------------------------------------------------------------
-# pub/sub timeout resolution
+# pub/sub timeout resolution (ContentOperationRunner)
 # ---------------------------------------------------------------------------
 
 
+def _make_runner(tmp_path, pub_lifetime_by_uri=None):
+    """Create a ContentOperationRunner with mocked dependencies."""
+    net = MagicMock()
+    flap_state = MagicMock()
+    flap_state.snapshot.return_value = []
+    return ContentOperationRunner(
+        net,
+        run_dir=tmp_path,
+        result_callback=MagicMock(),
+        flap_state=flap_state,
+        seed_label="test",
+        pub_lifetime_by_uri=pub_lifetime_by_uri,
+    )
+
+
 class TestPubsubTimingResolution:
-    def test_explicit_sub_wait_takes_priority(self):
-        wait = _resolve_pubsub_wait_seconds(
-            {"wait": 15},
-            "ccnx:/test/stream",
-            {"ccnx:/test/stream": 8},
+    @patch("src.runtime.content_ops.start_cefsubfile")
+    def test_explicit_sub_wait_takes_priority(self, mock_sub, tmp_path):
+        runner = _make_runner(
+            tmp_path, pub_lifetime_by_uri={"ccnx:/test/stream": 8}
         )
-        assert wait == 15
+        mock_sub.return_value = MagicMock(pid=1)
+        before = time.monotonic()
+        runner._do_pubsub_sub({
+            "host": 0, "uri": "ccnx:/test/stream",
+            "sub_opts": {"wait": 15},
+        })
+        entries = runner._pending_subs["ccnx:/test/stream"]
+        assert len(entries) == 1
+        deadline = entries[0]["deadline"]
+        assert abs(deadline - (before + 15)) < 2.0
 
-    def test_pub_lifetime_fallback_uses_seconds(self):
-        wait = _resolve_pubsub_wait_seconds(
-            {},
-            "ccnx:/test/stream",
-            {"ccnx:/test/stream": 8},
+    @patch("src.runtime.content_ops.start_cefsubfile")
+    def test_pub_lifetime_fallback_uses_seconds(self, mock_sub, tmp_path):
+        runner = _make_runner(
+            tmp_path, pub_lifetime_by_uri={"ccnx:/test/stream": 8}
         )
-        assert wait == 13
+        mock_sub.return_value = MagicMock(pid=1)
+        before = time.monotonic()
+        runner._do_pubsub_sub({
+            "host": 0, "uri": "ccnx:/test/stream",
+        })
+        entries = runner._pending_subs["ccnx:/test/stream"]
+        deadline = entries[0]["deadline"]
+        assert abs(deadline - (before + 13)) < 2.0
 
-    def test_default_wait_is_thirty_seconds(self):
-        wait = _resolve_pubsub_wait_seconds({}, "ccnx:/test/stream", {})
-        assert wait == 30
-
-    def test_publish_deadline_is_never_shorter_than_sub_wait(self):
-        deadline = _resolve_pubsub_publish_deadline_seconds(
-            "ccnx:/test/stream",
-            {"lifetime": 8},
-            {"ccnx:/test/stream": 15},
-        )
-        assert deadline == 20
-
-    def test_publish_deadline_uses_default_lifetime_seconds(self):
-        deadline = _resolve_pubsub_publish_deadline_seconds(
-            "ccnx:/test/stream",
-            {},
-            {},
-        )
-        assert deadline == 35
+    @patch("src.runtime.content_ops.start_cefsubfile")
+    def test_default_wait_is_thirty_seconds(self, mock_sub, tmp_path):
+        runner = _make_runner(tmp_path)
+        mock_sub.return_value = MagicMock(pid=1)
+        before = time.monotonic()
+        runner._do_pubsub_sub({
+            "host": 0, "uri": "ccnx:/test/stream",
+        })
+        entries = runner._pending_subs["ccnx:/test/stream"]
+        deadline = entries[0]["deadline"]
+        assert abs(deadline - (before + 30)) < 2.0
 
     def test_expired_deadline_terminates_subscriber_immediately(self):
         proc = MagicMock()

@@ -125,16 +125,3 @@ def cefroute_enable(net, host_idx, prefix, protocol, next_hop, node_dir=None):
     )
     print(node_name, "command:", command)
     info(net.hosts[host_idx].cmd(command))
-
-
-def apply_fib_for_uris(net, mesh_links, k_paths, uri_publishers, scheme=None):
-    """Apply FIB entries for multiple URIs (legacy wrapper).
-
-    Args:
-        net: Mininet network instance.
-        mesh_links: List of link definitions.
-        k_paths: Number of shortest paths per destination.
-        uri_publishers: Dict mapping URI prefix to publisher host ID.
-        scheme: AddressingScheme for IP generation (defaults to 192.168.0.0/16).
-    """
-    apply_fib(net, mesh_links, k_paths, uri_publishers=uri_publishers, scheme=scheme)

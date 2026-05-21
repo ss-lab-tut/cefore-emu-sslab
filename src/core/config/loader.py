@@ -14,6 +14,24 @@ try:
 except ImportError:
     HAVE_YAML = False
 
+LEGACY_CONTENT_KEYS = {"puts", "gets", "auto"}
+
+
+def warn_ignored_legacy_content_keys(config: dict[str, Any], stream=None) -> bool:
+    """Warn once when ignored legacy content-operation keys are present."""
+    present = sorted(LEGACY_CONTENT_KEYS & set(config))
+    if not present:
+        return False
+    if stream is None:
+        stream = sys.stderr
+    keys = ", ".join(present)
+    print(
+        "[warning] config keys ignored: "
+        f"{keys}. Use events for content operations.",
+        file=stream,
+    )
+    return True
+
 
 def load_config(path: str | Path | None) -> dict[str, Any]:
     """Load configuration from a JSON or YAML file.
@@ -137,186 +155,6 @@ def validate_config(config: dict[str, Any]) -> list[str]:
             config["publisher_host"], int
         ):
             errors.append("publisher_host must be an integer or null")
-
-    if "puts" in config:
-        if not isinstance(config["puts"], list):
-            errors.append("puts must be a list")
-        else:
-            for idx, op in enumerate(config["puts"]):
-                if not isinstance(op, dict):
-                    errors.append(f"puts[{idx}] must be a dict")
-                    continue
-                if "host" not in op:
-                    errors.append(f"puts[{idx}] missing required field 'host'")
-                if "uri" not in op:
-                    errors.append(f"puts[{idx}] missing required field 'uri'")
-                for field in ("rate", "block_size", "expiry", "cache_time"):
-                    if field in op and not isinstance(op[field], (int, float)):
-                        errors.append(f"puts[{idx}].{field} must be a number")
-                if "valid_algo" in op and not isinstance(op["valid_algo"], str):
-                    errors.append(f"puts[{idx}].valid_algo must be a string")
-                if "port_num" in op and not isinstance(op["port_num"], int):
-                    errors.append(f"puts[{idx}].port_num must be an integer")
-                if op.get("mode") == "pubsub" and "pub_opts" in op:
-                    pub_opts = op["pub_opts"]
-                    if not isinstance(pub_opts, dict):
-                        errors.append(f"puts[{idx}].pub_opts must be a dict")
-                    else:
-                        _PUB_OPTS_ALLOWED = {
-                            "lifetime", "retry_limit", "target",
-                            "ti_valid_algo", "rd_valid_algo",
-                            "rate", "block_size", "expiry", "cache_time", "port_num",
-                        }
-                        unknown = set(pub_opts.keys()) - _PUB_OPTS_ALLOWED
-                        if unknown:
-                            errors.append(
-                                f"puts[{idx}].pub_opts has unknown keys: {', '.join(sorted(unknown))}"
-                            )
-                        for field in ("lifetime", "retry_limit"):
-                            if field in pub_opts and not isinstance(pub_opts[field], (int, float)):
-                                errors.append(f"puts[{idx}].pub_opts.{field} must be a number")
-                        if "lifetime" in pub_opts:
-                            lifetime = pub_opts["lifetime"]
-                            if isinstance(lifetime, (int, float)) and not 0 <= lifetime <= 64:
-                                errors.append(
-                                    f"puts[{idx}].pub_opts.lifetime must be between 0 and 64 seconds"
-                                )
-                        if "target" in pub_opts and pub_opts["target"] not in ("trg", "ref", "both"):
-                            errors.append(
-                                f"puts[{idx}].pub_opts.target must be 'trg', 'ref', or 'both'"
-                            )
-                        for field in ("ti_valid_algo", "rd_valid_algo"):
-                            if field in pub_opts and pub_opts[field] not in ("crc32c", "rsa-sha256"):
-                                errors.append(
-                                    f"puts[{idx}].pub_opts.{field} must be 'crc32c' or 'rsa-sha256'"
-                                )
-
-    if "gets" in config:
-        if not isinstance(config["gets"], list):
-            errors.append("gets must be a list")
-        else:
-            for idx, op in enumerate(config["gets"]):
-                if not isinstance(op, dict):
-                    errors.append(f"gets[{idx}] must be a dict")
-                    continue
-                if "host" not in op:
-                    errors.append(f"gets[{idx}] missing required field 'host'")
-                if "uri" not in op:
-                    errors.append(f"gets[{idx}] missing required field 'uri'")
-                if "owner_only" in op and not isinstance(op["owner_only"], bool):
-                    errors.append(f"gets[{idx}].owner_only must be a boolean")
-                for field in ("chunk", "pipeline", "sg"):
-                    if field in op and not isinstance(op[field], int):
-                        errors.append(f"gets[{idx}].{field} must be an integer")
-                if "valid_algo" in op and not isinstance(op["valid_algo"], str):
-                    errors.append(f"gets[{idx}].valid_algo must be a string")
-                if "port_num" in op and not isinstance(op["port_num"], int):
-                    errors.append(f"gets[{idx}].port_num must be an integer")
-                if op.get("mode") == "pubsub" and "sub_opts" in op:
-                    sub_opts = op["sub_opts"]
-                    if not isinstance(sub_opts, dict):
-                        errors.append(f"gets[{idx}].sub_opts must be a dict")
-                    else:
-                        _SUB_OPTS_ALLOWED = {
-                            "pipeline", "ri_valid_algo", "td_valid_algo",
-                            "consumer_per_content", "port_num", "wait",
-                        }
-                        unknown = set(sub_opts.keys()) - _SUB_OPTS_ALLOWED
-                        if unknown:
-                            errors.append(
-                                f"gets[{idx}].sub_opts has unknown keys: {', '.join(sorted(unknown))}"
-                            )
-                        for field in ("pipeline", "consumer_per_content"):
-                            if field in sub_opts and not isinstance(sub_opts[field], int):
-                                errors.append(f"gets[{idx}].sub_opts.{field} must be an integer")
-                        for field in ("ri_valid_algo", "td_valid_algo"):
-                            if field in sub_opts and sub_opts[field] not in ("crc32c", "rsa-sha256"):
-                                errors.append(
-                                    f"gets[{idx}].sub_opts.{field} must be 'crc32c' or 'rsa-sha256'"
-                                )
-                        if "wait" in sub_opts and not isinstance(sub_opts["wait"], (int, float)):
-                            errors.append(f"gets[{idx}].sub_opts.wait must be a number")
-
-    if "auto" in config:
-        auto = config["auto"]
-        entries: list[Any] | None = None
-        if isinstance(auto, dict):
-            entries = [auto]
-        elif isinstance(auto, list):
-            entries = auto
-        else:
-            errors.append("auto must be a dict or list of dicts")
-
-        if entries is not None:
-            for idx, entry in enumerate(entries):
-                if not isinstance(entry, dict):
-                    errors.append(f"auto[{idx}] must be a dict")
-                    continue
-                if "publishers" in entry:
-                    if not isinstance(entry["publishers"], list):
-                        errors.append(
-                            f"auto[{idx}].publishers must be a list of host IDs"
-                        )
-                    else:
-                        for pidx, p in enumerate(entry["publishers"]):
-                            if not isinstance(p, int):
-                                errors.append(
-                                    f"auto[{idx}].publishers[{pidx}] must be an integer (got {type(p).__name__!r})"
-                                )
-                if "consumers" in entry:
-                    val = entry["consumers"]
-                    if isinstance(val, str):
-                        if val.startswith("random:"):
-                            rest = val[len("random:"):]
-                            try:
-                                n = int(rest)
-                                if n <= 0:
-                                    errors.append(
-                                        f"auto[{idx}].consumers: random:N requires N to be a positive integer"
-                                    )
-                            except ValueError:
-                                errors.append(
-                                    f"auto[{idx}].consumers: random:N requires N to be a positive integer (got {rest!r})"
-                                )
-                    elif isinstance(val, list):
-                        for cidx, c in enumerate(val):
-                            if not isinstance(c, int):
-                                errors.append(
-                                    f"auto[{idx}].consumers[{cidx}] must be an integer (got {type(c).__name__!r})"
-                                )
-                    else:
-                        errors.append(
-                            f"auto[{idx}].consumers must be 'random:N' string or list of host IDs"
-                        )
-                if "content_count" in entry:
-                    cc = entry["content_count"]
-                    if not isinstance(cc, int) or cc <= 0:
-                        errors.append(
-                            f"auto[{idx}].content_count must be a positive integer (got {cc!r})"
-                        )
-                if "consumer_per_content" in entry:
-                    cpc = entry["consumer_per_content"]
-                    if not isinstance(cpc, int) or cpc <= 0:
-                        errors.append(
-                            f"auto[{idx}].consumer_per_content must be a positive integer (got {cpc!r})"
-                        )
-                if "uri_prefix" in entry and not isinstance(entry["uri_prefix"], str):
-                    errors.append(f"auto[{idx}].uri_prefix must be a string")
-                if "file" in entry and not isinstance(entry["file"], str):
-                    errors.append(f"auto[{idx}].file must be a string")
-                if "sub_opts" in entry:
-                    sub_opts = entry["sub_opts"]
-                    if not isinstance(sub_opts, dict):
-                        errors.append(f"auto[{idx}].sub_opts must be a dict")
-                    else:
-                        if "wait" in sub_opts and not isinstance(sub_opts["wait"], (int, float)):
-                            errors.append(f"auto[{idx}].sub_opts.wait must be a number")
-                        if "consumer_per_content" in sub_opts:
-                            cpc = sub_opts["consumer_per_content"]
-                            if not isinstance(cpc, int) or cpc <= 0:
-                                errors.append(
-                                    f"auto[{idx}].sub_opts.consumer_per_content must be a positive integer"
-                                )
 
     if "cache_config" in config:
         cc = config["cache_config"]
@@ -486,75 +324,6 @@ def validate_config(config: dict[str, Any]) -> list[str]:
                                 errors.append(
                                     f"failure_scenarios.cycles[{idx}].allow_publishers must be a boolean"
                                 )
-
-    if "priority_uris" in config:
-        priority_uris = config["priority_uris"]
-        if not isinstance(priority_uris, dict):
-            errors.append("priority_uris must be a dict")
-        else:
-            valid_modes = ("putget", "pubsub")
-            valid_target = ("trg", "ref", "both")
-            for level_name, level_cfg in priority_uris.items():
-                if not isinstance(level_cfg, dict):
-                    errors.append(f"priority_uris.{level_name} must be a dict")
-                    continue
-
-                patterns = level_cfg.get("patterns")
-                if isinstance(patterns, str):
-                    if not patterns.strip():
-                        errors.append(f"priority_uris.{level_name}.patterns must not be empty")
-                elif isinstance(patterns, list):
-                    if not patterns:
-                        errors.append(f"priority_uris.{level_name}.patterns must not be empty")
-                    elif not all(isinstance(pattern, str) for pattern in patterns):
-                        errors.append(
-                            f"priority_uris.{level_name}.patterns must be a list of strings or a string"
-                        )
-                    elif any(not pattern.strip() for pattern in patterns):
-                        errors.append(
-                            f"priority_uris.{level_name}.patterns must not contain empty strings"
-                        )
-                else:
-                    errors.append(
-                        f"priority_uris.{level_name}.patterns must be a list of strings or a string"
-                    )
-
-                mode = level_cfg.get("mode")
-                if mode is not None and mode not in valid_modes:
-                    errors.append(f"priority_uris.{level_name}.mode must be 'putget' or 'pubsub'")
-
-                for field in ("expiry", "cache_time", "rate"):
-                    if field in level_cfg and level_cfg[field] is not None:
-                        if not isinstance(level_cfg[field], (int, float)):
-                            errors.append(
-                                f"priority_uris.{level_name}.{field} must be a number"
-                            )
-
-                for field in ("block_size", "port_num", "lifetime", "retry_limit", "pipeline"):
-                    if field in level_cfg and level_cfg[field] is not None:
-                        if not isinstance(level_cfg[field], int):
-                            errors.append(
-                                f"priority_uris.{level_name}.{field} must be an integer"
-                            )
-                if "lifetime" in level_cfg and level_cfg["lifetime"] is not None:
-                    lifetime = level_cfg["lifetime"]
-                    if isinstance(lifetime, int) and not 0 <= lifetime <= 64:
-                        errors.append(
-                            f"priority_uris.{level_name}.lifetime must be between 0 and 64 seconds"
-                        )
-
-                for field in ("valid_algo", "ti_valid_algo", "rd_valid_algo", "ri_valid_algo", "td_valid_algo"):
-                    if field in level_cfg and level_cfg[field] is not None:
-                        if not isinstance(level_cfg[field], str):
-                            errors.append(
-                                f"priority_uris.{level_name}.{field} must be a string"
-                            )
-
-                if "target" in level_cfg and level_cfg["target"] is not None:
-                    if level_cfg["target"] not in valid_target:
-                        errors.append(
-                            f"priority_uris.{level_name}.target must be 'trg', 'ref', or 'both', got '{level_cfg['target']}'"
-                        )
 
     if "bridges" in config:
         if not isinstance(config["bridges"], list):
@@ -837,8 +606,8 @@ def validate_merged_args(args: Any) -> list[str]:
         "switch_use_all", "pubsub_sub_startup_grace",
     )
     structured_keys = (
-        "puts", "gets", "auto", "events", "monitoring", "routing",
-        "cache_config", "failure_scenarios", "priority_uris", "addressing",
+        "events", "monitoring", "routing",
+        "cache_config", "failure_scenarios", "addressing",
     )
     nullable_keys = {"seed", "results_json", "script_log", "cache_default_rct_ms", "publisher_host"}
 
@@ -879,16 +648,12 @@ def merge_cli_and_config(args: Any, config: dict[str, Any], parser=None) -> None
         "bw",
         "ext",
         "bridges",
-        "get_interval",
         "topo_png",
         "topo_layout",
         "node_per_switch",
         "host_degree_min",
         "host_degree_max",
         "switch_use_all",
-        "puts",
-        "gets",
-        "auto",
         "no_cli",
         "duration",
         "results_json",
@@ -905,7 +670,6 @@ def merge_cli_and_config(args: Any, config: dict[str, Any], parser=None) -> None
         "cache_default_rct_ms",
         "publisher_host",
         "failure_scenarios",
-        "priority_uris",
         "events",
         "monitoring",
         "routing",
@@ -944,18 +708,7 @@ def merge_cli_and_config(args: Any, config: dict[str, Any], parser=None) -> None
     if "cache_config" in config:
         setattr(args, "cache_config", config["cache_config"])
 
-    # Parse puts/gets if passed as JSON strings
-    if isinstance(args.puts, str) and args.puts:
-        args.puts = json.loads(args.puts)
-    if isinstance(args.gets, str) and args.gets:
-        args.gets = json.loads(args.gets)
     if isinstance(args.bw, str) and args.bw:
         args.bw = [args.bw]
     if isinstance(args.ext, str) and args.ext:
         args.ext = [args.ext]
-
-    # Ensure puts/gets are lists
-    if not hasattr(args, "puts") or args.puts is None or args.puts == "":
-        args.puts = []
-    if not hasattr(args, "gets") or args.gets is None or args.gets == "":
-        args.gets = []

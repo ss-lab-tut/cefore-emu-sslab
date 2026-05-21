@@ -228,6 +228,11 @@ class EventScheduler:
         self._thread = threading.Thread(target=self._run, daemon=True)
         self._thread.start()
 
+    def wait_all(self, timeout=None):
+        """Wait until all scheduled events have fired or timeout expires."""
+        if self._thread is not None:
+            self._thread.join(timeout=timeout)
+
     def stop(self):
         """Stop the scheduler and wait for the thread to finish."""
         self._stop_event.set()

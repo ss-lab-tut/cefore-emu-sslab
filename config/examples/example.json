@@ -40,26 +40,6 @@
     }
   },
 
-  "puts": [
-    {
-      "host": 4,
-      "uri": "ccnx:/test/sample",
-      "file": "./sample-putfile",
-      "rate": 10,
-      "block_size": 1024,
-      "expiry": 3000,
-      "cache_time": 3000,
-      "valid_algo": "crc32c"
-    }
-  ],
-
-  "gets": [
-    {
-      "host": 0,
-      "uri": "ccnx:/test/sample"
-    }
-  ],
-
   "pubsub_sub_startup_grace": 1.0,
 
   "events": [
@@ -82,14 +62,19 @@
       "at": 35,
       "type": "put",
       "host": 4,
-      "uri": "ccnx:/test/event_data",
-      "file": "./sample-putfile"
+      "uri": "ccnx:/test/sample",
+      "file": "./sample-putfile",
+      "rate": 10,
+      "block_size": 1024,
+      "expiry": 3000,
+      "cache_time": 3000,
+      "valid_algo": "crc32c"
     },
     {
       "at": 45,
       "type": "get",
       "host": 0,
-      "uri": "ccnx:/test/event_data"
+      "uri": "ccnx:/test/sample"
     },
     {
       "at": 55,
@@ -108,14 +93,9 @@
     }
   ],
 
-  "warmup_get_interval": 0,
-  "warmup_only_cache_nodes": true,
-  "hot_uris": ["ccnx:/test/sample"],
-
   "no_cli": false,
   "duration": 0,
   "results_json": "",
-  "get_interval": 10,
 
   "publisher_host": 4,
 

@@ -1,8 +1,7 @@
 """External network connection scenario with mesh topology.
 
 Provides run_connect() for mesh topology with external bridge support,
-plus shared utilities (Tee, parse_int_list, periodic_host_flap, run_host_command)
-used by both this module and scenarios/disaster.py.
+plus shared utilities used by both this module and scenarios/disaster.py.
 """
 
 import argparse
@@ -22,9 +21,12 @@ from mininet.net import Mininet
 
 from ..core.addressing import AddressingScheme, DEFAULT_NETWORK_CIDR
 from ..core.tee import Tee  # noqa: F401 (re-export for backward compat)
-from ..core.config.auto_gen import generate_operations
-from ..core.config.loader import load_config, merge_cli_and_config, validate_config
-from ..core.flap_state import FlapState
+from ..core.config.loader import (
+    load_config,
+    merge_cli_and_config,
+    validate_config,
+    warn_ignored_legacy_content_keys,
+)
 from ..core.graph import select_k_centers
 from ..core.paths import resolve_run_dir, resolve_run_path
 
@@ -36,7 +38,6 @@ from .bridge import (
     setup_bridges,
 )
 from .cefore import (
-    run_cefgetfile,
     run_cefstatus_all,
     start_cefnetd,
     start_csmgrd,
@@ -45,7 +46,7 @@ from .cefore import (
     wait_for_cefnetd,
 )
 from .links import set_node_links_state
-from .net_config import apply_fib, apply_fib_for_uris, apply_ip_addr
+from .net_config import apply_fib, apply_ip_addr
 from .template import apply_cache_node_settings, cleanup_node_dirs, ensure_node_dirs
 from .topo import MeshTopo
 from .viz import build_host_graph, print_mesh_links, render_topology_png
@@ -216,31 +217,6 @@ def attach_external_interface_intf(net, host_name, intf_name, ip=None, mtu=None)
     info(f"attached {intf_name} to {host_name}\n")
 
 
-def _resolve_connect_content_ops(args, run_dir: Path):
-    """Resolve explicit and auto-generated content operations."""
-    ops_put = args.puts or []
-    auto_config = getattr(args, "auto", None)
-    if auto_config and not ops_put:
-        ops_put, _ = generate_operations(auto_config, args.hosts, args.seed, run_dir)
-
-    ops_get = args.gets or []
-    if auto_config and not ops_get:
-        _, ops_get = generate_operations(auto_config, args.hosts, args.seed, run_dir)
-
-    return ops_put, ops_get
-
-
-def _warn_if_no_content_operations(ops_put, ops_get) -> bool:
-    """Print a warning when no content operations are configured."""
-    if ops_put or ops_get:
-        return False
-    print(
-        "[warning] no content operations configured; "
-        "skipping publish/retrieve phase"
-    )
-    return True
-
-
 def run_connect(args, run_dir: Path = None, log_context=None):
     """Run mesh topology with external bridge support.
 
@@ -259,11 +235,7 @@ def run_connect(args, run_dir: Path = None, log_context=None):
     addr_cfg = getattr(args, "addressing", {}) or {}
     scheme = AddressingScheme(addr_cfg.get("network_cidr", DEFAULT_NETWORK_CIDR))
 
-    ops_put, ops_get = _resolve_connect_content_ops(args, run_dir)
-
-    publisher_ids = set(op["host"] for op in ops_put) if ops_put else None
-
-    generated_node_dirs = ensure_node_dirs(args.hosts, rng or random.Random(), publisher_ids)
+    generated_node_dirs = ensure_node_dirs(args.hosts, rng or random.Random(), None)
 
     topo = MeshTopo(
         hosts=args.hosts,
@@ -295,7 +267,7 @@ def run_connect(args, run_dir: Path = None, log_context=None):
     if not cache_nodes and args.hosts > 0:
         cache_nodes = [args.hosts - 1]
     cache_node_set = set(cache_nodes)
-    apply_cache_node_settings(args.hosts, cache_node_set, None, publishers=publisher_ids)
+    apply_cache_node_settings(args.hosts, cache_node_set, None, publishers=None)
 
     for idx in sorted(cache_node_set):
         start_csmgrd(net, idx)
@@ -307,14 +279,7 @@ def run_connect(args, run_dir: Path = None, log_context=None):
         if not wait_for_cefnetd(net, idx):
             info(f"WARNING: h{idx} cefnetd not ready\n")
 
-    uri_publishers = {}
-    for op in ops_put:
-        uri_publishers[op["uri"]] = op["host"]
-
-    if uri_publishers:
-        apply_fib_for_uris(net, topo.mesh_links, args.k, uri_publishers, scheme=scheme)
-    else:
-        apply_fib(net, topo.mesh_links, args.k, scheme=scheme)
+    apply_fib(net, topo.mesh_links, args.k, scheme=scheme)
 
     run_cefstatus_all(net, args.hosts)
     print_mesh_links(topo.mesh_links)
@@ -332,7 +297,6 @@ def run_connect(args, run_dir: Path = None, log_context=None):
         seed=args.seed,
         layout=args.topo_layout,
     )
-    _warn_if_no_content_operations(ops_put, ops_get)
     if cache_nodes:
         info("cache nodes: " + ", ".join(f"h{idx}" for idx in cache_nodes) + "\n")
     time.sleep(1)
@@ -342,20 +306,6 @@ def run_connect(args, run_dir: Path = None, log_context=None):
 
     for host_name, intf_name, ip, mtu in parse_ext_args(args.ext):
         attach_external_interface_intf(net, host_name, intf_name, ip, mtu)
-
-    for op in ops_put:
-        host = op["host"]
-        uri = op["uri"]
-        infile = op.get("file", "./sample-putfile")
-        log_path = str(
-            resolve_run_path(run_dir, op.get("log"), f"cefputfile_h{host}.log")
-        )
-        command = (
-            f"cefputfile {shlex.quote(uri)} -f {shlex.quote(infile)} -t 3000 -e 3000 -d ./h{host} > {shlex.quote(log_path)}"
-        )
-        print(f"h{host}", "command:", command)
-        run_host_command(net, host, command)
-        time.sleep(1)
 
     use_cli = not getattr(args, "no_cli", False)
     stop_event = None
@@ -407,14 +357,11 @@ def main():
     parser.add_argument("--bw", action="append", default=[])
     parser.add_argument("--ext", action="append", default=[])
     parser.add_argument("--bridge", action="append", default=[])
-    parser.add_argument("--get-interval", type=int, default=10)
     parser.add_argument("--config", type=str, default="")
     parser.add_argument("--topo-png", type=str, default=None)
     parser.add_argument("--script-log", type=str, default=None)
     parser.add_argument("--no-script-log", action="store_true")
     parser.add_argument("--topo-layout", type=str, default="spring")
-    parser.add_argument("--puts", type=str, default="")
-    parser.add_argument("--gets", type=str, default="")
     parser.add_argument("--num", type=int, default=None)
     parser.add_argument("--output-dir", type=str, default="logs")
     parser.add_argument("--timestamp", action="store_true")
@@ -422,6 +369,7 @@ def main():
     args = parser.parse_args()
 
     config_data = load_config(args.config)
+    warn_ignored_legacy_content_keys(config_data)
     errors = validate_config(config_data)
     if errors:
         for error in errors:
@@ -448,7 +396,6 @@ def main():
         "down_stagger": args.down_stagger,
         "down_exclude": args.down_exclude,
         "cache_count": args.cache_count,
-        "get_interval": args.get_interval,
         "output_dir": str(run_dir),
     }
     meta_path = resolve_run_path(run_dir, "meta.json", "meta.json")

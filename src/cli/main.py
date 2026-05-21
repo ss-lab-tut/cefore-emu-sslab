@@ -13,9 +13,14 @@ import sys
 
 from mininet.log import setLogLevel
 
-from ..core.config.loader import load_config, merge_cli_and_config, validate_config, validate_merged_args
+from ..core.config.loader import (
+    load_config,
+    merge_cli_and_config,
+    validate_merged_args,
+    warn_ignored_legacy_content_keys,
+)
 from ..core.debug import build_debug_config
-from ..core.paths import resolve_run_dir, resolve_run_path
+from ..core.paths import resolve_run_dir
 from ..core.tee import Tee
 from .args import add_common_args, add_debug_args, add_disaster_args, add_mesh_args
 
@@ -57,6 +62,7 @@ def cmd_disaster(args):
     from pathlib import Path
 
     config_data = load_config(args.config)
+    warn_ignored_legacy_content_keys(config_data)
 
     # Build parser for CLI-precedence merge
     cli_parser = argparse.ArgumentParser()
@@ -90,7 +96,6 @@ def cmd_disaster(args):
             "down_stagger": args.down_stagger,
             "down_exclude": args.down_exclude,
             "cache_count": args.cache_count,
-            "get_interval": args.get_interval,
         }
         meta_path = run_dir / "meta.json"
         meta_path.write_text(json.dumps(meta_data, indent=2), encoding="utf-8")

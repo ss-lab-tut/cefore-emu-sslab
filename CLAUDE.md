@@ -45,7 +45,6 @@ cefore-emu/
 │   │   ├── config/                # Configuration utilities
 │   │   │   ├── __init__.py
 │   │   │   ├── loader.py          # JSON/YAML config loader
-│   │   │   ├── auto_gen.py        # Auto put/get generation
 │   │   │   └── priority_resolver.py  # Config priority resolution
 │   │   ├── fib.py                 # FIB route computation
 │   │   ├── flap_state.py          # Host flap state tracking
@@ -342,25 +341,18 @@ Basic JSON example with multiple publishers:
 
 Note: In disaster topology, `expiry` and `cache_time` default to 3000 if not specified. In `run_cefputfile()` itself, they default to None (flag omitted).
 
-YAML example with auto-generation:
+YAML example with event content operations:
 ```yaml
 hosts: 10
 switches: 15
 seed: 42
-auto:
-  publishers: [9]           # Publisher host IDs
-  consumers: "random:5"     # Random 5 consumers or list [0, 1, 2]
-  content_count: 3          # Contents per publisher
-  uri_prefix: "ccnx:/test"  # URI prefix for generated content
-  consumer_per_content: 2   # Get operations per content
+events:
+  - {at: 5, type: put, host: 9, uri: "ccnx:/test/content1", file: "./sample-putfile"}
+  - {at: 10, type: get, host: 0, uri: "ccnx:/test/content1"}
 ```
 
-The `auto` configuration automatically generates put/get operations:
-- `publishers`: List of host IDs that will publish content
-- `consumers`: Either `"random:N"` for N random consumers or a list of host IDs
-- `content_count`: Number of content items each publisher creates
-- `uri_prefix`: Base URI for generated content (default: `ccnx:/test`)
-- `consumer_per_content`: Number of consumers that request each content
+Top-level `puts`, `gets`, and `auto` are ignored with a warning. Use
+`events` for all content operations.
 
 **Topology PNG Output:**
 ```bash
@@ -406,7 +398,7 @@ If not installed, use `uv run ceforeemu-log` instead.
 |--------|--------|
 | experiment_dir | Directory name |
 | num, hosts, switches, seed, k | meta.json |
-| down_interval, down_duration, down_count, down_stagger, down_exclude, cache_count, get_interval | meta.json |
+| down_interval, down_duration, down_count, down_stagger, down_exclude, cache_count | meta.json |
 | filename, host_id, content_id, file_seed, down_hosts, get_idx | Filename |
 
 **cefputfile-specific columns:**
@@ -434,7 +426,7 @@ After running scripts, the following files appear in the root directory:
 Modify `select_template()` in the topology script to return appropriate template (h0, h1, or h2) based on index and host count.
 
 **Changing content URI:**
-Update the `ccnx:/test` prefix in `setFib()` or `set_fib()` and corresponding `cefputfile`/`cefgetfile` commands. For disaster topology, use `--config` JSON or `--puts`/`--gets` options.
+Update the `ccnx:/test` prefix in `setFib()` or `set_fib()` and corresponding `cefputfile`/`cefgetfile` commands. For disaster topology, define content operations with `events` in a JSON/YAML config.
 
 **Adjusting cache behavior:**
 Edit `config/templates/h1/csmgrd.conf` template (applies to all router nodes).
