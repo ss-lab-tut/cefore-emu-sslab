@@ -17,6 +17,8 @@ style.css
 
 logs/
 config/ex*.yaml
+out/
+cefore_emu.egg-info
 
 # node-modules
 node_modules
