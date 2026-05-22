@@ -354,6 +354,29 @@ def validate_config(config: dict[str, Any]) -> list[str]:
         if not isinstance(v, (int, float)) or v < 0:
             errors.append("pubsub_sub_startup_grace must be a non-negative number")
 
+    if "warmup_get_interval" in config:
+        v = config["warmup_get_interval"]
+        if not isinstance(v, (int, float)) or v < 0:
+            errors.append("warmup_get_interval must be a non-negative number")
+
+    if "warmup_only_cache_nodes" in config:
+        if not isinstance(config["warmup_only_cache_nodes"], bool):
+            errors.append("warmup_only_cache_nodes must be a boolean")
+
+    if "warmup_gets" in config:
+        wg = config["warmup_gets"]
+        if not isinstance(wg, list):
+            errors.append("warmup_gets must be a list")
+        else:
+            for idx, entry in enumerate(wg):
+                if not isinstance(entry, dict):
+                    errors.append(f"warmup_gets[{idx}] must be a dict")
+                    continue
+                if "host" not in entry or not isinstance(entry["host"], int):
+                    errors.append(f"warmup_gets[{idx}].host must be an integer")
+                if "uri" not in entry or not isinstance(entry["uri"], str):
+                    errors.append(f"warmup_gets[{idx}].uri must be a string")
+
     if "events" in config:
         if not isinstance(config["events"], list):
             errors.append("events must be a list")
@@ -604,10 +627,12 @@ def validate_merged_args(args: Any) -> list[str]:
         "output_dir", "results_json", "script_log", "timestamp",
         "no_cli", "no_script_log", "host_degree_min", "host_degree_max",
         "switch_use_all", "pubsub_sub_startup_grace",
+        "warmup_get_interval", "warmup_only_cache_nodes",
     )
     structured_keys = (
         "events", "monitoring", "routing",
         "cache_config", "failure_scenarios", "addressing",
+        "warmup_gets",
     )
     nullable_keys = {"seed", "results_json", "script_log", "cache_default_rct_ms", "publisher_host"}
 
@@ -676,6 +701,9 @@ def merge_cli_and_config(args: Any, config: dict[str, Any], parser=None) -> None
         "cefnetd_timeout",
         "addressing",
         "pubsub_sub_startup_grace",
+        "warmup_get_interval",
+        "warmup_only_cache_nodes",
+        "warmup_gets",
     )
 
     _NULL_MEANS_DEFAULT = {

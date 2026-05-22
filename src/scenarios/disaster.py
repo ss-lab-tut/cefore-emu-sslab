@@ -38,7 +38,7 @@ from ..runtime.cefore import (
     stop_csmgrd,
     wait_for_cefnetd,
 )
-from ..runtime.external_net import parse_int_list
+from ..core.parsing import parse_int_list
 from ..runtime.failure_manager import FlexibleFailureManager, periodic_host_flap
 from ..runtime.net_config import apply_fib, apply_fib_routes, apply_ip_addr
 from ..runtime.template import (
@@ -321,12 +321,31 @@ class DisasterScenario(BaseScenario):
             apply_fib_routes(net, self._fib_routes, source=host_idx)
             info(f"[failure] restored dynamic FIB entries for h{host_idx}\n")
 
-    def run_experiment(self, net):
-        """Run the disaster experiment with event-driven content operations."""
-        args = self.args
+    def _make_content_runner(self, net, events_config, phase="event"):
+        """Create a ContentOperationRunner for the given phase."""
+        startup_grace = float(getattr(self.args, "pubsub_sub_startup_grace", 1.0))
+        pub_lifetime_by_uri = {}
+        for ev in events_config:
+            if ev.get("type") == "pubsub_pub":
+                pub_opts = ev.get("pub_opts") or {}
+                lifetime = pub_opts.get("lifetime")
+                if lifetime is not None:
+                    pub_lifetime_by_uri[ev["uri"]] = lifetime
+        return ContentOperationRunner(
+            net,
+            run_dir=self.run_dir,
+            result_callback=self._append_result,
+            flap_state=self.flap_state,
+            seed_label=self.seed_label,
+            uri_publishers=self.uri_publishers,
+            startup_grace=startup_grace,
+            pub_lifetime_by_uri=pub_lifetime_by_uri,
+            phase=phase,
+        )
 
-        # Start host flapping
-        use_cli = not getattr(args, "no_cli", False)
+    def _start_failure_manager(self, net, use_cli):
+        """Start host flapping via failure_scenarios or legacy --down-* args."""
+        args = self.args
         scenario_config = getattr(args, "failure_scenarios", None)
         if scenario_config:
             failure_manager = FlexibleFailureManager(
@@ -357,49 +376,54 @@ class DisasterScenario(BaseScenario):
                 on_host_up=lambda host_idx: self._restore_fib_for_host(net, host_idx),
             )
 
-        # Start event scheduler (with content runner for put/get/pubsub events)
-        events_config = getattr(args, "events", None) or []
-        content_event_types = {"put", "get", "pubsub_pub", "pubsub_sub"}
-        has_content_events = any(
-            e.get("type") in content_event_types for e in events_config
-        )
-        if has_content_events:
-            startup_grace = float(getattr(args, "pubsub_sub_startup_grace", 1.0))
-            pub_lifetime_by_uri = {}
-            for ev in events_config:
-                if ev.get("type") == "pubsub_pub":
-                    pub_opts = ev.get("pub_opts") or {}
-                    lifetime = pub_opts.get("lifetime")
-                    if lifetime is not None:
-                        pub_lifetime_by_uri[ev["uri"]] = lifetime
-            self.content_runner = ContentOperationRunner(
-                net,
-                run_dir=self.run_dir,
-                result_callback=self._append_result,
-                flap_state=self.flap_state,
-                seed_label=self.seed_label,
-                uri_publishers=self.uri_publishers,
-                startup_grace=startup_grace,
-                pub_lifetime_by_uri=pub_lifetime_by_uri,
-            )
-            self.content_runner.start()
-        if events_config:
-            self.event_scheduler = EventScheduler(
-                net,
-                events_config,
-                mesh_links=self.topo.mesh_links,
-                run_dir=self.run_dir,
-                content_runner=self.content_runner,
-            )
-            self.event_scheduler.start()
-        elif not use_cli:
-            print("[warning] no events configured; no content operations will run")
+    def _run_warmup(self, net, events_config):
+        """Execute warmup prefetch phase: get hot content into cache nodes."""
+        args = self.args
+        warmup_gets = getattr(args, "warmup_gets", None)
+        warmup_interval = float(getattr(args, "warmup_get_interval", 0))
+        warmup_cache_only = getattr(args, "warmup_only_cache_nodes", True)
 
-        # Start monitoring
+        if warmup_gets:
+            warmup_ops = warmup_gets
+        else:
+            put_uris = {
+                ev["uri"] for ev in events_config if ev.get("type") == "put"
+            }
+            if not put_uris:
+                return
+            if warmup_cache_only:
+                warmup_hosts = sorted(self.cache_node_set)
+            else:
+                warmup_hosts = [
+                    i for i in range(args.hosts) if i not in self.publisher_ids
+                ]
+            if not warmup_hosts:
+                return
+            warmup_ops = [
+                {"host": h, "uri": u}
+                for u in sorted(put_uris)
+                for h in warmup_hosts
+            ]
+
+        if not warmup_ops:
+            return
+
+        info(f"[warmup] starting warmup phase: {len(warmup_ops)} gets\n")
+        warmup_runner = self._make_content_runner(net, events_config, phase="warmup")
+        warmup_runner.start()
+        for op in warmup_ops:
+            warmup_runner.submit("get", op)
+            if warmup_interval > 0:
+                time.sleep(warmup_interval)
+        warmup_runner.wait_all(timeout=300)
+        warmup_runner.stop()
+        info("[warmup] warmup phase complete\n")
+
+    def _start_monitoring(self, net):
+        """Start monitoring if configured."""
+        args = self.args
         monitoring_config = dict(getattr(args, "monitoring", None) or {})
         if self.dashboard is not None and not monitoring_config.get("targets"):
-            # --webui-port active but no monitoring targets → auto-start defaults
-            # Preserve any user-supplied interval/output_json/output_csv via setdefault
             monitoring_config["targets"] = [
                 {"type": "cefstatus",   "hosts": "all"},
                 {"type": "csmgrstatus", "hosts": "cache"},
@@ -419,6 +443,79 @@ class DisasterScenario(BaseScenario):
                 on_record=self.dashboard.record_monitor if self.dashboard else None,
             )
             self.monitor.start()
+
+    def run_experiment(self, net):
+        """Run the disaster experiment with event-driven content operations."""
+        args = self.args
+        use_cli = not getattr(args, "no_cli", False)
+        events_config = getattr(args, "events", None) or []
+        content_event_types = {"put", "get", "pubsub_pub", "pubsub_sub"}
+        has_content_events = any(
+            e.get("type") in content_event_types for e in events_config
+        )
+
+        if self.autotest_mode and has_content_events:
+            # Autotest: put → warmup → flap → eval
+            put_events = [e for e in events_config if e.get("type") == "put"]
+            eval_events = [e for e in events_config if e.get("type") != "put"]
+
+            # Phase 1: Run put events (strip repeat to avoid infinite blocking)
+            if put_events:
+                prewarm_puts = [
+                    {k: v for k, v in e.items() if k != "repeat"}
+                    for e in put_events
+                ]
+                put_runner = self._make_content_runner(net, prewarm_puts, phase="event")
+                put_runner.start()
+                put_scheduler = EventScheduler(
+                    net, prewarm_puts,
+                    mesh_links=self.topo.mesh_links,
+                    run_dir=self.run_dir,
+                    content_runner=put_runner,
+                )
+                put_scheduler.start()
+                put_scheduler.wait_all(timeout=300)
+                put_runner.wait_all(timeout=300)
+                put_runner.stop()
+
+            # Phase 2: Warmup prefetch
+            self._run_warmup(net, events_config)
+
+            # Phase 3: Start failure manager
+            self._start_failure_manager(net, use_cli)
+
+            # Phase 4: Run eval events
+            if eval_events:
+                self.content_runner = self._make_content_runner(
+                    net, eval_events, phase="eval"
+                )
+                self.content_runner.start()
+                self.event_scheduler = EventScheduler(
+                    net, eval_events,
+                    mesh_links=self.topo.mesh_links,
+                    run_dir=self.run_dir,
+                    content_runner=self.content_runner,
+                )
+                self.event_scheduler.start()
+        else:
+            # Non-autotest: original behavior (flap → all events)
+            self._start_failure_manager(net, use_cli)
+
+            if has_content_events:
+                self.content_runner = self._make_content_runner(net, events_config)
+                self.content_runner.start()
+            if events_config:
+                self.event_scheduler = EventScheduler(
+                    net, events_config,
+                    mesh_links=self.topo.mesh_links,
+                    run_dir=self.run_dir,
+                    content_runner=self.content_runner,
+                )
+                self.event_scheduler.start()
+            elif not use_cli:
+                print("[warning] no events configured; no content operations will run")
+
+        self._start_monitoring(net)
 
         duration = max(0, int(getattr(args, "duration", 0)))
         if not use_cli and duration > 0:
@@ -478,6 +575,23 @@ class DisasterScenario(BaseScenario):
                     json.dumps(self.results, ensure_ascii=False, indent=2),
                     encoding="utf-8",
                 )
+
+    def collect_debug_pre_teardown(self, net):
+        if self.debug_config is None or not self.debug_config.fib_dump:
+            return
+        from ..runtime.debug import dump_fib
+
+        dest = self.run_dir / self.debug_config.output_subdir / "fib"
+        dump_fib(net, list(range(self.args.hosts)), dest)
+
+    def collect_debug_post_teardown(self):
+        super().collect_debug_post_teardown()
+        if self.debug_config is None or not self.debug_config.daemon_logs:
+            return
+        from ..runtime.debug import archive_daemon_logs
+
+        dest = self.run_dir / self.debug_config.output_subdir / "daemon_logs"
+        archive_daemon_logs(self.args.hosts, dest)
 
     def teardown(self, net):
         """Stop daemons and clean up bridges."""

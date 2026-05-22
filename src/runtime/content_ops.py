@@ -52,6 +52,7 @@ class ContentOperationRunner:
         uri_publishers=None,
         startup_grace=1.0,
         pub_lifetime_by_uri=None,
+        phase="event",
     ):
         self._net = net
         self._run_dir = Path(run_dir)
@@ -61,6 +62,7 @@ class ContentOperationRunner:
         self._uri_publishers = uri_publishers or {}
         self._startup_grace = float(startup_grace)
         self._pub_lifetime_by_uri = pub_lifetime_by_uri or {}
+        self._phase = phase
 
         self._queue = queue.Queue()
         self._pending_subs = {}  # uri -> list of pending sub dicts
@@ -131,7 +133,7 @@ class ContentOperationRunner:
 
     def _log_path(self, cmd, host, uri, suffix=""):
         label = _safe_uri_label(uri)
-        fname = f"{cmd}_event_h{host}_{label}{suffix}.log"
+        fname = f"{cmd}_{self._phase}_h{host}_{label}{suffix}.log"
         return self._run_dir / fname
 
     # ------------------------------------------------------------------
@@ -166,7 +168,7 @@ class ContentOperationRunner:
         host = int(event["host"])
         uri = event["uri"]
         label = _safe_uri_label(uri)
-        out_path = self._run_dir / f"event_recvfile_h{host}_{label}"
+        out_path = self._run_dir / f"{self._phase}_recvfile_h{host}_{label}"
         log_path = self._log_path("cefgetfile", host, uri)
         down_hosts = self._flap_state.snapshot()
         info(f"[content_runner] get h{host} uri={uri}\n")
@@ -192,7 +194,7 @@ class ContentOperationRunner:
             {
                 "op_type": "get",
                 "ts": timestamp_utc(),
-                "phase": "event",
+                "phase": self._phase,
                 "host": host,
                 "uri": uri,
                 "out_file": str(out_path),
@@ -222,7 +224,7 @@ class ContentOperationRunner:
         else:
             wait_sec = 30.0
         label = _safe_uri_label(uri)
-        output_dir = self._run_dir / f"event_recvdir_h{host}_{label}"
+        output_dir = self._run_dir / f"{self._phase}_recvdir_h{host}_{label}"
         output_dir.mkdir(parents=True, exist_ok=True)
         removed = clear_sub_output_artifacts(output_dir)
         if removed:
@@ -333,7 +335,7 @@ class ContentOperationRunner:
         self._result_callback({
             "op_type":           "pub",
             "ts":                timestamp_utc(),
-            "phase":             "event",
+            "phase":             self._phase,
             "host":              host,
             "uri":               uri,
             "out_file":          str(log_path),
@@ -377,7 +379,7 @@ class ContentOperationRunner:
             {
                 "op_type": "sub",
                 "ts": timestamp_utc(),
-                "phase": "event",
+                "phase": self._phase,
                 "host": host,
                 "uri": uri,
                 "out_file": out_file,

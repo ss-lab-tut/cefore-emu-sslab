@@ -214,3 +214,21 @@ sudo python3 tools/autotest/run.py \
   - get の duration / throughput（ログから抽出可能）
   - flap の down_hosts とタイムスタンプ
   - cache パラメータ（capacity, rct）と seed
+
+---
+
+## 12. Future Work（未実装・検討段階）
+
+以下は今後の実装候補。仕様の詳細は未定。
+
+### C.7 統計分析モジュール
+`scipy` が依存に追加済みだが未使用。実験結果の統計比較（t-test, 分散分析等）を `tools/autotest/analyze.py` に追加、または独立モジュールとして実装する。スループット分布、ジッター分析、per-node キャッシュヒット率（csmgrstatus データ）など。
+
+### C.8 並列実験実行
+`tools/autotest/run.py` は現在逐次実行。CPU/リソースに余裕がある環境向けに、`multiprocessing` や `subprocess` プールによる並列化を検討。Mininet のネットワーク名前空間の衝突回避が課題。
+
+### C.9 WebUI の改善
+`src/webui/` の簡易ダッシュボードに以下を追加:
+- リアルタイムログストリーミング表示
+- 失敗原因のドリルダウン（results.json のインタラクティブ分析）
+- 実験間のヒストリカルタイムライン比較

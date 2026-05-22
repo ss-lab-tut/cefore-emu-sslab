@@ -175,3 +175,31 @@ class TestPubsubTimingResolution:
         assert exit_code is None
         proc.terminate.assert_called_once()
         proc.kill.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# ContentOperationRunner phase parameter
+# ---------------------------------------------------------------------------
+
+
+class TestContentOperationRunnerPhase:
+    def test_phase_parameter_default_is_event(self):
+        runner = ContentOperationRunner(
+            net=MagicMock(),
+            run_dir="/tmp",
+            result_callback=MagicMock(),
+            flap_state=MagicMock(),
+            seed_label="test",
+        )
+        assert runner._phase == "event"
+
+    def test_phase_parameter_custom(self):
+        runner = ContentOperationRunner(
+            net=MagicMock(),
+            run_dir="/tmp",
+            result_callback=MagicMock(),
+            flap_state=MagicMock(),
+            seed_label="test",
+            phase="warmup",
+        )
+        assert runner._phase == "warmup"
