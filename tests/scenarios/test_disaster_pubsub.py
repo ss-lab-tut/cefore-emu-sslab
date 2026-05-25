@@ -1,6 +1,5 @@
 """Unit tests for pub/sub helpers in disaster scenario."""
 
-import subprocess
 import time
 from unittest.mock import MagicMock, patch
 
@@ -167,10 +166,7 @@ class TestPubsubTimingResolution:
 
     def test_expired_deadline_terminates_subscriber_immediately(self):
         proc = MagicMock()
-        proc.wait.side_effect = [
-            subprocess.TimeoutExpired(cmd="cefsubfile", timeout=0),
-            0,
-        ]
+        proc.wait.return_value = 0
         exit_code = _wait_pubsub_process(proc, time.monotonic() - 1)
         assert exit_code is None
         proc.terminate.assert_called_once()
@@ -203,3 +199,51 @@ class TestContentOperationRunnerPhase:
             phase="warmup",
         )
         assert runner._phase == "warmup"
+
+
+class TestContentOperationRunnerDeadline:
+    @patch("src.runtime.content_ops.run_cefgetfile")
+    def test_timeout_cancels_running_operation_and_returns_false(
+        self, mock_get, tmp_path
+    ):
+        def wait_until_cancelled(*args, **kwargs):
+            cancel_event = kwargs["cancel_event"]
+            assert cancel_event.wait(timeout=1)
+            return -15
+
+        mock_get.side_effect = wait_until_cancelled
+        runner = _make_runner(tmp_path)
+        runner.start()
+        runner.submit("get", {"host": 0, "uri": "ccnx:/test/slow"})
+        assert runner.wait_all(timeout=0.01) is False
+        runner.stop()
+
+    @patch("src.runtime.content_ops.run_cefputfile")
+    def test_put_restores_disaster_default_expiry_and_cache_time(
+        self, mock_put, tmp_path
+    ):
+        runner = _make_runner(tmp_path)
+        runner._do_put({"host": 2, "uri": "ccnx:/test/defaults"})
+        assert mock_put.call_args.kwargs["expiry"] == 3000
+        assert mock_put.call_args.kwargs["cache_time"] == 3000
+
+    @patch("src.runtime.content_ops.run_cefpubfile")
+    def test_pubsub_pub_keeps_expiry_and_cache_time_explicit_only(
+        self, mock_pub, tmp_path
+    ):
+        proc = MagicMock()
+        proc.wait.return_value = 0
+        mock_pub.return_value = proc
+        runner = ContentOperationRunner(
+            MagicMock(),
+            run_dir=tmp_path,
+            result_callback=MagicMock(),
+            flap_state=MagicMock(),
+            seed_label="test",
+            startup_grace=0,
+        )
+        runner._do_pubsub_pub(
+            {"host": 2, "uri": "ccnx:/test/live", "file": "./sample-putfile"}
+        )
+        assert mock_pub.call_args.kwargs["expiry"] is None
+        assert mock_pub.call_args.kwargs["cache_time"] is None

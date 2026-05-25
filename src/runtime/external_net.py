@@ -25,6 +25,7 @@ from ..core.config.loader import (
     warn_ignored_legacy_content_keys,
 )
 from ..core.graph import select_k_centers
+from ..core.flap_state import FlapState
 from ..core.paths import resolve_run_dir, resolve_run_path
 
 from .bandwidth import parse_bw_args, set_link_bandwidth
@@ -43,14 +44,20 @@ from .cefore import (
     stop_csmgrd,
     wait_for_cefnetd,
 )
+from .content_ops import ContentOperationRunner
 from .net_config import apply_fib, apply_ip_addr
+from .scheduler import EventScheduler
 from .template import apply_cache_node_settings, cleanup_node_dirs, ensure_node_dirs
 from .topo import MeshTopo
 from .viz import build_host_graph, print_mesh_links, render_topology_png
-
-
-
-
+def _publication_metadata(events):
+    """Return publication events and their URI-to-publisher mapping."""
+    publications = [
+        event for event in events
+        if event.get("type") in ("put", "pubsub_pub")
+    ]
+    publishers = {event["uri"]: event["host"] for event in publications}
+    return publications, publishers
 
 
 def run_connect(args, run_dir: Path = None, log_context=None):
@@ -70,8 +77,21 @@ def run_connect(args, run_dir: Path = None, log_context=None):
 
     addr_cfg = getattr(args, "addressing", {}) or {}
     scheme = AddressingScheme(addr_cfg.get("network_cidr", DEFAULT_NETWORK_CIDR))
+    events = getattr(args, "events", None) or []
+    publication_events, uri_publishers = _publication_metadata(events)
+    publisher_ids = set(uri_publishers.values())
+    ignored_retrievals = [
+        event for event in events if event.get("type") in ("get", "pubsub_sub")
+    ]
+    if ignored_retrievals:
+        info(
+            "[warning] ceforeemu-connect does not execute get/pubsub_sub events; "
+            "use disaster or interactive commands for retrieval\n"
+        )
 
-    generated_node_dirs = ensure_node_dirs(args.hosts, rng or random.Random(), None)
+    generated_node_dirs = ensure_node_dirs(
+        args.hosts, rng or random.Random(), publisher_ids
+    )
 
     topo = MeshTopo(
         hosts=args.hosts,
@@ -103,7 +123,9 @@ def run_connect(args, run_dir: Path = None, log_context=None):
     if not cache_nodes and args.hosts > 0:
         cache_nodes = [args.hosts - 1]
     cache_node_set = set(cache_nodes)
-    apply_cache_node_settings(args.hosts, cache_node_set, None, publishers=None)
+    apply_cache_node_settings(
+        args.hosts, cache_node_set, None, publishers=publisher_ids
+    )
 
     for idx in sorted(cache_node_set):
         start_csmgrd(net, idx)
@@ -115,7 +137,13 @@ def run_connect(args, run_dir: Path = None, log_context=None):
         if not wait_for_cefnetd(net, idx):
             info(f"WARNING: h{idx} cefnetd not ready\n")
 
-    apply_fib(net, topo.mesh_links, args.k, scheme=scheme)
+    apply_fib(
+        net,
+        topo.mesh_links,
+        args.k,
+        uri_publishers=uri_publishers or None,
+        scheme=scheme,
+    )
 
     run_cefstatus_all(net, args.hosts)
     print_mesh_links(topo.mesh_links)
@@ -145,6 +173,33 @@ def run_connect(args, run_dir: Path = None, log_context=None):
 
     use_cli = not getattr(args, "no_cli", False)
     stop_event = None
+    if publication_events:
+        runner = ContentOperationRunner(
+            net,
+            run_dir=run_dir,
+            result_callback=lambda _record: None,
+            flap_state=FlapState(),
+            seed_label="none" if args.seed is None else str(args.seed),
+            uri_publishers=uri_publishers,
+            phase="seed",
+        )
+        scheduler = EventScheduler(
+            net,
+            publication_events,
+            mesh_links=topo.mesh_links,
+            run_dir=run_dir,
+            content_runner=runner,
+        )
+        runner.start()
+        try:
+            scheduler.start()
+            if not scheduler.wait_all(timeout=60):
+                info("[warning] publication event scheduling exceeded 60s deadline\n")
+            if not runner.wait_all(timeout=60):
+                info("[warning] publication seed operations exceeded 60s deadline\n")
+        finally:
+            scheduler.stop()
+            runner.stop()
 
     if use_cli:
         if log_context:

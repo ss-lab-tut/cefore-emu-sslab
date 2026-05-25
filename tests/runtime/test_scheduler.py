@@ -136,7 +136,34 @@ class TestEventScheduler:
             sched = EventScheduler(net, events)
             sched.start()
             start = time.monotonic()
-            sched.wait_all(timeout=5)
+            completed = sched.wait_all(timeout=5)
             elapsed = time.monotonic() - start
         assert len(fired) == 1
+        assert completed is True
         assert elapsed < 3
+
+    def test_wait_all_reports_unfired_event_deadline(self):
+        sched = EventScheduler(
+            _make_net(), [{"at": 30, "type": "link_down", "nodes": [0, 1]}]
+        )
+        sched.start()
+        assert sched.wait_all(timeout=0.01) is False
+        sched.stop()
+
+    def test_shared_start_time_executes_late_event_immediately(self):
+        fired = []
+        net = _make_net()
+
+        def handler(net, ev, ml, ctx):
+            fired.append(time.monotonic())
+
+        with patch.dict("src.runtime.scheduler._EVENT_HANDLERS", {"test": handler}):
+            sched = EventScheduler(
+                net,
+                [{"at": 0.1, "type": "test"}],
+                start_time=time.monotonic() - 1,
+            )
+            before = time.monotonic()
+            sched.start()
+            assert sched.wait_all(timeout=1) is True
+        assert fired[0] - before < 0.2

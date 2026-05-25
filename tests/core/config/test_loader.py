@@ -722,3 +722,86 @@ def test_validate_monitoring_target_host_non_string():
         }
     })
     assert any("target_host" in e for e in errors)
+
+
+@pytest.mark.parametrize(
+    "config",
+    [
+        {"hosts": True},
+        {"duration": False},
+        {"cefnetd_timeout": True},
+        {"monitoring": {"interval": True}},
+        {"events": [{"at": True, "type": "get", "host": 0, "uri": "ccnx:/x"}]},
+        {"events": [{"at": 0, "type": "bw_set", "nodes": [0, 1], "bandwidth": True}]},
+        {"events": [{"at": 0, "type": "get", "host": True, "uri": "ccnx:/x"}]},
+        {"events": [{"at": 0, "type": "get", "host": 0, "uri": "ccnx:/x", "pipeline": True}]},
+    ],
+)
+def test_validate_numeric_fields_reject_booleans(config):
+    assert validate_config(config)
+
+
+def test_validate_event_content_options():
+    errors = validate_config(
+        {
+            "events": [
+                {
+                    "at": 0,
+                    "type": "put",
+                    "host": 2,
+                    "uri": "ccnx:/put",
+                    "file": "./sample-putfile",
+                    "valid_algo": "sha1",
+                    "expiry": True,
+                },
+                {
+                    "at": 0,
+                    "type": "get",
+                    "host": 0,
+                    "uri": "ccnx:/put",
+                    "owner_only": "yes",
+                },
+                {
+                    "at": 0,
+                    "type": "pubsub_pub",
+                    "host": 2,
+                    "uri": "ccnx:/live",
+                    "file": "./sample-putfile",
+                    "pub_opts": {"lifetime": True, "target": "wrong"},
+                },
+                {
+                    "at": 0,
+                    "type": "pubsub_sub",
+                    "host": 0,
+                    "uri": "ccnx:/live",
+                    "sub_opts": {"wait": False, "ri_valid_algo": "sha1"},
+                },
+            ]
+        }
+    )
+    assert any("valid_algo" in error for error in errors)
+    assert any("expiry" in error for error in errors)
+    assert any("owner_only" in error for error in errors)
+    assert any("lifetime" in error for error in errors)
+    assert any("target" in error for error in errors)
+    assert any("wait" in error for error in errors)
+
+
+def test_validate_autotest_rejects_repeated_put_event():
+    errors = validate_config(
+        {
+            "no_cli": True,
+            "results_json": "results.json",
+            "events": [
+                {
+                    "at": 0,
+                    "type": "put",
+                    "host": 2,
+                    "uri": "ccnx:/test",
+                    "file": "./sample-putfile",
+                    "repeat": {"interval": 1},
+                }
+            ],
+        }
+    )
+    assert any("not supported for autotest put" in error for error in errors)

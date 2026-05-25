@@ -156,6 +156,16 @@ events:
 `fib_enable`, `bw_set`, `compute_call`, `put`, `get`, `pubsub_sub`,
 `pubsub_pub`。
 
+disaster の通常 `put` event では、`expiry` と `cache_time` の省略時に
+どちらも `3000` を Cefore コマンドへ渡し、events 移行前の挙動を保ちます。
+`pubsub_pub` の `pub_opts.expiry` / `pub_opts.cache_time` は暗黙補完せず、
+省略時は Cefore コマンドの既定値を使います。
+
+`ceforeemu-connect` は `put` と `pubsub_pub` event のみを publisher 判定、
+URI 別 FIB 設定、CLI 開始前の publication seed に使います。`get` と
+`pubsub_sub` は自動実行せず warning を出します。トップレベルの legacy
+content key は復活しません。
+
 **モニタリング:**
 ```yaml
 monitoring:
@@ -218,6 +228,13 @@ sudo .venv/bin/python3 tools/autotest/run.py \
 - `out/run_XXXX/logs/ex{num}_seed{seed}/`: 実行ごとのログ、`meta.json`、`results.json`
 - `out/summary.csv`: URI レベルの集計メトリクス
 - `out/summary.md`: 人が読めるサマリ
+
+autotest mode の `events[].at` は、実験開始時に確定する単一の絶対時計を
+基準にします。seed put、warmup、failure/evaluation の順は維持され、
+warmup 中に予定時刻を過ぎた evaluation event は late warning とともに
+直ちに実行されます。autotest の `put` に `repeat` は指定できません。
+`duration` は failure/evaluation phase 開始後の観測時間のままで、
+evaluation event がなく `duration: 0` の場合は failure phase を開始しません。
 
 ## ログ集計
 

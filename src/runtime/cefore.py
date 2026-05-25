@@ -2,9 +2,43 @@
 
 import os
 import shlex
+import subprocess
 import time
 
 from mininet.log import info
+
+
+def _terminate_process(proc):
+    """Terminate a command and escalate if it does not promptly exit."""
+    proc.terminate()
+    try:
+        proc.wait(timeout=2)
+    except subprocess.TimeoutExpired:
+        proc.kill()
+        proc.wait()
+
+
+def _wait_process(proc, timeout=None, cancel_event=None):
+    """Wait for a command, with optional deadline and cancellation support."""
+    if timeout is None and cancel_event is None:
+        return proc.wait()
+
+    deadline = time.monotonic() + timeout if timeout is not None else None
+    while True:
+        if cancel_event is not None and cancel_event.is_set():
+            _terminate_process(proc)
+            return proc.returncode
+        wait_time = 0.1
+        if deadline is not None:
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                _terminate_process(proc)
+                return proc.returncode
+            wait_time = min(wait_time, remaining)
+        try:
+            return proc.wait(timeout=wait_time)
+        except subprocess.TimeoutExpired:
+            continue
 
 
 def read_port_num(node_dir, default=9695):
@@ -169,6 +203,8 @@ def run_cefputfile(
     valid_algo=None,
     port_num=None,
     log_name=None,
+    timeout=None,
+    cancel_event=None,
 ):
     """Run cefputfile to publish content.
 
@@ -184,6 +220,8 @@ def run_cefputfile(
         valid_algo: Validation algorithm (crc32c or rsa-sha256).
         port_num: Port number.
         log_name: Name of the log file.
+        timeout: Optional maximum number of seconds to wait.
+        cancel_event: Optional threading event used to cancel the command.
 
     Returns:
         exit_code: Exit code of the command.
@@ -213,7 +251,7 @@ def run_cefputfile(
     command = " ".join(cmd_parts)
     print(node_name, "command:", command)
     proc = net.hosts[host_idx].popen(command, shell=True)
-    return proc.wait()
+    return _wait_process(proc, timeout=timeout, cancel_event=cancel_event)
 
 
 def run_cefgetfile(
@@ -228,6 +266,8 @@ def run_cefgetfile(
     port_num=None,
     sg=None,
     log_name=None,
+    timeout=None,
+    cancel_event=None,
 ):
     """Run cefgetfile to retrieve content.
 
@@ -243,6 +283,8 @@ def run_cefgetfile(
         port_num: Port number.
         sg: Send Long Life Interest.
         log_name: Name of the log file.
+        timeout: Optional maximum number of seconds to wait.
+        cancel_event: Optional threading event used to cancel the command.
 
     Returns:
         exit_code: Exit code of the command.
@@ -272,7 +314,7 @@ def run_cefgetfile(
     command = " ".join(cmd_parts)
     print(node_name, "command:", command)
     proc = net.hosts[host_idx].popen(command, shell=True)
-    exit_code = proc.wait()
+    exit_code = _wait_process(proc, timeout=timeout, cancel_event=cancel_event)
 
     return exit_code
 

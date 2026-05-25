@@ -139,6 +139,17 @@ class DisasterScenario(BaseScenario):
                 self.publisher_ids.add(ev["host"])
                 self.uri_publishers[ev["uri"]] = ev["host"]
 
+    def _warn_event_diagnostics(self, events_config):
+        """Warn about event sets that cannot produce observable retrievals."""
+        puts = {ev["uri"] for ev in events_config if ev.get("type") == "put"}
+        gets = {ev["uri"] for ev in events_config if ev.get("type") == "get"}
+        pubs = {ev["uri"] for ev in events_config if ev.get("type") == "pubsub_pub"}
+        subs = {ev["uri"] for ev in events_config if ev.get("type") == "pubsub_sub"}
+        for uri in sorted(puts - gets):
+            info(f"[warning] put event for {uri} has no matching get event\n")
+        for uri in sorted(pubs - subs):
+            info(f"[warning] pubsub_pub event for {uri} has no matching pubsub_sub event\n")
+
     def build_topology(self):
         """Create mesh topology."""
         args = self.args
@@ -390,7 +401,7 @@ class DisasterScenario(BaseScenario):
                 ev["uri"] for ev in events_config if ev.get("type") == "put"
             }
             if not put_uris:
-                return
+                return True
             if warmup_cache_only:
                 warmup_hosts = sorted(self.cache_node_set)
             else:
@@ -398,7 +409,7 @@ class DisasterScenario(BaseScenario):
                     i for i in range(args.hosts) if i not in self.publisher_ids
                 ]
             if not warmup_hosts:
-                return
+                return True
             warmup_ops = [
                 {"host": h, "uri": u}
                 for u in sorted(put_uris)
@@ -406,18 +417,24 @@ class DisasterScenario(BaseScenario):
             ]
 
         if not warmup_ops:
-            return
+            return True
 
         info(f"[warmup] starting warmup phase: {len(warmup_ops)} gets\n")
         warmup_runner = self._make_content_runner(net, events_config, phase="warmup")
         warmup_runner.start()
-        for op in warmup_ops:
-            warmup_runner.submit("get", op)
-            if warmup_interval > 0:
-                time.sleep(warmup_interval)
-        warmup_runner.wait_all(timeout=300)
-        warmup_runner.stop()
-        info("[warmup] warmup phase complete\n")
+        try:
+            for op in warmup_ops:
+                warmup_runner.submit("get", op)
+                if warmup_interval > 0:
+                    time.sleep(warmup_interval)
+            completed = warmup_runner.wait_all(timeout=300)
+            if not completed:
+                info("[warning] warmup content operations exceeded 300s deadline\n")
+                return False
+            info("[warmup] warmup phase complete\n")
+            return True
+        finally:
+            warmup_runner.stop()
 
     def _start_monitoring(self, net):
         """Start monitoring if configured."""
@@ -444,76 +461,103 @@ class DisasterScenario(BaseScenario):
             )
             self.monitor.start()
 
+    def _run_normal_experiment(self, net, events_config, origin, use_cli):
+        """Run interactive or non-autotest execution with all events together."""
+        content_event_types = {"put", "get", "pubsub_pub", "pubsub_sub"}
+        has_content_events = any(
+            e.get("type") in content_event_types for e in events_config
+        )
+        self._start_failure_manager(net, use_cli)
+
+        if has_content_events:
+            self.content_runner = self._make_content_runner(net, events_config)
+            self.content_runner.start()
+        if events_config:
+            self.event_scheduler = EventScheduler(
+                net, events_config,
+                mesh_links=self.topo.mesh_links,
+                run_dir=self.run_dir,
+                content_runner=self.content_runner,
+                start_time=origin,
+            )
+            self.event_scheduler.start()
+
+    def _run_autotest_experiment(self, net, events_config, origin, use_cli):
+        """Run seed, warmup, failure and evaluation phases in order."""
+        put_events = [ev for ev in events_config if ev.get("type") == "put"]
+        eval_events = [ev for ev in events_config if ev.get("type") != "put"]
+
+        if any(ev.get("repeat") for ev in put_events):
+            raise ValueError("autotest does not support repeat on put events")
+
+        if put_events:
+            put_runner = self._make_content_runner(net, put_events, phase="event")
+            put_scheduler = EventScheduler(
+                net, put_events,
+                mesh_links=self.topo.mesh_links,
+                run_dir=self.run_dir,
+                content_runner=put_runner,
+                start_time=origin,
+            )
+            put_runner.start()
+            try:
+                put_scheduler.start()
+                if not put_scheduler.wait_all(timeout=300):
+                    raise RuntimeError("seed event scheduling exceeded 300s deadline")
+                if not put_runner.wait_all(timeout=300):
+                    raise RuntimeError("seed content operations exceeded 300s deadline")
+            finally:
+                put_scheduler.stop()
+                put_runner.stop()
+
+        if not self._run_warmup(net, events_config):
+            raise RuntimeError("warmup content operations did not complete")
+
+        duration = max(0, int(getattr(self.args, "duration", 0)))
+        if not eval_events and duration == 0:
+            info(
+                "[warning] no evaluation events configured; "
+                "failure phase will not run after seed/warmup\n"
+            )
+            return
+        if not eval_events:
+            info(
+                "[warning] no evaluation events configured; "
+                "running failure/monitoring observation for configured duration\n"
+            )
+
+        self._start_failure_manager(net, use_cli)
+        content_event_types = {"get", "pubsub_pub", "pubsub_sub"}
+        if any(ev.get("type") in content_event_types for ev in eval_events):
+            self.content_runner = self._make_content_runner(
+                net, eval_events, phase="eval"
+            )
+            self.content_runner.start()
+        if eval_events:
+            self.event_scheduler = EventScheduler(
+                net, eval_events,
+                mesh_links=self.topo.mesh_links,
+                run_dir=self.run_dir,
+                content_runner=self.content_runner,
+                start_time=origin,
+            )
+            self.event_scheduler.start()
+
     def run_experiment(self, net):
         """Run the disaster experiment with event-driven content operations."""
         args = self.args
         use_cli = not getattr(args, "no_cli", False)
         events_config = getattr(args, "events", None) or []
-        content_event_types = {"put", "get", "pubsub_pub", "pubsub_sub"}
-        has_content_events = any(
-            e.get("type") in content_event_types for e in events_config
-        )
+        origin = time.monotonic()
 
-        if self.autotest_mode and has_content_events:
-            # Autotest: put → warmup → flap → eval
-            put_events = [e for e in events_config if e.get("type") == "put"]
-            eval_events = [e for e in events_config if e.get("type") != "put"]
+        if not events_config:
+            info("[warning] no events configured; no content operations will run\n")
+        self._warn_event_diagnostics(events_config)
 
-            # Phase 1: Run put events (strip repeat to avoid infinite blocking)
-            if put_events:
-                prewarm_puts = [
-                    {k: v for k, v in e.items() if k != "repeat"}
-                    for e in put_events
-                ]
-                put_runner = self._make_content_runner(net, prewarm_puts, phase="event")
-                put_runner.start()
-                put_scheduler = EventScheduler(
-                    net, prewarm_puts,
-                    mesh_links=self.topo.mesh_links,
-                    run_dir=self.run_dir,
-                    content_runner=put_runner,
-                )
-                put_scheduler.start()
-                put_scheduler.wait_all(timeout=300)
-                put_runner.wait_all(timeout=300)
-                put_runner.stop()
-
-            # Phase 2: Warmup prefetch
-            self._run_warmup(net, events_config)
-
-            # Phase 3: Start failure manager
-            self._start_failure_manager(net, use_cli)
-
-            # Phase 4: Run eval events
-            if eval_events:
-                self.content_runner = self._make_content_runner(
-                    net, eval_events, phase="eval"
-                )
-                self.content_runner.start()
-                self.event_scheduler = EventScheduler(
-                    net, eval_events,
-                    mesh_links=self.topo.mesh_links,
-                    run_dir=self.run_dir,
-                    content_runner=self.content_runner,
-                )
-                self.event_scheduler.start()
+        if self.autotest_mode:
+            self._run_autotest_experiment(net, events_config, origin, use_cli)
         else:
-            # Non-autotest: original behavior (flap → all events)
-            self._start_failure_manager(net, use_cli)
-
-            if has_content_events:
-                self.content_runner = self._make_content_runner(net, events_config)
-                self.content_runner.start()
-            if events_config:
-                self.event_scheduler = EventScheduler(
-                    net, events_config,
-                    mesh_links=self.topo.mesh_links,
-                    run_dir=self.run_dir,
-                    content_runner=self.content_runner,
-                )
-                self.event_scheduler.start()
-            elif not use_cli:
-                print("[warning] no events configured; no content operations will run")
+            self._run_normal_experiment(net, events_config, origin, use_cli)
 
         self._start_monitoring(net)
 
@@ -552,7 +596,8 @@ class DisasterScenario(BaseScenario):
             if self.event_scheduler is not None:
                 self.event_scheduler.stop()
             if self.content_runner is not None:
-                self.content_runner.wait_all(timeout=60)
+                if not self.content_runner.wait_all(timeout=60):
+                    info("[warning] content operation shutdown exceeded 60s deadline\n")
                 self.content_runner.stop()
             if self.stop_event is not None:
                 self.stop_event.set()

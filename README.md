@@ -156,6 +156,16 @@ Supported event types: `link_down`, `link_up`, `fib_add`, `fib_del`,
 `fib_enable`, `bw_set`, `compute_call`, `put`, `get`, `pubsub_sub`,
 `pubsub_pub`.
 
+For a disaster `put` event, omitted `expiry` and `cache_time` are both sent
+as `3000` to preserve the pre-events disaster behavior. Pub/sub publication
+options remain explicit: omitted `pub_opts.expiry` or `pub_opts.cache_time`
+uses the Cefore command default.
+
+`ceforeemu-connect` uses `put` and `pubsub_pub` events only to identify
+publishers, program URI-specific FIB entries, and seed publications before
+opening its CLI. It warns and does not automatically execute `get` or
+`pubsub_sub` events. Legacy top-level content keys are not restored.
+
 **Monitoring:**
 ```yaml
 monitoring:
@@ -218,6 +228,14 @@ Outputs:
 - `out/run_XXXX/logs/ex{num}_seed{seed}/`: per-run logs, `meta.json`, `results.json`
 - `out/summary.csv`: URI-level aggregate metrics
 - `out/summary.md`: human-readable summary
+
+In autotest mode, event `at` values use one absolute clock starting when the
+experiment begins. Seed puts complete before warmup, and warmup completes
+before failure/evaluation; an evaluation event whose time passed during
+warmup executes immediately with a late-event warning. Repeating `put` events
+are rejected in autotest mode. `duration` remains the failure/evaluation
+observation period after that phase starts; with no evaluation events and
+`duration: 0`, no failure phase is started.
 
 ## Log Summarization
 

@@ -125,7 +125,15 @@ class EventScheduler:
         - count: number of repetitions (null = infinite)
     """
 
-    def __init__(self, net, events, mesh_links=None, run_dir=None, content_runner=None):
+    def __init__(
+        self,
+        net,
+        events,
+        mesh_links=None,
+        run_dir=None,
+        content_runner=None,
+        start_time=None,
+    ):
         self.net = net
         self.mesh_links = mesh_links
         self._context = {"run_dir": run_dir, "content_runner": content_runner}
@@ -134,7 +142,8 @@ class EventScheduler:
 
         self._heap = []
         self._seq = 0
-        self._start_time = None
+        self._start_time = start_time
+        self._shared_start_time = start_time is not None
 
         for event in events:
             self._push_event(event["at"], event)
@@ -191,10 +200,11 @@ class EventScheduler:
             self._push_event(next_at, next_event)
 
     def _run(self):
-        self._start_time = time.time()
+        if self._start_time is None:
+            self._start_time = time.monotonic()
         while self._heap and not self._stop_event.is_set():
             at_sec, _priority, _seq, event = self._heap[0]
-            elapsed = time.time() - self._start_time
+            elapsed = time.monotonic() - self._start_time
             delay = at_sec - elapsed
             if delay > 0:
                 if self._stop_event.wait(timeout=delay):
@@ -207,7 +217,14 @@ class EventScheduler:
                 info(f"[scheduler] unknown event type: {event_type}\n")
                 continue
 
-            elapsed = time.time() - self._start_time
+            elapsed = time.monotonic() - self._start_time
+            late_by = elapsed - at_sec
+            if self._shared_start_time and late_by > 0.05:
+                info(
+                    f"[warning] scheduler event {event_type} scheduled at "
+                    f"t={at_sec:.1f}s executed at t={elapsed:.1f}s "
+                    f"({late_by:.1f}s late)\n"
+                )
             info(f"[scheduler] t={elapsed:.1f}s  {event_type} {event}\n")
             try:
                 handler(self.net, event, self.mesh_links, self._context)
@@ -232,6 +249,8 @@ class EventScheduler:
         """Wait until all scheduled events have fired or timeout expires."""
         if self._thread is not None:
             self._thread.join(timeout=timeout)
+            return not self._thread.is_alive()
+        return True
 
     def stop(self):
         """Stop the scheduler and wait for the thread to finish."""

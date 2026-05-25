@@ -68,6 +68,7 @@ class ContentOperationRunner:
         self._pending_subs = {}  # uri -> list of pending sub dicts
         self._pending_subs_lock = threading.Lock()
         self._stop_event = threading.Event()
+        self._cancel_event = threading.Event()
         self._thread = threading.Thread(
             target=self._run, daemon=True, name="ContentOpRunner"
         )
@@ -81,11 +82,23 @@ class ContentOperationRunner:
         self._queue.put((op_type, event))
 
     def wait_all(self, timeout=None):
-        """Wait for all queued operations to complete."""
-        try:
-            self._queue.join()
-        except Exception:
-            pass
+        """Wait for queued and pending operations until a batch deadline."""
+        deadline = time.monotonic() + timeout if timeout is not None else None
+        completed = True
+        with self._queue.all_tasks_done:
+            while self._queue.unfinished_tasks:
+                if deadline is None:
+                    self._queue.all_tasks_done.wait()
+                    continue
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    completed = False
+                    break
+                self._queue.all_tasks_done.wait(timeout=remaining)
+        if not completed:
+            self._cancel_event.set()
+            self._discard_queued_items()
+
         # Also wait for any leftover pending subs (no matching pub arrived).
         with self._pending_subs_lock:
             leftovers = []
@@ -93,17 +106,48 @@ class ContentOperationRunner:
                 leftovers.extend(entries)
             self._pending_subs.clear()
         for item in leftovers:
-            exit_code = wait_pubsub_process(item["proc"], item["deadline"])
+            item_deadline = item["deadline"]
+            if deadline is not None:
+                item_deadline = min(item_deadline, deadline)
+            exit_code = wait_pubsub_process(
+                item["proc"], item_deadline, cancel_event=self._cancel_event
+            )
             self.record_sub_result(item, exit_code)
+            if deadline is not None and time.monotonic() >= deadline:
+                completed = False
+        return completed
 
     def stop(self):
         """Stop the worker thread."""
+        self._cancel_event.set()
         self._stop_event.set()
+        self._discard_queued_items()
         self._queue.put(None)
         self._thread.join(timeout=15)
+        with self._pending_subs_lock:
+            leftovers = []
+            for entries in self._pending_subs.values():
+                leftovers.extend(entries)
+            self._pending_subs.clear()
+        for item in leftovers:
+            exit_code = wait_pubsub_process(
+                item["proc"], time.monotonic(), cancel_event=self._cancel_event
+            )
+            self.record_sub_result(item, exit_code)
+
+    def _discard_queued_items(self):
+        """Discard operations that have not started, maintaining queue accounting."""
+        while True:
+            try:
+                item = self._queue.get_nowait()
+            except queue.Empty:
+                return
+            self._queue.task_done()
+            if item is None:
+                return
 
     def _run(self):
-        while not self._stop_event.is_set():
+        while True:
             try:
                 item = self._queue.get(timeout=1.0)
             except queue.Empty:
@@ -111,6 +155,9 @@ class ContentOperationRunner:
             if item is None:
                 self._queue.task_done()
                 break
+            if self._cancel_event.is_set():
+                self._queue.task_done()
+                continue
             op_type, event = item
             try:
                 self._dispatch(op_type, event)
@@ -153,11 +200,12 @@ class ContentOperationRunner:
             file_path=infile,
             rate=event.get("rate"),
             block_size=event.get("block_size"),
-            expiry=event.get("expiry"),
-            cache_time=event.get("cache_time"),
+            expiry=event.get("expiry", 3000),
+            cache_time=event.get("cache_time", 3000),
             valid_algo=event.get("valid_algo"),
             port_num=event.get("port_num"),
             log_name=str(log_path),
+            cancel_event=self._cancel_event,
         )
 
     # ------------------------------------------------------------------
@@ -184,6 +232,7 @@ class ContentOperationRunner:
             port_num=event.get("port_num"),
             sg=event.get("sg"),
             log_name=str(log_path),
+            cancel_event=self._cancel_event,
         )
         verdict = detect_get_success(log_path, out_path, exit_code)
         publisher_host = event.get("publisher_host") or self._uri_publishers.get(uri)
@@ -278,7 +327,8 @@ class ContentOperationRunner:
             info(
                 f"[content_runner] pubsub_pub grace {self._startup_grace:.1f}s h{host} uri={uri}\n"
             )
-            time.sleep(self._startup_grace)
+            if self._cancel_event.wait(self._startup_grace):
+                return
 
         # Compute publisher deadline based on pending subscriber waits.
         with self._pending_subs_lock:
@@ -314,7 +364,20 @@ class ContentOperationRunner:
         pub_exit = None
         timed_out = False
         try:
-            pub_exit = proc.wait(timeout=pub_deadline)
+            end_time = time.monotonic() + pub_deadline
+            while True:
+                if self._cancel_event.is_set():
+                    raise subprocess.TimeoutExpired(cmd="cefpubfile", timeout=0)
+                remaining = end_time - time.monotonic()
+                if remaining <= 0:
+                    raise subprocess.TimeoutExpired(
+                        cmd="cefpubfile", timeout=pub_deadline
+                    )
+                try:
+                    pub_exit = proc.wait(timeout=min(0.1, remaining))
+                    break
+                except subprocess.TimeoutExpired:
+                    continue
             info(
                 f"[content_runner] cefpubfile h{host} uri={uri} exit_code={pub_exit}\n"
             )
@@ -350,7 +413,9 @@ class ContentOperationRunner:
         })
 
         for item in sub_entries:
-            exit_code = wait_pubsub_process(item["proc"], item["deadline"])
+            exit_code = wait_pubsub_process(
+                item["proc"], item["deadline"], cancel_event=self._cancel_event
+            )
             artifacts = (
                 sorted(item["output_dir"].glob("RNP0x*.out"))
                 if item["output_dir"].is_dir()
