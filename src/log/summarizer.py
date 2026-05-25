@@ -23,7 +23,6 @@ META_KEYS = (
     "down_stagger",
     "down_exclude",
     "cache_count",
-    "get_interval",
 )
 
 # Filename-derived columns

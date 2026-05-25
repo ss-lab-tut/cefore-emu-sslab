@@ -60,6 +60,19 @@ routing:
 #   restore_type: 復元イベントの type（例: link_up）
 #   count:        繰り返し回数（null で無限）
 events:
+  # コンテンツ配信
+  - at: 5
+    type: put
+    host: 7                 # パブリッシャーホスト
+    uri: "ccnx:/test/video1"
+    file: "./sample-putfile"
+    rate: 10                # 転送レート（Mbps）
+    expiry: 5000            # コンテンツ有効期限（秒）
+    cache_time: 5000        # キャッシュ保持期間（秒）
+  - {at: 15, type: get, host: 0, uri: "ccnx:/test/video1"}
+  - {at: 20, type: get, host: 2, uri: "ccnx:/test/video1"}
+  - {at: 25, type: get, host: 4, uri: "ccnx:/test/video1"}
+
   # 一発ものの帯域変更: 15秒後に h0-h3 間の共有スイッチ全体を 5Mbps に
   - at: 15
     type: bw_set
@@ -143,33 +156,6 @@ cache_config:
   #     algorithm: "LFU"
 
 # -----------------------------------------------------------------------------
-# コンテンツ配信設定
-# -----------------------------------------------------------------------------
-puts:
-  - host: 7                 # パブリッシャーホスト
-    uri: "ccnx:/test/video1"
-    file: "./sample-putfile"
-    rate: 10                # 転送レート（Mbps）
-    expiry: 5000            # コンテンツ有効期限（秒）
-    cache_time: 5000        # キャッシュ保持期間（秒）
-
-gets:
-  - host: 0
-    uri: "ccnx:/test/video1"
-  - host: 2
-    uri: "ccnx:/test/video1"
-  - host: 4
-    uri: "ccnx:/test/video1"
-
-# -----------------------------------------------------------------------------
-# ウォームアップ設定
-# -----------------------------------------------------------------------------
-warmup_get_interval: 3      # ウォームアップ取得間隔（秒）
-warmup_only_cache_nodes: true  # キャッシュノードのみでウォームアップ
-hot_uris:
-  - "ccnx:/test/video1"    # プリキャッシュ対象URI
-
-# -----------------------------------------------------------------------------
 # 監視設定
 # -----------------------------------------------------------------------------
 monitoring:
@@ -188,4 +174,3 @@ monitoring:
 # no_cli: true              # CLIなしで実行（自動テスト用）
 # duration: 120             # 評価フェーズ時間（秒）
 # results_json: "results.json"  # 結果JSONの出力パス
-get_interval: 5             # get操作間の間隔（秒）

@@ -1,18 +1,13 @@
 """Unit tests for pub/sub helpers in disaster scenario."""
 
-import subprocess
 import time
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
-
+from src.runtime.content_ops import ContentOperationRunner
 from src.runtime.result_detect import (
     clear_sub_output_artifacts as _clear_sub_output_artifacts,
     detect_sub_success as _detect_sub_success,
     wait_pubsub_process as _wait_pubsub_process,
-)
-from src.scenarios.disaster import (
-    _resolve_pubsub_publish_deadline_seconds,
-    _resolve_pubsub_wait_seconds,
 )
 
 
@@ -107,54 +102,148 @@ class TestClearSubOutputArtifacts:
 
 
 # ---------------------------------------------------------------------------
-# pub/sub timeout resolution
+# pub/sub timeout resolution (ContentOperationRunner)
 # ---------------------------------------------------------------------------
 
 
+def _make_runner(tmp_path, pub_lifetime_by_uri=None):
+    """Create a ContentOperationRunner with mocked dependencies."""
+    net = MagicMock()
+    flap_state = MagicMock()
+    flap_state.snapshot.return_value = []
+    return ContentOperationRunner(
+        net,
+        run_dir=tmp_path,
+        result_callback=MagicMock(),
+        flap_state=flap_state,
+        seed_label="test",
+        pub_lifetime_by_uri=pub_lifetime_by_uri,
+    )
+
+
 class TestPubsubTimingResolution:
-    def test_explicit_sub_wait_takes_priority(self):
-        wait = _resolve_pubsub_wait_seconds(
-            {"wait": 15},
-            "ccnx:/test/stream",
-            {"ccnx:/test/stream": 8},
+    @patch("src.runtime.content_ops.start_cefsubfile")
+    def test_explicit_sub_wait_takes_priority(self, mock_sub, tmp_path):
+        runner = _make_runner(
+            tmp_path, pub_lifetime_by_uri={"ccnx:/test/stream": 8}
         )
-        assert wait == 15
+        mock_sub.return_value = MagicMock(pid=1)
+        before = time.monotonic()
+        runner._do_pubsub_sub({
+            "host": 0, "uri": "ccnx:/test/stream",
+            "sub_opts": {"wait": 15},
+        })
+        entries = runner._pending_subs["ccnx:/test/stream"]
+        assert len(entries) == 1
+        deadline = entries[0]["deadline"]
+        assert abs(deadline - (before + 15)) < 2.0
 
-    def test_pub_lifetime_fallback_uses_seconds(self):
-        wait = _resolve_pubsub_wait_seconds(
-            {},
-            "ccnx:/test/stream",
-            {"ccnx:/test/stream": 8},
+    @patch("src.runtime.content_ops.start_cefsubfile")
+    def test_pub_lifetime_fallback_uses_seconds(self, mock_sub, tmp_path):
+        runner = _make_runner(
+            tmp_path, pub_lifetime_by_uri={"ccnx:/test/stream": 8}
         )
-        assert wait == 13
+        mock_sub.return_value = MagicMock(pid=1)
+        before = time.monotonic()
+        runner._do_pubsub_sub({
+            "host": 0, "uri": "ccnx:/test/stream",
+        })
+        entries = runner._pending_subs["ccnx:/test/stream"]
+        deadline = entries[0]["deadline"]
+        assert abs(deadline - (before + 13)) < 2.0
 
-    def test_default_wait_is_thirty_seconds(self):
-        wait = _resolve_pubsub_wait_seconds({}, "ccnx:/test/stream", {})
-        assert wait == 30
-
-    def test_publish_deadline_is_never_shorter_than_sub_wait(self):
-        deadline = _resolve_pubsub_publish_deadline_seconds(
-            "ccnx:/test/stream",
-            {"lifetime": 8},
-            {"ccnx:/test/stream": 15},
-        )
-        assert deadline == 20
-
-    def test_publish_deadline_uses_default_lifetime_seconds(self):
-        deadline = _resolve_pubsub_publish_deadline_seconds(
-            "ccnx:/test/stream",
-            {},
-            {},
-        )
-        assert deadline == 35
+    @patch("src.runtime.content_ops.start_cefsubfile")
+    def test_default_wait_is_thirty_seconds(self, mock_sub, tmp_path):
+        runner = _make_runner(tmp_path)
+        mock_sub.return_value = MagicMock(pid=1)
+        before = time.monotonic()
+        runner._do_pubsub_sub({
+            "host": 0, "uri": "ccnx:/test/stream",
+        })
+        entries = runner._pending_subs["ccnx:/test/stream"]
+        deadline = entries[0]["deadline"]
+        assert abs(deadline - (before + 30)) < 2.0
 
     def test_expired_deadline_terminates_subscriber_immediately(self):
         proc = MagicMock()
-        proc.wait.side_effect = [
-            subprocess.TimeoutExpired(cmd="cefsubfile", timeout=0),
-            0,
-        ]
+        proc.wait.return_value = 0
         exit_code = _wait_pubsub_process(proc, time.monotonic() - 1)
         assert exit_code is None
         proc.terminate.assert_called_once()
         proc.kill.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# ContentOperationRunner phase parameter
+# ---------------------------------------------------------------------------
+
+
+class TestContentOperationRunnerPhase:
+    def test_phase_parameter_default_is_event(self):
+        runner = ContentOperationRunner(
+            net=MagicMock(),
+            run_dir="/tmp",
+            result_callback=MagicMock(),
+            flap_state=MagicMock(),
+            seed_label="test",
+        )
+        assert runner._phase == "event"
+
+    def test_phase_parameter_custom(self):
+        runner = ContentOperationRunner(
+            net=MagicMock(),
+            run_dir="/tmp",
+            result_callback=MagicMock(),
+            flap_state=MagicMock(),
+            seed_label="test",
+            phase="warmup",
+        )
+        assert runner._phase == "warmup"
+
+
+class TestContentOperationRunnerDeadline:
+    @patch("src.runtime.content_ops.run_cefgetfile")
+    def test_timeout_cancels_running_operation_and_returns_false(
+        self, mock_get, tmp_path
+    ):
+        def wait_until_cancelled(*args, **kwargs):
+            cancel_event = kwargs["cancel_event"]
+            assert cancel_event.wait(timeout=1)
+            return -15
+
+        mock_get.side_effect = wait_until_cancelled
+        runner = _make_runner(tmp_path)
+        runner.start()
+        runner.submit("get", {"host": 0, "uri": "ccnx:/test/slow"})
+        assert runner.wait_all(timeout=0.01) is False
+        runner.stop()
+
+    @patch("src.runtime.content_ops.run_cefputfile")
+    def test_put_restores_disaster_default_expiry_and_cache_time(
+        self, mock_put, tmp_path
+    ):
+        runner = _make_runner(tmp_path)
+        runner._do_put({"host": 2, "uri": "ccnx:/test/defaults"})
+        assert mock_put.call_args.kwargs["expiry"] == 3000
+        assert mock_put.call_args.kwargs["cache_time"] == 3000
+
+    @patch("src.runtime.content_ops.run_cefpubfile")
+    def test_pubsub_pub_keeps_expiry_and_cache_time_explicit_only(
+        self, mock_pub, tmp_path
+    ):
+        proc = MagicMock()
+        proc.wait.return_value = 0
+        mock_pub.return_value = proc
+        runner = ContentOperationRunner(
+            MagicMock(),
+            run_dir=tmp_path,
+            result_callback=MagicMock(),
+            flap_state=MagicMock(),
+            seed_label="test",
+            startup_grace=0,
+        )
+        runner._do_pubsub_pub(
+            {"host": 2, "uri": "ccnx:/test/live", "file": "./sample-putfile"}
+        )
+        assert mock_pub.call_args.kwargs["expiry"] is None
+        assert mock_pub.call_args.kwargs["cache_time"] is None

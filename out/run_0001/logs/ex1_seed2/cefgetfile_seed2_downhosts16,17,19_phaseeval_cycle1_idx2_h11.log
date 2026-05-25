@@ -1,9 +1,0 @@
-[cefgetfile] Start
-[cefgetfile] Parsing parameters ...OK
-2026-02-06 18:15:22.139 [cefgetfile] INFO: [client] Config directory is ./h11
-2026-02-06 18:15:22.139 [cefgetfile] INFO: [client] Local Socket Name is /tmp/cef_9695.11
-2026-02-06 18:15:22.139 [cefgetfile] INFO: [client] Listen Port is 9695
-[cefgetfile] Init Cefore Client package ... OK
-[cefgetfile] Conversion from URI into Name ... OK
-[cefgetfile] Checking the output file ... OK
-2026-02-06 18:15:22.139 [cefgetfile] ERROR: cef_client_connect (connect:No such file or directory)

@@ -21,17 +21,17 @@ results_json: "results.json"
 publisher_host: 0
 pubsub_sub_startup_grace: 2.0
 
-puts:
-  - host: 0
+events:
+  - at: 5
+    type: pubsub_sub
+    host: 2
     uri: "ccnx:/test/example2"
-    file: "./sample-putfile"
-    mode: "pubsub"
-    pub_opts:
-      lifetime: 8
-
-gets:
-  - host: 2
-    uri: "ccnx:/test/example2"
-    mode: "pubsub"
     sub_opts:
       wait: 15
+  - at: 5
+    type: pubsub_pub
+    host: 0
+    uri: "ccnx:/test/example2"
+    file: "./sample-putfile"
+    pub_opts:
+      lifetime: 8

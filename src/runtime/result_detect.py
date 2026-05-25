@@ -58,16 +58,22 @@ def detect_sub_success(exit_code, output_dir: Path, log_path: Path) -> dict:
     }
 
 
-def wait_pubsub_process(proc, deadline: float):
+def wait_pubsub_process(proc, deadline: float, cancel_event=None):
     """Wait for a pub/sub process until its absolute deadline (monotonic seconds)."""
-    remaining = max(0.0, deadline - time.monotonic())
-    try:
-        return proc.wait(timeout=remaining)
-    except subprocess.TimeoutExpired:
-        proc.terminate()
+    while True:
+        if cancel_event is not None and cancel_event.is_set():
+            break
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            break
         try:
-            proc.wait(timeout=2)
+            return proc.wait(timeout=min(0.1, remaining))
         except subprocess.TimeoutExpired:
-            proc.kill()
-            proc.wait()
-        return None
+            continue
+    proc.terminate()
+    try:
+        proc.wait(timeout=2)
+    except subprocess.TimeoutExpired:
+        proc.kill()
+        proc.wait()
+    return None

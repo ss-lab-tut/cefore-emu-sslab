@@ -13,7 +13,10 @@ ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from src.core.config.loader import load_config  # noqa: E402
+from src.core.config.loader import (  # noqa: E402
+    load_config,
+    warn_ignored_legacy_content_keys,
+)
 
 
 def _resolve_seed(base_config: dict, seed_base: int | None, index: int) -> int:
@@ -119,6 +122,7 @@ def main() -> None:
         raise SystemExit("run.py must be executed with sudo/root")
 
     base_config = load_config(args.base_config)
+    warn_ignored_legacy_content_keys(base_config)
     _ensure_autotest_safe(base_config)
 
     out_root = Path(args.out).resolve()

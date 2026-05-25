@@ -36,11 +36,15 @@
 - publisher: 例として `h{hosts-1}`（もしくは config 指定）
 - file: `./sample-putfile`（固定）
 
-### 2.3 config での表現（puts/gets）
-- puts: Hotコンテンツを publisher に投入
-- gets: 本番の取得（評価）用 consumers を指定（または auto 生成）
+### 2.3 config での表現（events）
+- `type: put` event: Hot コンテンツを publisher に投入する seed 操作
+- `type: get` event: 本番の取得（評価）用 consumer 操作
+- トップレベルの `puts` / `gets` / `auto` は警告を出して無視する
 
-> ※ warmup（prefetch）用 gets は **本番 gets とは別に**扱う（次章）。
+> ※ warmup（prefetch）用 get は **本番の `get` event とは別に**扱う（次章）。
+> disaster の通常 `put` event は `expiry` / `cache_time` の省略時に
+> どちらも `3000` を指定する。`pubsub_pub.pub_opts` にはこの暗黙値を
+> 適用しない。
 
 ---
 
@@ -69,7 +73,7 @@
   - 対象ノード: cache nodes（既存の `select_k_centers()` 結果）**または** config 指定ノード
   - 操作: `cefgetfile`（取得してキャッシュに格納させる）
 - warmup 中は host flap を開始しない（=安定時に載せる）。
-- warmup 完了後に flap を開始し、本番 gets を走らせる。
+- warmup 完了後に flap を開始し、本番の `get` events を走らせる。
 
 > pub/sub は使わない。prefetch のみで成立させる。
 
@@ -86,6 +90,12 @@
 
 ### 5.2 no-cli の挙動（必須）
 - 起動 → put（Hot投入） → warmup(get) → flap開始 → 本番get → duration 経過 → 終了
+- `events[].at` は起動時に確定した単一の絶対時計に対する秒数とする。
+- warmup 終了時に予定時刻を過ぎている evaluation event は直ちに実行し、
+  予定時刻・実行時刻・遅延秒数を warning として記録する。
+- autotest では `put` event の `repeat` を設定エラーとして拒否する。
+- `duration` は flap/evaluation 開始後の観測時間を表し、evaluation
+  event がなく `duration=0` の場合は flap を開始しない。
 - 終了時に必ず実施：
   - flap thread stop
   - cefnetd/csmgrd stop
@@ -214,3 +224,21 @@ sudo python3 tools/autotest/run.py \
   - get の duration / throughput（ログから抽出可能）
   - flap の down_hosts とタイムスタンプ
   - cache パラメータ（capacity, rct）と seed
+
+---
+
+## 12. Future Work（未実装・検討段階）
+
+以下は今後の実装候補。仕様の詳細は未定。
+
+### C.7 統計分析モジュール
+`scipy` が依存に追加済みだが未使用。実験結果の統計比較（t-test, 分散分析等）を `tools/autotest/analyze.py` に追加、または独立モジュールとして実装する。スループット分布、ジッター分析、per-node キャッシュヒット率（csmgrstatus データ）など。
+
+### C.8 並列実験実行
+`tools/autotest/run.py` は現在逐次実行。CPU/リソースに余裕がある環境向けに、`multiprocessing` や `subprocess` プールによる並列化を検討。Mininet のネットワーク名前空間の衝突回避が課題。
+
+### C.9 WebUI の改善
+`src/webui/` の簡易ダッシュボードに以下を追加:
+- リアルタイムログストリーミング表示
+- 失敗原因のドリルダウン（results.json のインタラクティブ分析）
+- 実験間のヒストリカルタイムライン比較

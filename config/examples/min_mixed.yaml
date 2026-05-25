@@ -16,24 +16,28 @@ duration: 30
 results_json: "results.json"
 publisher_host: 3
 
-puts:
-  - host: 3
+events:
+  - at: 5
+    type: put
+    host: 3
     uri: "ccnx:/test/file"
     file: "./sample-putfile"
     expiry: 3000
     cache_time: 3000
-  - host: 3
-    uri: "ccnx:/test/stream"
-    file: "./sample-putfile"
-    mode: "pubsub"
-    pub_opts:
-      lifetime: 8
-
-gets:
-  - host: 0
+  - at: 10
+    type: get
+    host: 0
     uri: "ccnx:/test/file"
-  - host: 0
+  - at: 15
+    type: pubsub_sub
+    host: 0
     uri: "ccnx:/test/stream"
-    mode: "pubsub"
     sub_opts:
       wait: 15
+  - at: 15
+    type: pubsub_pub
+    host: 3
+    uri: "ccnx:/test/stream"
+    file: "./sample-putfile"
+    pub_opts:
+      lifetime: 8

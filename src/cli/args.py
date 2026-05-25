@@ -119,20 +119,8 @@ def add_disaster_args(parser):
         help="root ns bridge: switch,root_ip,local_routes[,ext_routes,gateway] (repeatable)",
     )
     parser.add_argument(
-        "--get-interval", type=int, default=10,
-        help="seconds between cefgetfile runs",
-    )
-    parser.add_argument(
         "--config", type=str, default="",
         help="JSON/YAML config file to override parameters",
-    )
-    parser.add_argument(
-        "--puts", type=str, default="",
-        help="JSON list of put ops (host,uri,file,log)",
-    )
-    parser.add_argument(
-        "--gets", type=str, default="",
-        help="JSON list of get ops (host,uri,file,log)",
     )
     parser.add_argument(
         "--script-log", type=str, default=None,
@@ -166,6 +154,15 @@ def add_disaster_args(parser):
         "--pubsub-sub-startup-grace", type=float, default=1.0,
         dest="pubsub_sub_startup_grace",
         help="seconds to wait after starting cefsubfile before launching cefpubfile (default: 1.0)",
+    )
+    parser.add_argument(
+        "--warmup-get-interval", type=float, default=0,
+        help="seconds between warmup gets (0=no delay)",
+    )
+    parser.add_argument(
+        "--warmup-only-cache-nodes",
+        action=argparse.BooleanOptionalAction, default=True,
+        help="restrict warmup gets to cache nodes (default: true)",
     )
     parser.add_argument(
         "--webui-port",

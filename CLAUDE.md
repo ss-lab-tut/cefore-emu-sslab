@@ -45,7 +45,6 @@ cefore-emu/
 │   │   ├── config/                # Configuration utilities
 │   │   │   ├── __init__.py
 │   │   │   ├── loader.py          # JSON/YAML config loader
-│   │   │   ├── auto_gen.py        # Auto put/get generation
 │   │   │   └── priority_resolver.py  # Config priority resolution
 │   │   ├── fib.py                 # FIB route computation
 │   │   ├── flap_state.py          # Host flap state tracking
@@ -196,7 +195,7 @@ For topologies with >3 hosts, additional directories (h3, h4, ...) are generated
   - `shortest_path()`: Dijkstra's algorithm with edge/node banning support (used for constrained pathfinding)
   - `k_shortest_paths()`: Yen's algorithm for finding k alternate paths (available but not used in main FIB setup)
   - `set_fib()`: Sets FIB entries for all destinations with default URI pattern `ccnx:/test/exampleN`
-  - `set_fib_for_uris()`: Sets FIB entries for specific URI-to-publisher mappings (used with custom puts configuration)
+  - `set_fib_for_uris()`: Sets FIB entries for specific URI-to-publisher mappings (used with publication events)
 
 **Dynamic Configuration:**
 - `update_local_sock_id()`: Modifies LOCAL_SOCK_ID in config files to avoid socket conflicts
@@ -251,6 +250,21 @@ The disaster topology (`src/scenarios/disaster.py`) adds:
 --ext host,ifname[,ip][,mtu]   # Attach external interface to host
 ```
 
+**Addressing for External Connectivity:**
+When connecting to external physical Cefore devices via `ext`/`bridges`, the default `192.168.0.0/16` conflicts with common LAN addressing. In Class C Ethernet environments, packets may be dropped (no route on external device) or misrouted to wrong hosts sharing the same subnet.
+
+Use `addressing.network_cidr` to select a non-conflicting /16:
+
+| Address Range | Recommendation | Rationale |
+|---------------|----------------|-----------|
+| `100.64.0.0/16` | Primary | RFC 6598 CGNAT space — virtually never used on LANs |
+| `172.20.0.0/16` | Fallback | RFC 1918 Class B — less common than 192.168.x.x but used in some enterprise LANs |
+
+External devices must also add a static route to the Mininet internal range:
+```bash
+ip route add 100.64.0.0/16 via <bridge_root_ns_ip>
+```
+
 **Root Namespace Bridging (runtime/bridge.py - BridgeManager):**
 Connects Mininet switches to the root namespace for cross-VM communication. BridgeManager handles veth pairs, IP routes, forwarding, NAT, and cleanup.
 
@@ -260,6 +274,14 @@ sudo ceforeemu disaster --config config/examples/example.yaml --no-cli --duratio
 ```
 Runs experiment without interactive CLI and saves structured results to JSON.
 
+Autotest uses one absolute event clock from experiment start across seed and
+evaluation schedulers. It preserves `put -> warmup -> failure -> eval`
+ordering; evaluation events already overdue after warmup run immediately and
+log their scheduled time, actual time, and delay. A `put` event with `repeat`
+is invalid in autotest. `duration` measures observation time after the failure
+phase starts; when no evaluation event exists and `duration` is zero, the
+failure phase is skipped with a warning.
+
 **Cache Configuration:**
 ```bash
 --cache-count <n>                # Number of cache nodes (0 = down-count + 1)
@@ -267,9 +289,10 @@ Runs experiment without interactive CLI and saves structured results to JSON.
 ```
 
 **Pub/Sub Model:**
-Put operations with `"mode": "pubsub"` use `cefpubfile` instead of `cefputfile`. Get operations with `"mode": "pubsub"` use `cefsubfile` instead of `cefgetfile`.
+Events with `type: pubsub_pub` use `cefpubfile`; events with
+`type: pubsub_sub` use `cefsubfile`.
 
-- `gets[].file` in pubsub mode is treated as an **output directory** (not a file). `cefsubfile -f` requires a directory, and creates `RNP0x<hex>.out` files inside it with session-derived names that cannot be predicted in advance.
+- A `pubsub_sub` result is stored under an **output directory** (not a predictable file). `cefsubfile -f` requires a directory, and creates `RNP0x<hex>.out` files inside it with session-derived names that cannot be predicted in advance.
 - Success detection for pubsub uses exit code + presence of a non-empty `RNP0x*.out` file in the output directory (no log text matching).
 - All cefore command wrappers redirect stdout **and stderr** to the same log file (`> logfile 2>&1`). This ensures failure diagnostics from stderr are always captured.
 - `cefpubfile` log names are unique per cycle/index: `cefpubfile_seed{seed}_downhosts{...}_phase{phase}_cycle{N}_idx{N}_h{host}.log` — same format as `cefsubfile` logs.
@@ -307,18 +330,16 @@ Basic JSON example with multiple publishers:
   "hosts": 10,
   "switches": 15,
   "seed": 42,
-  "puts": [
-    {"host": 9, "uri": "ccnx:/test/video1", "file": "./video.bin", "rate": 10, "expiry": 5000, "cache_time": 5000},
-    {"host": 7, "uri": "ccnx:/test/data1", "file": "./data.bin"}
-  ],
-  "gets": [
-    {"host": 0, "uri": "ccnx:/test/video1"},
-    {"host": 1, "uri": "ccnx:/test/data1"}
+  "events": [
+    {"at": 0, "type": "put", "host": 9, "uri": "ccnx:/test/video1", "file": "./video.bin", "rate": 10, "expiry": 5000, "cache_time": 5000},
+    {"at": 0, "type": "put", "host": 7, "uri": "ccnx:/test/data1", "file": "./data.bin"},
+    {"at": 5, "type": "get", "host": 0, "uri": "ccnx:/test/video1"},
+    {"at": 5, "type": "get", "host": 1, "uri": "ccnx:/test/data1"}
   ]
 }
 ```
 
-**puts optional fields:**
+**`put` event optional fields:**
 
 | Field | Type | cefputfile flag | Description |
 |-------|------|----------------|-------------|
@@ -329,7 +350,7 @@ Basic JSON example with multiple publishers:
 | `valid_algo` | str | `-v` | Validation algorithm (crc32c / rsa-sha256) |
 | `port_num` | int | `-p` | Port number |
 
-**gets optional fields:**
+**`get` event optional fields:**
 
 | Field | Type | cefgetfile flag | Description |
 |-------|------|----------------|-------------|
@@ -341,26 +362,26 @@ Basic JSON example with multiple publishers:
 | `sg` | int | `-z` | Send Long Life Interest |
 
 Note: In disaster topology, `expiry` and `cache_time` default to 3000 if not specified. In `run_cefputfile()` itself, they default to None (flag omitted).
+`pubsub_pub.pub_opts` does not acquire this default; omitted values remain
+omitted.
 
-YAML example with auto-generation:
+YAML example with event content operations:
 ```yaml
 hosts: 10
 switches: 15
 seed: 42
-auto:
-  publishers: [9]           # Publisher host IDs
-  consumers: "random:5"     # Random 5 consumers or list [0, 1, 2]
-  content_count: 3          # Contents per publisher
-  uri_prefix: "ccnx:/test"  # URI prefix for generated content
-  consumer_per_content: 2   # Get operations per content
+events:
+  - {at: 5, type: put, host: 9, uri: "ccnx:/test/content1", file: "./sample-putfile"}
+  - {at: 10, type: get, host: 0, uri: "ccnx:/test/content1"}
 ```
 
-The `auto` configuration automatically generates put/get operations:
-- `publishers`: List of host IDs that will publish content
-- `consumers`: Either `"random:N"` for N random consumers or a list of host IDs
-- `content_count`: Number of content items each publisher creates
-- `uri_prefix`: Base URI for generated content (default: `ccnx:/test`)
-- `consumer_per_content`: Number of consumers that request each content
+Top-level `puts`, `gets`, and `auto` are ignored with a warning. Use
+`events` for all content operations.
+
+`ceforeemu-connect` supports publication events only: `put` and
+`pubsub_pub` select publisher roles, program URI-specific FIB state, and are
+seeded before the CLI starts. `get` and `pubsub_sub` events are warned about
+but are not executed automatically.
 
 **Topology PNG Output:**
 ```bash
@@ -406,7 +427,7 @@ If not installed, use `uv run ceforeemu-log` instead.
 |--------|--------|
 | experiment_dir | Directory name |
 | num, hosts, switches, seed, k | meta.json |
-| down_interval, down_duration, down_count, down_stagger, down_exclude, cache_count, get_interval | meta.json |
+| down_interval, down_duration, down_count, down_stagger, down_exclude, cache_count | meta.json |
 | filename, host_id, content_id, file_seed, down_hosts, get_idx | Filename |
 
 **cefputfile-specific columns:**
@@ -434,7 +455,7 @@ After running scripts, the following files appear in the root directory:
 Modify `select_template()` in the topology script to return appropriate template (h0, h1, or h2) based on index and host count.
 
 **Changing content URI:**
-Update the `ccnx:/test` prefix in `setFib()` or `set_fib()` and corresponding `cefputfile`/`cefgetfile` commands. For disaster topology, use `--config` JSON or `--puts`/`--gets` options.
+Update the `ccnx:/test` prefix in `setFib()` or `set_fib()` and corresponding `cefputfile`/`cefgetfile` commands. For disaster topology, define content operations with `events` in a JSON/YAML config.
 
 **Adjusting cache behavior:**
 Edit `config/templates/h1/csmgrd.conf` template (applies to all router nodes).
@@ -447,10 +468,12 @@ Edit `config/templates/h1/csmgrd.conf` template (applies to all router nodes).
 
 **Package management:**
 The project uses `pyproject.toml` with uv for dependency management.
+System `python3` does not have project dependencies (yaml, networkx, etc.). Always use `.venv/bin/python3` or `uv run python3` to run scripts and one-off commands.
 
 ```bash
-uv sync              # Install dependencies
-uv run python3 ...   # Run with managed environment
+uv sync                    # Install dependencies
+uv run python3 ...         # Run with managed environment
+.venv/bin/python3 ...      # Direct venv invocation (equivalent)
 ```
 
 **CLI entry points** (`pyproject.toml [project.scripts]`):

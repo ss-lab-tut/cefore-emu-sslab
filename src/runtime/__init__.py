@@ -33,7 +33,6 @@ from .links import (
 from .failure_manager import FlexibleFailureManager, periodic_host_flap
 from .net_config import (
     apply_fib,
-    apply_fib_for_uris,
     apply_fib_routes,
     apply_ip_addr,
     cefroute_del,
@@ -110,7 +109,6 @@ __all__ = [
     "apply_ip_addr",
     "apply_fib",
     "apply_fib_routes",
-    "apply_fib_for_uris",
     "cefroute_del",
     "cefroute_enable",
     # topo

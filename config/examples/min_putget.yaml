@@ -13,13 +13,15 @@ duration: 20
 results_json: "results.json"
 publisher_host: 2
 
-puts:
-  - host: 2
+events:
+  - at: 5
+    type: put
+    host: 2
     uri: "ccnx:/test/sample"
     file: "./sample-putfile"
     expiry: 3000
     cache_time: 3000
-
-gets:
-  - host: 0
+  - at: 10
+    type: get
+    host: 0
     uri: "ccnx:/test/sample"

@@ -6,9 +6,7 @@ Date: 2026-03-04
 - Retire `feature/test` after selective salvage into the `feature/mesh` architecture.
 
 ## Salvaged
-- `priority_uris` support:
-  - Added URI-priority resolver and config validation/merge support.
-  - Integrated priority defaults into disaster scenario put/get operation preparation.
+- `priority_uris` support (subsequently removed in feature/mesh cleanup).
 - Flexible failure scenarios:
   - Added `failure_scenarios` config validation.
   - Added runtime failure manager supporting `simple`, `cyclic`, `random`, and `manual`.

@@ -1,5 +1,6 @@
 """Unit tests for cefore runtime command construction."""
 
+import threading
 from unittest.mock import MagicMock, call, patch
 
 import pytest
@@ -52,6 +53,16 @@ class TestRunCefputfile:
         cmd = host.popen.call_args[0][0]
         assert "cefputfile-h2.log" in cmd
 
+    def test_cancellation_terminates_running_command(self):
+        net, _host, proc = _make_net()
+        proc.returncode = -15
+        cancelled = threading.Event()
+        cancelled.set()
+        assert run_cefputfile(
+            net, 2, "ccnx:/test/sample", cancel_event=cancelled
+        ) == -15
+        proc.terminate.assert_called_once()
+
 
 # ---------------------------------------------------------------------------
 # run_cefgetfile
@@ -70,6 +81,15 @@ class TestRunCefgetfile:
         run_cefgetfile(net, 0, "ccnx:/test/sample", "/tmp/recv")
         cmd = host.popen.call_args[0][0]
         assert "cefgetfile-h0.log" in cmd
+
+    def test_timeout_terminates_running_command(self):
+        net, _host, proc = _make_net()
+        proc.returncode = -15
+        proc.wait.side_effect = [0]
+        assert run_cefgetfile(
+            net, 0, "ccnx:/test/sample", "/tmp/recv", timeout=0
+        ) == -15
+        proc.terminate.assert_called_once()
 
 
 # ---------------------------------------------------------------------------

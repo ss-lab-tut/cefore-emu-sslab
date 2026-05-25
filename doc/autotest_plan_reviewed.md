@@ -102,7 +102,6 @@ warmup を cache nodes に投げても、csmgrd が動いていなければ “�
 8. eval フェーズは `--duration` を締切として回す：
    - `deadline = now + duration`
    - `while now < deadline or duration==0 (1回だけ): ops_get を 1 サイクル実行`
-   - `get_interval` で間隔調整
 9. 各 get 実行の直前/直後で `FlapState.snapshot()` を取得し、以下を record 化：
    - `phase, ts, host, uri, out_file, log_file, exit_code, down_hosts`
 10. `--results-json` 指定時は終了処理直前に JSON 配列を書き出す（run_dir 配下推奨）。

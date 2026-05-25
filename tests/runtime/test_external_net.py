@@ -1,48 +1,19 @@
-"""Unit tests for external network content operation resolution."""
+"""Unit tests for external network legacy content removal."""
 
-from argparse import Namespace
-
-from src.runtime.external_net import (
-    _resolve_connect_content_ops,
-    _warn_if_no_content_operations,
-)
+import src.runtime.external_net as external_net
 
 
-def _make_args(**overrides):
-    data = {
-        "hosts": 3,
-        "seed": 42,
-        "puts": [],
-        "gets": [],
-        "auto": None,
-    }
-    data.update(overrides)
-    return Namespace(**data)
+def test_legacy_content_helpers_removed():
+    assert not hasattr(external_net, "_resolve_connect_content_ops")
+    assert not hasattr(external_net, "_warn_if_no_content_operations")
 
 
-def test_resolve_connect_content_ops_keeps_empty_ops_without_auto(tmp_path):
-    ops_put, ops_get = _resolve_connect_content_ops(_make_args(), tmp_path)
-    assert ops_put == []
-    assert ops_get == []
-
-
-def test_resolve_connect_content_ops_uses_auto_when_no_explicit_ops(tmp_path):
-    args = _make_args(
-        auto={
-            "publishers": [2],
-            "consumers": [0],
-            "content_count": 1,
-            "uri_prefix": "ccnx:/test",
-            "consumer_per_content": 1,
-        }
-    )
-    ops_put, ops_get = _resolve_connect_content_ops(args, tmp_path)
-    assert len(ops_put) == 1
-    assert len(ops_get) == 1
-
-
-def test_warn_if_no_content_operations(capsys):
-    warned = _warn_if_no_content_operations([], [])
-    captured = capsys.readouterr()
-    assert warned is True
-    assert "no content operations configured" in captured.out
+def test_publication_events_drive_connect_publisher_metadata():
+    events = [
+        {"at": 1, "type": "put", "host": 4, "uri": "ccnx:/test/data"},
+        {"at": 2, "type": "pubsub_pub", "host": 3, "uri": "ccnx:/test/live"},
+        {"at": 3, "type": "get", "host": 0, "uri": "ccnx:/test/data"},
+    ]
+    publications, publishers = external_net._publication_metadata(events)
+    assert [event["type"] for event in publications] == ["put", "pubsub_pub"]
+    assert publishers == {"ccnx:/test/data": 4, "ccnx:/test/live": 3}

@@ -195,24 +195,30 @@ def validate_min_putget(data: list[dict]) -> None:
     """Validate the normal put/get smoke output."""
     if not data:
         raise RuntimeError("min_putget expected at least 1 result")
-    for row in data:
-        if not row.get("success"):
-            raise RuntimeError("min_putget contains an unsuccessful result")
+    if not all(row.get("success") for row in data):
+        raise RuntimeError("min_putget contains an unsuccessful result")
+    get_rows = [row for row in data if row.get("op_type") == "get"]
+    if not get_rows:
+        raise RuntimeError("min_putget expected at least 1 get result")
+    for row in get_rows:
         if not row.get("has_completed_log"):
-            raise RuntimeError("min_putget contains a row without completed-log marker")
+            raise RuntimeError("min_putget get row missing completed-log marker")
         if not row.get("has_output_file"):
-            raise RuntimeError("min_putget contains a row without output artifact")
+            raise RuntimeError("min_putget get row missing output artifact")
 
 
 def validate_min_pubsub(data: list[dict]) -> None:
     """Validate the pub/sub smoke output."""
     if not data:
         raise RuntimeError("min_pubsub expected at least 1 result")
-    for row in data:
-        if not row.get("success"):
-            raise RuntimeError("min_pubsub contains an unsuccessful result")
+    if not all(row.get("success") for row in data):
+        raise RuntimeError("min_pubsub contains an unsuccessful result")
+    sub_rows = [row for row in data if row.get("op_type") == "sub"]
+    if not sub_rows:
+        raise RuntimeError("min_pubsub expected at least 1 sub result")
+    for row in sub_rows:
         if not row.get("has_output_file"):
-            raise RuntimeError("min_pubsub contains a row without output artifact")
+            raise RuntimeError("min_pubsub sub row missing output artifact")
         if row.get("has_completed_log"):
             raise RuntimeError("min_pubsub should not rely on completed-log detection")
         if "RNP0x" not in str(row.get("out_file", "")):
@@ -232,42 +238,46 @@ def validate_min_mixed(data: list[dict]) -> None:
     if not all(row.get("success") for row in data):
         raise RuntimeError("min_mixed contains unsuccessful results")
 
-    file_rows = [row for row in data if row.get("uri") == "ccnx:/test/file"]
-    stream_rows = [row for row in data if row.get("uri") == "ccnx:/test/stream"]
-    if not file_rows or not stream_rows:
-        raise RuntimeError("min_mixed missing one or more expected URIs")
-    if not all(row.get("has_completed_log") for row in file_rows):
-        raise RuntimeError("min_mixed file URI is missing completed-log markers")
-    if not all(row.get("has_output_file") for row in stream_rows):
-        raise RuntimeError("min_mixed stream URI is missing output artifacts")
-    if any(row.get("has_completed_log") for row in stream_rows):
-        raise RuntimeError("min_mixed stream URI should keep has_completed_log == false")
+    get_rows = [row for row in data if row.get("op_type") == "get"]
+    sub_rows = [row for row in data if row.get("op_type") == "sub"]
+    if not get_rows or not sub_rows:
+        raise RuntimeError("min_mixed missing get or sub results")
+    if not all(row.get("has_completed_log") for row in get_rows):
+        raise RuntimeError("min_mixed get rows missing completed-log markers")
+    if not all(row.get("has_output_file") for row in sub_rows):
+        raise RuntimeError("min_mixed sub rows missing output artifacts")
+    if any(row.get("has_completed_log") for row in sub_rows):
+        raise RuntimeError("min_mixed sub rows should keep has_completed_log == false")
 
 
 def validate_min_event_putget(data: list[dict]) -> None:
     """Validate event-based put/get output."""
-    get_rows = [row for row in data if row.get("phase") == "event"]
+    if not data:
+        raise RuntimeError("min_event_putget expected at least 1 result")
+    if not all(row.get("success") for row in data):
+        raise RuntimeError("min_event_putget contains an unsuccessful result")
+    get_rows = [row for row in data if row.get("op_type") == "get"]
     if not get_rows:
-        raise RuntimeError("min_event_putget expected at least 1 event-phase result")
+        raise RuntimeError("min_event_putget expected at least 1 get result")
     for row in get_rows:
-        if not row.get("success"):
-            raise RuntimeError(f"min_event_putget has an unsuccessful event result: {row}")
         if not row.get("has_completed_log"):
-            raise RuntimeError("min_event_putget event result missing completed-log marker")
+            raise RuntimeError("min_event_putget get row missing completed-log marker")
         if not row.get("has_output_file"):
-            raise RuntimeError("min_event_putget event result missing output artifact")
+            raise RuntimeError("min_event_putget get row missing output artifact")
 
 
 def validate_min_event_pubsub(data: list[dict]) -> None:
     """Validate event-based pub/sub output."""
-    event_rows = [row for row in data if row.get("phase") == "event"]
-    if not event_rows:
-        raise RuntimeError("min_event_pubsub expected at least 1 event-phase result")
-    for row in event_rows:
-        if not row.get("success"):
-            raise RuntimeError(f"min_event_pubsub has an unsuccessful event result: {row}")
+    if not data:
+        raise RuntimeError("min_event_pubsub expected at least 1 result")
+    if not all(row.get("success") for row in data):
+        raise RuntimeError("min_event_pubsub contains an unsuccessful result")
+    sub_rows = [row for row in data if row.get("op_type") == "sub"]
+    if not sub_rows:
+        raise RuntimeError("min_event_pubsub expected at least 1 sub result")
+    for row in sub_rows:
         if not row.get("has_output_file"):
-            raise RuntimeError("min_event_pubsub event result missing output artifact")
+            raise RuntimeError("min_event_pubsub sub row missing output artifact")
         if "RNP0x" not in str(row.get("out_file", "")):
             raise RuntimeError("min_event_pubsub out_file does not point to an RNP0x*.out artifact")
 

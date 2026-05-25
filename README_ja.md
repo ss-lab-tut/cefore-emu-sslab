@@ -92,7 +92,7 @@ sudo .venv/bin/python3 -m src mesh --hosts 8 --switches 12 --seed 42 --k 3
 
 ### disaster
 
-定期的なホストの停止/復旧サイクル、帯域制御、外部インタフェースの接続、および繰り返し `cefgetfile` ログを持つメッシュトポロジ。
+定期的なホストの停止/復旧サイクル、帯域制御、外部インタフェースの接続、およびイベント駆動のコンテンツ操作を持つメッシュトポロジ。
 
 ```bash
 sudo .venv/bin/python3 -m src disaster --hosts 10 --switches 15 --seed 42 \
@@ -108,7 +108,6 @@ sudo .venv/bin/python3 -m src disaster --hosts 10 --switches 15 --seed 42 \
 | `--down-count` | 1 サイクルで停止するホスト数 |
 | `--down-stagger` | サイクル内の停止イベントをずらす秒数 |
 | `--down-exclude` | 除外するホスト ID（カンマ区切り） |
-| `--get-interval` | `cefgetfile` 実行の間隔（秒） |
 | `--cache-count` | キャッシュノード数（0 = down-count + 1） |
 | `--bw nodeA,nodeB,mbps` | リンク帯域を設定（繰り返し指定可） |
 | `--ext host,ifname[,ip][,mtu]` | 外部インタフェースを接続（繰り返し指定可） |
@@ -122,51 +121,50 @@ sudo .venv/bin/python3 -m src disaster --hosts 10 --switches 15 --seed 42 \
 
 `--config` で JSON または YAML から設定を読み込みます。YAML サポートには `pyyaml` が必要です。
 
-**複数パブリッシャ（JSON）:**
+トップレベルの `puts`、`gets`、`auto` は警告を出して無視されます。コンテンツ操作は
+すべて `events` に書いてください。
+
+**コンテンツ操作（JSON）:**
 ```json
 {
   "hosts": 10,
   "switches": 15,
   "seed": 42,
-  "puts": [
-    {"host": 9, "uri": "ccnx:/test/video1", "file": "./video.bin", "rate": 10, "expiry": 5000, "cache_time": 5000},
-    {"host": 7, "uri": "ccnx:/test/data1", "file": "./data.bin"}
-  ],
-  "gets": [
-    {"host": 0, "uri": "ccnx:/test/video1"},
-    {"host": 1, "uri": "ccnx:/test/data1"}
+  "events": [
+    {"at": 5, "type": "put", "host": 9, "uri": "ccnx:/test/video1", "file": "./video.bin", "rate": 10, "expiry": 5000, "cache_time": 5000},
+    {"at": 10, "type": "get", "host": 0, "uri": "ccnx:/test/video1"},
+    {"at": 15, "type": "pubsub_sub", "host": 1, "uri": "ccnx:/test/live", "sub_opts": {"wait": 20}},
+    {"at": 15, "type": "pubsub_pub", "host": 7, "uri": "ccnx:/test/live", "file": "./data.bin", "pub_opts": {"lifetime": 8}}
   ]
 }
 ```
 
-**自動生成（YAML）:**
+**タイムドイベント（YAML）:**
 ```yaml
 hosts: 10
 switches: 15
 seed: 42
-auto:
-  publishers: [9]           # パブリッシャのホスト ID
-  consumers: "random:5"     # ランダムに 5 コンシューマ、またはリスト [0, 1, 2]
-  content_count: 3          # パブリッシャあたりのコンテンツ数
-  uri_prefix: "ccnx:/test"
-  consumer_per_content: 2   # コンテンツあたりの get 操作数
-```
-
-`auto` ブロックは put/get 操作を自動生成します：
-- `publishers`: パブリッシャとして動作するホスト ID のリスト
-- `consumers`: `"random:N"` またはホスト ID のリスト
-- `content_count`: パブリッシャあたりのコンテンツ数
-- `consumer_per_content`: コンテンツあたりの get 操作数
-
-**タイムドイベント:**
-```yaml
 events:
+  - {at: 5, type: put, host: 9, uri: "ccnx:/test/sample", file: "./sample-putfile"}
+  - {at: 10, type: get, host: 0, uri: "ccnx:/test/sample"}
   - {at: 15, type: link_down, nodes: [1, 2]}
   - {at: 25, type: link_up, nodes: [1, 2]}
   - {at: 30, type: fib_del, host: 3, prefix: "ccnx:/test/sample", next_hop: "192.168.1.1"}
 ```
 
-サポートされるイベントタイプ: `link_down`, `link_up`, `fib_add`, `fib_del`, `fib_enable`。
+サポートされるイベントタイプ: `link_down`, `link_up`, `fib_add`, `fib_del`,
+`fib_enable`, `bw_set`, `compute_call`, `put`, `get`, `pubsub_sub`,
+`pubsub_pub`。
+
+disaster の通常 `put` event では、`expiry` と `cache_time` の省略時に
+どちらも `3000` を Cefore コマンドへ渡し、events 移行前の挙動を保ちます。
+`pubsub_pub` の `pub_opts.expiry` / `pub_opts.cache_time` は暗黙補完せず、
+省略時は Cefore コマンドの既定値を使います。
+
+`ceforeemu-connect` は `put` と `pubsub_pub` event のみを publisher 判定、
+URI 別 FIB 設定、CLI 開始前の publication seed に使います。`get` と
+`pubsub_sub` は自動実行せず warning を出します。トップレベルの legacy
+content key は復活しません。
 
 **モニタリング:**
 ```yaml
@@ -177,15 +175,6 @@ monitoring:
   targets:
     - {type: cefstatus, hosts: "all"}
     - {type: csmgrstatus, hosts: "cache"}
-```
-
-**ウォームアッププリフェッチ:**
-```yaml
-warmup_get_interval: 5
-warmup_only_cache_nodes: true    # または warmup_all_hosts: true
-hot_uris:
-  - "ccnx:/test/video1"
-  - "ccnx:/test/data1"
 ```
 
 ## ログ出力ディレクトリ
@@ -240,6 +229,13 @@ sudo .venv/bin/python3 tools/autotest/run.py \
 - `out/summary.csv`: URI レベルの集計メトリクス
 - `out/summary.md`: 人が読めるサマリ
 
+autotest mode の `events[].at` は、実験開始時に確定する単一の絶対時計を
+基準にします。seed put、warmup、failure/evaluation の順は維持され、
+warmup 中に予定時刻を過ぎた evaluation event は late warning とともに
+直ちに実行されます。autotest の `put` に `repeat` は指定できません。
+`duration` は failure/evaluation phase 開始後の観測時間のままで、
+evaluation event がなく `duration: 0` の場合は failure phase を開始しません。
+
 ## ログ集計
 
 cefputfile/cefgetfile/cefpubfile/cefsubfile のログを収集し、コマンドごとの CSV ファイルを出力します：
@@ -270,7 +266,6 @@ cefore-emu/
 │   ├── core/                      # コアロジックとアルゴリズム
 │   │   ├── config/                # 設定ユーティリティ
 │   │   │   ├── loader.py          # JSON/YAML 設定ローダ
-│   │   │   ├── auto_gen.py        # put/get 自動生成
 │   │   │   └── priority_resolver.py  # 設定優先度解決
 │   │   ├── fib.py                 # FIB ルート計算
 │   │   ├── flap_state.py          # ホストフラップ状態追跡
@@ -335,6 +330,32 @@ cefore-emu/
 | パブリッシャ | 最後のホスト | 0 | `cefputfile` でコンテンツを保存・配信する |
 
 3 ホストを超えるトポロジでは、追加ホストディレクトリがテンプレートから動的に生成され、スクリプト完了後に削除されます。
+
+## 外部機器接続時のアドレッシング
+
+Mininet ホストを `--ext` や `bridges` で外部の物理 Cefore 機器に接続する場合、デフォルトの内部アドレス空間 `192.168.0.0/16` は物理 LAN と衝突しやすくなります。外部機器に Mininet 内部 IP への明示的なルートがなければパケットはドロップされ、Class C Ethernet 環境で他の機器も `192.168.x.x` を使用している場合、応答が誤った機器に返送されるリスクもあります。
+
+設定ファイルの `addressing.network_cidr` で内部アドレス帯を変更してください：
+
+| アドレス帯 | 推奨度 | 理由 |
+|-----------|--------|------|
+| `100.64.0.0/16` | 第一推奨 | RFC 6598 Shared Address Space (CGNAT) — 一般 LAN で使われることがほぼなく、衝突リスクが最も低い |
+| `172.20.0.0/16` | 代替 | RFC 1918 Class B プライベート — 192.168.x.x より衝突リスクは低いが、大規模企業 LAN で使われる場合あり |
+
+> **注意:** `network_cidr` は `/16` のみ指定可能です。CGNAT 全体の `100.64.0.0/10` ではなく `100.64.0.0/16` を指定してください。
+
+```yaml
+addressing:
+  network_cidr: "100.64.0.0/16"
+```
+
+外部機器側にも Mininet 内部アドレス帯へのスタティックルートを追加する必要があります：
+
+```bash
+ip route add 100.64.0.0/16 via <ブリッジのルートNS側IP>
+```
+
+詳細は `config/examples/example.yaml` を参照してください。
 
 ## セキュリティに関する注意
 

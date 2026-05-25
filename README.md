@@ -92,7 +92,7 @@ Key options:
 
 ### disaster
 
-Mesh topology with periodic host down/up cycles, bandwidth control, external interface attachment, and repeated `cefgetfile` logging.
+Mesh topology with periodic host down/up cycles, bandwidth control, external interface attachment, and event-driven content operations.
 
 ```bash
 sudo .venv/bin/python3 -m src disaster --hosts 10 --switches 15 --seed 42 \
@@ -108,7 +108,6 @@ Key options:
 | `--down-count` | Number of hosts down per cycle |
 | `--down-stagger` | Seconds to stagger down events within a cycle |
 | `--down-exclude` | Comma-separated host IDs to exclude |
-| `--get-interval` | Seconds between `cefgetfile` runs |
 | `--cache-count` | Number of cache nodes (0 = down-count + 1) |
 | `--bw nodeA,nodeB,mbps` | Set link bandwidth (repeatable) |
 | `--ext host,ifname[,ip][,mtu]` | Attach external interface (repeatable) |
@@ -122,51 +121,50 @@ Key options:
 
 Use `--config` to load settings from JSON or YAML. YAML support requires `pyyaml`.
 
-**Multiple publishers (JSON):**
+Top-level `puts`, `gets`, and `auto` are ignored with a warning. Use `events`
+for all content operations.
+
+**Content operations (JSON):**
 ```json
 {
   "hosts": 10,
   "switches": 15,
   "seed": 42,
-  "puts": [
-    {"host": 9, "uri": "ccnx:/test/video1", "file": "./video.bin", "rate": 10, "expiry": 5000, "cache_time": 5000},
-    {"host": 7, "uri": "ccnx:/test/data1", "file": "./data.bin"}
-  ],
-  "gets": [
-    {"host": 0, "uri": "ccnx:/test/video1"},
-    {"host": 1, "uri": "ccnx:/test/data1"}
+  "events": [
+    {"at": 5, "type": "put", "host": 9, "uri": "ccnx:/test/video1", "file": "./video.bin", "rate": 10, "expiry": 5000, "cache_time": 5000},
+    {"at": 10, "type": "get", "host": 0, "uri": "ccnx:/test/video1"},
+    {"at": 15, "type": "pubsub_sub", "host": 1, "uri": "ccnx:/test/live", "sub_opts": {"wait": 20}},
+    {"at": 15, "type": "pubsub_pub", "host": 7, "uri": "ccnx:/test/live", "file": "./data.bin", "pub_opts": {"lifetime": 8}}
   ]
 }
 ```
 
-**Auto-generation (YAML):**
+**Timed events (YAML):**
 ```yaml
 hosts: 10
 switches: 15
 seed: 42
-auto:
-  publishers: [9]           # Publisher host IDs
-  consumers: "random:5"     # Random 5 consumers or list [0, 1, 2]
-  content_count: 3          # Contents per publisher
-  uri_prefix: "ccnx:/test"
-  consumer_per_content: 2   # Get operations per content
-```
-
-The `auto` block generates put/get operations automatically:
-- `publishers`: list of host IDs acting as publishers
-- `consumers`: `"random:N"` or list of host IDs
-- `content_count`: number of content items per publisher
-- `consumer_per_content`: number of get operations per content
-
-**Timed events:**
-```yaml
 events:
+  - {at: 5, type: put, host: 9, uri: "ccnx:/test/sample", file: "./sample-putfile"}
+  - {at: 10, type: get, host: 0, uri: "ccnx:/test/sample"}
   - {at: 15, type: link_down, nodes: [1, 2]}
   - {at: 25, type: link_up, nodes: [1, 2]}
   - {at: 30, type: fib_del, host: 3, prefix: "ccnx:/test/sample", next_hop: "192.168.1.1"}
 ```
 
-Supported event types: `link_down`, `link_up`, `fib_add`, `fib_del`, `fib_enable`.
+Supported event types: `link_down`, `link_up`, `fib_add`, `fib_del`,
+`fib_enable`, `bw_set`, `compute_call`, `put`, `get`, `pubsub_sub`,
+`pubsub_pub`.
+
+For a disaster `put` event, omitted `expiry` and `cache_time` are both sent
+as `3000` to preserve the pre-events disaster behavior. Pub/sub publication
+options remain explicit: omitted `pub_opts.expiry` or `pub_opts.cache_time`
+uses the Cefore command default.
+
+`ceforeemu-connect` uses `put` and `pubsub_pub` events only to identify
+publishers, program URI-specific FIB entries, and seed publications before
+opening its CLI. It warns and does not automatically execute `get` or
+`pubsub_sub` events. Legacy top-level content keys are not restored.
 
 **Monitoring:**
 ```yaml
@@ -177,15 +175,6 @@ monitoring:
   targets:
     - {type: cefstatus, hosts: "all"}
     - {type: csmgrstatus, hosts: "cache"}
-```
-
-**Warmup prefetch:**
-```yaml
-warmup_get_interval: 5
-warmup_only_cache_nodes: true    # or warmup_all_hosts: true
-hot_uris:
-  - "ccnx:/test/video1"
-  - "ccnx:/test/data1"
 ```
 
 ## Log Output Directory
@@ -240,6 +229,14 @@ Outputs:
 - `out/summary.csv`: URI-level aggregate metrics
 - `out/summary.md`: human-readable summary
 
+In autotest mode, event `at` values use one absolute clock starting when the
+experiment begins. Seed puts complete before warmup, and warmup completes
+before failure/evaluation; an evaluation event whose time passed during
+warmup executes immediately with a late-event warning. Repeating `put` events
+are rejected in autotest mode. `duration` remains the failure/evaluation
+observation period after that phase starts; with no evaluation events and
+`duration: 0`, no failure phase is started.
+
 ## Log Summarization
 
 Collect cefputfile/cefgetfile/cefpubfile/cefsubfile logs and output per-command CSV files:
@@ -270,7 +267,6 @@ cefore-emu/
 │   ├── core/                      # Core logic and algorithms
 │   │   ├── config/                # Configuration utilities
 │   │   │   ├── loader.py          # JSON/YAML config loader
-│   │   │   ├── auto_gen.py        # Auto put/get generation
 │   │   │   └── priority_resolver.py  # Config priority resolution
 │   │   ├── fib.py                 # FIB route computation
 │   │   ├── flap_state.py          # Host flap state tracking
@@ -335,6 +331,32 @@ cefore-emu/
 | Publisher | last host | 0 | Stores and serves content via `cefputfile` |
 
 For topologies with >3 hosts, additional host directories are generated dynamically from templates and cleaned up after script completion.
+
+## Addressing for External Connectivity
+
+When connecting Mininet hosts to external physical Cefore devices via `--ext` or `bridges`, the default internal address space `192.168.0.0/16` is likely to conflict with the physical LAN. If the external device has no explicit route to the Mininet range, packets are silently dropped. In Class C Ethernet environments where other devices also use `192.168.x.x`, responses may be misrouted to the wrong host.
+
+Change the internal address range via `addressing.network_cidr` in your config file:
+
+| Address Range | Recommendation | Rationale |
+|---------------|----------------|-----------|
+| `100.64.0.0/16` | Primary | RFC 6598 Shared Address Space (CGNAT) — virtually never used on LANs, lowest collision risk |
+| `172.20.0.0/16` | Fallback | RFC 1918 Class B private — less common than 192.168.x.x, but used in some enterprise LANs |
+
+> **Note:** `network_cidr` accepts only `/16`. Specify `100.64.0.0/16`, not the full CGNAT block `100.64.0.0/10`.
+
+```yaml
+addressing:
+  network_cidr: "100.64.0.0/16"
+```
+
+The external device must also have a static route pointing the Mininet range at the bridge gateway:
+
+```bash
+ip route add 100.64.0.0/16 via <bridge_root_ns_ip>
+```
+
+See `config/examples/example.yaml` for full details.
 
 ## Security Notes
 
