@@ -7,6 +7,40 @@ from mininet.cli import CLI
 from mininet.log import info
 
 
+def _propagate_failures(
+    primary_exc: BaseException | None,
+    cleanup_failures: list[tuple[str, BaseException]],
+) -> None:
+    """Aggregate and re-raise primary and cleanup failures.
+
+    Rules:
+    - No failures: return silently.
+    - Primary only: re-raise primary directly.
+    - Single cleanup failure with no primary: re-raise it directly
+      (preserves single-raise rule even when the failure is
+      `KeyboardInterrupt` / `SystemExit`).
+    - Multiple cleanup failures with no primary: raise
+      `BaseExceptionGroup` if any member is a non-`Exception`
+      `BaseException`; otherwise raise `ExceptionGroup`.
+    - Primary plus any cleanup failures: raise `BaseExceptionGroup`
+      so non-`Exception` primaries (e.g. `SystemExit`) are accepted.
+    """
+    if not cleanup_failures:
+        if primary_exc is not None:
+            raise primary_exc
+        return
+    if primary_exc is not None:
+        all_exceptions: list[BaseException] = [primary_exc]
+        all_exceptions.extend(f[1] for f in cleanup_failures)
+        raise BaseExceptionGroup("lifecycle failures", all_exceptions)
+    if len(cleanup_failures) == 1:
+        raise cleanup_failures[0][1]
+    excs = [f[1] for f in cleanup_failures]
+    if any(not isinstance(e, Exception) for e in excs):
+        raise BaseExceptionGroup("cleanup failures", excs)
+    raise ExceptionGroup("cleanup failures", excs)
+
+
 class BaseScenario(ABC):
     """Abstract base for all Cefore emulation scenarios.
 
@@ -59,14 +93,19 @@ class BaseScenario(ABC):
         if not generated:
             return
         run_dir = getattr(self, "run_dir", Path("."))
+        from ..core.paths import ensure_within_run_dir
         from ..runtime.debug import archive_node_dirs
-        archive_node_dirs(
-            generated,
-            run_dir / debug_config.output_subdir / "node_dirs",
-        )
+        dest = run_dir / debug_config.output_subdir / "node_dirs"
+        ensure_within_run_dir(run_dir, dest)
+        archive_node_dirs(generated, dest)
 
     def execute(self):
-        """Run the full scenario lifecycle with guaranteed teardown."""
+        """Run the full scenario lifecycle with guaranteed teardown.
+
+        Staged cleanup: every stage is attempted independently. Failures
+        are accumulated and re-raised after all cleanup completes.
+        """
+        import sys
         from ..runtime.cleanup import cleanup_all
         from ..runtime.template import cleanup_node_dirs
         net = None
@@ -80,15 +119,38 @@ class BaseScenario(ABC):
         except KeyboardInterrupt:
             info("\nInterrupted by user.\n")
         finally:
+            primary_exc = sys.exc_info()[1]
+            if isinstance(primary_exc, KeyboardInterrupt):
+                primary_exc = None
+
+            cleanup_failures: list[tuple[str, BaseException]] = []
+
             if net is not None:
-                self.collect_debug_pre_teardown(net)
+                try:
+                    self.collect_debug_pre_teardown(net)
+                except BaseException as exc:
+                    cleanup_failures.append(("debug_pre_teardown", exc))
+
                 try:
                     self.teardown(net)
-                except Exception as exc:
+                except BaseException as exc:
+                    cleanup_failures.append(("teardown", exc))
                     info(f"Error during teardown: {exc}\n")
-            self.collect_debug_post_teardown()
-            generated_dirs = getattr(self, "generated_node_dirs", [])
-            if net is not None:
-                cleanup_all(net, generated_dirs)
+
+                try:
+                    self.collect_debug_post_teardown()
+                except BaseException as exc:
+                    cleanup_failures.append(("debug_post_teardown", exc))
+
+                try:
+                    cleanup_all(net, getattr(self, "generated_node_dirs", []))
+                except BaseException as exc:
+                    cleanup_failures.append(("cleanup_all", exc))
             else:
-                cleanup_node_dirs(generated_dirs)
+                try:
+                    cleanup_node_dirs(getattr(self, "generated_node_dirs", []))
+                except BaseException as exc:
+                    cleanup_failures.append(("cleanup_node_dirs", exc))
+
+            # Propagate failures after all cleanup
+            _propagate_failures(primary_exc, cleanup_failures)

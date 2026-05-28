@@ -14,11 +14,12 @@ from mininet.log import info
 from ..core.addressing import AddressingScheme, DEFAULT_NETWORK_CIDR
 from ..core.flap_state import FlapState
 from ..core.graph import select_k_centers
-from ..core.paths import resolve_run_path
+from ..core.paths import ensure_within_run_dir, resolve_run_path
 
 from ..runtime.bandwidth import parse_bw_args, set_link_bandwidth
 from ..runtime.bridge import (
     BridgeManager,
+    TeardownError,
     attach_external_interface,
     cleanup_external_bridges,
     parse_bridge_args,
@@ -49,7 +50,7 @@ from ..runtime.template import (
 from ..runtime.topo import MeshTopo
 from ..runtime.viz import build_host_graph, print_mesh_links, render_topology_png
 
-from .base import BaseScenario
+from .base import BaseScenario, _propagate_failures
 
 
 def _artifact_path(run_dir: Path, raw_path, default_name):
@@ -568,7 +569,11 @@ class DisasterScenario(BaseScenario):
             self.event_scheduler.wait_all()
 
     def execute(self):
-        """Override BaseScenario.execute() for CLI and autotest control."""
+        """Override BaseScenario.execute() for CLI and autotest control.
+
+        Staged cleanup: every stage is attempted independently. Failures
+        are accumulated and re-raised after all cleanup completes.
+        """
         net = None
         try:
             topo = self.build_topology()
@@ -589,37 +594,93 @@ class DisasterScenario(BaseScenario):
         except KeyboardInterrupt:
             info("\nInterrupted by user.\n")
         finally:
+            # Front-end shutdown — each stage attempted independently.
+            # BaseException (not just Exception) is caught so that SystemExit,
+            # KeyboardInterrupt, etc. during shutdown do not abort cleanup.
+            cleanup_failures: list[tuple[str, BaseException]] = []
+
             if self.monitor is not None:
-                self.monitor.stop()
+                try:
+                    self.monitor.stop()
+                except BaseException as exc:
+                    cleanup_failures.append(("monitor.stop", exc))
             if self.webui is not None:
-                self.webui.stop()
+                try:
+                    self.webui.stop()
+                except BaseException as exc:
+                    cleanup_failures.append(("webui.stop", exc))
             if self.event_scheduler is not None:
-                self.event_scheduler.stop()
+                try:
+                    self.event_scheduler.stop()
+                except BaseException as exc:
+                    cleanup_failures.append(("event_scheduler.stop", exc))
             if self.content_runner is not None:
-                if not self.content_runner.wait_all(timeout=60):
-                    info("[warning] content operation shutdown exceeded 60s deadline\n")
-                self.content_runner.stop()
+                # Stage A: wait_all() may raise; capture independently so a
+                # failure here does NOT skip stop(). (Defect 4.)
+                try:
+                    if not self.content_runner.wait_all(timeout=60):
+                        info("[warning] content operation shutdown exceeded 60s deadline\n")
+                except BaseException as exc:
+                    cleanup_failures.append(("content_runner.wait_all", exc))
+                # Stage B: stop() is always attempted.
+                try:
+                    self.content_runner.stop()
+                except BaseException as exc:
+                    cleanup_failures.append(("content_runner.stop", exc))
             if self.stop_event is not None:
-                self.stop_event.set()
+                try:
+                    self.stop_event.set()
+                except BaseException as exc:
+                    cleanup_failures.append(("stop_event.set", exc))
+
+            # Capture any in-flight primary exception
+            primary_exc = sys.exc_info()[1]
+            if isinstance(primary_exc, KeyboardInterrupt):
+                primary_exc = None
 
             if net is not None:
-                self.collect_debug_pre_teardown(net)
+                # Stage 1: Debug pre-teardown (best-effort, never blocks cleanup)
+                try:
+                    self.collect_debug_pre_teardown(net)
+                except BaseException as exc:
+                    cleanup_failures.append(("debug_pre_teardown", exc))
+
+                # Stage 2: Teardown (daemon stop, bridge cleanup, external bridges)
                 try:
                     self.teardown(net)
-                except Exception as exc:
+                except BaseException as exc:
+                    cleanup_failures.append(("teardown", exc))
                     info(f"Error during teardown: {exc}\n")
 
-            self.collect_debug_post_teardown()
-            if net is not None:
-                cleanup_all(net, self.generated_node_dirs)
-            else:
-                cleanup_node_dirs(self.generated_node_dirs)
+                # Stage 3: Debug post-teardown (best-effort, never blocks cleanup)
+                try:
+                    self.collect_debug_post_teardown()
+                except BaseException as exc:
+                    cleanup_failures.append(("debug_post_teardown", exc))
 
+                # Stage 4: Generic cleanup
+                try:
+                    cleanup_all(net, self.generated_node_dirs)
+                except BaseException as exc:
+                    cleanup_failures.append(("cleanup_all", exc))
+            else:
+                try:
+                    cleanup_node_dirs(self.generated_node_dirs)
+                except BaseException as exc:
+                    cleanup_failures.append(("cleanup_node_dirs", exc))
+
+            # Results write — after all operational cleanup
             if self.results_path is not None:
-                self.results_path.write_text(
-                    json.dumps(self.results, ensure_ascii=False, indent=2),
-                    encoding="utf-8",
-                )
+                try:
+                    self.results_path.write_text(
+                        json.dumps(self.results, ensure_ascii=False, indent=2),
+                        encoding="utf-8",
+                    )
+                except BaseException as exc:
+                    cleanup_failures.append(("results_write", exc))
+
+            # Final exception propagation
+            _propagate_failures(primary_exc, cleanup_failures)
 
     def collect_debug_pre_teardown(self, net):
         if self.debug_config is None or not self.debug_config.fib_dump:
@@ -627,6 +688,7 @@ class DisasterScenario(BaseScenario):
         from ..runtime.debug import dump_fib
 
         dest = self.run_dir / self.debug_config.output_subdir / "fib"
+        ensure_within_run_dir(self.run_dir, dest)
         dump_fib(net, list(range(self.args.hosts)), dest)
 
     def collect_debug_post_teardown(self):
@@ -636,16 +698,46 @@ class DisasterScenario(BaseScenario):
         from ..runtime.debug import archive_daemon_logs
 
         dest = self.run_dir / self.debug_config.output_subdir / "daemon_logs"
+        ensure_within_run_dir(self.run_dir, dest)
         archive_daemon_logs(self.args.hosts, dest)
 
     def teardown(self, net):
-        """Stop daemons and clean up bridges."""
+        """Stop daemons and clean up bridges.
+
+        All cleanup stages are attempted independently. Failures are
+        accumulated and raised as an aggregate after all stages complete.
+        BaseException (not just Exception) is caught so that SystemExit,
+        KeyboardInterrupt, etc. during teardown do not abort remaining cleanup.
+        """
+        teardown_failures: list[tuple[str, BaseException]] = []
+
+        # Daemon stops — each host attempted independently
         for idx in range(self.args.hosts):
-            stop_cefnetd(net, idx)
+            try:
+                stop_cefnetd(net, idx)
+            except BaseException as exc:
+                teardown_failures.append((f"stop_cefnetd h{idx}", exc))
         for idx in sorted(self.started_csmgrd_hosts):
-            stop_csmgrd(net, idx)
-        self.bridge_manager.cleanup()
-        cleanup_external_bridges()
+            try:
+                stop_csmgrd(net, idx)
+            except BaseException as exc:
+                teardown_failures.append((f"stop_csmgrd h{idx}", exc))
+
+        # BridgeManager cleanup
+        try:
+            self.bridge_manager.cleanup()
+        except BaseException as exc:
+            teardown_failures.append(("bridge_manager.cleanup", exc))
+
+        # External bridge cleanup — always attempted
+        try:
+            cleanup_external_bridges()
+        except BaseException as exc:
+            teardown_failures.append(("cleanup_external_bridges", exc))
+
+        # Aggregate and raise
+        if teardown_failures:
+            _propagate_failures(None, teardown_failures)
 
 
 def run_disaster_scenario(args, run_dir=None, log_context=None, debug_config=None):
