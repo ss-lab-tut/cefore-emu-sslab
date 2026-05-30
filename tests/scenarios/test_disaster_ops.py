@@ -140,3 +140,57 @@ def test_empty_events_warn_in_interactive_execution(mock_info, tmp_path):
         scenario.run_experiment(MagicMock())
     messages = "".join(call.args[0] for call in mock_info.call_args_list)
     assert "no events configured" in messages
+
+
+# ---------------------------------------------------------------------------
+# Monitor background wiring (interactive CLI keeps monitoring, no terminal output)
+# ---------------------------------------------------------------------------
+
+_MONITORING = {"interval": 5, "targets": [{"type": "cefstatus", "hosts": "all"}]}
+
+
+def test_start_monitoring_background_true_in_interactive(tmp_path):
+    scenario = DisasterScenario(
+        _make_args(no_cli=False, monitoring=_MONITORING), run_dir=tmp_path
+    )
+    with patch("src.scenarios.disaster.Monitor") as MockMonitor:
+        scenario._start_monitoring(MagicMock())
+    assert MockMonitor.call_args.kwargs["background"] is True
+    MockMonitor.return_value.start.assert_called_once()
+
+
+def test_start_monitoring_background_false_in_autotest(tmp_path):
+    scenario = DisasterScenario(
+        _make_args(no_cli=True, monitoring=_MONITORING), run_dir=tmp_path
+    )
+    with patch("src.scenarios.disaster.Monitor") as MockMonitor:
+        scenario._start_monitoring(MagicMock())
+    assert MockMonitor.call_args.kwargs["background"] is False
+
+
+def test_execute_interactive_enters_background_then_stops_after_cli(tmp_path):
+    scenario = DisasterScenario(_make_args(no_cli=False), run_dir=tmp_path)
+    mock_monitor = MagicMock()
+    order = []
+    mock_monitor.enter_background.side_effect = lambda: order.append("enter_background")
+    mock_monitor.stop.side_effect = lambda: order.append("monitor.stop")
+
+    def _set_monitor(net):
+        scenario.monitor = mock_monitor
+
+    with (
+        patch.object(scenario, "build_topology"),
+        patch.object(scenario, "create_mininet", return_value=MagicMock()),
+        patch.object(scenario, "configure"),
+        patch.object(scenario, "run_experiment", side_effect=_set_monitor),
+        patch("src.scenarios.disaster.CLI", side_effect=lambda net: order.append("CLI")),
+        patch.object(scenario, "collect_debug_pre_teardown"),
+        patch.object(scenario, "teardown"),
+        patch.object(scenario, "collect_debug_post_teardown"),
+        patch("src.scenarios.disaster.cleanup_all"),
+    ):
+        scenario.execute()
+
+    assert order == ["enter_background", "CLI", "monitor.stop"]
+    mock_monitor.enter_background.assert_called_once()
+    mock_monitor.stop.assert_called_once()

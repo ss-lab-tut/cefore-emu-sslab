@@ -232,3 +232,84 @@ class TestCollectTargetCefstatus:
         )
         monitor._collect_target("cefstatus", 0, {"type": "cefstatus"})
         net.hosts[0].cmd.assert_called_once_with("cefstatus -d ./h0")
+
+
+# ---------------------------------------------------------------------------
+# Background mode — quiet + popen, no shared-shell contention
+# ---------------------------------------------------------------------------
+
+class TestBackgroundMode:
+    def _bg_monitor(self, tmp_path, net=None, **kwargs):
+        return Monitor(
+            net or _make_net(3),
+            targets=[_cefstatus_target(hosts="all")],
+            interval=1,
+            output_dir=tmp_path,
+            host_count=3,
+            background=True,
+            **kwargs,
+        )
+
+    def test_background_flag_set_on_construction(self, tmp_path):
+        monitor = self._bg_monitor(tmp_path)
+        assert monitor._background.is_set()
+
+    def test_enter_background_sets_flag(self, tmp_path):
+        monitor = Monitor(
+            _make_net(3),
+            targets=[_cefstatus_target(hosts="all")],
+            interval=1,
+            output_dir=tmp_path,
+            host_count=3,
+        )
+        assert not monitor._background.is_set()
+        monitor.enter_background()
+        assert monitor._background.is_set()
+
+    def test_background_cefstatus_uses_popen_capture(self, tmp_path):
+        net = _make_net(3)
+        monitor = self._bg_monitor(tmp_path, net=net, command_timeout=7)
+        with patch(
+            "src.runtime.monitoring.popen_capture", return_value="cef out"
+        ) as mock_cap:
+            out = monitor._collect_target("cefstatus", 1, {"type": "cefstatus"})
+        assert out == "cef out"
+        net.hosts[1].cmd.assert_not_called()
+        mock_cap.assert_called_once_with(
+            net.hosts[1], "cefstatus -d ./h1", timeout=7
+        )
+
+    def test_background_csmgrstatus_quiet_and_popen(self, tmp_path):
+        monitor = self._bg_monitor(tmp_path)  # default command_timeout=10
+        with patch(
+            "src.runtime.monitoring.run_csmgrstatus", return_value="ok"
+        ) as mock_fn:
+            monitor._collect_target("csmgrstatus", 0, {"type": "csmgrstatus"})
+        _, kwargs = mock_fn.call_args
+        assert kwargs["quiet"] is True
+        assert kwargs["use_popen"] is True
+        assert kwargs["timeout"] == 10
+
+    def test_background_down_host_skip_is_silent(self, tmp_path):
+        monitor = self._bg_monitor(tmp_path)
+        monitor._down_hosts_getter = lambda: [0]
+        with patch("src.runtime.monitoring.info") as mock_info:
+            out = monitor._collect_target("csmgrstatus", 0, {"type": "csmgrstatus"})
+        assert out == "skipped: host down"
+        mock_info.assert_not_called()
+
+    def test_non_background_csmgrstatus_keeps_legacy_path(self, tmp_path):
+        monitor = Monitor(
+            _make_net(3),
+            targets=[_csmgrstatus_target(hosts="all")],
+            interval=1,
+            output_dir=tmp_path,
+            host_count=3,
+        )
+        with patch(
+            "src.runtime.monitoring.run_csmgrstatus", return_value="ok"
+        ) as mock_fn:
+            monitor._collect_target("csmgrstatus", 0, {"type": "csmgrstatus"})
+        _, kwargs = mock_fn.call_args
+        assert kwargs["quiet"] is False
+        assert kwargs["use_popen"] is False

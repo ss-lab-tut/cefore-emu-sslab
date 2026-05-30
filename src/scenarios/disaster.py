@@ -448,6 +448,10 @@ class DisasterScenario(BaseScenario):
             ]
             monitoring_config.setdefault("interval", 5)
         if monitoring_config.get("targets"):
+            # Interactive CLI runs start the monitor in background mode so it
+            # keeps collecting (WebUI/flapping observability) without leaking
+            # output to the terminal or contending with the CLI host shells.
+            use_cli = not getattr(args, "no_cli", False)
             self.monitor = Monitor(
                 net,
                 targets=monitoring_config["targets"],
@@ -459,6 +463,8 @@ class DisasterScenario(BaseScenario):
                 output_csv=monitoring_config.get("output_csv"),
                 down_hosts_getter=self.flap_state.snapshot,
                 on_record=self.dashboard.record_monitor if self.dashboard else None,
+                background=use_cli,
+                command_timeout=monitoring_config.get("command_timeout", 10),
             )
             self.monitor.start()
 
@@ -584,6 +590,12 @@ class DisasterScenario(BaseScenario):
 
             use_cli = not getattr(self.args, "no_cli", False)
             if use_cli:
+                # Keep monitoring running through the CLI, but switch it to
+                # background mode (quiet + popen) so it neither prints to the
+                # terminal nor contends with the CLI host shells. Idempotent:
+                # the monitor is already constructed in background mode here.
+                if self.monitor is not None:
+                    self.monitor.enter_background()
                 if self.log_context:
                     sys.stdout = self.log_context["original_stdout"]
                     sys.stderr = self.log_context["original_stderr"]

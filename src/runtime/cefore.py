@@ -41,6 +41,31 @@ def _wait_process(proc, timeout=None, cancel_event=None):
             continue
 
 
+def popen_capture(node, command, timeout=None):
+    """Run a command in a host netns via popen and return its stdout text.
+
+    Unlike ``node.cmd()`` this does not use the host's shared pexpect shell,
+    so it can run concurrently with the Mininet CLI without shell contention.
+    On timeout the process is terminated and ``"error: command timeout"`` is
+    returned.
+    """
+    proc = node.popen(
+        command,
+        shell=True,
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+    )
+    try:
+        out, _ = proc.communicate(timeout=timeout)
+    except subprocess.TimeoutExpired:
+        _terminate_process(proc)
+        return "error: command timeout"
+    if isinstance(out, bytes):
+        return out.decode(errors="replace")
+    return out or ""
+
+
 def read_port_num(node_dir, default=9695):
     """Read PORT_NUM from cefnetd.conf."""
     conf_path = os.path.join(node_dir, "cefnetd.conf")
@@ -536,6 +561,9 @@ def run_csmgrstatus(
     port_num=None,
     host=None,
     log_name=None,
+    quiet=False,
+    use_popen=False,
+    timeout=None,
 ):
     """Run csmgrstatus to query cache manager status.
 
@@ -546,6 +574,12 @@ def run_csmgrstatus(
         port_num: Port number.
         host: Hostname or IP to connect to.
         log_name: Name of the log file.
+        quiet: When True, suppress the command echo and the output ``info``
+            (the output is still returned).
+        use_popen: When True, run via ``popen_capture`` (separate process, no
+            shared pexpect shell) instead of ``node.cmd()``. Avoids contention
+            with the Mininet CLI.
+        timeout: Command timeout (seconds) used only when ``use_popen`` is True.
 
     Returns:
         Command output string.
@@ -564,8 +598,12 @@ def run_csmgrstatus(
         cmd_parts.append(f"> {shlex.quote(log_name)}")
 
     command = " ".join(cmd_parts)
-    print(node_name, "command:", command)
-    output = net.hosts[host_idx].cmd(command)
-    if not log_name:
+    if not quiet:
+        print(node_name, "command:", command)
+    if use_popen:
+        output = popen_capture(net.hosts[host_idx], command, timeout=timeout)
+    else:
+        output = net.hosts[host_idx].cmd(command)
+    if not log_name and not quiet:
         info(output)
     return output
