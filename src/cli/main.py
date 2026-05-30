@@ -20,7 +20,7 @@ from ..core.config.loader import (
     warn_ignored_legacy_content_keys,
 )
 from ..core.debug import build_debug_config
-from ..core.paths import resolve_run_dir
+from ..core.paths import resolve_run_dir, resolve_run_path
 from ..core.tee import Tee
 from .args import add_common_args, add_debug_args, add_disaster_args, add_mesh_args
 
@@ -106,7 +106,7 @@ def cmd_disaster(args):
     log_context = None
     if not args.no_script_log:
         log_name = args.script_log if args.script_log else "script.log"
-        log_path = run_dir / log_name
+        log_path = resolve_run_path(run_dir, log_name, "script.log")
         log_fp = open(log_path, "w")
         original_stdout = sys.stdout
         original_stderr = sys.stderr

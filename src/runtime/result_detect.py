@@ -70,10 +70,16 @@ def wait_pubsub_process(proc, deadline: float, cancel_event=None):
             return proc.wait(timeout=min(0.1, remaining))
         except subprocess.TimeoutExpired:
             continue
-    proc.terminate()
+    try:
+        proc.terminate()
+    except ProcessLookupError:
+        pass
     try:
         proc.wait(timeout=2)
     except subprocess.TimeoutExpired:
-        proc.kill()
+        try:
+            proc.kill()
+        except ProcessLookupError:
+            pass
         proc.wait()
     return None

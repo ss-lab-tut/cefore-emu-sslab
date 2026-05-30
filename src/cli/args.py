@@ -112,7 +112,7 @@ def add_disaster_args(parser):
     )
     parser.add_argument(
         "--ext", action="append", default=[],
-        help="attach external intf: host,ifname[,ip][,mtu] (repeatable)",
+        help="attach external intf: host,ifname,ip[,mtu]; ip required in CIDR form (repeatable)",
     )
     parser.add_argument(
         "--bridge", action="append", default=[],

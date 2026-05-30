@@ -110,7 +110,7 @@ Key options:
 | `--down-exclude` | Comma-separated host IDs to exclude |
 | `--cache-count` | Number of cache nodes (0 = down-count + 1) |
 | `--bw nodeA,nodeB,mbps` | Set link bandwidth (repeatable) |
-| `--ext host,ifname[,ip][,mtu]` | Attach external interface (repeatable) |
+| `--ext host,ifname,ip[,mtu]` | Attach external interface; ip required in CIDR form (repeatable) |
 | `--bridge switch,root_ip,local_routes[,ext,gw]` | Root namespace bridge (repeatable) |
 | `--config` | JSON/YAML configuration file |
 | `--no-cli` | Non-interactive mode |

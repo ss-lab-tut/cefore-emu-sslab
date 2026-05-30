@@ -292,8 +292,8 @@ publisher_host: 4                  # パブリッシャーホスト (publisher-d
 # 注意: network_cidr を変更した場合、events の fib_add/fib_del/fib_enable 等の
 #       next_hop フィールドも同じアドレス体系に合わせて手動で書き換えること。
 #
-# addressing:
-#   network_cidr: "192.168.0.0/16"
+addressing:
+  network_cidr: "10.0.0.0/16"
 # 外部接続時の推奨設定例:
 # addressing:
 #   network_cidr: "100.64.0.0/16"

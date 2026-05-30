@@ -247,7 +247,7 @@ The disaster topology (`src/scenarios/disaster.py`) adds:
 
 **External Interface:**
 ```bash
---ext host,ifname[,ip][,mtu]   # Attach external interface to host
+--ext host,ifname,ip[,mtu]   # Attach external interface to host (ip required, CIDR form; DHCP unsupported)
 ```
 
 **Addressing for External Connectivity:**

@@ -110,7 +110,7 @@ sudo .venv/bin/python3 -m src disaster --hosts 10 --switches 15 --seed 42 \
 | `--down-exclude` | 除外するホスト ID（カンマ区切り） |
 | `--cache-count` | キャッシュノード数（0 = down-count + 1） |
 | `--bw nodeA,nodeB,mbps` | リンク帯域を設定（繰り返し指定可） |
-| `--ext host,ifname[,ip][,mtu]` | 外部インタフェースを接続（繰り返し指定可） |
+| `--ext host,ifname,ip[,mtu]` | 外部インタフェースを接続; ipはCIDR形式で必須（DHCPは未サポート、繰り返し指定可） |
 | `--bridge switch,root_ip,local_routes[,ext,gw]` | ルート名前空間ブリッジ（繰り返し指定可） |
 | `--config` | JSON/YAML 設定ファイル |
 | `--no-cli` | 非対話モード |
