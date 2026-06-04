@@ -7,6 +7,7 @@ from pathlib import Path
 
 from mininet.log import info
 
+from ..runtime.command_runner import MininetCommandRunner
 from ..runtime.cefore import (
     run_cefgetfile,
     run_cefputfile,
@@ -137,8 +138,9 @@ class MeshScenario(BaseScenario):
             else publish_link["host_a"]
         )
 
+        runner = MininetCommandRunner(net)
         put_log = str(self.run_dir / f"cefputfile_h{publisher}.log")
-        exit_code = run_cefputfile(net, publisher, publish_uri, log_name=put_log)
+        exit_code = run_cefputfile(runner, publisher, publish_uri, log_name=put_log)
         if exit_code != 0:
             info(f"[ERROR] cefputfile failed on h{publisher} (exit_code={exit_code})\n")
             sys.exit(1)
@@ -146,7 +148,7 @@ class MeshScenario(BaseScenario):
 
         recvfile_path = str(self.run_dir / f"recvfile_at_h{consumer}")
         get_log = str(self.run_dir / f"cefgetfile_h{consumer}.log")
-        exit_code = run_cefgetfile(net, consumer, publish_uri, recvfile_path, log_name=get_log)
+        exit_code = run_cefgetfile(runner, consumer, publish_uri, recvfile_path, log_name=get_log)
         if exit_code != 0:
             info(f"[ERROR] cefgetfile failed on h{consumer} (exit_code={exit_code})\n")
             sys.exit(1)

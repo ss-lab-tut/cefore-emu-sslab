@@ -1,10 +1,7 @@
 """Unit tests for cefore runtime command construction."""
 
 import subprocess
-import threading
-from unittest.mock import MagicMock, call, patch
-
-import pytest
+from unittest.mock import MagicMock, patch
 
 import src.runtime.cefore as cefore_mod
 from src.runtime.cefore import (
@@ -16,10 +13,11 @@ from src.runtime.cefore import (
     run_csmgrstatus,
     start_cefsubfile,
 )
+from src.runtime.command_runner import FakeCommandRunner
 
 
 def _make_net(host_count=3):
-    """Create a mock Mininet network."""
+    """Create a mock Mininet network (for the net-based status wrappers)."""
     proc = MagicMock()
     proc.wait.return_value = 0
 
@@ -32,39 +30,50 @@ def _make_net(host_count=3):
     return net, host, proc
 
 
+def _argv_str(argv):
+    return " ".join(str(a) for a in argv)
+
+
 # ---------------------------------------------------------------------------
-# run_cefputfile
+# run_cefputfile — now argv + CommandRunner based
 # ---------------------------------------------------------------------------
 
 class TestRunCefputfile:
-    def test_redirects_stderr_to_log(self):
-        net, host, _proc = _make_net()
-        run_cefputfile(net, 2, "ccnx:/test/sample", log_name="/tmp/put.log")
-        cmd = host.popen.call_args[0][0]
-        assert "2>&1" in cmd
-        assert "/tmp/put.log" in cmd
+    def test_log_path_owns_redirect_not_argv(self):
+        fake = FakeCommandRunner()
+        run_cefputfile(fake, 2, "ccnx:/test/sample", log_name="/tmp/put.log")
+        rec = fake.runs[0]
+        assert rec["node"] == "h2"
+        assert rec["log_path"] == "/tmp/put.log"
+        # Redirection is owned by the seam, never present in argv.
+        assert "2>&1" not in _argv_str(rec["argv"])
+        assert ">" not in _argv_str(rec["argv"])
 
-    def test_no_devnull(self):
-        net, host, _proc = _make_net()
-        run_cefputfile(net, 2, "ccnx:/test/sample", log_name="/tmp/put.log")
-        kwargs = host.popen.call_args[1]
-        assert kwargs.get("stderr") is None
+    def test_builds_expected_argv(self):
+        fake = FakeCommandRunner()
+        run_cefputfile(fake, 2, "ccnx:/test/sample", "/data/in.bin")
+        argv = fake.runs[0]["argv"]
+        assert argv[:4] == ["cefputfile", "ccnx:/test/sample", "-f", "/data/in.bin"]
+        assert argv[-2:] == ["-d", "./h2"]
 
     def test_default_log_name(self):
-        net, host, _proc = _make_net()
-        run_cefputfile(net, 2, "ccnx:/test/sample")
-        cmd = host.popen.call_args[0][0]
-        assert "cefputfile-h2.log" in cmd
+        fake = FakeCommandRunner()
+        run_cefputfile(fake, 2, "ccnx:/test/sample")
+        assert fake.runs[0]["log_path"] == "cefputfile-h2.log"
 
-    def test_cancellation_terminates_running_command(self):
-        net, _host, proc = _make_net()
-        proc.returncode = -15
-        cancelled = threading.Event()
-        cancelled.set()
-        assert run_cefputfile(
-            net, 2, "ccnx:/test/sample", cancel_event=cancelled
-        ) == -15
-        proc.terminate.assert_called_once()
+    def test_returns_returncode(self):
+        fake = FakeCommandRunner()
+        fake.script_run(returncode=-15, cancelled=True)
+        assert run_cefputfile(fake, 2, "ccnx:/test/sample") == -15
+
+    def test_passes_timeout_and_cancel_event(self):
+        fake = FakeCommandRunner()
+        sentinel = object()
+        run_cefputfile(
+            fake, 2, "ccnx:/test/sample", timeout=7, cancel_event=sentinel
+        )
+        assert fake.runs[0]["timeout"] == 7
+        assert fake.runs[0]["cancel_event"] is sentinel
 
 
 # ---------------------------------------------------------------------------
@@ -72,99 +81,103 @@ class TestRunCefputfile:
 # ---------------------------------------------------------------------------
 
 class TestRunCefgetfile:
-    def test_redirects_stderr_to_log(self):
-        net, host, _proc = _make_net()
-        run_cefgetfile(net, 0, "ccnx:/test/sample", "/tmp/recv", log_name="/tmp/get.log")
-        cmd = host.popen.call_args[0][0]
-        assert "2>&1" in cmd
-        assert "/tmp/get.log" in cmd
+    def test_builds_expected_argv_and_log(self):
+        fake = FakeCommandRunner()
+        run_cefgetfile(
+            fake, 0, "ccnx:/test/sample", "/tmp/recv", log_name="/tmp/get.log"
+        )
+        rec = fake.runs[0]
+        assert rec["node"] == "h0"
+        assert rec["argv"][:4] == ["cefgetfile", "ccnx:/test/sample", "-f", "/tmp/recv"]
+        assert rec["log_path"] == "/tmp/get.log"
+        assert "2>&1" not in _argv_str(rec["argv"])
 
     def test_default_log_name(self):
-        net, host, _proc = _make_net()
-        run_cefgetfile(net, 0, "ccnx:/test/sample", "/tmp/recv")
-        cmd = host.popen.call_args[0][0]
-        assert "cefgetfile-h0.log" in cmd
+        fake = FakeCommandRunner()
+        run_cefgetfile(fake, 0, "ccnx:/test/sample", "/tmp/recv")
+        assert fake.runs[0]["log_path"] == "cefgetfile-h0.log"
 
-    def test_timeout_terminates_running_command(self):
-        net, _host, proc = _make_net()
-        proc.returncode = -15
-        proc.wait.side_effect = [0]
+    def test_timeout_returncode(self):
+        fake = FakeCommandRunner()
+        fake.script_run(returncode=-15, timed_out=True)
         assert run_cefgetfile(
-            net, 0, "ccnx:/test/sample", "/tmp/recv", timeout=0
+            fake, 0, "ccnx:/test/sample", "/tmp/recv", timeout=0
         ) == -15
-        proc.terminate.assert_called_once()
+        assert fake.runs[0]["timeout"] == 0
 
 
 # ---------------------------------------------------------------------------
-# run_cefsubfile
+# run_cefsubfile (blocking)
 # ---------------------------------------------------------------------------
 
 class TestRunCefsubfile:
-    def test_redirects_stderr_to_log(self):
-        net, host, _proc = _make_net()
-        run_cefsubfile(net, 0, "ccnx:/test/stream", output_path="/tmp/recvdir", log_name="/tmp/sub.log")
-        cmd = host.popen.call_args[0][0]
-        assert "2>&1" in cmd
-        assert "/tmp/sub.log" in cmd
-
-    def test_passes_directory_with_f_flag(self):
-        net, host, _proc = _make_net()
-        run_cefsubfile(net, 0, "ccnx:/test/stream", output_path="/tmp/recvdir")
-        cmd = host.popen.call_args[0][0]
-        assert "-f /tmp/recvdir" in cmd
+    def test_builds_expected_argv_and_log(self):
+        fake = FakeCommandRunner()
+        run_cefsubfile(
+            fake, 0, "ccnx:/test/stream",
+            output_path="/tmp/recvdir", log_name="/tmp/sub.log",
+        )
+        rec = fake.runs[0]
+        assert rec["argv"][argv_index(rec["argv"], "-f") + 1] == "/tmp/recvdir"
+        assert rec["log_path"] == "/tmp/sub.log"
+        assert "2>&1" not in _argv_str(rec["argv"])
 
     def test_default_log_name(self):
-        net, host, _proc = _make_net()
-        run_cefsubfile(net, 0, "ccnx:/test/stream")
-        cmd = host.popen.call_args[0][0]
-        assert "cefsubfile-h0.log" in cmd
+        fake = FakeCommandRunner()
+        run_cefsubfile(fake, 0, "ccnx:/test/stream")
+        assert fake.runs[0]["log_path"] == "cefsubfile-h0.log"
+
+    def test_returns_returncode(self):
+        fake = FakeCommandRunner()
+        fake.script_run(returncode=0)
+        assert run_cefsubfile(fake, 0, "ccnx:/test/stream") == 0
 
 
 # ---------------------------------------------------------------------------
-# start_cefsubfile
+# start_cefsubfile — non-blocking, returns a CommandHandle
 # ---------------------------------------------------------------------------
 
 class TestStartCefsubfile:
-    def test_redirects_stderr_to_log(self):
-        net, host, _proc = _make_net()
-        start_cefsubfile(net, 0, "ccnx:/test/stream", output_path="/tmp/recvdir", log_name="/tmp/sub.log")
-        cmd = host.popen.call_args[0][0]
-        assert "2>&1" in cmd
-        assert "/tmp/sub.log" in cmd
+    def test_starts_and_records_handle(self):
+        fake = FakeCommandRunner()
+        handle = start_cefsubfile(
+            fake, 0, "ccnx:/test/stream",
+            output_path="/tmp/recvdir", log_name="/tmp/sub.log",
+        )
+        assert handle is fake.starts[0]
+        assert handle.node == "h0"
+        assert handle.log_path == "/tmp/sub.log"
+        assert "2>&1" not in _argv_str(handle.argv)
 
-    def test_returns_popen_process(self):
-        net, host, proc = _make_net()
-        result = start_cefsubfile(net, 0, "ccnx:/test/stream")
-        assert result is proc
+    def test_default_log_name(self):
+        fake = FakeCommandRunner()
+        start_cefsubfile(fake, 0, "ccnx:/test/stream")
+        assert fake.starts[0].log_path == "cefsubfile-h0.log"
 
 
 # ---------------------------------------------------------------------------
-# run_cefpubfile
+# run_cefpubfile — non-blocking, returns a CommandHandle
 # ---------------------------------------------------------------------------
 
 class TestRunCefpubfile:
-    def test_redirects_stderr_to_log(self):
-        net, host, _proc = _make_net()
-        run_cefpubfile(net, 2, "ccnx:/test/stream", "/tmp/pub.bin", log_name="/tmp/pub.log")
-        # run_cefpubfile uses net.get(node_name), not net.hosts[idx]
-        host2 = net.get.return_value
-        cmd = host2.popen.call_args[0][0]
-        assert "2>&1" in cmd
-        assert "/tmp/pub.log" in cmd
-
-    def test_no_devnull_kwarg(self):
-        net, host, _proc = _make_net()
-        run_cefpubfile(net, 2, "ccnx:/test/stream", "/tmp/pub.bin", log_name="/tmp/pub.log")
-        host2 = net.get.return_value
-        kwargs = host2.popen.call_args[1]
-        assert "stderr" not in kwargs
+    def test_starts_and_records_handle(self):
+        fake = FakeCommandRunner()
+        handle = run_cefpubfile(
+            fake, 2, "ccnx:/test/stream", "/tmp/pub.bin", log_name="/tmp/pub.log"
+        )
+        assert handle is fake.starts[0]
+        assert handle.node == "h2"
+        assert handle.argv[:4] == ["cefpubfile", "ccnx:/test/stream", "-f", "/tmp/pub.bin"]
+        assert handle.log_path == "/tmp/pub.log"
 
     def test_default_log_name(self):
-        net, host, _proc = _make_net()
-        run_cefpubfile(net, 2, "ccnx:/test/stream", "/tmp/pub.bin")
-        host2 = net.get.return_value
-        cmd = host2.popen.call_args[0][0]
-        assert "cefpubfile-h2.log" in cmd
+        fake = FakeCommandRunner()
+        run_cefpubfile(fake, 2, "ccnx:/test/stream", "/tmp/pub.bin")
+        assert fake.starts[0].log_path == "cefpubfile-h2.log"
+
+
+def argv_index(argv, flag):
+    return argv.index(flag)
 
 
 # ---------------------------------------------------------------------------

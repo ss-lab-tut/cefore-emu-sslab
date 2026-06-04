@@ -1,7 +1,5 @@
 """Success detection helpers for cefore content operations."""
 
-import subprocess
-import time
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -38,48 +36,23 @@ def clear_sub_output_artifacts(output_dir: Path) -> int:
     return removed
 
 
-def detect_sub_success(exit_code, output_dir: Path, log_path: Path) -> dict:
-    """Evaluate cefsubfile success using exit code and output directory.
+def detect_sub_success(result, output_dir: Path, log_path: Path) -> dict:
+    """Evaluate cefsubfile success from a CommandResult and the output directory.
 
-    cefsubfile writes ``RNP0x<hex>.out`` files under the output directory;
-    the exact name is session-dependent and cannot be predicted in advance.
-    Success requires a non-empty output file and exit_code in (0, None) —
-    None means the process was killed by the outer deadline after content was
-    already delivered.
+    cefsubfile writes ``RNP0x<hex>.out`` files under the output directory; the
+    exact name is session-dependent and cannot be predicted in advance. Success
+    requires a non-empty output file AND the process having either exited
+    cleanly (returncode 0) or been killed by the outer deadline/cancellation
+    after content was already delivered (``timed_out``/``cancelled``). The flags
+    replace the former ``exit_code in (0, None)`` sentinel.
     """
     artifacts = sorted(output_dir.glob("RNP0x*.out")) if output_dir.is_dir() else []
     non_empty = [p for p in artifacts if p.stat().st_size > 0]
     has_out = bool(non_empty)
+    delivered_ok = result.returncode == 0 or result.timed_out or result.cancelled
     return {
-        "success": has_out and exit_code in (0, None),
+        "success": has_out and delivered_ok,
         "has_completed_log": False,
         "has_output_file": has_out,
         "artifact_path": str(non_empty[0]) if non_empty else None,
     }
-
-
-def wait_pubsub_process(proc, deadline: float, cancel_event=None):
-    """Wait for a pub/sub process until its absolute deadline (monotonic seconds)."""
-    while True:
-        if cancel_event is not None and cancel_event.is_set():
-            break
-        remaining = deadline - time.monotonic()
-        if remaining <= 0:
-            break
-        try:
-            return proc.wait(timeout=min(0.1, remaining))
-        except subprocess.TimeoutExpired:
-            continue
-    try:
-        proc.terminate()
-    except ProcessLookupError:
-        pass
-    try:
-        proc.wait(timeout=2)
-    except subprocess.TimeoutExpired:
-        try:
-            proc.kill()
-        except ProcessLookupError:
-            pass
-        proc.wait()
-    return None

@@ -65,10 +65,18 @@ If a smoke run completes but validation fails, include:
 - the artifact base directory printed by the helper
 - the parsed `results.json` mismatch
 
+## Sandbox & Privileges
+
+If you are running under the Claude Code sandbox, mind these constraints:
+
+- **The smoke phase requires the sandbox to be OFF.** It launches Mininet as root via `sudo -n`, but the sandbox sets the `no_new_privs` flag, which blocks `sudo` from becoming root. Run smoke with the sandbox disabled. The pytest phase needs no privileges and runs fine under the sandbox.
+- **Default output base now honors `$TMPDIR`.** Under the sandbox, `/tmp` is not writable, so the default lands in `$TMPDIR` (e.g. `/tmp/claude-xxxx`) and pytest-only runs with no extra flags. Only on the rare environment where `$TMPDIR` is unset, pass `--output-base "${TMPDIR:?}/cefore-run-tests"`. Do not pass a bare `/tmp/...` path to `--output-base` under the sandbox — it is not writable.
+- **The helper runs `sudo -n mn -c` automatically** before the smoke phase and after each config (best-effort, non-fatal). You do not need to run `mn -c` by hand between configs.
+
 ## Notes
 
 Use `--output-base /tmp/some-dir` to control where smoke artifacts land.
 
-Use `--cleanup` only when the run passed and you do not need logs afterward.
+Use `--cleanup` only when the run passed and you do not need logs afterward. Smoke artifacts are created via `sudo`, so they are root-owned; `--cleanup` (a non-root `shutil.rmtree`) may fail to remove them — run `sudo rm -rf <output-base>` if needed.
 
 Read `references/test-matrix.md` when you need the exact expected outcomes for each config.

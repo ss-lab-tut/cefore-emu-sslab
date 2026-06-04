@@ -112,9 +112,10 @@ def venv_python(repo_root: Path) -> Path:
 
 
 def default_output_base() -> Path:
-    """Create a timestamped output base under /tmp."""
+    """Create a timestamped output base under $TMPDIR (fallback /tmp)."""
     stamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
-    return Path("/tmp/cefore-run-tests") / stamp
+    base_root = Path(os.environ.get("TMPDIR") or "/tmp")
+    return base_root / "cefore-run-tests" / stamp
 
 
 def command_env(tmp_dir: Path) -> dict[str, str]:
@@ -161,6 +162,20 @@ def require_smoke_prereqs(repo_root: Path) -> None:
     )
     if sudo_check.returncode != 0:
         raise RuntimeError("Smoke phase requires passwordless sudo (`sudo -n`).")
+
+
+def mn_cleanup(repo_root: Path) -> None:
+    """Best-effort Mininet cleanup via `sudo -n mn -c`."""
+    print("$ sudo -n mn -c")
+    result = subprocess.run(
+        ["sudo", "-n", "mn", "-c"],
+        cwd=repo_root,
+        check=False,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    if result.returncode != 0:
+        print(f"[WARN] best-effort Mininet cleanup failed with exit code {result.returncode}")
 
 
 def build_smoke_cases() -> list[SmokeCase]:
@@ -330,13 +345,16 @@ def run_single_smoke(
         "results.json",
         "--no-cli",
     ]
-    run_command(cmd, repo_root)
+    try:
+        run_command(cmd, repo_root)
 
-    results_path = find_results_json(case_output_dir)
-    data = load_results(results_path)
-    validate_results(case.name, data)
-    print(f"[OK] {case.name}: {results_path}")
-    return case_output_dir
+        results_path = find_results_json(case_output_dir)
+        data = load_results(results_path)
+        validate_results(case.name, data)
+        print(f"[OK] {case.name}: {results_path}")
+        return case_output_dir
+    finally:
+        mn_cleanup(repo_root)
 
 
 def run_smoke_phase(
@@ -349,6 +367,7 @@ def run_smoke_phase(
 ) -> list[Path]:
     """Run all selected smoke configs."""
     require_smoke_prereqs(repo_root)
+    mn_cleanup(repo_root)
     case_map = {case.name: case for case in build_smoke_cases()}
 
     outputs = []

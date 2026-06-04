@@ -10,6 +10,7 @@ from mininet.util import irange
 
 from ..core.addressing import AddressingScheme
 from ..core.roles import assign_roles
+from ..runtime.command_runner import MininetCommandRunner
 from ..runtime.cefore import (
     run_cefgetfile,
     run_cefputfile,
@@ -70,10 +71,11 @@ class LinearScenario(BaseScenario):
         time.sleep(1)
 
     def run_experiment(self, net):
+        runner = MininetCommandRunner(net)
         publisher = self.host_num - 1
         put_log = str(self.run_dir / "cefputfile.log")
         exit_code = run_cefputfile(
-            net, publisher, "ccnx:/test",
+            runner, publisher, "ccnx:/test",
             cache_time=3000, expiry=3000,
             log_name=put_log,
         )
@@ -84,7 +86,7 @@ class LinearScenario(BaseScenario):
 
         get_log = str(self.run_dir / "cefgetfile.log")
         recvfile = str(self.run_dir / "recvfile_at_h0")
-        exit_code = run_cefgetfile(net, 0, "ccnx:/test", recvfile, log_name=get_log)
+        exit_code = run_cefgetfile(runner, 0, "ccnx:/test", recvfile, log_name=get_log)
         if exit_code != 0:
             info(f"[ERROR] cefgetfile failed on h0 (exit_code={exit_code})\n")
             sys.exit(1)

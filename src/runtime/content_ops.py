@@ -1,7 +1,6 @@
 """Content operation runner for timed put/get/pubsub events."""
 
 import queue
-import subprocess
 import threading
 import time
 from pathlib import Path
@@ -14,12 +13,12 @@ from .cefore import (
     run_cefputfile,
     start_cefsubfile,
 )
+from .command_runner import MininetCommandRunner
 from .result_detect import (
     clear_sub_output_artifacts,
     detect_get_success,
     detect_sub_success,
     timestamp_utc,
-    wait_pubsub_process,
 )
 
 
@@ -33,7 +32,7 @@ class ContentOperationRunner:
     background worker thread so the EventScheduler timer thread is never blocked.
 
     Pub/sub ordering:
-      - pubsub_sub events spawn cefsubfile immediately and store the pending proc.
+      - pubsub_sub events spawn cefsubfile immediately and store the pending handle.
       - pubsub_pub events apply the startup grace delay, then run cefpubfile,
         then wait for all pending subscriber processes for the same URI and record
         results via the result_callback.
@@ -53,8 +52,10 @@ class ContentOperationRunner:
         startup_grace=1.0,
         pub_lifetime_by_uri=None,
         phase="event",
+        runner=None,
     ):
         self._net = net
+        self._runner = runner or MininetCommandRunner(net)
         self._run_dir = Path(run_dir)
         self._result_callback = result_callback
         self._flap_state = flap_state
@@ -109,10 +110,10 @@ class ContentOperationRunner:
             item_deadline = item["deadline"]
             if deadline is not None:
                 item_deadline = min(item_deadline, deadline)
-            exit_code = wait_pubsub_process(
-                item["proc"], item_deadline, cancel_event=self._cancel_event
+            result = self._runner.wait(
+                item["handle"], deadline=item_deadline, cancel_event=self._cancel_event
             )
-            self.record_sub_result(item, exit_code)
+            self.record_sub_result(item, result)
             if deadline is not None and time.monotonic() >= deadline:
                 completed = False
         return completed
@@ -130,10 +131,12 @@ class ContentOperationRunner:
                 leftovers.extend(entries)
             self._pending_subs.clear()
         for item in leftovers:
-            exit_code = wait_pubsub_process(
-                item["proc"], time.monotonic(), cancel_event=self._cancel_event
+            result = self._runner.wait(
+                item["handle"],
+                deadline=time.monotonic(),
+                cancel_event=self._cancel_event,
             )
-            self.record_sub_result(item, exit_code)
+            self.record_sub_result(item, result)
 
     def _discard_queued_items(self):
         """Discard operations that have not started, maintaining queue accounting."""
@@ -194,7 +197,7 @@ class ContentOperationRunner:
         log_path = self._log_path("cefputfile", host, uri)
         info(f"[content_runner] put h{host} uri={uri}\n")
         run_cefputfile(
-            self._net,
+            self._runner,
             host,
             uri,
             file_path=infile,
@@ -221,7 +224,7 @@ class ContentOperationRunner:
         down_hosts = self._flap_state.snapshot()
         info(f"[content_runner] get h{host} uri={uri}\n")
         exit_code = run_cefgetfile(
-            self._net,
+            self._runner,
             host,
             uri,
             str(out_path),
@@ -283,8 +286,8 @@ class ContentOperationRunner:
         log_path = self._log_path("cefsubfile", host, uri)
         down_hosts = self._flap_state.snapshot()
         started_at = time.monotonic()
-        proc = start_cefsubfile(
-            self._net,
+        handle = start_cefsubfile(
+            self._runner,
             host,
             uri,
             output_path=str(output_dir),
@@ -296,12 +299,12 @@ class ContentOperationRunner:
         )
         deadline = started_at + wait_sec
         info(
-            f"[content_runner] pubsub_sub h{host} uri={uri} pid={proc.pid} "
+            f"[content_runner] pubsub_sub h{host} uri={uri} "
             f"wait={wait_sec:.1f}s deadline={deadline:.1f}\n"
         )
         entry = {
             "op": event,
-            "proc": proc,
+            "handle": handle,
             "output_dir": output_dir,
             "log_path": log_path,
             "down_hosts": down_hosts,
@@ -344,8 +347,8 @@ class ContentOperationRunner:
         info(
             f"[content_runner] pubsub_pub h{host} uri={uri} deadline={pub_deadline:.1f}s\n"
         )
-        proc = run_cefpubfile(
-            self._net,
+        handle = run_cefpubfile(
+            self._runner,
             host,
             uri,
             file_path=infile,
@@ -361,38 +364,22 @@ class ContentOperationRunner:
             port_num=pub_opts.get("port_num"),
             log_name=str(log_path),
         )
-        pub_exit = None
-        timed_out = False
-        try:
-            end_time = time.monotonic() + pub_deadline
-            while True:
-                if self._cancel_event.is_set():
-                    raise subprocess.TimeoutExpired(cmd="cefpubfile", timeout=0)
-                remaining = end_time - time.monotonic()
-                if remaining <= 0:
-                    raise subprocess.TimeoutExpired(
-                        cmd="cefpubfile", timeout=pub_deadline
-                    )
-                try:
-                    pub_exit = proc.wait(timeout=min(0.1, remaining))
-                    break
-                except subprocess.TimeoutExpired:
-                    continue
+        pub_result = self._runner.wait(
+            handle,
+            deadline=time.monotonic() + pub_deadline,
+            cancel_event=self._cancel_event,
+        )
+        pub_exit = pub_result.returncode
+        pub_timed_out = pub_result.timed_out or pub_result.cancelled
+        if pub_timed_out:
+            info(
+                f"[WARN] content_runner: cefpubfile h{host} uri={uri} exceeded "
+                f"{pub_deadline:.1f}s or was cancelled; terminated\n"
+            )
+        else:
             info(
                 f"[content_runner] cefpubfile h{host} uri={uri} exit_code={pub_exit}\n"
             )
-        except subprocess.TimeoutExpired:
-            timed_out = True
-            info(
-                f"[WARN] content_runner: cefpubfile h{host} uri={uri} exceeded {pub_deadline:.1f}s; terminating\n"
-            )
-            proc.terminate()
-            try:
-                proc.wait(timeout=2)
-            except subprocess.TimeoutExpired:
-                proc.kill()
-                proc.wait()
-            pub_exit = proc.returncode
 
         # Record pub completion before waiting on subscribers
         self._result_callback({
@@ -407,14 +394,16 @@ class ContentOperationRunner:
             "down_hosts":        self._flap_state.snapshot(),
             "publisher_host":    host,
             "publisher_down":    False,
-            "success":           pub_exit == 0 and not timed_out,
+            "success":           pub_exit == 0 and not pub_timed_out,
             "has_completed_log": False,
             "has_output_file":   False,
         })
 
         for item in sub_entries:
-            exit_code = wait_pubsub_process(
-                item["proc"], item["deadline"], cancel_event=self._cancel_event
+            result = self._runner.wait(
+                item["handle"],
+                deadline=item["deadline"],
+                cancel_event=self._cancel_event,
             )
             artifacts = (
                 sorted(item["output_dir"].glob("RNP0x*.out"))
@@ -424,16 +413,16 @@ class ContentOperationRunner:
             non_empty = [p for p in artifacts if p.stat().st_size > 0]
             info(
                 f"[content_runner] cefsubfile h{int(item['op']['host'])} uri={uri} "
-                f"exit_code={exit_code} artifacts={len(non_empty)}\n"
+                f"exit_code={result.returncode} artifacts={len(non_empty)}\n"
             )
-            self.record_sub_result(item, exit_code)
+            self.record_sub_result(item, result)
 
-    def record_sub_result(self, item, exit_code):
+    def record_sub_result(self, item, result):
         """Record a cefsubfile result via the result_callback."""
         op = item["op"]
         host = int(op["host"])
         uri = op["uri"]
-        verdict = detect_sub_success(exit_code, item["output_dir"], item["log_path"])
+        verdict = detect_sub_success(result, item["output_dir"], item["log_path"])
         out_file = verdict.get("artifact_path") or str(item["output_dir"])
         publisher_host = op.get("publisher_host") or self._uri_publishers.get(uri)
         down_hosts = item["down_hosts"]
@@ -449,7 +438,7 @@ class ContentOperationRunner:
                 "uri": uri,
                 "out_file": out_file,
                 "log_file": str(item["log_path"]),
-                "exit_code": exit_code,
+                "exit_code": result.returncode,
                 "down_hosts": down_hosts,
                 "publisher_host": publisher_host,
                 "publisher_down": publisher_down,

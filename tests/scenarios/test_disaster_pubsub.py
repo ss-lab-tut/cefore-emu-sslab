@@ -1,18 +1,31 @@
-"""Unit tests for pub/sub helpers in disaster scenario."""
+"""Unit tests for pub/sub helpers in disaster scenario.
+
+These now drive the CommandRunner seam: cefsubfile/cefpubfile success is
+expressed through ``CommandResult`` flags (returncode / timed_out / cancelled)
+rather than a ``None`` exit-code sentinel. The killed-after-delivery case (a
+subscriber terminated by the deadline once content already arrived) must still
+count as success — that is the load-bearing invariant carried over from the old
+``exit_code in (0, None)`` rule.
+"""
 
 import time
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+from src.runtime.command_runner import CommandResult, FakeCommandRunner
 from src.runtime.content_ops import ContentOperationRunner
 from src.runtime.result_detect import (
     clear_sub_output_artifacts as _clear_sub_output_artifacts,
     detect_sub_success as _detect_sub_success,
-    wait_pubsub_process as _wait_pubsub_process,
 )
 
 
+def _result(returncode=0, timed_out=False, cancelled=False):
+    return CommandResult(returncode=returncode, timed_out=timed_out, cancelled=cancelled)
+
+
 # ---------------------------------------------------------------------------
-# _detect_sub_success
+# detect_sub_success (CommandResult-based)
 # ---------------------------------------------------------------------------
 
 
@@ -20,7 +33,7 @@ class TestDetectSubSuccess:
     def test_empty_directory_is_failure(self, tmp_path):
         output_dir = tmp_path / "recvdir"
         output_dir.mkdir()
-        result = _detect_sub_success(0, output_dir, tmp_path / "sub.log")
+        result = _detect_sub_success(_result(0), output_dir, tmp_path / "sub.log")
         assert result["success"] is False
         assert result["has_output_file"] is False
         assert result["artifact_path"] is None
@@ -30,7 +43,7 @@ class TestDetectSubSuccess:
         output_dir.mkdir()
         artifact = output_dir / "RNP0x0a1b2c.out"
         artifact.write_bytes(b"content data")
-        result = _detect_sub_success(0, output_dir, tmp_path / "sub.log")
+        result = _detect_sub_success(_result(0), output_dir, tmp_path / "sub.log")
         assert result["success"] is True
         assert result["has_output_file"] is True
         assert result["artifact_path"] == str(artifact)
@@ -40,21 +53,49 @@ class TestDetectSubSuccess:
         output_dir.mkdir()
         artifact = output_dir / "RNP0xdeadbeef.out"
         artifact.write_bytes(b"content data")
-        result = _detect_sub_success(1, output_dir, tmp_path / "sub.log")
+        result = _detect_sub_success(_result(1), output_dir, tmp_path / "sub.log")
         assert result["success"] is False
         assert result["has_output_file"] is True
+
+    def test_timed_out_with_file_is_success(self, tmp_path):
+        # Killed by the deadline AFTER content was delivered -> still success.
+        output_dir = tmp_path / "recvdir"
+        output_dir.mkdir()
+        (output_dir / "RNP0xaa.out").write_bytes(b"content data")
+        result = _detect_sub_success(
+            _result(-15, timed_out=True), output_dir, tmp_path / "sub.log"
+        )
+        assert result["success"] is True
+
+    def test_cancelled_with_file_is_success(self, tmp_path):
+        # Cancelled AFTER content was delivered -> still success.
+        output_dir = tmp_path / "recvdir"
+        output_dir.mkdir()
+        (output_dir / "RNP0xbb.out").write_bytes(b"content data")
+        result = _detect_sub_success(
+            _result(-15, cancelled=True), output_dir, tmp_path / "sub.log"
+        )
+        assert result["success"] is True
+
+    def test_timed_out_without_file_is_failure(self, tmp_path):
+        output_dir = tmp_path / "recvdir"
+        output_dir.mkdir()
+        result = _detect_sub_success(
+            _result(-15, timed_out=True), output_dir, tmp_path / "sub.log"
+        )
+        assert result["success"] is False
 
     def test_zero_byte_file_is_failure(self, tmp_path):
         output_dir = tmp_path / "recvdir"
         output_dir.mkdir()
         (output_dir / "RNP0xempty.out").write_bytes(b"")
-        result = _detect_sub_success(0, output_dir, tmp_path / "sub.log")
+        result = _detect_sub_success(_result(0), output_dir, tmp_path / "sub.log")
         assert result["success"] is False
         assert result["has_output_file"] is False
 
     def test_nonexistent_directory_is_failure(self, tmp_path):
         output_dir = tmp_path / "does_not_exist"
-        result = _detect_sub_success(0, output_dir, tmp_path / "sub.log")
+        result = _detect_sub_success(_result(0), output_dir, tmp_path / "sub.log")
         assert result["success"] is False
         assert result["has_output_file"] is False
 
@@ -65,14 +106,14 @@ class TestDetectSubSuccess:
         a2 = output_dir / "RNP0x0002.out"
         a1.write_bytes(b"a")
         a2.write_bytes(b"b")
-        result = _detect_sub_success(0, output_dir, tmp_path / "sub.log")
+        result = _detect_sub_success(_result(0), output_dir, tmp_path / "sub.log")
         assert result["artifact_path"] in (str(a1), str(a2))
 
     def test_has_completed_log_always_false(self, tmp_path):
         output_dir = tmp_path / "recvdir"
         output_dir.mkdir()
         (output_dir / "RNP0xabc.out").write_bytes(b"data")
-        result = _detect_sub_success(0, output_dir, tmp_path / "sub.log")
+        result = _detect_sub_success(_result(0), output_dir, tmp_path / "sub.log")
         assert result["has_completed_log"] is False
 
 
@@ -106,7 +147,7 @@ class TestClearSubOutputArtifacts:
 # ---------------------------------------------------------------------------
 
 
-def _make_runner(tmp_path, pub_lifetime_by_uri=None):
+def _make_runner(tmp_path, pub_lifetime_by_uri=None, runner=None):
     """Create a ContentOperationRunner with mocked dependencies."""
     net = MagicMock()
     flap_state = MagicMock()
@@ -118,6 +159,7 @@ def _make_runner(tmp_path, pub_lifetime_by_uri=None):
         flap_state=flap_state,
         seed_label="test",
         pub_lifetime_by_uri=pub_lifetime_by_uri,
+        runner=runner,
     )
 
 
@@ -127,7 +169,7 @@ class TestPubsubTimingResolution:
         runner = _make_runner(
             tmp_path, pub_lifetime_by_uri={"ccnx:/test/stream": 8}
         )
-        mock_sub.return_value = MagicMock(pid=1)
+        mock_sub.return_value = MagicMock()
         before = time.monotonic()
         runner._do_pubsub_sub({
             "host": 0, "uri": "ccnx:/test/stream",
@@ -143,7 +185,7 @@ class TestPubsubTimingResolution:
         runner = _make_runner(
             tmp_path, pub_lifetime_by_uri={"ccnx:/test/stream": 8}
         )
-        mock_sub.return_value = MagicMock(pid=1)
+        mock_sub.return_value = MagicMock()
         before = time.monotonic()
         runner._do_pubsub_sub({
             "host": 0, "uri": "ccnx:/test/stream",
@@ -155,7 +197,7 @@ class TestPubsubTimingResolution:
     @patch("src.runtime.content_ops.start_cefsubfile")
     def test_default_wait_is_thirty_seconds(self, mock_sub, tmp_path):
         runner = _make_runner(tmp_path)
-        mock_sub.return_value = MagicMock(pid=1)
+        mock_sub.return_value = MagicMock()
         before = time.monotonic()
         runner._do_pubsub_sub({
             "host": 0, "uri": "ccnx:/test/stream",
@@ -164,13 +206,52 @@ class TestPubsubTimingResolution:
         deadline = entries[0]["deadline"]
         assert abs(deadline - (before + 30)) < 2.0
 
-    def test_expired_deadline_terminates_subscriber_immediately(self):
-        proc = MagicMock()
-        proc.wait.return_value = 0
-        exit_code = _wait_pubsub_process(proc, time.monotonic() - 1)
-        assert exit_code is None
-        proc.terminate.assert_called_once()
-        proc.kill.assert_not_called()
+
+# ---------------------------------------------------------------------------
+# Full pub/sub path through a FakeCommandRunner
+# ---------------------------------------------------------------------------
+
+
+class TestPubsubFullPathFake:
+    def test_sub_killed_after_delivery_is_success(self, tmp_path):
+        """A subscriber terminated by the deadline AFTER delivering content is
+        still a success — the killed-after-delivery invariant, now expressed
+        through the timed_out flag instead of a None exit code."""
+        fake = FakeCommandRunner()
+
+        def deliver_then_die(handle):
+            if handle.argv[0] != "cefsubfile":
+                return
+            out_dir = Path(handle.argv[handle.argv.index("-f") + 1])
+            (out_dir / "RNP0xabc.out").write_bytes(b"content")
+            # The deadline kills this sub after content already arrived.
+            handle.result = CommandResult(returncode=-15, timed_out=True)
+
+        fake.on_start = deliver_then_die
+
+        results = []
+        flap_state = MagicMock()
+        flap_state.snapshot.return_value = []
+        runner = ContentOperationRunner(
+            MagicMock(),
+            run_dir=tmp_path,
+            result_callback=results.append,
+            flap_state=flap_state,
+            seed_label="test",
+            startup_grace=0,
+            runner=fake,
+        )
+        runner._do_pubsub_sub(
+            {"host": 1, "uri": "ccnx:/test/live", "sub_opts": {"wait": 1}}
+        )
+        runner._do_pubsub_pub(
+            {"host": 2, "uri": "ccnx:/test/live", "file": "./sample-putfile"}
+        )
+
+        sub_results = [r for r in results if r["op_type"] == "sub"]
+        assert len(sub_results) == 1
+        assert sub_results[0]["success"] is True
+        assert sub_results[0]["has_output_file"] is True
 
 
 # ---------------------------------------------------------------------------
@@ -227,13 +308,8 @@ class TestContentOperationRunnerDeadline:
         assert mock_put.call_args.kwargs["expiry"] == 3000
         assert mock_put.call_args.kwargs["cache_time"] == 3000
 
-    @patch("src.runtime.content_ops.run_cefpubfile")
-    def test_pubsub_pub_keeps_expiry_and_cache_time_explicit_only(
-        self, mock_pub, tmp_path
-    ):
-        proc = MagicMock()
-        proc.wait.return_value = 0
-        mock_pub.return_value = proc
+    def test_pubsub_pub_keeps_expiry_and_cache_time_explicit_only(self, tmp_path):
+        fake = FakeCommandRunner()
         runner = ContentOperationRunner(
             MagicMock(),
             run_dir=tmp_path,
@@ -241,9 +317,12 @@ class TestContentOperationRunnerDeadline:
             flap_state=MagicMock(),
             seed_label="test",
             startup_grace=0,
+            runner=fake,
         )
         runner._do_pubsub_pub(
             {"host": 2, "uri": "ccnx:/test/live", "file": "./sample-putfile"}
         )
-        assert mock_pub.call_args.kwargs["expiry"] is None
-        assert mock_pub.call_args.kwargs["cache_time"] is None
+        pub_argv = fake.starts[0].argv
+        # pub_opts does not acquire the disaster 3000 default; omitted stays omitted.
+        assert "-e" not in pub_argv
+        assert "-t" not in pub_argv
