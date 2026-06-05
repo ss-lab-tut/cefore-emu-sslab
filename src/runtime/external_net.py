@@ -44,6 +44,7 @@ from .cefore import (
     stop_csmgrd,
     wait_for_cefnetd,
 )
+from .command_runner import MininetCommandRunner
 from .content_ops import ContentOperationRunner
 from .net_config import apply_fib, apply_ip_addr
 from .scheduler import EventScheduler
@@ -114,8 +115,9 @@ def run_connect(args, run_dir: Path = None, log_context=None):
     if bridge_configs:
         setup_bridges(net, bridge_manager, bridge_configs, args.hosts, topo.mesh_links, scheme=scheme)
 
+    ifconfig_runner = MininetCommandRunner(net)
     for idx in range(args.hosts):
-        info(net.hosts[idx].cmd("ifconfig"))
+        info(ifconfig_runner.run(f"h{idx}", ["ifconfig"]).stdout)
 
     host_graph, _ = build_host_graph(topo.mesh_links)
     cache_count = args.cache_count if args.cache_count > 0 else args.down_count + 1

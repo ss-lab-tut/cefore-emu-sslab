@@ -1,11 +1,9 @@
 """Unit tests for cefore runtime command construction."""
 
-import subprocess
 from unittest.mock import MagicMock, patch
 
 import src.runtime.cefore as cefore_mod
 from src.runtime.cefore import (
-    popen_capture,
     run_cefgetfile,
     run_cefpubfile,
     run_cefputfile,
@@ -14,20 +12,6 @@ from src.runtime.cefore import (
     start_cefsubfile,
 )
 from src.runtime.command_runner import FakeCommandRunner
-
-
-def _make_net(host_count=3):
-    """Create a mock Mininet network (for the net-based status wrappers)."""
-    proc = MagicMock()
-    proc.wait.return_value = 0
-
-    host = MagicMock()
-    host.popen.return_value = proc
-
-    net = MagicMock()
-    net.hosts = [host] * host_count
-    net.get.return_value = host
-    return net, host, proc
 
 
 def _argv_str(argv):
@@ -181,75 +165,63 @@ def argv_index(argv, flag):
 
 
 # ---------------------------------------------------------------------------
-# popen_capture
-# ---------------------------------------------------------------------------
-
-class TestPopenCapture:
-    def test_returns_decoded_stdout(self):
-        node = MagicMock()
-        proc = MagicMock()
-        proc.communicate.return_value = (b"hello\n", None)
-        node.popen.return_value = proc
-        assert popen_capture(node, "cefstatus -d ./h1", timeout=5) == "hello\n"
-
-    def test_popen_kwargs_no_shared_shell(self):
-        node = MagicMock()
-        proc = MagicMock()
-        proc.communicate.return_value = (b"", None)
-        node.popen.return_value = proc
-        popen_capture(node, "cmd", timeout=3)
-        kwargs = node.popen.call_args[1]
-        assert kwargs["shell"] is True
-        assert kwargs["stdin"] == subprocess.DEVNULL
-        assert kwargs["stdout"] == subprocess.PIPE
-        assert kwargs["stderr"] == subprocess.STDOUT
-        proc.communicate.assert_called_once_with(timeout=3)
-
-    def test_timeout_terminates_and_reports(self):
-        node = MagicMock()
-        proc = MagicMock()
-        proc.communicate.side_effect = subprocess.TimeoutExpired(cmd="cmd", timeout=2)
-        node.popen.return_value = proc
-        with patch.object(cefore_mod, "_terminate_process") as mock_term:
-            result = popen_capture(node, "cmd", timeout=2)
-        mock_term.assert_called_once_with(proc)
-        assert result == "error: command timeout"
-
-
-# ---------------------------------------------------------------------------
-# run_csmgrstatus — quiet / use_popen
+# run_csmgrstatus — now argv + CommandRunner based
 # ---------------------------------------------------------------------------
 
 class TestRunCsmgrstatus:
-    def test_default_uses_cmd_and_emits_output(self):
-        net, host, _proc = _make_net()
-        host.cmd.return_value = "status output"
-        with patch.object(cefore_mod, "info") as mock_info:
-            out = run_csmgrstatus(net, 1, uri="ccnx:/", host="127.0.0.1")
+    def test_default_runs_argv_and_emits_output(self):
+        fake = FakeCommandRunner()
+        fake.script_run(stdout="status output")
+        with patch.object(cefore_mod, "MininetCommandRunner", return_value=fake), \
+                patch.object(cefore_mod, "info") as mock_info:
+            out = run_csmgrstatus(MagicMock(), 1, uri="ccnx:/", host="127.0.0.1")
         assert out == "status output"
-        host.cmd.assert_called_once()
+        rec = fake.runs[0]
+        assert rec["node"] == "h1"
+        assert rec["argv"] == ["csmgrstatus", "ccnx:/", "-h", "127.0.0.1"]
+        # Redirection is owned by the seam, never present in argv.
+        assert ">" not in _argv_str(rec["argv"])
         mock_info.assert_called_once_with("status output")
 
     def test_quiet_suppresses_print_and_info(self, capsys):
-        net, host, _proc = _make_net()
-        host.cmd.return_value = "status output"
-        with patch.object(cefore_mod, "info") as mock_info:
-            out = run_csmgrstatus(net, 1, uri="ccnx:/", host="127.0.0.1", quiet=True)
+        fake = FakeCommandRunner()
+        fake.script_run(stdout="status output")
+        with patch.object(cefore_mod, "MininetCommandRunner", return_value=fake), \
+                patch.object(cefore_mod, "info") as mock_info:
+            out = run_csmgrstatus(
+                MagicMock(), 1, uri="ccnx:/", host="127.0.0.1", quiet=True
+            )
         assert out == "status output"
         mock_info.assert_not_called()
         assert "command:" not in capsys.readouterr().out
 
-    def test_use_popen_routes_via_popen_capture(self):
-        net, host, _proc = _make_net()
-        with patch.object(
-            cefore_mod, "popen_capture", return_value="popen out"
-        ) as mock_cap:
-            out = run_csmgrstatus(
-                net, 1, uri="ccnx:/", host="127.0.0.1",
-                quiet=True, use_popen=True, timeout=10,
+    def test_log_name_redirects_stdout_only(self):
+        fake = FakeCommandRunner()
+        with patch.object(cefore_mod, "MininetCommandRunner", return_value=fake):
+            run_csmgrstatus(
+                MagicMock(), 1, host="127.0.0.1", log_name="/tmp/c.log", quiet=True
             )
-        assert out == "popen out"
-        host.cmd.assert_not_called()
-        mock_cap.assert_called_once()
-        assert mock_cap.call_args[0][0] is net.hosts[1]
-        assert mock_cap.call_args[1]["timeout"] == 10
+        rec = fake.runs[0]
+        assert rec["log_path"] == "/tmp/c.log"
+        # stdout-only-to-log: stderr kept separate so the log stays stdout-only.
+        assert rec["capture_stderr"] is True
+
+    def test_timeout_forwarded(self):
+        fake = FakeCommandRunner()
+        with patch.object(cefore_mod, "MininetCommandRunner", return_value=fake):
+            run_csmgrstatus(MagicMock(), 1, host="127.0.0.1", quiet=True, timeout=10)
+        assert fake.runs[0]["timeout"] == 10
+
+    def test_port_num_builds_two_token_argv(self):
+        fake = FakeCommandRunner()
+        with patch.object(cefore_mod, "MininetCommandRunner", return_value=fake):
+            run_csmgrstatus(MagicMock(), 1, port_num=9799, host="127.0.0.1", quiet=True)
+        argv = fake.runs[0]["argv"]
+        assert argv == ["csmgrstatus", "-p", "9799", "-h", "127.0.0.1"]
+
+    def test_timeout_returns_diagnostic_string(self):
+        fake = FakeCommandRunner()
+        fake.script_run(timed_out=True)
+        with patch.object(cefore_mod, "MininetCommandRunner", return_value=fake):
+            out = run_csmgrstatus(MagicMock(), 1, host="127.0.0.1", quiet=True)
+        assert out == "error: command timeout"

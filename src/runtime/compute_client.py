@@ -1,11 +1,11 @@
 """External compute API client for cache/edge nodes."""
 
-import shlex
 from pathlib import Path
 
 from mininet.log import info
 
 from ..core.paths import resolve_run_path
+from .command_runner import MininetCommandRunner
 
 
 def compute_call(net, host_idx, endpoint, method="GET", payload=None,
@@ -25,30 +25,30 @@ def compute_call(net, host_idx, endpoint, method="GET", payload=None,
         timeout: Request timeout in seconds.
 
     Returns:
-        (exit_code, stdout) tuple. exit_code is curl's exit code.
+        (exit_code, stdout) tuple. exit_code is curl's exit code; stdout is the
+        decoded combined output text from the CommandRunner.
     """
-    host = net.hosts[host_idx]
     host_name = f"h{host_idx}"
+    runner = MininetCommandRunner(net)
 
-    cmd_parts = ["curl", "-s", "-S", "--max-time", str(timeout)]
+    argv = ["curl", "-s", "-S", "--max-time", str(timeout)]
     if method == "POST":
-        cmd_parts.extend(["-X", "POST"])
+        argv.extend(["-X", "POST"])
         if payload:
-            cmd_parts.extend(["-d", shlex.quote(payload)])
+            argv.extend(["-d", payload])
 
     out_path = None
     if output_file and run_dir:
         out_path = resolve_run_path(Path(run_dir), output_file)
-        cmd_parts.extend(["-o", shlex.quote(str(out_path))])
+        argv.extend(["-o", str(out_path)])
 
-    cmd_parts.append(shlex.quote(endpoint))
-    cmd_str = " ".join(cmd_parts)
+    argv.append(endpoint)
 
-    info(f"[compute] {host_name}: {cmd_str}\n")
+    info(f"[compute] {host_name}: {argv}\n")
 
-    proc = host.popen(cmd_str, shell=True)
-    stdout, _ = proc.communicate()
-    exit_code = proc.wait()
+    result = runner.run(host_name, argv)
+    exit_code = result.returncode
+    stdout = result.stdout
 
     if exit_code != 0:
         info(f"[compute] {host_name}: curl failed (exit={exit_code})\n")
@@ -57,13 +57,12 @@ def compute_call(net, host_idx, endpoint, method="GET", payload=None,
     info(f"[compute] {host_name}: success (exit=0)\n")
 
     if publish_uri and out_path and out_path.exists():
-        pub_cmd = (
-            f"cefputfile {shlex.quote(publish_uri)} "
-            f"-f {shlex.quote(str(out_path))} "
-            f"-t 3000 -e 3000 -d ./{host_name}"
-        )
+        pub_argv = [
+            "cefputfile", publish_uri, "-f", str(out_path),
+            "-t", "3000", "-e", "3000", "-d", f"./{host_name}",
+        ]
         info(f"[compute] {host_name}: publishing {publish_uri}\n")
-        host.cmd(pub_cmd)
+        runner.run(host_name, pub_argv)
 
     return exit_code, stdout
 
@@ -76,9 +75,10 @@ def check_external_connectivity(net, host_idx, endpoint):
     Returns:
         True if reachable (HTTP 2xx/3xx), False otherwise.
     """
-    host = net.hosts[host_idx]
-    result = host.cmd(
-        f"curl -s -o /dev/null -w '%{{http_code}}' --max-time 5 "
-        f"{shlex.quote(endpoint)}"
-    )
-    return result.strip().startswith("2") or result.strip().startswith("3")
+    host_name = f"h{host_idx}"
+    argv = [
+        "curl", "-s", "-o", "/dev/null", "-w", "%{http_code}",
+        "--max-time", "5", endpoint,
+    ]
+    output = MininetCommandRunner(net).run(host_name, argv).stdout.strip()
+    return output.startswith("2") or output.startswith("3")

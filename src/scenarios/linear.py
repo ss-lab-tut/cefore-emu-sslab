@@ -52,10 +52,11 @@ class LinearScenario(BaseScenario):
 
     def configure(self, net):
         self._set_ip_addr(net)
+        runner = MininetCommandRunner(net)
         for idx in irange(0, self.host_num - 1):
             node_name = f"h{idx}"
             print(node_name, "command:", "ifconfig")
-            info(net.hosts[idx].cmd("ifconfig"))
+            info(runner.run(node_name, ["ifconfig"]).stdout)
 
         log_dir = str(self.run_dir) if self.run_dir != Path(".") else None
         for idx in range(self.host_num):
@@ -100,28 +101,33 @@ class LinearScenario(BaseScenario):
 
     def _set_ip_addr(self, net):
         """Assign IPs for linear topology."""
+        runner = MininetCommandRunner(net)
         for idx in irange(0, self.host_num - 1):
             node_name = f"h{idx}"
             if idx > 0:
                 left_ip = self.scheme.host_ip(idx - 1, idx)
-                command = f"ifconfig {node_name}-eth0 {left_ip}"
-                print(node_name, "command:", command)
-                net.hosts[idx].cmd(command)
+                argv = ["ifconfig", f"{node_name}-eth0", str(left_ip)]
+                print(node_name, "command:", argv)
+                runner.run(node_name, argv)
             if idx < self.host_num - 1:
                 right_ip = self.scheme.host_ip(idx, idx)
                 eth_name = "eth1" if idx > 0 else "eth0"
-                command = f"ifconfig {node_name}-{eth_name} {right_ip}"
-                print(node_name, "command:", command)
-                net.hosts[idx].cmd(command)
+                argv = ["ifconfig", f"{node_name}-{eth_name}", str(right_ip)]
+                print(node_name, "command:", argv)
+                runner.run(node_name, argv)
 
     def _set_fib(self, net):
         """Set FIB for linear topology (forward toward publisher)."""
+        runner = MininetCommandRunner(net)
         for idx in irange(0, self.host_num - 2):
             node_name = f"h{idx}"
             next_hop_ip = self.scheme.host_ip(idx, idx + 1)
-            command = f"cefroute add ccnx:/test udp {next_hop_ip} -d ./{node_name}"
-            print(node_name, "command:", command)
-            info(net.hosts[idx].cmd(command))
+            argv = [
+                "cefroute", "add", "ccnx:/test", "udp", str(next_hop_ip),
+                "-d", f"./{node_name}",
+            ]
+            print(node_name, "command:", argv)
+            info(runner.run(node_name, argv).stdout)
 
 
 def run_linear_scenario(host_num, run_dir=None, debug_config=None):

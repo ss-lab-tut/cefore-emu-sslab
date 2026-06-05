@@ -7,6 +7,28 @@ import pytest
 
 from src.core.addressing import AddressingScheme
 from src.runtime.bridge import _resolve_root_ip, setup_bridges
+from src.runtime.command_runner import CommandResult, FakeCommandRunner
+
+
+def _pexec_runner(holder):
+    """Adapt a legacy ``holder.pexec(cmd_str) -> (stdout, stderr, rc)`` fake onto
+    the CommandRunner seam.
+
+    Bridge commands now run through an injected CommandRunner instead of
+    ``Node.pexec()``. This returns a FakeCommandRunner whose ``run`` is routed
+    to ``holder.pexec`` with the argv joined back into a command string, so the
+    existing command-substring predicates (``if "sysctl -n" in cmd``) keep
+    working. ``holder.pexec`` is read at call time, so tests may assign it after
+    constructing the runner.
+    """
+    fake = FakeCommandRunner()
+
+    def _on_run(node, argv):
+        out, err, rc = holder.pexec(" ".join(argv))
+        return CommandResult(returncode=rc, stdout=out, stderr=err)
+
+    fake.on_run = _on_run
+    return fake
 
 
 def _mesh_links_with_switch(switch_name="s1", subnet=3):
@@ -232,10 +254,10 @@ class TestIPForwarding:
     """Tests for enable_ip_forwarding() sysctl restoration."""
 
     def _make_mgr(self):
-        """Create a BridgeManager with mocked root node."""
+        """Create a BridgeManager with an injected pexec-backed runner."""
         from src.runtime.bridge import BridgeManager
-        mgr = BridgeManager()
         root = MagicMock()
+        mgr = BridgeManager(runner=_pexec_runner(root))
         mgr.root_node = root
         return mgr, root
 
@@ -377,8 +399,8 @@ class TestProxyARP:
     def _make_mgr(self):
         """Create a BridgeManager with mocked root node and interface."""
         from src.runtime.bridge import BridgeManager
-        mgr = BridgeManager()
         root = MagicMock()
+        mgr = BridgeManager(runner=_pexec_runner(root))
         mgr.root_node = root
         mgr.root_intf = MagicMock()
         mgr.root_intf.__str__ = lambda s: "eth0"
@@ -521,8 +543,8 @@ class TestNAT:
     def _make_mgr(self):
         """Create a BridgeManager with mocked root node."""
         from src.runtime.bridge import BridgeManager
-        mgr = BridgeManager()
         root = MagicMock()
+        mgr = BridgeManager(runner=_pexec_runner(root))
         mgr.root_node = root
         mgr.root_intf = MagicMock()
         mgr.root_intf.__str__ = lambda s: "eth0"
@@ -622,8 +644,8 @@ class TestNAT:
     def test_nat_failure_after_ip_forwarding_leaves_restoration(self):
         """If NAT fails after ip_forwarding, the ip_forward restoration remains."""
         from src.runtime.bridge import BridgeManager
-        mgr = BridgeManager()
         root = MagicMock()
+        mgr = BridgeManager(runner=_pexec_runner(root))
         mgr.root_node = root
         mgr.root_intf = MagicMock()
         mgr.root_intf.__str__ = lambda s: "eth0"
@@ -670,8 +692,8 @@ class TestProducerCleanupContract:
     def test_all_cleanup_action_producers_use_normalized_success_contract(self):
         from src.runtime.bridge import BridgeManager
 
-        mgr = BridgeManager()
         root = MagicMock()
+        mgr = BridgeManager(runner=_pexec_runner(root))
         mgr.root_node = root
 
         def pexec_ok(cmd):
@@ -869,7 +891,11 @@ class TestExternalBridgeSafety:
 
         host.pexec = mock_pexec
 
-        with patch("src.runtime.bridge._run_root_cmd_vec", side_effect=mock_cmd):
+        with patch("src.runtime.bridge._run_root_cmd_vec", side_effect=mock_cmd), \
+                patch(
+                    "src.runtime.bridge.MininetCommandRunner",
+                    return_value=_pexec_runner(host),
+                ):
             attach_external_via_bridge(net, "h0", "eth0", ip="10.0.0.2/24")
 
         # Record exists with all fields
@@ -1011,7 +1037,11 @@ class TestExternalBridgeSafety:
         host.pexec = mock_pexec
 
         # Link-local address should NOT be rejected
-        with patch("src.runtime.bridge._run_root_cmd_vec", side_effect=mock_cmd):
+        with patch("src.runtime.bridge._run_root_cmd_vec", side_effect=mock_cmd), \
+                patch(
+                    "src.runtime.bridge.MininetCommandRunner",
+                    return_value=_pexec_runner(host),
+                ):
             # This will proceed past address check
             attach_external_via_bridge(net, "h0", "eth0", ip="10.0.0.2/24")
 
@@ -1475,7 +1505,11 @@ class TestExternalBridgeSetupRollback:
                 return 0, "", ""
             return 0, "", ""
 
-        with patch("src.runtime.bridge._run_root_cmd_vec", side_effect=mock_cmd):
+        with patch("src.runtime.bridge._run_root_cmd_vec", side_effect=mock_cmd), \
+                patch(
+                    "src.runtime.bridge.MininetCommandRunner",
+                    return_value=_pexec_runner(host),
+                ):
             with pytest.raises(ExternalBridgeError):
                 attach_external_via_bridge(net, "h0", "eth0", ip="10.0.0.2/24")
 
@@ -1507,7 +1541,11 @@ class TestExternalBridgeSetupRollback:
             # Rollback succeeds
             return 0, "", ""
 
-        with patch("src.runtime.bridge._run_root_cmd_vec", side_effect=mock_cmd):
+        with patch("src.runtime.bridge._run_root_cmd_vec", side_effect=mock_cmd), \
+                patch(
+                    "src.runtime.bridge.MininetCommandRunner",
+                    return_value=_pexec_runner(host),
+                ):
             with pytest.raises(ExternalBridgeError):
                 attach_external_via_bridge(net, "h0", "eth0", ip="10.0.0.2/24", mtu=1400)
 
@@ -2023,8 +2061,8 @@ class TestDefect3ProxyARPRetryableRestoration:
 
     def _make_mgr(self):
         from src.runtime.bridge import BridgeManager
-        mgr = BridgeManager()
         root = MagicMock()
+        mgr = BridgeManager(runner=_pexec_runner(root))
         mgr.root_node = root
         mgr.root_intf = MagicMock()
         mgr.root_intf.__str__ = lambda s: "eth0"

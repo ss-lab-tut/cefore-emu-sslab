@@ -10,7 +10,8 @@ from typing import Callable
 from mininet.log import info
 
 from ..core.paths import ensure_within_run_dir
-from .cefore import popen_capture, run_csmgrstatus
+from .cefore import run_csmgrstatus
+from .command_runner import MininetCommandRunner
 
 
 def _resolve_hosts(spec, host_count, cache_nodes=None):
@@ -160,12 +161,11 @@ class Monitor:
             return "skipped: host down"
         if target_type == "cefstatus":
             node_name = f"h{host_idx}"
-            command = f"cefstatus -d ./{node_name}"
-            if bg:
-                return popen_capture(
-                    self.net.hosts[host_idx], command, timeout=self.command_timeout
-                )
-            return self.net.hosts[host_idx].cmd(command)
+            argv = ["cefstatus", "-d", f"./{node_name}"]
+            timeout = self.command_timeout if bg else None
+            return MininetCommandRunner(self.net).run(
+                node_name, argv, timeout=timeout
+            ).stdout
         elif target_type == "csmgrstatus":
             # Use explicit target_host if provided; otherwise use resolver.
             explicit = target.get("target_host")
@@ -182,8 +182,7 @@ class Monitor:
                 port_num=target.get("port_num"),
                 host=csmgr_host,
                 quiet=bg,
-                use_popen=bg,
-                timeout=self.command_timeout,
+                timeout=self.command_timeout if bg else None,
             )
         else:
             return f"unknown monitor type: {target_type}"

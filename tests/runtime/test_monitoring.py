@@ -5,6 +5,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from src.runtime.command_runner import FakeCommandRunner
 from src.runtime.monitoring import Monitor
 
 
@@ -221,17 +222,23 @@ class TestCollectTargetCsmgrstatus:
 # ---------------------------------------------------------------------------
 
 class TestCollectTargetCefstatus:
-    def test_cefstatus_uses_net_cmd(self, tmp_path):
-        net = _make_net(3)
+    def test_cefstatus_runs_via_runner(self, tmp_path):
+        fake = FakeCommandRunner()
+        fake.script_run(stdout="cef out")
         monitor = Monitor(
-            net,
+            MagicMock(),
             targets=[_cefstatus_target(hosts="all")],
             interval=1,
             output_dir=tmp_path,
             host_count=3,
         )
-        monitor._collect_target("cefstatus", 0, {"type": "cefstatus"})
-        net.hosts[0].cmd.assert_called_once_with("cefstatus -d ./h0")
+        with patch("src.runtime.monitoring.MininetCommandRunner", return_value=fake):
+            out = monitor._collect_target("cefstatus", 0, {"type": "cefstatus"})
+        assert out == "cef out"
+        assert fake.runs[0]["node"] == "h0"
+        assert fake.runs[0]["argv"] == ["cefstatus", "-d", "./h0"]
+        # Non-background: no command timeout.
+        assert fake.runs[0]["timeout"] is None
 
 
 # ---------------------------------------------------------------------------
@@ -266,20 +273,19 @@ class TestBackgroundMode:
         monitor.enter_background()
         assert monitor._background.is_set()
 
-    def test_background_cefstatus_uses_popen_capture(self, tmp_path):
-        net = _make_net(3)
-        monitor = self._bg_monitor(tmp_path, net=net, command_timeout=7)
-        with patch(
-            "src.runtime.monitoring.popen_capture", return_value="cef out"
-        ) as mock_cap:
+    def test_background_cefstatus_passes_command_timeout(self, tmp_path):
+        fake = FakeCommandRunner()
+        fake.script_run(stdout="cef out")
+        monitor = self._bg_monitor(tmp_path, net=MagicMock(), command_timeout=7)
+        with patch("src.runtime.monitoring.MininetCommandRunner", return_value=fake):
             out = monitor._collect_target("cefstatus", 1, {"type": "cefstatus"})
         assert out == "cef out"
-        net.hosts[1].cmd.assert_not_called()
-        mock_cap.assert_called_once_with(
-            net.hosts[1], "cefstatus -d ./h1", timeout=7
-        )
+        assert fake.runs[0]["node"] == "h1"
+        assert fake.runs[0]["argv"] == ["cefstatus", "-d", "./h1"]
+        # Background mode applies the command timeout.
+        assert fake.runs[0]["timeout"] == 7
 
-    def test_background_csmgrstatus_quiet_and_popen(self, tmp_path):
+    def test_background_csmgrstatus_quiet_and_timeout(self, tmp_path):
         monitor = self._bg_monitor(tmp_path)  # default command_timeout=10
         with patch(
             "src.runtime.monitoring.run_csmgrstatus", return_value="ok"
@@ -287,8 +293,8 @@ class TestBackgroundMode:
             monitor._collect_target("csmgrstatus", 0, {"type": "csmgrstatus"})
         _, kwargs = mock_fn.call_args
         assert kwargs["quiet"] is True
-        assert kwargs["use_popen"] is True
         assert kwargs["timeout"] == 10
+        assert "use_popen" not in kwargs
 
     def test_background_down_host_skip_is_silent(self, tmp_path):
         monitor = self._bg_monitor(tmp_path)
@@ -298,7 +304,7 @@ class TestBackgroundMode:
         assert out == "skipped: host down"
         mock_info.assert_not_called()
 
-    def test_non_background_csmgrstatus_keeps_legacy_path(self, tmp_path):
+    def test_non_background_csmgrstatus_not_quiet(self, tmp_path):
         monitor = Monitor(
             _make_net(3),
             targets=[_csmgrstatus_target(hosts="all")],
@@ -312,4 +318,6 @@ class TestBackgroundMode:
             monitor._collect_target("csmgrstatus", 0, {"type": "csmgrstatus"})
         _, kwargs = mock_fn.call_args
         assert kwargs["quiet"] is False
-        assert kwargs["use_popen"] is False
+        # Foreground: unbounded, like the cefstatus foreground path.
+        assert kwargs["timeout"] is None
+        assert "use_popen" not in kwargs

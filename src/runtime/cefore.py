@@ -1,8 +1,6 @@
 """Cefore daemon control functions."""
 
 import os
-import shlex
-import subprocess
 import time
 
 from mininet.log import info
@@ -13,41 +11,7 @@ from .cef_argv import (
     build_cefputfile_argv,
     build_cefsubfile_argv,
 )
-
-
-def _terminate_process(proc):
-    """Terminate a command and escalate if it does not promptly exit."""
-    proc.terminate()
-    try:
-        proc.wait(timeout=2)
-    except subprocess.TimeoutExpired:
-        proc.kill()
-        proc.wait()
-
-
-def popen_capture(node, command, timeout=None):
-    """Run a command in a host netns via popen and return its stdout text.
-
-    Unlike ``node.cmd()`` this does not use the host's shared pexpect shell,
-    so it can run concurrently with the Mininet CLI without shell contention.
-    On timeout the process is terminated and ``"error: command timeout"`` is
-    returned.
-    """
-    proc = node.popen(
-        command,
-        shell=True,
-        stdin=subprocess.DEVNULL,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-    )
-    try:
-        out, _ = proc.communicate(timeout=timeout)
-    except subprocess.TimeoutExpired:
-        _terminate_process(proc)
-        return "error: command timeout"
-    if isinstance(out, bytes):
-        return out.decode(errors="replace")
-    return out or ""
+from .command_runner import MininetCommandRunner
 
 
 def read_port_num(node_dir, default=9695):
@@ -94,12 +58,13 @@ def wait_for_cefnetd(net, idx, timeout=10, interval=0.25):
         True if ready, False if timeout.
     """
     node_name = f"h{idx}"
+    runner = MininetCommandRunner(net)
     deadline = time.time() + timeout
     while time.time() < deadline:
-        result = net.hosts[idx].cmd(
-            f"sh -c 'cefstatus -d ./{node_name} >/dev/null 2>&1; echo $?'"
+        result = runner.run(
+            node_name, ["cefstatus", "-d", f"./{node_name}"], log_path=os.devnull
         )
-        if result.strip().endswith("0"):
+        if result.returncode == 0:
             return True
         time.sleep(interval)
     info(f"{node_name} cefnetd not ready; check {node_name}-cefnetd-log\n")
@@ -119,10 +84,11 @@ def wait_for_csmgrd(net, idx, timeout=10, interval=0.5):
         True if ready, False if timeout.
     """
     node_name = f"h{idx}"
+    runner = MininetCommandRunner(net)
     deadline = time.time() + timeout
     while time.time() < deadline:
-        result = net.hosts[idx].cmd("sh -c 'csmgrstatus >/dev/null 2>&1; echo $?'")
-        if result.strip().endswith("0"):
+        result = runner.run(node_name, ["csmgrstatus"], log_path=os.devnull)
+        if result.returncode == 0:
             return True
         time.sleep(interval)
     info(f"{node_name} csmgrd not ready; check {node_name}-csmgrd-log\n")
@@ -139,16 +105,16 @@ def start_csmgrd(net, idx, log_dir=None):
                  If None, logs go to CWD.
     """
     node_name = f"h{idx}"
+    runner = MininetCommandRunner(net)
     if log_dir is not None:
         abs_node_dir = os.path.abspath(f"./{node_name}")
-        command = (
-            f"cd {shlex.quote(str(log_dir))} && "
-            f"csmgrdstart -d {shlex.quote(abs_node_dir)} > /dev/null 2>&1"
-        )
+        argv = ["csmgrdstart", "-d", abs_node_dir]
+        cwd = str(log_dir)
     else:
-        command = f"csmgrdstart -d ./{node_name} > /dev/null 2>&1"
-    print(node_name, "command:", command)
-    info(net.hosts[idx].cmd(command))
+        argv = ["csmgrdstart", "-d", f"./{node_name}"]
+        cwd = None
+    print(node_name, "command:", argv, "cwd:", cwd)
+    runner.run(node_name, argv, cwd=cwd, log_path=os.devnull)
     wait_for_csmgrd(net, idx)
 
 
@@ -159,9 +125,10 @@ def stop_csmgrd(net, idx):
         net: Mininet network instance.
         idx: Host index.
     """
-    command = f"csmgrdstop -d ./h{idx}"
-    info("hosts[", idx, "]:", command, "\n")
-    net.hosts[idx].cmd(command)
+    node_name = f"h{idx}"
+    argv = ["csmgrdstop", "-d", f"./{node_name}"]
+    info("hosts[", idx, "]:", argv, "\n")
+    MininetCommandRunner(net).run(node_name, argv)
 
 
 def start_cefnetd(net, idx, log_dir=None):
@@ -175,16 +142,16 @@ def start_cefnetd(net, idx, log_dir=None):
     """
     node_name = f"h{idx}"
     cleanup_cefnetd_socket(node_name, idx)
+    runner = MininetCommandRunner(net)
     if log_dir is not None:
         abs_node_dir = os.path.abspath(f"./{node_name}")
-        command = (
-            f"cd {shlex.quote(str(log_dir))} && "
-            f"cefnetdstart -d {shlex.quote(abs_node_dir)} > /dev/null 2>&1"
-        )
+        argv = ["cefnetdstart", "-d", abs_node_dir]
+        cwd = str(log_dir)
     else:
-        command = f"cefnetdstart -d ./{node_name} > /dev/null 2>&1"
-    print(node_name, "command:", command)
-    info(net.hosts[idx].cmd(command))
+        argv = ["cefnetdstart", "-d", f"./{node_name}"]
+        cwd = None
+    print(node_name, "command:", argv, "cwd:", cwd)
+    runner.run(node_name, argv, cwd=cwd, log_path=os.devnull)
     time.sleep(1)
 
 
@@ -195,9 +162,10 @@ def stop_cefnetd(net, idx):
         net: Mininet network instance.
         idx: Host index.
     """
-    command = f"cefnetdstop -F -d ./h{idx}"
-    info("hosts[", idx, "]:", command, "\n")
-    net.hosts[idx].cmd(command)
+    node_name = f"h{idx}"
+    argv = ["cefnetdstop", "-F", "-d", f"./{node_name}"]
+    info("hosts[", idx, "]:", argv, "\n")
+    MininetCommandRunner(net).run(node_name, argv)
 
 
 def run_cefputfile(
@@ -328,9 +296,9 @@ def run_cefstatus(net, host_idx):
         host_idx: Host index.
     """
     node_name = f"h{host_idx}"
-    command = f"cefstatus -d ./{node_name}"
-    print(node_name, "command:", command)
-    info(net.hosts[host_idx].cmd(command))
+    argv = ["cefstatus", "-d", f"./{node_name}"]
+    print(node_name, "command:", argv)
+    info(MininetCommandRunner(net).run(node_name, argv).stdout)
 
 
 def run_cefstatus_all(net, host_num):
@@ -508,7 +476,6 @@ def run_csmgrstatus(
     host=None,
     log_name=None,
     quiet=False,
-    use_popen=False,
     timeout=None,
 ):
     """Run csmgrstatus to query cache manager status.
@@ -519,37 +486,38 @@ def run_csmgrstatus(
         uri: Content URI to query (optional).
         port_num: Port number.
         host: Hostname or IP to connect to.
-        log_name: Name of the log file.
+        log_name: When given, stdout is redirected to this log file (stdout
+            only, matching the old ``> log`` shell redirect) and the empty
+            stdout is returned.
         quiet: When True, suppress the command echo and the output ``info``
             (the output is still returned).
-        use_popen: When True, run via ``popen_capture`` (separate process, no
-            shared pexpect shell) instead of ``node.cmd()``. Avoids contention
-            with the Mininet CLI.
-        timeout: Command timeout (seconds) used only when ``use_popen`` is True.
+        timeout: Command timeout (seconds).
 
     Returns:
         Command output string.
     """
     node_name = f"h{host_idx}"
-    cmd_parts = ["csmgrstatus"]
-
+    argv = ["csmgrstatus"]
     if uri is not None:
-        cmd_parts.append(shlex.quote(uri))
+        argv.append(uri)
     if port_num is not None:
-        cmd_parts.append(f"-p {port_num}")
+        argv.extend(["-p", str(port_num)])
     if host is not None:
-        cmd_parts.append(f"-h {shlex.quote(host)}")
+        argv.extend(["-h", host])
 
-    if log_name:
-        cmd_parts.append(f"> {shlex.quote(log_name)}")
-
-    command = " ".join(cmd_parts)
     if not quiet:
-        print(node_name, "command:", command)
-    if use_popen:
-        output = popen_capture(net.hosts[host_idx], command, timeout=timeout)
-    else:
-        output = net.hosts[host_idx].cmd(command)
-    if not log_name and not quiet:
+        print(node_name, "command:", argv, "log:", log_name)
+
+    runner = MininetCommandRunner(net)
+    if log_name:
+        # stdout -> log file (stdout only, like the old "> log"); stderr is
+        # kept separate so the log stays stdout-only.
+        result = runner.run(
+            node_name, argv, log_path=log_name, capture_stderr=True, timeout=timeout
+        )
+        return "error: command timeout" if result.timed_out else result.stdout
+    result = runner.run(node_name, argv, timeout=timeout)
+    output = "error: command timeout" if result.timed_out else result.stdout
+    if not quiet:
         info(output)
     return output

@@ -243,6 +243,20 @@ class SyntheticHost:
         )
         return result.stdout, (result.stderr or ""), result.returncode
 
+    def popen(self, argv, **kwargs):
+        """Like Mininet ``Node.popen``: run an argv list inside the namespace.
+
+        The CommandRunner seam now executes host commands via ``popen(argv)``
+        (no shell) instead of ``pexec(cmd_str)``, so the shim provides it. The
+        argv is prefixed with ``ip netns exec <ns>`` and the runner's stdio
+        kwargs are forwarded to a real ``subprocess.Popen``.
+        """
+        full = ["ip", "netns", "exec", self.ns, *[str(a) for a in argv]]
+        self.wrapper._write_trace(
+            "host", tuple(full), executed=True, injected=False, rc=None, stderr="",
+        )
+        return subprocess.Popen(full, **kwargs)
+
 
 class SyntheticNet:
     """Minimal `mininet.net.Mininet`-style shim exposing `get(host_name)`."""

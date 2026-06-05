@@ -1,7 +1,6 @@
 """Event scheduler for timed network operations."""
 
 import heapq
-import shlex
 import threading
 import time
 
@@ -9,6 +8,7 @@ from mininet.log import info
 
 from ..core.protocols import normalize_route_protocol
 from .bandwidth import set_switch_bandwidth
+from .command_runner import MininetCommandRunner
 from .compute_client import check_external_connectivity
 from .compute_client import compute_call as _do_compute_call
 from .links import link_down, link_up
@@ -19,10 +19,12 @@ def _cefroute_add(net, host_idx, prefix, protocol, next_hop):
     """Add a FIB entry via cefroute add."""
     node_name = f"h{host_idx}"
     node_dir = f"./{node_name}"
-    protocol_arg = shlex.quote(normalize_route_protocol(protocol))
-    command = f"cefroute add {shlex.quote(prefix)} {protocol_arg} {shlex.quote(next_hop)} -d {node_dir}"
-    print(node_name, "command:", command)
-    info(net.hosts[host_idx].cmd(command))
+    argv = [
+        "cefroute", "add", prefix, normalize_route_protocol(protocol), next_hop,
+        "-d", node_dir,
+    ]
+    print(node_name, "command:", argv)
+    info(MininetCommandRunner(net).run(node_name, argv).stdout)
 
 
 def _handle_compute_call(net, event, mesh_links, ctx):

@@ -25,6 +25,12 @@ from typing import IO, Any, Callable, Optional, Sequence, Union
 ROOT_SENTINEL = "root"
 
 
+def _decode(data) -> str:
+    if isinstance(data, bytes):
+        return data.decode(errors="replace")
+    return data or ""
+
+
 @dataclass
 class CommandResult:
     """The value a CommandRunner returns for a finished command.
@@ -68,12 +74,19 @@ class CommandRunner(ABC):
         timeout: Optional[float] = None,
         cancel_event=None,
         capture: bool = True,
+        capture_stderr: bool = False,
     ) -> CommandResult:
         """Run a command to completion and return its result.
 
         When ``log_path`` is given, combined stdout+stderr is redirected to that
         file and ``CommandResult.stdout`` is empty. When ``log_path`` is None and
         ``capture`` is True, combined output is captured into the result.
+
+        When ``capture_stderr`` is True, stderr is kept separate from stdout and
+        captured into ``CommandResult.stderr``: stdout goes to ``log_path`` (so
+        the log stays stdout-only) or, when no log is given, into
+        ``CommandResult.stdout``. This path drains both pipes with
+        ``communicate`` and honours ``timeout`` but not ``cancel_event``.
         """
 
     @abstractmethod
@@ -156,6 +169,16 @@ class MininetCommandRunner(CommandRunner):
     def __init__(self, net):
         self._net = net
 
+    def _popen(self, node, argv, cwd, stdout, stderr):
+        kwargs: dict[str, Any] = dict(
+            stdin=subprocess.DEVNULL, stdout=stdout, stderr=stderr
+        )
+        if cwd is not None:
+            kwargs["cwd"] = str(cwd)
+        if node == ROOT_SENTINEL:
+            return subprocess.Popen(argv, **kwargs)
+        return self._net.get(node).popen(argv, **kwargs)
+
     def _spawn(self, node, argv, log_path, cwd, capture) -> _MininetHandle:
         argv = [str(a) for a in argv]
         log_file: Optional[IO[bytes]] = None
@@ -171,16 +194,8 @@ class MininetCommandRunner(CommandRunner):
         else:
             stdout = None
             stderr = None
-        kwargs: dict[str, Any] = dict(
-            stdin=subprocess.DEVNULL, stdout=stdout, stderr=stderr
-        )
-        if cwd is not None:
-            kwargs["cwd"] = str(cwd)
         try:
-            if node == ROOT_SENTINEL:
-                proc = subprocess.Popen(argv, **kwargs)
-            else:
-                proc = self._net.get(node).popen(argv, **kwargs)
+            proc = self._popen(node, argv, cwd, stdout, stderr)
         except BaseException:
             # Seam owns redirection: do not leak the log fd if spawn fails.
             if log_file is not None:
@@ -198,7 +213,12 @@ class MininetCommandRunner(CommandRunner):
         timeout=None,
         cancel_event=None,
         capture=True,
+        capture_stderr=False,
     ) -> CommandResult:
+        if capture_stderr:
+            if cancel_event is not None:
+                raise ValueError("capture_stderr does not support cancel_event")
+            return self._run_separate(node, argv, log_path, cwd, timeout)
         # Captured PIPE output must be drained with communicate() to avoid a
         # pipe-full deadlock; that path supports a timeout but not mid-flight
         # cancellation, so route cancellable captured runs through start/wait.
@@ -207,6 +227,40 @@ class MininetCommandRunner(CommandRunner):
         handle = self._spawn(node, argv, log_path, cwd, capture=capture)
         deadline = time.monotonic() + timeout if timeout is not None else None
         return self.wait(handle, deadline=deadline, cancel_event=cancel_event)
+
+    def _run_separate(self, node, argv, log_path, cwd, timeout) -> CommandResult:
+        """Capture stderr separately from stdout.
+
+        stdout goes to ``log_path`` (keeping the log stdout-only) or is captured
+        when no log is given; stderr is always captured into the result.
+        """
+        argv = [str(a) for a in argv]
+        log_file: Optional[IO[bytes]] = open(log_path, "wb") if log_path else None
+        stdout = log_file if log_file is not None else subprocess.PIPE
+        try:
+            proc = self._popen(node, argv, cwd, stdout, subprocess.PIPE)
+        except BaseException:
+            if log_file is not None:
+                log_file.close()
+            raise
+        timed_out = False
+        try:
+            out, err = proc.communicate(timeout=timeout)
+        except subprocess.TimeoutExpired:
+            timed_out = True
+            _terminate_proc(proc)
+            out, err = proc.communicate()
+        finally:
+            if log_file is not None:
+                log_file.close()
+        stdout_text = "" if log_file is not None else _decode(out)
+        return CommandResult(
+            returncode=proc.returncode,
+            stdout=stdout_text,
+            stderr=_decode(err),
+            timed_out=timed_out,
+            log_path=log_path,
+        )
 
     def _run_captured(self, node, argv, cwd, timeout) -> CommandResult:
         """One-shot capture path (PIPE) using communicate to avoid deadlock."""
@@ -219,10 +273,9 @@ class MininetCommandRunner(CommandRunner):
             timed_out = True
             _terminate_proc(proc)
             out, _ = proc.communicate()
-        stdout = out.decode(errors="replace") if isinstance(out, bytes) else (out or "")
         return CommandResult(
             returncode=proc.returncode,
-            stdout=stdout,
+            stdout=_decode(out),
             timed_out=timed_out,
             log_path=None,
         )
@@ -307,6 +360,14 @@ class FakeCommandRunner(CommandRunner):
         self._wait_results: deque[CommandResult] = deque()
         self.on_start: Optional[Callable[[_FakeHandle], None]] = None
         self.on_wait: Optional[Callable[[_FakeHandle], None]] = None
+        # Argv-predicate hook for run(): given (node, argv) it may return a
+        # CommandResult to use for that call (else None falls through to the
+        # scripted/default result). Lets command-conditional tests — e.g. "the
+        # iptables rule fails but the route add succeeds" — drive results by
+        # what was actually run rather than by fragile call order.
+        self.on_run: Optional[
+            Callable[[str, list[str]], Optional[CommandResult]]
+        ] = None
         self._lock = threading.Lock()
 
     def script_run(
@@ -344,19 +405,33 @@ class FakeCommandRunner(CommandRunner):
         timeout=None,
         cancel_event=None,
         capture=True,
+        capture_stderr=False,
     ) -> CommandResult:
+        argv_list = [str(a) for a in argv]
         with self._lock:
             self.runs.append(
                 {
                     "node": node,
-                    "argv": [str(a) for a in argv],
+                    "argv": argv_list,
                     "log_path": log_path,
                     "cwd": cwd,
                     "timeout": timeout,
                     "capture": capture,
+                    "capture_stderr": capture_stderr,
                     "cancel_event": cancel_event,
                 }
             )
+            # No hook: keep recording + scripted-deque consumption atomic so
+            # concurrent runs record and consume in the same order.
+            if self.on_run is None:
+                res = self._run_results.popleft() if self._run_results else None
+                return self._clone(res, log_path) if res is not None else CommandResult(
+                    0, log_path=log_path
+                )
+        hooked = self.on_run(node, argv_list)
+        if hooked is not None:
+            return self._clone(hooked, log_path)
+        with self._lock:
             res = self._run_results.popleft() if self._run_results else None
         if res is not None:
             return self._clone(res, log_path)

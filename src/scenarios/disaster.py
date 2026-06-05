@@ -26,6 +26,7 @@ from ..runtime.bridge import (
     parse_ext_args,
     setup_bridges,
 )
+from ..runtime.command_runner import MininetCommandRunner
 from ..runtime.content_ops import ContentOperationRunner
 from ..runtime.monitoring import Monitor
 from ..runtime.scheduler import EventScheduler
@@ -191,8 +192,9 @@ class DisasterScenario(BaseScenario):
                 scheme=self.scheme,
             )
 
+        ifconfig_runner = MininetCommandRunner(net)
         for idx in range(args.hosts):
-            info(net.hosts[idx].cmd("ifconfig"))
+            info(ifconfig_runner.run(f"h{idx}", ["ifconfig"]).stdout)
 
         for node_a, node_b, bandwidth in parse_bw_args(args.bw):
             set_link_bandwidth(net, node_a, node_b, bandwidth)
@@ -303,8 +305,11 @@ class DisasterScenario(BaseScenario):
             self.webui.start()
             info(f"[webui] dashboard: http://0.0.0.0:{webui_port}/\n")
             # Pre-populate initial host state before Monitor starts polling
+            webui_runner = MininetCommandRunner(net)
             for idx in range(args.hosts):
-                output = net.hosts[idx].cmd(f"cefstatus -d ./h{idx}")
+                output = webui_runner.run(
+                    f"h{idx}", ["cefstatus", "-d", f"./h{idx}"]
+                ).stdout
                 self.dashboard.record_monitor({
                     "elapsed_sec": 0.0, "type": "cefstatus", "host": idx, "output": output,
                 })

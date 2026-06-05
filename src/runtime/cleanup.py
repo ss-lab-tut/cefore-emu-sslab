@@ -3,6 +3,7 @@
 from mininet.clean import cleanup as mn_cleanup
 from mininet.log import info
 
+from .command_runner import MininetCommandRunner
 from .template import cleanup_node_dirs
 
 _CEF_PATTERNS = (
@@ -21,10 +22,13 @@ _CEF_PATTERNS = (
 def kill_cef_processes(net) -> None:
     """Force-kill remaining Cefore commands while host namespaces still exist."""
     info("*** Killing remaining Cefore processes\n")
+    runner = MininetCommandRunner(net)
     for host in net.hosts:
         for pattern in _CEF_PATTERNS:
             try:
-                host.cmd(f'pkill -9 -f "{pattern}" || true')
+                # pkill exits non-zero when nothing matched; that is fine here
+                # (the old shell used "|| true"), so the returncode is ignored.
+                runner.run(host.name, ["pkill", "-9", "-f", pattern])
             except AssertionError:
                 info(
                     f"[warn] kill_cef_processes: {host.name} shell busy, skipping {pattern}\n"

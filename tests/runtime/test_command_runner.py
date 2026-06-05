@@ -141,3 +141,46 @@ class TestMininetCommandRunnerRoot:
         assert runner.poll(handle) is None
         runner.wait(handle, deadline=time.monotonic() + 5)
         assert runner.poll(handle) == 0
+
+
+class TestMininetCommandRunnerSeparateStderr:
+    def test_capture_stderr_splits_streams(self):
+        runner = MininetCommandRunner(net=None)
+        result = runner.run(
+            ROOT_SENTINEL,
+            ["sh", "-c", "echo out; echo err 1>&2"],
+            capture_stderr=True,
+        )
+        assert result.returncode == 0
+        assert result.stdout.strip() == "out"
+        assert result.stderr.strip() == "err"
+
+    def test_capture_stderr_keeps_log_stdout_only(self, tmp_path):
+        log = tmp_path / "split.log"
+        runner = MininetCommandRunner(net=None)
+        result = runner.run(
+            ROOT_SENTINEL,
+            ["sh", "-c", "echo out; echo err 1>&2"],
+            log_path=str(log),
+            capture_stderr=True,
+        )
+        # Log holds stdout only; stderr is returned separately, not merged.
+        assert log.read_text().strip() == "out"
+        assert result.stdout == ""
+        assert result.stderr.strip() == "err"
+
+    def test_capture_stderr_propagates_returncode(self):
+        runner = MininetCommandRunner(net=None)
+        result = runner.run(
+            ROOT_SENTINEL, ["sh", "-c", "exit 3"], capture_stderr=True
+        )
+        assert result.returncode == 3
+
+    def test_capture_stderr_honours_timeout(self):
+        runner = MininetCommandRunner(net=None)
+        start = time.monotonic()
+        result = runner.run(
+            ROOT_SENTINEL, ["sleep", "10"], capture_stderr=True, timeout=0.2
+        )
+        assert time.monotonic() - start < 5
+        assert result.timed_out is True

@@ -100,10 +100,11 @@ class MeshScenario(BaseScenario):
     def configure(self, net):
         apply_ip_addr(net, self.topo.mesh_links, scheme=self.scheme)
 
+        runner = MininetCommandRunner(net)
         for idx in range(self.host_num):
             node_name = f"h{idx}"
             print(node_name, "command:", "ifconfig")
-            info(net.hosts[idx].cmd("ifconfig"))
+            info(runner.run(node_name, ["ifconfig"]).stdout)
 
         log_dir = str(self.run_dir) if self.run_dir != Path(".") else None
         for idx in range(self.host_num):

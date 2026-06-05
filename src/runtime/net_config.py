@@ -1,17 +1,11 @@
 """Network configuration application (Mininet-dependent)."""
 
-import shlex
-
 from mininet.log import info
 
 from ..core.addressing import AddressingScheme
 from ..core.fib import get_routing_strategy
 from ..core.protocols import normalize_route_protocol
-
-
-def _route_protocol_arg(protocol: str | None) -> str:
-    """Return a shell-safe route protocol argument."""
-    return shlex.quote(normalize_route_protocol(protocol))
+from .command_runner import MininetCommandRunner
 
 
 def apply_ip_addr(net, mesh_links, scheme=None):
@@ -24,6 +18,7 @@ def apply_ip_addr(net, mesh_links, scheme=None):
     """
     if scheme is None:
         scheme = AddressingScheme()
+    runner = MininetCommandRunner(net)
     for link in mesh_links:
         subnet = link["subnet"]
         if "hosts" in link:
@@ -31,9 +26,9 @@ def apply_ip_addr(net, mesh_links, scheme=None):
                 eth_idx = link["host_eth"][host_idx]
                 node_name = f"h{host_idx}"
                 ip = scheme.host_ip(subnet, host_idx)
-                command = f"ifconfig {node_name}-eth{eth_idx} {ip}"
-                print(node_name, "command:", command)
-                net.hosts[host_idx].cmd(command)
+                argv = ["ifconfig", f"{node_name}-eth{eth_idx}", str(ip)]
+                print(node_name, "command:", argv)
+                runner.run(node_name, argv)
             continue
         for host_idx, eth_idx in (
             (link["host_a"], link["host_a_eth"]),
@@ -41,9 +36,9 @@ def apply_ip_addr(net, mesh_links, scheme=None):
         ):
             node_name = f"h{host_idx}"
             ip = scheme.host_ip(subnet, host_idx)
-            command = f"ifconfig {node_name}-eth{eth_idx} {ip}"
-            print(node_name, "command:", command)
-            net.hosts[host_idx].cmd(command)
+            argv = ["ifconfig", f"{node_name}-eth{eth_idx}", str(ip)]
+            print(node_name, "command:", argv)
+            runner.run(node_name, argv)
 
 
 def apply_fib_routes(net, routes, source: int | None = None):
@@ -55,13 +50,17 @@ def apply_fib_routes(net, routes, source: int | None = None):
         source: Optional host index filter. When provided, only routes for that
             source host are applied.
     """
+    runner = MininetCommandRunner(net)
     for route in routes:
         if source is not None and route.source != source:
             continue
         node_name = f"h{route.source}"
-        command = f"cefroute add {shlex.quote(route.prefix)} udp {shlex.quote(route.next_hop_ip)} -d ./{node_name}"
-        print(node_name, "command:", command)
-        info(net.hosts[route.source].cmd(command))
+        argv = [
+            "cefroute", "add", route.prefix, "udp", route.next_hop_ip,
+            "-d", f"./{node_name}",
+        ]
+        print(node_name, "command:", argv)
+        info(runner.run(node_name, argv).stdout)
 
 
 def apply_fib(
@@ -97,12 +96,12 @@ def cefroute_del(net, host_idx, prefix, protocol, next_hop, node_dir=None):
     node_name = f"h{host_idx}"
     if node_dir is None:
         node_dir = f"./{node_name}"
-    command = (
-        f"cefroute del {shlex.quote(prefix)} {_route_protocol_arg(protocol)} "
-        f"{shlex.quote(next_hop)} -d {node_dir}"
-    )
-    print(node_name, "command:", command)
-    info(net.hosts[host_idx].cmd(command))
+    argv = [
+        "cefroute", "del", prefix, normalize_route_protocol(protocol), next_hop,
+        "-d", node_dir,
+    ]
+    print(node_name, "command:", argv)
+    info(MininetCommandRunner(net).run(node_name, argv).stdout)
 
 
 def cefroute_enable(net, host_idx, prefix, protocol, next_hop, node_dir=None):
@@ -119,9 +118,9 @@ def cefroute_enable(net, host_idx, prefix, protocol, next_hop, node_dir=None):
     node_name = f"h{host_idx}"
     if node_dir is None:
         node_dir = f"./{node_name}"
-    command = (
-        f"cefroute enable {shlex.quote(prefix)} {_route_protocol_arg(protocol)} "
-        f"{shlex.quote(next_hop)} -d {node_dir}"
-    )
-    print(node_name, "command:", command)
-    info(net.hosts[host_idx].cmd(command))
+    argv = [
+        "cefroute", "enable", prefix, normalize_route_protocol(protocol), next_hop,
+        "-d", node_dir,
+    ]
+    print(node_name, "command:", argv)
+    info(MininetCommandRunner(net).run(node_name, argv).stdout)

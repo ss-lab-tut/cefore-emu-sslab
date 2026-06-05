@@ -5,8 +5,6 @@ Provides two bridging mechanisms:
 - Root namespace bridge: BridgeManager for cross-VM communication via Mininet switches
 """
 
-import shlex
-import subprocess
 from dataclasses import dataclass
 from typing import Any, Callable
 
@@ -15,6 +13,7 @@ from mininet.net import Mininet
 from mininet.node import Node
 
 from ..core.addressing import AddressingScheme
+from .command_runner import ROOT_SENTINEL, MininetCommandRunner
 
 
 # ---------------------------------------------------------------------------
@@ -30,10 +29,10 @@ class CleanupAction:
         description: Human-readable description for error reporting.
         category: Category tag (sysctl, nat, route, flow, proxy_arp).
         mandatory: True = failure must be surfaced; False = best-effort.
-        execute: Callable returning ``(rc, detail)``. Producers based on
-            ``Node.pexec()`` must normalize the 3-tuple
-            ``(stdout, stderr, rc)`` to this 2-tuple form so ``cleanup()``
-            can unpack uniformly.
+        execute: Callable returning ``(rc, detail)``. Producers based on the
+            CommandRunner seam must normalize the ``CommandResult`` to this
+            2-tuple form (via ``_result_to_rc_detail``) so ``cleanup()`` can
+            unpack uniformly.
     """
     description: str
     category: str
@@ -53,11 +52,10 @@ class TeardownError(RuntimeError):
         super().__init__("mandatory cleanup failures: " + "; ".join(msgs))
 
 
-def _pexec_to_rc_detail(pexec_result: tuple) -> tuple[int, str]:
-    """Normalize ``Node.pexec()``'s ``(stdout, stderr, rc)`` 3-tuple to the
-    ``(rc, detail)`` 2-tuple shape ``cleanup()`` expects."""
-    _, err, rc = pexec_result
-    return rc, (err or "").strip()
+def _result_to_rc_detail(result) -> tuple[int, str]:
+    """Normalize a ``CommandResult`` to the ``(rc, detail)`` 2-tuple shape
+    ``cleanup()`` expects (detail is the stripped stderr)."""
+    return result.returncode, (result.stderr or "").strip()
 
 
 # ---------------------------------------------------------------------------
@@ -93,29 +91,35 @@ class ExternalBridgeError(RuntimeError):
 
 
 def _run_root_cmd_vec(args: list[str]) -> tuple[int, str, str]:
-    """Execute a command in the root namespace with argument vectors.
+    """Execute a command in the root namespace through the CommandRunner seam.
 
     Args:
-        args: Command and arguments as a list (shell=False).
+        args: Command and arguments as a list (no shell).
 
     Returns:
         Tuple of (returncode, stdout, stderr).
     """
-    result = subprocess.run(args, shell=False, capture_output=True, text=True)
-    return result.returncode, result.stdout, result.stderr
+    result = MininetCommandRunner(None).run(
+        ROOT_SENTINEL, list(args), capture_stderr=True
+    )
+    rc = result.returncode if result.returncode is not None else 0
+    return rc, result.stdout, result.stderr
 
 
-def _run_root_cmd_host(host, cmd: str) -> tuple[str, str, int]:
-    """Execute a command inside a Mininet host namespace.
+def _run_host_cmd_vec(runner, host_name: str, argv: list[str]) -> tuple[str, str, int]:
+    """Execute a command inside a Mininet host namespace via the runner.
 
     Args:
-        host: Mininet host object.
-        cmd: Command string to execute.
+        runner: CommandRunner used to execute the command.
+        host_name: Target host node name (e.g. "h3").
+        argv: Command and arguments as a list (no shell).
 
     Returns:
-        Tuple of (stdout, stderr, returncode) from host.pexec().
+        Tuple of (stdout, stderr, returncode).
     """
-    return host.pexec(cmd)
+    result = runner.run(host_name, argv, capture_stderr=True)
+    rc = result.returncode if result.returncode is not None else 0
+    return result.stdout, result.stderr, rc
 
 
 # ---------------------------------------------------------------------------
@@ -246,6 +250,7 @@ def attach_external_via_bridge(
     if host is None:
         info(f"[bridge] host {host_name} not found\n")
         return
+    host_runner = MininetCommandRunner(net)
 
     success, link_data, err = _inspect_link(phy_intf)
     if not success:
@@ -391,7 +396,9 @@ def attach_external_via_bridge(
         raise ExternalBridgeError("veth-host-ns-move failure", rb_failures)
     record["veth_host_ns_moved"] = True
 
-    out, err, rc = _run_root_cmd_host(host, f"ip link set {veth_host} up")
+    out, err, rc = _run_host_cmd_vec(
+        host_runner, host_name, ["ip", "link", "set", veth_host, "up"]
+    )
     if rc != 0:
         record["veth_host_up_failed"] = True
         rb_failures = _abort("veth-host-up-in-ns failure")
@@ -407,14 +414,17 @@ def attach_external_via_bridge(
         if rc != 0:
             rb_failures = _abort("veth-root-mtu failure")
             raise ExternalBridgeError("veth-root-mtu failure", rb_failures)
-        out, err, rc = _run_root_cmd_host(host, f"ip link set {veth_host} mtu {mtu}")
+        out, err, rc = _run_host_cmd_vec(
+            host_runner, host_name, ["ip", "link", "set", veth_host, "mtu", str(mtu)]
+        )
         if rc != 0:
             rb_failures = _abort("veth-host-mtu failure")
             raise ExternalBridgeError("veth-host-mtu failure", rb_failures)
         record["mtu_set"] = True
 
-    q_ip = shlex.quote(ip)
-    out, err, rc = _run_root_cmd_host(host, f"ip addr add {q_ip} dev {veth_host}")
+    out, err, rc = _run_host_cmd_vec(
+        host_runner, host_name, ["ip", "addr", "add", ip, "dev", veth_host]
+    )
     if rc != 0:
         rb_failures = _abort("static-ip failure")
         raise ExternalBridgeError("static-ip failure", rb_failures)
@@ -640,14 +650,26 @@ class BridgeManager:
 
     Cleanup is driven by ``cleanup_actions``: a list of ``CleanupAction``
     entries appended by each producer at setup time and drained in reverse
-    order at teardown. ``pexec()``-based registrations are normalized to
-    the ``(rc, detail)`` contract via ``_pexec_to_rc_detail``.
+    order at teardown. CommandRunner-based registrations are normalized to
+    the ``(rc, detail)`` contract via ``_result_to_rc_detail``.
     """
 
-    def __init__(self):
+    def __init__(self, runner=None):
         self.root_node = None
         self.root_intf = None
         self.cleanup_actions: list[CleanupAction] = []
+        # Injectable CommandRunner. When None, a real MininetCommandRunner is
+        # built per use: net-less for root-namespace commands (ROOT_SENTINEL
+        # routes to a plain subprocess) and net-bound for host-netns commands.
+        self._runner = runner
+
+    def _root_runner(self):
+        """Runner for root-namespace commands (ROOT_SENTINEL, no net needed)."""
+        return self._runner or MininetCommandRunner(None)
+
+    def _host_runner(self, net):
+        """Runner for host-netns commands (needs net to resolve the host)."""
+        return self._runner or MininetCommandRunner(net)
 
     def get_or_create_root(self) -> Node:
         """Get or create the root namespace node."""
@@ -681,16 +703,18 @@ class BridgeManager:
 
         root.setIP(root_ip, intf=self.root_intf)
 
-        q_routes = shlex.quote(local_routes)
-        cmd = f"route add -net {q_routes} dev {self.root_intf}"
-        info(f"*** Adding route in root ns: {cmd}\n")
-        root.cmd(cmd)
-        del_cmd = f"route del -net {q_routes}"
+        runner = self._root_runner()
+        add_argv = ["route", "add", "-net", local_routes, "dev", str(self.root_intf)]
+        info(f"*** Adding route in root ns: {add_argv}\n")
+        runner.run(ROOT_SENTINEL, add_argv, capture_stderr=True)
+        del_argv = ["route", "del", "-net", local_routes]
         self.cleanup_actions.append(CleanupAction(
-            description=f"remove route: {del_cmd}",
+            description=f"remove route: {' '.join(del_argv)}",
             category="route",
             mandatory=False,
-            execute=lambda c=del_cmd, n=root: _pexec_to_rc_detail(n.pexec(c)),
+            execute=lambda r=runner, a=del_argv: _result_to_rc_detail(
+                r.run(ROOT_SENTINEL, a, capture_stderr=True)
+            ),
         ))
 
     def add_host_route(
@@ -707,39 +731,40 @@ class BridgeManager:
             info(f"*** Warning: host {host_name} not found\n")
             return
 
-        q_dev = shlex.quote(dev) if dev else ""
-        dev_clause = f" dev {q_dev}" if dev else ""
-        q_dest = shlex.quote(dest_network)
-        q_gw = shlex.quote(gateway)
+        runner = self._host_runner(net)
+        dev_clause = ["dev", dev] if dev else []
         if dest_network in ("default", "0.0.0.0/0"):
-            cmd = f"ip route replace default via {q_gw}{dev_clause}"
-            del_cmd = "ip route del default"
+            add_argv = ["ip", "route", "replace", "default", "via", gateway] + dev_clause
+            del_argv = ["ip", "route", "del", "default"]
         else:
-            cmd = f"route add -net {q_dest} gw {q_gw}{dev_clause}"
-            del_cmd = f"route del -net {q_dest}"
-        info(f"*** Adding route in {host_name}: {cmd}\n")
-        host.cmd(cmd)
+            add_argv = ["route", "add", "-net", dest_network, "gw", gateway] + dev_clause
+            del_argv = ["route", "del", "-net", dest_network]
+        info(f"*** Adding route in {host_name}: {add_argv}\n")
+        runner.run(host_name, add_argv, capture_stderr=True)
         self.cleanup_actions.append(CleanupAction(
-            description=f"remove host route: {del_cmd}",
+            description=f"remove host route: {' '.join(del_argv)}",
             category="route",
             mandatory=False,
-            execute=lambda c=del_cmd, n=host: _pexec_to_rc_detail(n.pexec(c)),
+            execute=lambda r=runner, name=host_name, a=del_argv: _result_to_rc_detail(
+                r.run(name, a, capture_stderr=True)
+            ),
         ))
 
     def add_root_route(self, dest_network: str, gateway: str) -> None:
         """Add route from root namespace to external network."""
-        root = self.get_or_create_root()
-        q_dest = shlex.quote(dest_network)
-        q_gw = shlex.quote(gateway)
-        cmd = f"route add -net {q_dest} gw {q_gw}"
-        info(f"*** Adding route in root ns: {cmd}\n")
-        root.cmd(cmd)
-        del_cmd = f"route del -net {q_dest}"
+        self.get_or_create_root()
+        runner = self._root_runner()
+        add_argv = ["route", "add", "-net", dest_network, "gw", gateway]
+        info(f"*** Adding route in root ns: {add_argv}\n")
+        runner.run(ROOT_SENTINEL, add_argv, capture_stderr=True)
+        del_argv = ["route", "del", "-net", dest_network]
         self.cleanup_actions.append(CleanupAction(
-            description=f"remove root route: {del_cmd}",
+            description=f"remove root route: {' '.join(del_argv)}",
             category="route",
             mandatory=False,
-            execute=lambda c=del_cmd, n=root: _pexec_to_rc_detail(n.pexec(c)),
+            execute=lambda r=runner, a=del_argv: _result_to_rc_detail(
+                r.run(ROOT_SENTINEL, a, capture_stderr=True)
+            ),
         ))
 
     def enable_ip_forwarding(self) -> None:
@@ -748,29 +773,40 @@ class BridgeManager:
         Captures the exact prior value and registers a mandatory cleanup
         action to restore it.
         """
-        root = self.get_or_create_root()
+        self.get_or_create_root()
+        runner = self._root_runner()
 
-        out, err, rc = root.pexec("sysctl -n net.ipv4.ip_forward")
-        if rc != 0:
+        read = runner.run(
+            ROOT_SENTINEL, ["sysctl", "-n", "net.ipv4.ip_forward"], capture_stderr=True
+        )
+        if read.returncode != 0:
             raise RuntimeError(
-                f"failed to read ip_forward (rc={rc}): {(err or '').strip()}"
+                f"failed to read ip_forward (rc={read.returncode}): "
+                f"{(read.stderr or '').strip()}"
             )
-        prior = out.strip()
+        prior = read.stdout.strip()
         if prior not in ("0", "1"):
             raise RuntimeError(f"invalid ip_forward value '{prior}'")
 
-        out, err, rc = root.pexec("sysctl -w net.ipv4.ip_forward=1")
-        if rc != 0:
+        write = runner.run(
+            ROOT_SENTINEL, ["sysctl", "-w", "net.ipv4.ip_forward=1"], capture_stderr=True
+        )
+        if write.returncode != 0:
             raise RuntimeError(
-                f"failed to enable ip_forward (rc={rc}): {(err or '').strip()}"
+                f"failed to enable ip_forward (rc={write.returncode}): "
+                f"{(write.stderr or '').strip()}"
             )
 
         self.cleanup_actions.append(CleanupAction(
             description=f"restore ip_forward to {prior}",
             category="sysctl",
             mandatory=True,
-            execute=lambda pv=prior, n=root: _pexec_to_rc_detail(
-                n.pexec(f"sysctl -w net.ipv4.ip_forward={pv}")
+            execute=lambda r=runner, pv=prior: _result_to_rc_detail(
+                r.run(
+                    ROOT_SENTINEL,
+                    ["sysctl", "-w", f"net.ipv4.ip_forward={pv}"],
+                    capture_stderr=True,
+                )
             ),
         ))
 
@@ -780,10 +816,13 @@ class BridgeManager:
         Transactional: if any rule fails to install, previously-installed
         rules are rolled back in reverse before raising.
         """
-        root = self.get_or_create_root()
+        self.get_or_create_root()
+        runner = self._root_runner()
         if out_intf is None:
-            result = root.cmd("ip route show default")
-            parts = result.split()
+            result = runner.run(
+                ROOT_SENTINEL, ["ip", "route", "show", "default"], capture_stderr=True
+            )
+            parts = result.stdout.split()
             if "dev" in parts:
                 idx = parts.index("dev")
                 if idx + 1 < len(parts):
@@ -793,51 +832,66 @@ class BridgeManager:
             return
 
         root_intf_name = str(self.root_intf)
-        q_routes = shlex.quote(local_routes)
-        q_out = shlex.quote(out_intf)
-        add_cmds = [
-            f"iptables -t nat -A POSTROUTING -s {q_routes} -o {q_out} -j MASQUERADE",
-            f"iptables -A FORWARD -i {root_intf_name} -o {q_out} -s {q_routes} -j ACCEPT",
-            f"iptables -A FORWARD -i {q_out} -o {root_intf_name} -d {q_routes} -m state --state RELATED,ESTABLISHED -j ACCEPT",
+        add_argvs = [
+            ["iptables", "-t", "nat", "-A", "POSTROUTING", "-s", local_routes,
+             "-o", out_intf, "-j", "MASQUERADE"],
+            ["iptables", "-A", "FORWARD", "-i", root_intf_name, "-o", out_intf,
+             "-s", local_routes, "-j", "ACCEPT"],
+            ["iptables", "-A", "FORWARD", "-i", out_intf, "-o", root_intf_name,
+             "-d", local_routes, "-m", "state", "--state",
+             "RELATED,ESTABLISHED", "-j", "ACCEPT"],
         ]
 
-        owned_rules: list[str] = []
-        for i, cmd in enumerate(add_cmds):
-            info(f"*** NAT: {cmd}\n")
-            out, err, rc = root.pexec(cmd)
-            if rc != 0:
+        def _to_del(argv):
+            return ["-D" if tok == "-A" else tok for tok in argv]
+
+        owned_rules: list[list[str]] = []
+        for i, add_argv in enumerate(add_argvs):
+            info(f"*** NAT: {add_argv}\n")
+            res = runner.run(ROOT_SENTINEL, add_argv, capture_stderr=True)
+            if res.returncode != 0:
                 rollback_failures = []
                 for owned in reversed(owned_rules):
-                    del_cmd = owned.replace(" -A ", " -D ")
-                    _, _, drc = root.pexec(del_cmd)
+                    del_argv = _to_del(owned)
+                    drc = runner.run(
+                        ROOT_SENTINEL, del_argv, capture_stderr=True
+                    ).returncode
                     if drc != 0:
-                        rollback_failures.append((del_cmd, drc))
-                msg = f"NAT rule {i} failed (rc={rc}): {(err or '').strip()}"
+                        rollback_failures.append((" ".join(del_argv), drc))
+                msg = (
+                    f"NAT rule {i} failed (rc={res.returncode}): "
+                    f"{(res.stderr or '').strip()}"
+                )
                 if rollback_failures:
                     msg += f"; rollback failures: {rollback_failures}"
                 raise RuntimeError(msg)
-            owned_rules.append(cmd)
+            owned_rules.append(add_argv)
 
-        for cmd in owned_rules:
-            del_cmd = cmd.replace(" -A ", " -D ")
+        for add_argv in owned_rules:
+            del_argv = _to_del(add_argv)
             self.cleanup_actions.append(CleanupAction(
-                description=f"delete NAT rule: {del_cmd}",
+                description=f"delete NAT rule: {' '.join(del_argv)}",
                 category="nat",
                 mandatory=True,
-                execute=lambda c=del_cmd, n=root: _pexec_to_rc_detail(n.pexec(c)),
+                execute=lambda r=runner, a=del_argv: _result_to_rc_detail(
+                    r.run(ROOT_SENTINEL, a, capture_stderr=True)
+                ),
             ))
 
     def enable_normal_flow(self, net: Mininet, switch_name: str) -> None:
         """Add NORMAL action flow to OVS switch for L2 learning bridge behavior."""
-        root = self.get_or_create_root()
-        q_sw = shlex.quote(switch_name)
-        root.cmd(f"ovs-ofctl add-flow {q_sw} priority=0,actions=NORMAL")
-        del_cmd = f"ovs-ofctl del-flows {q_sw} --strict priority=0"
+        self.get_or_create_root()
+        runner = self._root_runner()
+        add_argv = ["ovs-ofctl", "add-flow", switch_name, "priority=0,actions=NORMAL"]
+        runner.run(ROOT_SENTINEL, add_argv, capture_stderr=True)
+        del_argv = ["ovs-ofctl", "del-flows", switch_name, "--strict", "priority=0"]
         self.cleanup_actions.append(CleanupAction(
-            description=f"remove OVS flow: {del_cmd}",
+            description=f"remove OVS flow: {' '.join(del_argv)}",
             category="flow",
             mandatory=False,
-            execute=lambda c=del_cmd, n=root: _pexec_to_rc_detail(n.pexec(c)),
+            execute=lambda r=runner, a=del_argv: _result_to_rc_detail(
+                r.run(ROOT_SENTINEL, a, capture_stderr=True)
+            ),
         ))
 
     def enable_proxy_arp(self) -> None:
@@ -856,44 +910,54 @@ class BridgeManager:
         I-PA-5. The raised exception preserves BOTH the all-write failure
                 detail AND the rollback-failure detail.
         """
-        root = self.get_or_create_root()
+        self.get_or_create_root()
+        runner = self._root_runner()
         if self.root_intf is None:
             info("*** Warning: root interface not set, cannot enable proxy ARP\n")
             return
 
         root_intf_name = str(self.root_intf)
 
-        out, err, rc = root.pexec(
-            f"sysctl -n net.ipv4.conf.{root_intf_name}.proxy_arp"
+        read_iface = runner.run(
+            ROOT_SENTINEL,
+            ["sysctl", "-n", f"net.ipv4.conf.{root_intf_name}.proxy_arp"],
+            capture_stderr=True,
         )
-        if rc != 0:
+        if read_iface.returncode != 0:
             raise RuntimeError(
-                f"failed to read proxy_arp for {root_intf_name} (rc={rc}): "
-                f"{(err or '').strip()}"
+                f"failed to read proxy_arp for {root_intf_name} "
+                f"(rc={read_iface.returncode}): {(read_iface.stderr or '').strip()}"
             )
-        prior_iface = out.strip()
+        prior_iface = read_iface.stdout.strip()
         if prior_iface not in ("0", "1"):
             raise RuntimeError(
                 f"invalid proxy_arp value '{prior_iface}' for {root_intf_name}"
             )
 
-        out, err, rc = root.pexec("sysctl -n net.ipv4.conf.all.proxy_arp")
-        if rc != 0:
+        read_all = runner.run(
+            ROOT_SENTINEL,
+            ["sysctl", "-n", "net.ipv4.conf.all.proxy_arp"],
+            capture_stderr=True,
+        )
+        if read_all.returncode != 0:
             raise RuntimeError(
-                f"failed to read proxy_arp all (rc={rc}): {(err or '').strip()}"
+                f"failed to read proxy_arp all (rc={read_all.returncode}): "
+                f"{(read_all.stderr or '').strip()}"
             )
-        prior_all = out.strip()
+        prior_all = read_all.stdout.strip()
         if prior_all not in ("0", "1"):
             raise RuntimeError(f"invalid proxy_arp value '{prior_all}' for all")
 
         info(f"*** Proxy ARP: sysctl -w net.ipv4.conf.{root_intf_name}.proxy_arp=1\n")
-        out, err, rc = root.pexec(
-            f"sysctl -w net.ipv4.conf.{root_intf_name}.proxy_arp=1"
+        write_iface = runner.run(
+            ROOT_SENTINEL,
+            ["sysctl", "-w", f"net.ipv4.conf.{root_intf_name}.proxy_arp=1"],
+            capture_stderr=True,
         )
-        if rc != 0:
+        if write_iface.returncode != 0:
             raise RuntimeError(
-                f"failed to enable proxy_arp for {root_intf_name} (rc={rc}): "
-                f"{(err or '').strip()}"
+                f"failed to enable proxy_arp for {root_intf_name} "
+                f"(rc={write_iface.returncode}): {(write_iface.stderr or '').strip()}"
             )
 
         # I-PA-1: register the exact-prior-value restoration immediately after
@@ -902,17 +966,26 @@ class BridgeManager:
             description=f"restore proxy_arp {root_intf_name} to {prior_iface}",
             category="proxy_arp",
             mandatory=True,
-            execute=lambda pv=prior_iface, n=root: _pexec_to_rc_detail(
-                n.pexec(f"sysctl -w net.ipv4.conf.{root_intf_name}.proxy_arp={pv}")
+            execute=lambda r=runner, pv=prior_iface: _result_to_rc_detail(
+                r.run(
+                    ROOT_SENTINEL,
+                    ["sysctl", "-w", f"net.ipv4.conf.{root_intf_name}.proxy_arp={pv}"],
+                    capture_stderr=True,
+                )
             ),
         )
         self.cleanup_actions.append(iface_restore)
 
         info("*** Proxy ARP: sysctl -w net.ipv4.conf.all.proxy_arp=1\n")
-        out, err, rc = root.pexec("sysctl -w net.ipv4.conf.all.proxy_arp=1")
-        if rc != 0:
+        write_all = runner.run(
+            ROOT_SENTINEL,
+            ["sysctl", "-w", "net.ipv4.conf.all.proxy_arp=1"],
+            capture_stderr=True,
+        )
+        if write_all.returncode != 0:
             setup_err = (
-                f"failed to enable proxy_arp all (rc={rc}): {(err or '').strip()}"
+                f"failed to enable proxy_arp all (rc={write_all.returncode}): "
+                f"{(write_all.stderr or '').strip()}"
             )
             # Immediate rollback attempt via the same status-aware helper.
             try:
@@ -944,8 +1017,12 @@ class BridgeManager:
             description=f"restore proxy_arp all to {prior_all}",
             category="proxy_arp",
             mandatory=True,
-            execute=lambda pv=prior_all, n=root: _pexec_to_rc_detail(
-                n.pexec(f"sysctl -w net.ipv4.conf.all.proxy_arp={pv}")
+            execute=lambda r=runner, pv=prior_all: _result_to_rc_detail(
+                r.run(
+                    ROOT_SENTINEL,
+                    ["sysctl", "-w", f"net.ipv4.conf.all.proxy_arp={pv}"],
+                    capture_stderr=True,
+                )
             ),
         ))
 
@@ -1126,9 +1203,20 @@ def setup_bridges(
                     dev=dev,
                 )
 
+            # Route through the bridge manager's host runner so an injected
+            # (fake) runner intercepts the write instead of truncating the real
+            # /etc/resolv.conf.
+            resolv_runner = bridge_manager._host_runner(net)
             for host_idx in hosts:
-                host = net.get(f"h{host_idx}")
-                host.cmd("echo 'nameserver 8.8.8.8' > /etc/resolv.conf")
+                # The seam owns the redirect: printf's stdout is written to the
+                # (host-shared) /etc/resolv.conf via log_path, replacing the old
+                # shell "echo ... > /etc/resolv.conf".
+                resolv_runner.run(
+                    f"h{host_idx}",
+                    ["printf", "nameserver 8.8.8.8\n"],
+                    log_path="/etc/resolv.conf",
+                    capture_stderr=True,
+                )
 
         use_nat = config.get("nat", False)
         if use_nat:
