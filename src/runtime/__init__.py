@@ -1,6 +1,5 @@
 """Runtime layer (Mininet/Cefore integration)."""
 
-from .base import FakeRuntime, MininetRuntime, Runtime
 from .bridge import (
     attach_external_interface,
     attach_external_via_bridge,
@@ -61,10 +60,6 @@ from .viz import (
 )
 
 __all__ = [
-    # base
-    "Runtime",
-    "MininetRuntime",
-    "FakeRuntime",
     # cefore
     "wait_for_cefnetd",
     "start_csmgrd",

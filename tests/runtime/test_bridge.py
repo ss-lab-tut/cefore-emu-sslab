@@ -7,7 +7,7 @@ import pytest
 
 from src.core.addressing import AddressingScheme
 from src.runtime.bridge import _resolve_root_ip, setup_bridges
-from src.runtime.command_runner import CommandResult, FakeCommandRunner
+from src.runtime.command_runner import ROOT_SENTINEL, CommandResult, FakeCommandRunner
 
 
 def _pexec_runner(holder):
@@ -118,6 +118,142 @@ class TestSetupBridgesSchemeWiring:
             except Exception:
                 pass
         assert resolved_ips and resolved_ips[0] == "192.168.3.254/24"
+
+
+class TestSetupBridgesCommandRunnerWiring:
+    """Verify setup_bridges reaches bridge root/host paths through one runner."""
+
+    def test_setup_bridges_uses_injected_runner_for_root_host_and_resolv(self):
+        from src.runtime.bridge import BridgeManager
+
+        fake = FakeCommandRunner()
+
+        def on_run(node, argv):
+            if argv == ["sysctl", "-n", "net.ipv4.ip_forward"]:
+                return CommandResult(0, stdout="0\n")
+            if argv[:3] == ["sysctl", "-n", "net.ipv4.conf.root-eth0.proxy_arp"]:
+                return CommandResult(0, stdout="0\n")
+            if argv == ["sysctl", "-n", "net.ipv4.conf.all.proxy_arp"]:
+                return CommandResult(0, stdout="0\n")
+            return CommandResult(0)
+
+        fake.on_run = on_run
+        manager = BridgeManager(runner=fake)
+        manager.root_node = MagicMock()
+
+        switch = MagicMock()
+        host = MagicMock()
+        net = MagicMock()
+        net.get = MagicMock(side_effect=lambda name: switch if name == "s1" else host)
+        net.addLink = MagicMock(return_value=MagicMock(intf1="root-eth0"))
+
+        setup_bridges(
+            net,
+            manager,
+            [
+                {
+                    "switch": "s1",
+                    "root_ip": "100.64.3.254/24",
+                    "local_routes": "100.64.0.0/16",
+                    "external_routes": "10.0.0.0/24",
+                    "gateway": "100.64.3.1",
+                    "hosts": [0, 1],
+                    "nat": True,
+                    "nat_out": "eth0",
+                    "proxy_arp": True,
+                    "vm_host_network": "172.20.0.0/16",
+                }
+            ],
+            host_num=2,
+            mesh_links=[
+                {
+                    "switch": "s1",
+                    "subnet": 3,
+                    "hosts": [0, 1],
+                    "host_eth": {0: 0, 1: 1},
+                }
+            ],
+        )
+
+        runs = [(r["node"], r["argv"], r["log_path"]) for r in fake.runs]
+
+        assert (
+            ROOT_SENTINEL,
+            ["route", "add", "-net", "100.64.0.0/16", "dev", "root-eth0"],
+            None,
+        ) in runs
+        assert (
+            ROOT_SENTINEL,
+            ["ovs-ofctl", "add-flow", "s1", "priority=0,actions=NORMAL"],
+            None,
+        ) in runs
+        assert (
+            "h0",
+            [
+                "route",
+                "add",
+                "-net",
+                "10.0.0.0/24",
+                "gw",
+                "100.64.3.254",
+                "dev",
+                "h0-eth0",
+            ],
+            None,
+        ) in runs
+        assert (
+            "h1",
+            [
+                "route",
+                "add",
+                "-net",
+                "172.20.0.0/16",
+                "gw",
+                "100.64.3.254",
+                "dev",
+                "h1-eth1",
+            ],
+            None,
+        ) in runs
+        assert (
+            "h0",
+            ["printf", "nameserver 8.8.8.8\n"],
+            "/etc/resolv.conf",
+        ) in runs
+        assert (
+            ROOT_SENTINEL,
+            [
+                "iptables",
+                "-t",
+                "nat",
+                "-A",
+                "POSTROUTING",
+                "-s",
+                "100.64.0.0/16",
+                "-o",
+                "eth0",
+                "-j",
+                "MASQUERADE",
+            ],
+            None,
+        ) in runs
+        assert (
+            ROOT_SENTINEL,
+            ["sysctl", "-w", "net.ipv4.ip_forward=1"],
+            None,
+        ) in runs
+        assert (
+            ROOT_SENTINEL,
+            ["sysctl", "-w", "net.ipv4.conf.root-eth0.proxy_arp=1"],
+            None,
+        ) in runs
+        assert {a.category for a in manager.cleanup_actions} >= {
+            "route",
+            "flow",
+            "sysctl",
+            "nat",
+            "proxy_arp",
+        }
 
 
 class TestCleanupArchitecture:

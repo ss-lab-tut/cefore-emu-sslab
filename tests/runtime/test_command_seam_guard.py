@@ -10,10 +10,6 @@ silently regress.
 Allowlist:
 - ``runtime/command_runner.py`` — the seam itself (the only legitimate place a
   real subprocess / ``host.popen`` is spawned).
-- ``runtime/base.py`` — the dead ``Runtime``/``MininetRuntime``/``FakeRuntime``
-  scaffold (zero callers; exported but never instantiated). It predates this
-  refactor and is out of scope; it should be removed in a follow-up, at which
-  point it can drop off this allowlist.
 """
 
 import re
@@ -24,7 +20,6 @@ _SRC = Path(__file__).resolve().parents[2] / "src"
 # Files permitted to contain raw command execution (see module docstring).
 _ALLOWLIST = {
     "runtime/command_runner.py",
-    "runtime/base.py",
 }
 
 # Matches a direct host/root command execution that bypasses the seam. Covers
