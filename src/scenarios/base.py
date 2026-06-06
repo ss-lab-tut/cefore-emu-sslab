@@ -6,6 +6,9 @@ from pathlib import Path
 from mininet.cli import CLI
 from mininet.log import info
 
+from ..runtime.cleanup import cleanup_all
+from ..runtime.template import cleanup_node_dirs
+
 
 def _propagate_failures(
     primary_exc: BaseException | None,
@@ -73,6 +76,49 @@ class BaseScenario(ABC):
         from mininet.net import Mininet
         return Mininet(topo=topo, waitConnected=True, **kwargs)
 
+    def run_main(self, net):
+        """Run the foreground stage after run_experiment() completes.
+
+        Default: enter an interactive CLI when should_run_cli() is True.
+        Subclasses gate the CLI (e.g. autotest) via should_run_cli() and wrap
+        it via before_cli()/after_cli() instead of overriding execute().
+        """
+        if self.should_run_cli():
+            self.before_cli(net)
+            self.run_cli(net)
+            self.after_cli(net)
+
+    def should_run_cli(self):
+        """Whether run_main() enters the interactive CLI. Default True."""
+        return True
+
+    def before_cli(self, net):
+        """Hook run immediately before the CLI (e.g. monitor background)."""
+
+    def after_cli(self, net):
+        """Hook run immediately after the CLI returns."""
+
+    def run_cli(self, net):
+        """Enter the interactive CLI. Override only to change the CLI itself."""
+        CLI(net)
+
+    def shutdown_runtime_resources(self):
+        """Stop background runtime resources before teardown.
+
+        Called first in the cleanup phase, while net is still up. Each resource
+        must be stopped independently; return a list of (stage, exception) for
+        any failures so they are aggregated with the teardown failures. Default
+        has no runtime resources and returns an empty list.
+        """
+        return []
+
+    def write_results(self):
+        """Persist results after all operational cleanup, before propagation.
+
+        Return a list of (stage, exception) for any failure. Default no-op.
+        """
+        return []
+
     def collect_debug_pre_teardown(self, net):
         """Collect debug artifacts while the network and daemons are alive.
 
@@ -106,8 +152,6 @@ class BaseScenario(ABC):
         are accumulated and re-raised after all cleanup completes.
         """
         import sys
-        from ..runtime.cleanup import cleanup_all
-        from ..runtime.template import cleanup_node_dirs
         net = None
         try:
             topo = self.build_topology()
@@ -115,7 +159,7 @@ class BaseScenario(ABC):
             net.start()
             self.configure(net)
             self.run_experiment(net)
-            CLI(net)
+            self.run_main(net)
         except KeyboardInterrupt:
             info("\nInterrupted by user.\n")
         finally:
@@ -124,6 +168,14 @@ class BaseScenario(ABC):
                 primary_exc = None
 
             cleanup_failures: list[tuple[str, BaseException]] = []
+
+            # Stop background runtime resources first, while net is still up.
+            # The hook returns per-resource failures; guard the call itself so a
+            # hook that raises cannot skip teardown/cleanup_all.
+            try:
+                cleanup_failures.extend(self.shutdown_runtime_resources())
+            except BaseException as exc:
+                cleanup_failures.append(("shutdown_runtime_resources", exc))
 
             if net is not None:
                 try:
@@ -151,6 +203,13 @@ class BaseScenario(ABC):
                     cleanup_node_dirs(getattr(self, "generated_node_dirs", []))
                 except BaseException as exc:
                     cleanup_failures.append(("cleanup_node_dirs", exc))
+
+            # Persist results after all operational cleanup. Guard the hook
+            # call itself so a raising hook still reaches propagation.
+            try:
+                cleanup_failures.extend(self.write_results())
+            except BaseException as exc:
+                cleanup_failures.append(("write_results", exc))
 
             # Propagate failures after all cleanup
             _propagate_failures(primary_exc, cleanup_failures)

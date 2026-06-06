@@ -183,11 +183,11 @@ def test_execute_interactive_enters_background_then_stops_after_cli(tmp_path):
         patch.object(scenario, "create_mininet", return_value=MagicMock()),
         patch.object(scenario, "configure"),
         patch.object(scenario, "run_experiment", side_effect=_set_monitor),
-        patch("src.scenarios.disaster.CLI", side_effect=lambda net: order.append("CLI")),
+        patch("src.scenarios.base.CLI", side_effect=lambda net: order.append("CLI")),
         patch.object(scenario, "collect_debug_pre_teardown"),
         patch.object(scenario, "teardown"),
         patch.object(scenario, "collect_debug_post_teardown"),
-        patch("src.scenarios.disaster.cleanup_all"),
+        patch("src.scenarios.base.cleanup_all"),
     ):
         scenario.execute()
 

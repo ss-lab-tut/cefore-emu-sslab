@@ -94,7 +94,7 @@ class TestL1DebugPreTeardown:
         ):
             with patch.object(scenario, "teardown") as mock_teardown:
                 with patch(
-                    "src.scenarios.disaster.cleanup_all"
+                    "src.scenarios.base.cleanup_all"
                 ) as mock_cleanup_all:
                     net = MagicMock()
 
@@ -141,7 +141,7 @@ class TestL2DebugPostTeardown:
                 "collect_debug_post_teardown",
                 side_effect=ValueError("path escapes run directory"),
             ):
-                with patch("src.scenarios.disaster.cleanup_all") as mock_cleanup:
+                with patch("src.scenarios.base.cleanup_all") as mock_cleanup:
                     net = MagicMock()
 
                     with patch.object(scenario, "build_topology"):
@@ -321,28 +321,37 @@ class TestL6ResultsWriteOrdering:
         def mock_cleanup_all(*args, **kwargs):
             call_order.append("cleanup_all")
 
+        def mock_write_results(*args, **kwargs):
+            call_order.append("results_write")
+            return []
+
         with patch.object(scenario, "teardown", side_effect=mock_teardown):
             with patch.object(scenario, "collect_debug_post_teardown"):
-                with patch(
-                    "src.scenarios.disaster.cleanup_all",
-                    side_effect=mock_cleanup_all,
+                with patch.object(
+                    scenario, "write_results", side_effect=mock_write_results
                 ):
-                    net = MagicMock()
+                    with patch(
+                        "src.scenarios.base.cleanup_all",
+                        side_effect=mock_cleanup_all,
+                    ):
+                        net = MagicMock()
 
-                    with patch.object(scenario, "build_topology"):
-                        with patch.object(scenario, "create_mininet", return_value=net):
-                            with patch.object(scenario, "configure"):
-                                with patch.object(scenario, "run_experiment"):
-                                    try:
-                                        scenario.execute()
-                                    except Exception:
-                                        pass
+                        with patch.object(scenario, "build_topology"):
+                            with patch.object(scenario, "create_mininet", return_value=net):
+                                with patch.object(scenario, "configure"):
+                                    with patch.object(scenario, "run_experiment"):
+                                        try:
+                                            scenario.execute()
+                                        except Exception:
+                                            pass
 
-                    # Verify cleanup_all was called before results write
-                    # Results write happens in execute() after cleanup_all
+                    # Results write must happen after all operational cleanup
+                    # (teardown then cleanup_all), and never before it.
                     assert "teardown" in call_order
                     assert "cleanup_all" in call_order
+                    assert "results_write" in call_order
                     assert call_order.index("teardown") < call_order.index("cleanup_all")
+                    assert call_order.index("cleanup_all") < call_order.index("results_write")
 
 
 # ---------------------------------------------------------------------------
@@ -417,7 +426,7 @@ class TestP01SystemExitAggregationStrong:
         with patch("src.scenarios.disaster.cleanup_external_bridges"):
             with patch("src.scenarios.disaster.stop_cefnetd"):
                 with patch("src.scenarios.disaster.stop_csmgrd"):
-                    with patch("src.scenarios.disaster.cleanup_all"):
+                    with patch("src.scenarios.base.cleanup_all"):
                         net = MagicMock()
 
                         with patch.object(scenario, "build_topology"):
@@ -475,7 +484,7 @@ class TestP02InterruptDuringShutdown:
         scenario.monitor = mock_monitor
 
         with patch.object(scenario, "teardown") as mock_teardown:
-            with patch("src.scenarios.disaster.cleanup_all") as mock_cleanup:
+            with patch("src.scenarios.base.cleanup_all") as mock_cleanup:
                 net = MagicMock()
 
                 with patch.object(scenario, "build_topology"):
@@ -513,7 +522,7 @@ class TestP02InterruptDuringShutdown:
             "teardown",
             side_effect=SystemExit(2),
         ):
-            with patch("src.scenarios.disaster.cleanup_all") as mock_cleanup:
+            with patch("src.scenarios.base.cleanup_all") as mock_cleanup:
                 net = MagicMock()
 
                 with patch.object(scenario, "build_topology"):
@@ -529,6 +538,79 @@ class TestP02InterruptDuringShutdown:
 
                         # After fix: cleanup_all was called
                         mock_cleanup.assert_called()
+
+
+# ---------------------------------------------------------------------------
+# H1. A lifecycle hook that itself raises must not skip operational cleanup
+#     (guards the BaseScenario.execute() try/except around the hook calls).
+# ---------------------------------------------------------------------------
+
+class TestH1HookRaises:
+    """If shutdown_runtime_resources()/write_results() raise directly (rather
+    than returning failures), teardown + cleanup_all must still run and the
+    failure must remain observable."""
+
+    def test_shutdown_hook_raising_still_runs_cleanup(self, tmp_path):
+        scenario = _make_scenario(tmp_path)
+        scenario.started_csmgrd_hosts = set()
+        scenario.generated_node_dirs = []
+        scenario.results_path = None
+        scenario.results = {}
+
+        with patch.object(
+            scenario,
+            "shutdown_runtime_resources",
+            side_effect=RuntimeError("hook blew up"),
+        ):
+            with patch.object(scenario, "teardown") as mock_teardown:
+                with patch("src.scenarios.base.cleanup_all") as mock_cleanup:
+                    net = MagicMock()
+                    observed = None
+                    with patch.object(scenario, "build_topology"):
+                        with patch.object(scenario, "create_mininet", return_value=net):
+                            with patch.object(scenario, "configure"):
+                                with patch.object(scenario, "run_experiment"):
+                                    try:
+                                        scenario.execute()
+                                    except BaseException as exc:
+                                        observed = exc
+
+                    mock_teardown.assert_called()
+                    mock_cleanup.assert_called()
+                    assert observed is not None
+                    assert _exception_tree_contains(observed, "hook blew up")
+
+    def test_write_results_hook_raising_still_propagates(self, tmp_path):
+        scenario = _make_scenario(tmp_path)
+        scenario.started_csmgrd_hosts = set()
+        scenario.generated_node_dirs = []
+        scenario.results_path = None
+        scenario.results = {}
+
+        with patch.object(
+            scenario,
+            "write_results",
+            side_effect=RuntimeError("results hook blew up"),
+        ):
+            with patch.object(scenario, "teardown") as mock_teardown:
+                with patch("src.scenarios.base.cleanup_all") as mock_cleanup:
+                    net = MagicMock()
+                    observed = None
+                    with patch.object(scenario, "build_topology"):
+                        with patch.object(scenario, "create_mininet", return_value=net):
+                            with patch.object(scenario, "configure"):
+                                with patch.object(scenario, "run_experiment"):
+                                    try:
+                                        scenario.execute()
+                                    except BaseException as exc:
+                                        observed = exc
+
+                    # write_results runs after operational cleanup; a raising
+                    # hook must still surface as a propagated failure.
+                    mock_teardown.assert_called()
+                    mock_cleanup.assert_called()
+                    assert observed is not None
+                    assert _exception_tree_contains(observed, "results hook blew up")
 
 
 # ---------------------------------------------------------------------------
@@ -556,7 +638,7 @@ class TestS1MonitorStop:
         scenario.monitor = mock_monitor
 
         with patch.object(scenario, "teardown") as mock_teardown:
-            with patch("src.scenarios.disaster.cleanup_all") as mock_cleanup:
+            with patch("src.scenarios.base.cleanup_all") as mock_cleanup:
                 net = MagicMock()
 
                 with patch.object(scenario, "build_topology"):
@@ -598,7 +680,7 @@ class TestS2WebuiStop:
         scenario.webui = mock_webui
 
         with patch.object(scenario, "teardown") as mock_teardown:
-            with patch("src.scenarios.disaster.cleanup_all") as mock_cleanup:
+            with patch("src.scenarios.base.cleanup_all") as mock_cleanup:
                 net = MagicMock()
 
                 with patch.object(scenario, "build_topology"):
@@ -639,7 +721,7 @@ class TestS3SchedulerStop:
         scenario.event_scheduler = mock_scheduler
 
         with patch.object(scenario, "teardown") as mock_teardown:
-            with patch("src.scenarios.disaster.cleanup_all") as mock_cleanup:
+            with patch("src.scenarios.base.cleanup_all") as mock_cleanup:
                 net = MagicMock()
 
                 with patch.object(scenario, "build_topology"):
@@ -681,7 +763,7 @@ class TestS4ContentRunnerStop:
         scenario.content_runner = mock_runner
 
         with patch.object(scenario, "teardown") as mock_teardown:
-            with patch("src.scenarios.disaster.cleanup_all") as mock_cleanup:
+            with patch("src.scenarios.base.cleanup_all") as mock_cleanup:
                 net = MagicMock()
 
                 with patch.object(scenario, "build_topology"):
@@ -728,7 +810,7 @@ class TestS5MultipleShutdownFailures:
         with patch("src.scenarios.disaster.cleanup_external_bridges"):
             with patch("src.scenarios.disaster.stop_cefnetd"):
                 with patch("src.scenarios.disaster.stop_csmgrd"):
-                    with patch("src.scenarios.disaster.cleanup_all"):
+                    with patch("src.scenarios.base.cleanup_all"):
                         net = MagicMock()
 
                         with patch.object(scenario, "build_topology"):
@@ -778,7 +860,7 @@ class TestS6SystemExitAggregation:
         with patch("src.scenarios.disaster.cleanup_external_bridges"):
             with patch("src.scenarios.disaster.stop_cefnetd"):
                 with patch("src.scenarios.disaster.stop_csmgrd"):
-                    with patch("src.scenarios.disaster.cleanup_all"):
+                    with patch("src.scenarios.base.cleanup_all"):
                         net = MagicMock()
 
                         # SystemExit is not caught by except KeyboardInterrupt,
@@ -830,7 +912,7 @@ class TestS7KeyboardInterrupt:
         scenario.results = {}
 
         with patch.object(scenario, "teardown") as mock_teardown:
-            with patch("src.scenarios.disaster.cleanup_all") as mock_cleanup:
+            with patch("src.scenarios.base.cleanup_all") as mock_cleanup:
                 net = MagicMock()
 
                 with patch.object(scenario, "build_topology"):
@@ -867,7 +949,7 @@ class TestS7KeyboardInterrupt:
         with patch("src.scenarios.disaster.cleanup_external_bridges"):
             with patch("src.scenarios.disaster.stop_cefnetd"):
                 with patch("src.scenarios.disaster.stop_csmgrd"):
-                    with patch("src.scenarios.disaster.cleanup_all"):
+                    with patch("src.scenarios.base.cleanup_all"):
                         net = MagicMock()
 
                         with patch.object(scenario, "build_topology"):
@@ -915,7 +997,7 @@ class TestBaseExceptionMixedCleanup:
         with patch("src.scenarios.disaster.cleanup_external_bridges"):
             with patch("src.scenarios.disaster.stop_cefnetd"):
                 with patch("src.scenarios.disaster.stop_csmgrd"):
-                    with patch("src.scenarios.disaster.cleanup_all"):
+                    with patch("src.scenarios.base.cleanup_all"):
                         net = MagicMock()
 
                         got_typeerror = False
@@ -997,7 +1079,7 @@ class TestT6ContentRunnerWaitAllRaises:
 
         observed: BaseException | None = None
         with patch.object(scenario, "teardown") as mock_teardown:
-            with patch("src.scenarios.disaster.cleanup_all") as mock_cleanup:
+            with patch("src.scenarios.base.cleanup_all") as mock_cleanup:
                 net = MagicMock()
                 with patch.object(scenario, "build_topology"):
                     with patch.object(scenario, "create_mininet", return_value=net):

@@ -7,7 +7,6 @@ import threading
 import time
 from pathlib import Path
 
-from mininet.cli import CLI
 from mininet.link import TCLink
 from mininet.log import info
 
@@ -30,7 +29,6 @@ from ..runtime.command_runner import MininetCommandRunner
 from ..runtime.content_ops import ContentOperationRunner
 from ..runtime.monitoring import Monitor
 from ..runtime.scheduler import EventScheduler
-from ..runtime.cleanup import cleanup_all
 from ..runtime.cefore import (
     run_cefstatus_all,
     run_csmgrstatus,
@@ -45,7 +43,6 @@ from ..runtime.failure_manager import FlexibleFailureManager, periodic_host_flap
 from ..runtime.net_config import apply_fib, apply_fib_routes, apply_ip_addr
 from ..runtime.template import (
     apply_cache_node_settings,
-    cleanup_node_dirs,
     ensure_node_dirs,
 )
 from ..runtime.topo import MeshTopo
@@ -579,125 +576,87 @@ class DisasterScenario(BaseScenario):
         elif not use_cli and self.event_scheduler is not None:
             self.event_scheduler.wait_all()
 
-    def execute(self):
-        """Override BaseScenario.execute() for CLI and autotest control.
+    def should_run_cli(self):
+        """Skip the interactive CLI in autotest mode (--no-cli)."""
+        return not getattr(self.args, "no_cli", False)
 
-        Staged cleanup: every stage is attempted independently. Failures
-        are accumulated and re-raised after all cleanup completes.
+    def before_cli(self, net):
+        """Switch monitoring to background and restore real stdout for the CLI.
+
+        The monitor stays running through the CLI but in background mode (quiet
+        + popen) so it neither prints to the terminal nor contends with the CLI
+        host shells. Idempotent: the monitor is already constructed in
+        background mode here.
         """
-        net = None
+        if self.monitor is not None:
+            self.monitor.enter_background()
+        if self.log_context:
+            sys.stdout = self.log_context["original_stdout"]
+            sys.stderr = self.log_context["original_stderr"]
+
+    def after_cli(self, net):
+        """Restore tee'd stdout/stderr after the CLI returns."""
+        if self.log_context:
+            sys.stdout = self.log_context["tee_stdout"]
+            sys.stderr = self.log_context["tee_stderr"]
+
+    def shutdown_runtime_resources(self):
+        """Stop monitor/webui/scheduler/content runner before teardown.
+
+        Each stage is attempted independently. BaseException (not just
+        Exception) is caught so that SystemExit, KeyboardInterrupt, etc. during
+        shutdown do not abort cleanup.
+        """
+        cleanup_failures: list[tuple[str, BaseException]] = []
+
+        if self.monitor is not None:
+            try:
+                self.monitor.stop()
+            except BaseException as exc:
+                cleanup_failures.append(("monitor.stop", exc))
+        if self.webui is not None:
+            try:
+                self.webui.stop()
+            except BaseException as exc:
+                cleanup_failures.append(("webui.stop", exc))
+        if self.event_scheduler is not None:
+            try:
+                self.event_scheduler.stop()
+            except BaseException as exc:
+                cleanup_failures.append(("event_scheduler.stop", exc))
+        if self.content_runner is not None:
+            # Stage A: wait_all() may raise; capture independently so a
+            # failure here does NOT skip stop(). (Defect 4.)
+            try:
+                if not self.content_runner.wait_all(timeout=60):
+                    info("[warning] content operation shutdown exceeded 60s deadline\n")
+            except BaseException as exc:
+                cleanup_failures.append(("content_runner.wait_all", exc))
+            # Stage B: stop() is always attempted.
+            try:
+                self.content_runner.stop()
+            except BaseException as exc:
+                cleanup_failures.append(("content_runner.stop", exc))
+        if self.stop_event is not None:
+            try:
+                self.stop_event.set()
+            except BaseException as exc:
+                cleanup_failures.append(("stop_event.set", exc))
+
+        return cleanup_failures
+
+    def write_results(self):
+        """Write autotest results JSON after all operational cleanup."""
+        if self.results_path is None:
+            return []
         try:
-            topo = self.build_topology()
-            net = self.create_mininet(topo)
-            net.start()
-            self.configure(net)
-            self.run_experiment(net)
-
-            use_cli = not getattr(self.args, "no_cli", False)
-            if use_cli:
-                # Keep monitoring running through the CLI, but switch it to
-                # background mode (quiet + popen) so it neither prints to the
-                # terminal nor contends with the CLI host shells. Idempotent:
-                # the monitor is already constructed in background mode here.
-                if self.monitor is not None:
-                    self.monitor.enter_background()
-                if self.log_context:
-                    sys.stdout = self.log_context["original_stdout"]
-                    sys.stderr = self.log_context["original_stderr"]
-                CLI(net)
-                if self.log_context:
-                    sys.stdout = self.log_context["tee_stdout"]
-                    sys.stderr = self.log_context["tee_stderr"]
-        except KeyboardInterrupt:
-            info("\nInterrupted by user.\n")
-        finally:
-            # Front-end shutdown — each stage attempted independently.
-            # BaseException (not just Exception) is caught so that SystemExit,
-            # KeyboardInterrupt, etc. during shutdown do not abort cleanup.
-            cleanup_failures: list[tuple[str, BaseException]] = []
-
-            if self.monitor is not None:
-                try:
-                    self.monitor.stop()
-                except BaseException as exc:
-                    cleanup_failures.append(("monitor.stop", exc))
-            if self.webui is not None:
-                try:
-                    self.webui.stop()
-                except BaseException as exc:
-                    cleanup_failures.append(("webui.stop", exc))
-            if self.event_scheduler is not None:
-                try:
-                    self.event_scheduler.stop()
-                except BaseException as exc:
-                    cleanup_failures.append(("event_scheduler.stop", exc))
-            if self.content_runner is not None:
-                # Stage A: wait_all() may raise; capture independently so a
-                # failure here does NOT skip stop(). (Defect 4.)
-                try:
-                    if not self.content_runner.wait_all(timeout=60):
-                        info("[warning] content operation shutdown exceeded 60s deadline\n")
-                except BaseException as exc:
-                    cleanup_failures.append(("content_runner.wait_all", exc))
-                # Stage B: stop() is always attempted.
-                try:
-                    self.content_runner.stop()
-                except BaseException as exc:
-                    cleanup_failures.append(("content_runner.stop", exc))
-            if self.stop_event is not None:
-                try:
-                    self.stop_event.set()
-                except BaseException as exc:
-                    cleanup_failures.append(("stop_event.set", exc))
-
-            # Capture any in-flight primary exception
-            primary_exc = sys.exc_info()[1]
-            if isinstance(primary_exc, KeyboardInterrupt):
-                primary_exc = None
-
-            if net is not None:
-                # Stage 1: Debug pre-teardown (best-effort, never blocks cleanup)
-                try:
-                    self.collect_debug_pre_teardown(net)
-                except BaseException as exc:
-                    cleanup_failures.append(("debug_pre_teardown", exc))
-
-                # Stage 2: Teardown (daemon stop, bridge cleanup, external bridges)
-                try:
-                    self.teardown(net)
-                except BaseException as exc:
-                    cleanup_failures.append(("teardown", exc))
-                    info(f"Error during teardown: {exc}\n")
-
-                # Stage 3: Debug post-teardown (best-effort, never blocks cleanup)
-                try:
-                    self.collect_debug_post_teardown()
-                except BaseException as exc:
-                    cleanup_failures.append(("debug_post_teardown", exc))
-
-                # Stage 4: Generic cleanup
-                try:
-                    cleanup_all(net, self.generated_node_dirs)
-                except BaseException as exc:
-                    cleanup_failures.append(("cleanup_all", exc))
-            else:
-                try:
-                    cleanup_node_dirs(self.generated_node_dirs)
-                except BaseException as exc:
-                    cleanup_failures.append(("cleanup_node_dirs", exc))
-
-            # Results write — after all operational cleanup
-            if self.results_path is not None:
-                try:
-                    self.results_path.write_text(
-                        json.dumps(self.results, ensure_ascii=False, indent=2),
-                        encoding="utf-8",
-                    )
-                except BaseException as exc:
-                    cleanup_failures.append(("results_write", exc))
-
-            # Final exception propagation
-            _propagate_failures(primary_exc, cleanup_failures)
+            self.results_path.write_text(
+                json.dumps(self.results, ensure_ascii=False, indent=2),
+                encoding="utf-8",
+            )
+        except BaseException as exc:
+            return [("results_write", exc)]
+        return []
 
     def collect_debug_pre_teardown(self, net):
         if self.debug_config is None or not self.debug_config.fib_dump:
