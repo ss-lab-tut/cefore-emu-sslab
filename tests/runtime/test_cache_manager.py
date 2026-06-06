@@ -58,6 +58,25 @@ class TestCacheConfigManager:
             assert call_kwargs[1].get("cache_default_rct_ms") == 5000 or \
                    (len(call_kwargs[0]) > 2 and call_kwargs[0][2] == 5000)
 
+    @pytest.mark.parametrize(
+        ("algorithm", "expected"),
+        [
+            ("LRU", "libcsmgrd_lru"),
+            ("LFU", "libcsmgrd_lfu"),
+            ("FIFO", "libcsmgrd_fifo"),
+            ("None", "None"),
+        ],
+    )
+    def test_apply_configs_normalizes_default_algorithm(
+        self, triangle_graph, algorithm, expected
+    ):
+        config = {"strategy": "manual", "default": {"algorithm": algorithm}}
+        mgr = CacheConfigManager(config, 3, triangle_graph, publisher_ids=set())
+        with patch("src.runtime.cache_manager.apply_cache_node_settings") as mock_apply:
+            mgr.apply_configs({1})
+
+        assert mock_apply.call_args.kwargs["cache_algorithm"] == expected
+
     def test_parse_node_overrides_single_id(self, triangle_graph):
         config = {"strategy": "manual", "nodes": [{"id": 5, "capacity": 100}]}
         mgr = CacheConfigManager(config, 6, triangle_graph, publisher_ids=set())
@@ -72,3 +91,25 @@ class TestCacheConfigManager:
         mgr = CacheConfigManager(config, 3, triangle_graph, publisher_ids=set())
         assert mgr.node_overrides[1]["algorithm"] == "LFU"
         assert mgr.node_overrides[2]["algorithm"] == "LFU"
+
+    def test_apply_configs_normalizes_node_override_algorithm(
+        self, tmp_path, monkeypatch, triangle_graph
+    ):
+        monkeypatch.chdir(tmp_path)
+        for idx in range(3):
+            node_dir = tmp_path / f"h{idx}"
+            node_dir.mkdir()
+            (node_dir / "cefnetd.conf").write_text("CS_MODE=0\n")
+            (node_dir / "csmgrd.conf").write_text("CACHE_ALGORITHM=None\n")
+
+        config = {
+            "strategy": "manual",
+            "default": {"algorithm": "LRU"},
+            "nodes": [{"id": 1, "algorithm": "LFU"}],
+        }
+        mgr = CacheConfigManager(config, 3, triangle_graph, publisher_ids=set())
+        mgr.apply_configs({1})
+
+        assert "CACHE_ALGORITHM=libcsmgrd_lfu" in (
+            tmp_path / "h1" / "csmgrd.conf"
+        ).read_text()

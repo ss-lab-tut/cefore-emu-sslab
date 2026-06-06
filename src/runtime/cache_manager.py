@@ -8,6 +8,18 @@ from .template import _set_config_value, apply_cache_node_settings
 _VALID_ALGORITHMS = frozenset({"LRU", "LFU", "FIFO", "None"})
 _VALID_TYPES = frozenset({"memory", "filesystem"})
 _VALID_STRATEGIES = frozenset({"k_centers", "manual", "degree_based"})
+_ALGORITHM_LIB_NAMES = {
+    "LRU": "libcsmgrd_lru",
+    "LFU": "libcsmgrd_lfu",
+    "FIFO": "libcsmgrd_fifo",
+    "None": "None",
+}
+
+
+def _normalize_cache_algorithm(algorithm):
+    if algorithm is None:
+        return None
+    return _ALGORITHM_LIB_NAMES.get(algorithm, algorithm)
 
 
 def _select_k_centers(manager, exclude, rng):
@@ -120,7 +132,7 @@ class CacheConfigManager:
             cache_nodes,
             cache_default_rct_ms=default.get("default_rct_ms"),
             cache_capacity=default.get("capacity"),
-            cache_algorithm=default.get("algorithm"),
+            cache_algorithm=_normalize_cache_algorithm(default.get("algorithm")),
             cache_type=default.get("type"),
             publishers=self.publisher_ids,
         )
@@ -139,4 +151,7 @@ class CacheConfigManager:
             conf_path = Path(f"h{idx}") / "csmgrd.conf"
             for field, conf_key in _FIELD_MAP.items():
                 if field in overrides:
-                    _set_config_value(conf_path, conf_key, str(overrides[field]))
+                    value = overrides[field]
+                    if field == "algorithm":
+                        value = _normalize_cache_algorithm(value)
+                    _set_config_value(conf_path, conf_key, str(value))
