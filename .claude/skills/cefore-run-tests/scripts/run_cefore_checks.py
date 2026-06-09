@@ -19,16 +19,25 @@ PYTEST_TARGETS = (
 )
 SMOKE_CONFIGS = (
     "min_putget", "min_pubsub", "min_pubsub_verify", "min_empty", "min_mixed",
-    "min_event_putget", "min_event_pubsub",
+    "min_event_putget", "min_event_pubsub", "connect",
 )
 
 
 @dataclass(frozen=True)
 class SmokeCase:
-    """Single smoke test configuration."""
+    """Single smoke test configuration.
+
+    ``kind`` selects how the case is run and validated:
+    - ``"disaster"``: ``python -m src disaster --config <config_relpath> --no-cli``
+      writing a ``results.json`` that is then content-validated.
+    - ``"connect"``: the ConnectScenario path (ceforeemu-connect), which has no
+      ``--results-json`` and produces no results.json; validated by exit 0 plus
+      the topology PNG that proves the configure stage completed.
+    """
 
     name: str
-    config_relpath: str
+    kind: str = "disaster"
+    config_relpath: str | None = None
 
 
 def parse_args() -> argparse.Namespace:
@@ -181,13 +190,14 @@ def mn_cleanup(repo_root: Path) -> None:
 def build_smoke_cases() -> list[SmokeCase]:
     """Return the known smoke configs."""
     return [
-        SmokeCase("min_putget", "config/examples/min_putget.yaml"),
-        SmokeCase("min_pubsub", "config/examples/min_pubsub.yaml"),
-        SmokeCase("min_pubsub_verify", "config/examples/min_pubsub_verify.yaml"),
-        SmokeCase("min_empty", "config/examples/min_empty.yaml"),
-        SmokeCase("min_mixed", "config/examples/min_mixed.yaml"),
-        SmokeCase("min_event_putget", "config/examples/min_event_putget.yaml"),
-        SmokeCase("min_event_pubsub", "config/examples/min_event_pubsub.yaml"),
+        SmokeCase("min_putget", config_relpath="config/examples/min_putget.yaml"),
+        SmokeCase("min_pubsub", config_relpath="config/examples/min_pubsub.yaml"),
+        SmokeCase("min_pubsub_verify", config_relpath="config/examples/min_pubsub_verify.yaml"),
+        SmokeCase("min_empty", config_relpath="config/examples/min_empty.yaml"),
+        SmokeCase("min_mixed", config_relpath="config/examples/min_mixed.yaml"),
+        SmokeCase("min_event_putget", config_relpath="config/examples/min_event_putget.yaml"),
+        SmokeCase("min_event_pubsub", config_relpath="config/examples/min_event_pubsub.yaml"),
+        SmokeCase("connect", kind="connect"),
     ]
 
 
@@ -297,6 +307,24 @@ def validate_min_event_pubsub(data: list[dict]) -> None:
             raise RuntimeError("min_event_pubsub out_file does not point to an RNP0x*.out artifact")
 
 
+def validate_connect(case_output_dir: Path) -> None:
+    """Validate a ConnectScenario smoke run.
+
+    Connect has no --results-json, so success is exit 0 (enforced by the caller)
+    plus the topology PNG, which only exists if the configure stage ran to the
+    visualization step (mesh built, daemons started, FIB applied). Also assert
+    no results.json so a future regression that wires connect into autotest
+    output is noticed here.
+    """
+    pngs = list(case_output_dir.rglob("*.png"))
+    if not pngs:
+        raise RuntimeError(
+            "connect produced no topology PNG; configure stage did not complete"
+        )
+    if list(case_output_dir.rglob("results.json")):
+        raise RuntimeError("connect unexpectedly produced results.json")
+
+
 def validate_results(case_name: str, data: list[dict]) -> None:
     """Dispatch per-config result validation."""
     validators = {
@@ -319,33 +347,59 @@ def run_single_smoke(
     timeout_seconds: int,
     tmp_dir: Path,
 ) -> Path:
-    """Run one config-driven disaster smoke test and validate its results."""
-    config_path = repo_root / case.config_relpath
-    ensure_exists(config_path, f"smoke config {case.name}")
-
+    """Run one smoke case (disaster or connect) and validate its output."""
     case_output_dir = base_output_dir / case.name
     case_output_dir.mkdir(parents=True, exist_ok=True)
 
-    cmd = [
-        "timeout",
-        f"{timeout_seconds}s",
-        "sudo",
-        "-n",
-        "env",
-        f"TMPDIR={tmp_dir}",
-        str(python_bin),
-        "-m",
-        "src",
-        "disaster",
-        "--config",
-        str(config_path),
-        "--output-dir",
-        str(case_output_dir),
-        "--results-json",
-        "results.json",
-        "--no-cli",
-    ]
     try:
+        if case.kind == "connect":
+            cmd = [
+                "timeout",
+                f"{timeout_seconds}s",
+                "sudo",
+                "-n",
+                "env",
+                f"TMPDIR={tmp_dir}",
+                str(python_bin),
+                "-c",
+                "from src.runtime.external_net import main; main()",
+                "--hosts",
+                "3",
+                "--switches",
+                "2",
+                "--seed",
+                "42",
+                "--no-cli",
+                "--no-script-log",
+                "--output-dir",
+                str(case_output_dir),
+            ]
+            run_command(cmd, repo_root)
+            validate_connect(case_output_dir)
+            print(f"[OK] {case.name}: ConnectScenario lifecycle exit 0 + topology PNG")
+            return case_output_dir
+
+        config_path = repo_root / case.config_relpath
+        ensure_exists(config_path, f"smoke config {case.name}")
+        cmd = [
+            "timeout",
+            f"{timeout_seconds}s",
+            "sudo",
+            "-n",
+            "env",
+            f"TMPDIR={tmp_dir}",
+            str(python_bin),
+            "-m",
+            "src",
+            "disaster",
+            "--config",
+            str(config_path),
+            "--output-dir",
+            str(case_output_dir),
+            "--results-json",
+            "results.json",
+            "--no-cli",
+        ]
         run_command(cmd, repo_root)
 
         results_path = find_results_json(case_output_dir)

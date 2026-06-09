@@ -1,6 +1,6 @@
 ---
 name: cefore-run-tests
-description: Run the CeforeEmu regression checks that cover runtime wrapper logging behavior and disaster pub/sub success detection, plus minimal end-to-end `src disaster --config ... --no-cli` smoke runs with `config/examples/min_putget.yaml`, `min_pubsub.yaml`, `min_pubsub_verify.yaml`, `min_empty.yaml`, `min_mixed.yaml`, `min_event_putget.yaml`, and `min_event_pubsub.yaml`. Use when Codex needs to validate recent code changes, reproduce a failing test, or sanity-check this repository before or after edits.
+description: Run the CeforeEmu regression checks that cover runtime wrapper logging behavior and disaster pub/sub success detection, plus minimal end-to-end `src disaster --config ... --no-cli` smoke runs with `config/examples/min_putget.yaml`, `min_pubsub.yaml`, `min_pubsub_verify.yaml`, `min_empty.yaml`, `min_mixed.yaml`, `min_event_putget.yaml`, and `min_event_pubsub.yaml`, plus a `connect` ConnectScenario (ceforeemu-connect) plain-mesh smoke run. Use when Codex needs to validate recent code changes, reproduce a failing test, or sanity-check this repository before or after edits.
 ---
 
 # Cefore Run Tests
@@ -44,8 +44,9 @@ For the home-skill copy:
 - `config/examples/min_mixed.yaml`
 - `config/examples/min_event_putget.yaml`
 - `config/examples/min_event_pubsub.yaml`
+- `connect` — ConnectScenario plain-mesh run (`ceforeemu-connect`, no config)
 
-The smoke phase validates `results.json` contents after each run instead of only trusting exit codes. Expected result shapes are summarized in `references/test-matrix.md`.
+The disaster smoke configs validate `results.json` contents after each run instead of only trusting exit codes. The `connect` case is different: ConnectScenario (`ceforeemu-connect`) has no `--results-json` and writes no `results.json`, so it is validated by exit 0 plus the topology PNG that proves the configure stage completed (mesh built, daemons started, FIB applied). It is run via `python -c "from src.runtime.external_net import main; main()" --hosts 3 --switches 2 --seed 42 --no-cli --no-script-log` because `ceforeemu-connect` is only registered as a console script after `pip install -e .`. Expected result shapes are summarized in `references/test-matrix.md`.
 
 ## Failure Handling
 

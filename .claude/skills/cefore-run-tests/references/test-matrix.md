@@ -78,6 +78,23 @@
   - every `op_type == "sub"` row has `has_output_file == true`
   - every `op_type == "sub"` `out_file` points at a discovered `RNP0x*.out` artifact
 
+### `connect`
+
+- Path: ConnectScenario via `ceforeemu-connect` (no config file). The helper runs
+  it as `python -c "from src.runtime.external_net import main; main()" --hosts 3
+  --switches 2 --seed 42 --no-cli --no-script-log` because the console script is
+  only registered after `pip install -e .`.
+- Plain mesh: no bridges/ext, no events, so no external infrastructure is needed
+  and `run_experiment()` publication seeding is a no-op.
+- Expected output: no `results.json` (connect has no `--results-json`); a topology
+  PNG under the case output directory.
+- Required checks:
+  - scenario exits 0 (exercises the ConnectScenario lifecycle through
+    `BaseScenario.execute`: build → configure → teardown → `cleanup_all`)
+  - at least one `*.png` exists (proves the configure stage reached visualization)
+  - no `results.json` is produced (guards against connect silently gaining
+    autotest output)
+
 ## Helper Script
 
 Run the bundled helper from the repository root:
