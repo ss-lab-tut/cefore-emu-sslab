@@ -205,8 +205,8 @@ For topologies with >3 hosts, additional directories (h3, h4, ...) are generated
 **Content Operations (exported from `src/runtime`):**
 - `run_cefputfile()`: Publish content via cefputfile with configurable options
 - `run_cefgetfile()`: Retrieve content via cefgetfile with configurable options
-- `run_cefpubfile()`: Publish content via cefpubfile (pub/sub model)
-- `run_cefsubfile()`: Subscribe to content via cefsubfile (pub/sub model)
+- `run_cefpubfile()`: Publish content via cefpubfile (pub/sub model, returns a CommandHandle)
+- `start_cefsubfile()`: Subscribe to content via cefsubfile (pub/sub model, returns a CommandHandle)
 
 **Status/Info Commands:**
 - `run_csmgrstatus()`: Query cache manager status via csmgrstatus

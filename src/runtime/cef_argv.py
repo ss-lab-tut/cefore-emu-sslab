@@ -9,7 +9,32 @@ flag-mapping be unit-tested without a network.
 
 from __future__ import annotations
 
-from typing import List, Optional
+from typing import List, Optional, Sequence, Tuple
+
+
+def _build_argv(
+    command: str,
+    head: Sequence[str],
+    opts: Sequence[Tuple[str, object]],
+    node_name: str,
+) -> List[str]:
+    """Assemble a cefore argv from its parts.
+
+    ``head`` holds the command and its mandatory/positional args, already
+    ordered. ``opts`` is a sequence of ``(flag, value)`` pairs for value-taking
+    options: each pair is appended as ``[flag, str(value)]`` only when
+    ``value is not None`` — mirroring the explicit ``if x is not None`` idiom
+    the builders used, so output stays byte-exact for every value (including
+    ``0``). Bare boolean flags (e.g. ``-o``) are intentionally not handled here;
+    the caller puts them in ``head`` to preserve their original truthiness.
+    The trailing ``-d ./<node_name>`` is always appended last.
+    """
+    argv: List[str] = [command, *head]
+    for flag, value in opts:
+        if value is not None:
+            argv += [flag, str(value)]
+    argv += ["-d", f"./{node_name}"]
+    return argv
 
 
 def build_cefputfile_argv(
@@ -25,21 +50,19 @@ def build_cefputfile_argv(
     port_num: Optional[int] = None,
 ) -> List[str]:
     """Build the argv for ``cefputfile``."""
-    argv = ["cefputfile", uri, "-f", file_path]
-    if rate is not None:
-        argv += ["-r", str(rate)]
-    if block_size is not None:
-        argv += ["-b", str(block_size)]
-    if expiry is not None:
-        argv += ["-e", str(expiry)]
-    if cache_time is not None:
-        argv += ["-t", str(cache_time)]
-    if valid_algo is not None:
-        argv += ["-v", valid_algo]
-    if port_num is not None:
-        argv += ["-p", str(port_num)]
-    argv += ["-d", f"./{node_name}"]
-    return argv
+    return _build_argv(
+        "cefputfile",
+        [uri, "-f", file_path],
+        [
+            ("-r", rate),
+            ("-b", block_size),
+            ("-e", expiry),
+            ("-t", cache_time),
+            ("-v", valid_algo),
+            ("-p", port_num),
+        ],
+        node_name,
+    )
 
 
 def build_cefgetfile_argv(
@@ -55,21 +78,21 @@ def build_cefgetfile_argv(
     sg: Optional[int] = None,
 ) -> List[str]:
     """Build the argv for ``cefgetfile``."""
-    argv = ["cefgetfile", uri, "-f", output_path]
+    head = [uri, "-f", output_path]
     if owner_only:
-        argv += ["-o"]
-    if chunk is not None:
-        argv += ["-m", str(chunk)]
-    if pipeline is not None:
-        argv += ["-s", str(pipeline)]
-    if valid_algo is not None:
-        argv += ["-v", valid_algo]
-    if port_num is not None:
-        argv += ["-p", str(port_num)]
-    if sg is not None:
-        argv += ["-z", str(sg)]
-    argv += ["-d", f"./{node_name}"]
-    return argv
+        head.append("-o")
+    return _build_argv(
+        "cefgetfile",
+        head,
+        [
+            ("-m", chunk),
+            ("-s", pipeline),
+            ("-v", valid_algo),
+            ("-p", port_num),
+            ("-z", sg),
+        ],
+        node_name,
+    )
 
 
 def build_cefsubfile_argv(
@@ -83,19 +106,18 @@ def build_cefsubfile_argv(
     port_num: Optional[int] = None,
 ) -> List[str]:
     """Build the argv for ``cefsubfile``."""
-    argv = ["cefsubfile", uri]
-    if output_path is not None:
-        argv += ["-f", output_path]
-    if pipeline is not None:
-        argv += ["-s", str(pipeline)]
-    if ri_valid_algo is not None:
-        argv += ["-v_RI", ri_valid_algo]
-    if td_valid_algo is not None:
-        argv += ["-v_TD", td_valid_algo]
-    if port_num is not None:
-        argv += ["-p", str(port_num)]
-    argv += ["-d", f"./{node_name}"]
-    return argv
+    return _build_argv(
+        "cefsubfile",
+        [uri],
+        [
+            ("-f", output_path),
+            ("-s", pipeline),
+            ("-v_RI", ri_valid_algo),
+            ("-v_TD", td_valid_algo),
+            ("-p", port_num),
+        ],
+        node_name,
+    )
 
 
 def build_cefpubfile_argv(
@@ -115,26 +137,20 @@ def build_cefpubfile_argv(
     port_num: Optional[int] = None,
 ) -> List[str]:
     """Build the argv for ``cefpubfile``."""
-    argv = ["cefpubfile", uri, "-f", file_path]
-    if rate is not None:
-        argv += ["-r", str(rate)]
-    if block_size is not None:
-        argv += ["-b", str(block_size)]
-    if expiry is not None:
-        argv += ["-e", str(expiry)]
-    if cache_time is not None:
-        argv += ["-t", str(cache_time)]
-    if lifetime is not None:
-        argv += ["-l", str(lifetime)]
-    if retry_limit is not None:
-        argv += ["-m", str(retry_limit)]
-    if target is not None:
-        argv += ["-z", target]
-    if ti_valid_algo is not None:
-        argv += ["-v_TI", ti_valid_algo]
-    if rd_valid_algo is not None:
-        argv += ["-v_RD", rd_valid_algo]
-    if port_num is not None:
-        argv += ["-p", str(port_num)]
-    argv += ["-d", f"./{node_name}"]
-    return argv
+    return _build_argv(
+        "cefpubfile",
+        [uri, "-f", file_path],
+        [
+            ("-r", rate),
+            ("-b", block_size),
+            ("-e", expiry),
+            ("-t", cache_time),
+            ("-l", lifetime),
+            ("-m", retry_limit),
+            ("-z", target),
+            ("-v_TI", ti_valid_algo),
+            ("-v_RD", rd_valid_algo),
+            ("-p", port_num),
+        ],
+        node_name,
+    )

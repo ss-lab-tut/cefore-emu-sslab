@@ -7,7 +7,6 @@ from src.runtime.cefore import (
     run_cefgetfile,
     run_cefpubfile,
     run_cefputfile,
-    run_cefsubfile,
     run_csmgrstatus,
     start_cefsubfile,
 )
@@ -91,33 +90,6 @@ class TestRunCefgetfile:
 
 
 # ---------------------------------------------------------------------------
-# run_cefsubfile (blocking)
-# ---------------------------------------------------------------------------
-
-class TestRunCefsubfile:
-    def test_builds_expected_argv_and_log(self):
-        fake = FakeCommandRunner()
-        run_cefsubfile(
-            fake, 0, "ccnx:/test/stream",
-            output_path="/tmp/recvdir", log_name="/tmp/sub.log",
-        )
-        rec = fake.runs[0]
-        assert rec["argv"][argv_index(rec["argv"], "-f") + 1] == "/tmp/recvdir"
-        assert rec["log_path"] == "/tmp/sub.log"
-        assert "2>&1" not in _argv_str(rec["argv"])
-
-    def test_default_log_name(self):
-        fake = FakeCommandRunner()
-        run_cefsubfile(fake, 0, "ccnx:/test/stream")
-        assert fake.runs[0]["log_path"] == "cefsubfile-h0.log"
-
-    def test_returns_returncode(self):
-        fake = FakeCommandRunner()
-        fake.script_run(returncode=0)
-        assert run_cefsubfile(fake, 0, "ccnx:/test/stream") == 0
-
-
-# ---------------------------------------------------------------------------
 # start_cefsubfile — non-blocking, returns a CommandHandle
 # ---------------------------------------------------------------------------
 
@@ -160,10 +132,6 @@ class TestRunCefpubfile:
         assert fake.starts[0].log_path == "cefpubfile-h2.log"
 
 
-def argv_index(argv, flag):
-    return argv.index(flag)
-
-
 # ---------------------------------------------------------------------------
 # run_csmgrstatus — now argv + CommandRunner based
 # ---------------------------------------------------------------------------
@@ -181,7 +149,8 @@ class TestRunCsmgrstatus:
         assert rec["argv"] == ["csmgrstatus", "ccnx:/", "-h", "127.0.0.1"]
         # Redirection is owned by the seam, never present in argv.
         assert ">" not in _argv_str(rec["argv"])
-        mock_info.assert_called_once_with("status output")
+        # Non-quiet emits the command echo via info too; the output is among them.
+        mock_info.assert_any_call("status output")
 
     def test_quiet_suppresses_print_and_info(self, capsys):
         fake = FakeCommandRunner()

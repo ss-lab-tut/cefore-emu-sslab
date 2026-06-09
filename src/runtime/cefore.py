@@ -113,7 +113,7 @@ def start_csmgrd(net, idx, log_dir=None):
     else:
         argv = ["csmgrdstart", "-d", f"./{node_name}"]
         cwd = None
-    print(node_name, "command:", argv, "cwd:", cwd)
+    info(f"{node_name} command: {argv} cwd: {cwd}\n")
     runner.run(node_name, argv, cwd=cwd, log_path=os.devnull)
     wait_for_csmgrd(net, idx)
 
@@ -150,7 +150,7 @@ def start_cefnetd(net, idx, log_dir=None):
     else:
         argv = ["cefnetdstart", "-d", f"./{node_name}"]
         cwd = None
-    print(node_name, "command:", argv, "cwd:", cwd)
+    info(f"{node_name} command: {argv} cwd: {cwd}\n")
     runner.run(node_name, argv, cwd=cwd, log_path=os.devnull)
     time.sleep(1)
 
@@ -217,7 +217,7 @@ def run_cefputfile(
     )
     if not log_name:
         log_name = f"cefputfile-h{host_idx}.log"
-    print(node_name, "command:", argv)
+    info(f"{node_name} command: {argv}\n")
     result = runner.run(
         node_name,
         argv,
@@ -277,7 +277,7 @@ def run_cefgetfile(
     )
     if not log_name:
         log_name = f"cefgetfile-h{host_idx}.log"
-    print(node_name, "command:", argv)
+    info(f"{node_name} command: {argv}\n")
     result = runner.run(
         node_name,
         argv,
@@ -297,7 +297,7 @@ def run_cefstatus(net, host_idx):
     """
     node_name = f"h{host_idx}"
     argv = ["cefstatus", "-d", f"./{node_name}"]
-    print(node_name, "command:", argv)
+    info(f"{node_name} command: {argv}\n")
     info(MininetCommandRunner(net).run(node_name, argv).stdout)
 
 
@@ -313,50 +313,6 @@ def run_cefstatus_all(net, host_num):
         run_cefstatus(net, host_idx)
 
 
-def run_cefsubfile(
-    runner,
-    host_idx,
-    uri,
-    output_path=None,
-    pipeline=None,
-    ri_valid_algo=None,
-    td_valid_algo=None,
-    port_num=None,
-    log_name=None,
-):
-    """Run cefsubfile to subscribe content (blocking).
-
-    Args:
-        runner: CommandRunner used to execute the command.
-        host_idx: Subscriber host index.
-        uri: Content URI.
-        output_path: Directory path to output content. cefsubfile creates files
-            named ``RNP0x<hex>.out`` under this directory (use "-" for stdout).
-        pipeline: Number of pipeline.
-        ri_valid_algo: Validation algorithm for Reflexive Interest (crc32c or rsa-sha256).
-        td_valid_algo: Validation algorithm for Trigger Data (crc32c or rsa-sha256).
-        port_num: Port number.
-        log_name: Name of the log file.
-
-    Returns:
-        exit_code: Exit code of the command.
-    """
-    node_name = f"h{host_idx}"
-    argv = build_cefsubfile_argv(
-        uri,
-        node_name=node_name,
-        output_path=output_path,
-        pipeline=pipeline,
-        ri_valid_algo=ri_valid_algo,
-        td_valid_algo=td_valid_algo,
-        port_num=port_num,
-    )
-    if not log_name:
-        log_name = f"cefsubfile-h{host_idx}.log"
-    print(node_name, "command:", argv)
-    return runner.run(node_name, argv, log_path=log_name).returncode
-
-
 def start_cefsubfile(
     runner,
     host_idx,
@@ -370,8 +326,8 @@ def start_cefsubfile(
 ):
     """Start cefsubfile in the background (non-blocking).
 
-    Identical argv construction to run_cefsubfile but returns a CommandHandle
-    immediately without waiting. The caller waits on it through the runner.
+    Builds the same cefsubfile argv but returns a CommandHandle immediately
+    without waiting. The caller waits on it through the runner.
 
     Args:
         runner: CommandRunner used to start the command.
@@ -400,7 +356,7 @@ def start_cefsubfile(
     )
     if not log_name:
         log_name = f"cefsubfile-h{host_idx}.log"
-    print(node_name, "command:", argv)
+    info(f"{node_name} command: {argv}\n")
     return runner.start(node_name, argv, log_path=log_name)
 
 
@@ -464,7 +420,7 @@ def run_cefpubfile(
     )
     if not log_name:
         log_name = f"cefpubfile-h{host_idx}.log"
-    print(node_name, "command:", argv)
+    info(f"{node_name} command: {argv}\n")
     return runner.start(node_name, argv, log_path=log_name)
 
 
@@ -506,7 +462,7 @@ def run_csmgrstatus(
         argv.extend(["-h", host])
 
     if not quiet:
-        print(node_name, "command:", argv, "log:", log_name)
+        info(f"{node_name} command: {argv} log: {log_name}\n")
 
     runner = MininetCommandRunner(net)
     if log_name:

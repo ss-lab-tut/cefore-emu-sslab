@@ -62,6 +62,11 @@ class TestPutfileArgv:
         for flag in ("-r", "-b", "-e", "-t", "-v", "-p"):
             assert flag not in argv
 
+    def test_zero_value_is_emitted_not_dropped(self):
+        # 0 is a real value (None means "omit"); the shared helper must keep it.
+        argv = build_cefputfile_argv("ccnx:/x", node_name="h0", rate=0)
+        assert argv[argv.index("-r") + 1] == "0"
+
     def test_special_chars_not_quoted(self):
         # A value with a space must remain a single raw argv element.
         argv = build_cefputfile_argv("ccnx:/a b;c", node_name="h0")
