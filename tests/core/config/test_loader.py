@@ -5,6 +5,7 @@ from types import SimpleNamespace
 import pytest
 
 from src.core.config.loader import (
+    _FLAT_SPECS,
     load_config,
     merge_cli_and_config,
     validate_config,
@@ -805,3 +806,103 @@ def test_validate_autotest_rejects_repeated_put_event():
         }
     )
     assert any("not supported for autotest put" in error for error in errors)
+
+
+# ── table-driven flat-key boundary tests ──
+
+
+def test_cefnetd_timeout_zero_rejected():
+    errors = validate_config({"cefnetd_timeout": 0})
+    assert any("cefnetd_timeout" in e for e in errors)
+
+
+def test_cefnetd_timeout_none_rejected():
+    errors = validate_config({"cefnetd_timeout": None})
+    assert any("cefnetd_timeout" in e for e in errors)
+
+
+def test_seed_null_accepted():
+    errors = validate_config({"seed": None})
+    assert not any("seed" in e for e in errors)
+
+
+def test_hosts_bool_rejected():
+    errors = validate_config({"hosts": True})
+    assert any("hosts" in e for e in errors)
+
+
+# ── parametrized invalid-value test from _FLAT_SPECS ──
+
+
+@pytest.mark.parametrize(
+    "spec",
+    _FLAT_SPECS,
+    ids=[s.key for s in _FLAT_SPECS],
+)
+def test_flat_spec_rejects_invalid_value(spec):
+    if spec.kind == "int":
+        bad = "not_an_int"
+    elif spec.kind == "number":
+        bad = "not_a_number"
+    elif spec.kind == "bool":
+        bad = "not_a_bool"
+    elif spec.kind == "str":
+        bad = 12345
+    else:
+        bad = object()
+    errors = validate_config({spec.key: bad})
+    assert any(spec.key in e for e in errors), f"no error for {spec.key}={bad!r}"
+
+
+def test_flat_key_message_int_with_min():
+    errors = validate_config({"hosts": "bad"})
+    assert "hosts must be an integer >= 3" in errors
+
+
+def test_flat_key_message_nullable_int():
+    errors = validate_config({"seed": "bad"})
+    assert "seed must be an integer or null" in errors
+
+
+def test_flat_key_message_nullable_int_with_min():
+    errors = validate_config({"cache_default_rct_ms": 500})
+    assert "cache_default_rct_ms must be an integer >= 1000 or null" in errors
+
+
+def test_flat_key_message_bool():
+    errors = validate_config({"timestamp": "bad"})
+    assert "timestamp must be a boolean" in errors
+
+
+def test_flat_key_message_nullable_str():
+    errors = validate_config({"results_json": 123})
+    assert "results_json must be a string or null" in errors
+
+
+def test_flat_key_message_int_no_min():
+    errors = validate_config({"host_degree_min": "bad"})
+    assert "host_degree_min must be an integer >= 1" in errors
+
+
+_SPECS_WITH_MIN = [s for s in _FLAT_SPECS if s.minimum is not None and s.kind in ("int", "number")]
+_NULLABLE_SPECS = [s for s in _FLAT_SPECS if s.nullable]
+
+
+@pytest.mark.parametrize("spec", _SPECS_WITH_MIN, ids=[s.key for s in _SPECS_WITH_MIN])
+def test_flat_spec_rejects_below_minimum(spec):
+    below = spec.minimum - 1 if spec.kind == "int" else spec.minimum - 0.001
+    errors = validate_config({spec.key: below})
+    assert any(spec.key in e for e in errors), f"no error for {spec.key}={below}"
+
+
+@pytest.mark.parametrize("spec", _SPECS_WITH_MIN, ids=[s.key for s in _SPECS_WITH_MIN])
+def test_flat_spec_accepts_at_minimum(spec):
+    at_min = spec.minimum if spec.kind == "int" else float(spec.minimum)
+    errors = validate_config({spec.key: at_min})
+    assert not any(spec.key in e for e in errors), f"unexpected error for {spec.key}={at_min}"
+
+
+@pytest.mark.parametrize("spec", _NULLABLE_SPECS, ids=[s.key for s in _NULLABLE_SPECS])
+def test_flat_spec_accepts_null(spec):
+    errors = validate_config({spec.key: None})
+    assert not any(spec.key in e for e in errors), f"unexpected error for {spec.key}=None"

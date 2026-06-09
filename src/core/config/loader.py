@@ -43,6 +43,101 @@ def _validate_algo_option(errors, prefix, options, field):
         errors.append(f"{prefix}.{field} must be one of: {', '.join(VALID_ALGOS)}")
 
 
+class _Spec:
+    """Field validation spec for table-driven flat-key checking."""
+
+    __slots__ = ("key", "kind", "nullable", "minimum", "message")
+
+    def __init__(self, key, kind, nullable=False, minimum=None, message=None):
+        self.key = key
+        self.kind = kind
+        self.nullable = nullable
+        self.minimum = minimum
+        self.message = message
+
+
+def _flat_key_error(spec):
+    """Build the error message for a flat-key spec."""
+    if spec.message:
+        return spec.message
+    k = spec.kind
+    if k == "bool":
+        return f"{spec.key} must be a boolean"
+    if k == "str":
+        if spec.nullable:
+            return f"{spec.key} must be a string or null"
+        return f"{spec.key} must be a string"
+    suffix = ""
+    if spec.nullable:
+        suffix = " or null"
+    if k == "int":
+        if spec.minimum is not None:
+            return f"{spec.key} must be an integer >= {spec.minimum}{suffix}"
+        return f"{spec.key} must be an integer{suffix}"
+    if k == "number":
+        if spec.minimum is not None:
+            return f"{spec.key} must be a number >= {spec.minimum}{suffix}"
+        return f"{spec.key} must be a number{suffix}"
+    return f"{spec.key} is invalid"
+
+
+_FLAT_SPECS = [
+    _Spec("hosts", "int", minimum=3),
+    _Spec("switches", "int", minimum=2),
+    _Spec("seed", "int", nullable=True),
+    _Spec("k", "int", minimum=1),
+    _Spec("host_degree_min", "int", minimum=1),
+    _Spec("node_per_switch", "int", minimum=0),
+    _Spec("switch_use_all", "bool"),
+    _Spec("num", "int", minimum=1),
+    _Spec("output_dir", "str"),
+    _Spec("results_json", "str", nullable=True),
+    _Spec("timestamp", "bool"),
+    _Spec("no_cli", "bool"),
+    _Spec("no_script_log", "bool"),
+    _Spec("duration", "int", minimum=0),
+    _Spec("cache_default_rct_ms", "int", nullable=True, minimum=1000),
+    _Spec("publisher_host", "int", nullable=True),
+    _Spec("pubsub_sub_startup_grace", "number", minimum=0,
+          message="pubsub_sub_startup_grace must be a non-negative number"),
+    _Spec("warmup_get_interval", "number", minimum=0,
+          message="warmup_get_interval must be a non-negative number"),
+    _Spec("warmup_only_cache_nodes", "bool"),
+    _Spec("down_interval", "int", minimum=0),
+    _Spec("down_duration", "int", minimum=0),
+    _Spec("down_count", "int", minimum=0),
+    _Spec("down_stagger", "int", minimum=0),
+    _Spec("cache_count", "int", minimum=0),
+    _Spec("webui_port", "int", nullable=True, minimum=1,
+          message="webui_port must be a positive integer or null"),
+    _Spec("script_log", "str", nullable=True,
+          message="script_log must be a string"),
+]
+
+
+def _validate_flat_keys(errors, config):
+    """Validate flat (non-structured) config keys via the spec table."""
+    for spec in _FLAT_SPECS:
+        if spec.key not in config:
+            continue
+        value = config[spec.key]
+        if spec.nullable and value is None:
+            continue
+        msg = _flat_key_error(spec)
+        if spec.kind == "bool":
+            if not isinstance(value, bool):
+                errors.append(msg)
+        elif spec.kind == "str":
+            if not isinstance(value, str):
+                errors.append(msg)
+        elif spec.kind == "int":
+            if not _is_int(value) or (spec.minimum is not None and value < spec.minimum):
+                errors.append(msg)
+        elif spec.kind == "number":
+            if not _is_number(value) or (spec.minimum is not None and value < spec.minimum):
+                errors.append(msg)
+
+
 def _validate_put_options(errors, prefix, event):
     _validate_number_option(errors, prefix, event, "rate", minimum=0.001)
     for field in ("expiry", "cache_time"):
@@ -152,27 +247,9 @@ def validate_config(config: dict[str, Any]) -> list[str]:
     Returns:
         List of error messages. Empty if valid.
     """
-    errors = []
+    errors: list[str] = []
 
-    if "hosts" in config:
-        if not _is_int(config["hosts"]) or config["hosts"] < 3:
-            errors.append("hosts must be an integer >= 3")
-
-    if "switches" in config:
-        if not _is_int(config["switches"]) or config["switches"] < 2:
-            errors.append("switches must be an integer >= 2")
-
-    if "seed" in config:
-        if config["seed"] is not None and not _is_int(config["seed"]):
-            errors.append("seed must be an integer or null")
-
-    if "k" in config:
-        if not _is_int(config["k"]) or config["k"] < 1:
-            errors.append("k must be an integer >= 1")
-
-    if "host_degree_min" in config:
-        if not _is_int(config["host_degree_min"]) or config["host_degree_min"] < 1:
-            errors.append("host_degree_min must be an integer >= 1")
+    _validate_flat_keys(errors, config)
 
     if "host_degree_max" in config:
         if not _is_int(config["host_degree_max"]):
@@ -184,56 +261,13 @@ def validate_config(config: dict[str, Any]) -> list[str]:
             if config["host_degree_max"] < min_val:
                 errors.append("host_degree_max must be >= host_degree_min")
 
-    if "node_per_switch" in config:
-        if not _is_int(config["node_per_switch"]) or config["node_per_switch"] < 0:
-            errors.append("node_per_switch must be an integer >= 0")
-
-    if "switch_use_all" in config:
-        if not isinstance(config["switch_use_all"], bool):
-            errors.append("switch_use_all must be a boolean")
-
-    if "num" in config:
-        if not _is_int(config["num"]) or config["num"] < 1:
-            errors.append("num must be an integer >= 1")
-
-    if "output_dir" in config:
-        if not isinstance(config["output_dir"], str):
-            errors.append("output_dir must be a string")
-
-    if "results_json" in config:
-        if config["results_json"] is not None and not isinstance(
-            config["results_json"], str
-        ):
-            errors.append("results_json must be a string or null")
-
-    if "timestamp" in config:
-        if not isinstance(config["timestamp"], bool):
-            errors.append("timestamp must be a boolean")
-
     if "legacy_layout" in config:
         errors.append("legacy_layout has been removed; use output_dir and num instead")
-
-    if "no_cli" in config:
-        if not isinstance(config["no_cli"], bool):
-            errors.append("no_cli must be a boolean")
-
-    if "duration" in config:
-        if not _is_int(config["duration"]) or config["duration"] < 0:
-            errors.append("duration must be an integer >= 0")
-
-    if "cache_default_rct_ms" in config:
-        value = config["cache_default_rct_ms"]
-        if value is not None and (not _is_int(value) or value < 1000):
-            errors.append("cache_default_rct_ms must be an integer >= 1000 or null")
 
     if "cefnetd_timeout" in config:
         value = config["cefnetd_timeout"]
         if not _is_number(value) or value <= 0:
             errors.append("cefnetd_timeout must be a positive number")
-
-    if "publisher_host" in config:
-        if config["publisher_host"] is not None and not _is_int(config["publisher_host"]):
-            errors.append("publisher_host must be an integer or null")
 
     if "cache_config" in config:
         cc = config["cache_config"]
@@ -435,20 +469,6 @@ def validate_config(config: dict[str, Any]) -> list[str]:
                     errors.append(f"bridges[{idx}].nat must be a boolean")
                 if "nat_out" in bridge and not isinstance(bridge["nat_out"], str):
                     errors.append(f"bridges[{idx}].nat_out must be a string")
-
-    if "pubsub_sub_startup_grace" in config:
-        v = config["pubsub_sub_startup_grace"]
-        if not _is_number(v) or v < 0:
-            errors.append("pubsub_sub_startup_grace must be a non-negative number")
-
-    if "warmup_get_interval" in config:
-        v = config["warmup_get_interval"]
-        if not _is_number(v) or v < 0:
-            errors.append("warmup_get_interval must be a non-negative number")
-
-    if "warmup_only_cache_nodes" in config:
-        if not isinstance(config["warmup_only_cache_nodes"], bool):
-            errors.append("warmup_only_cache_nodes must be a boolean")
 
     if "warmup_gets" in config:
         wg = config["warmup_gets"]
@@ -695,38 +715,6 @@ def validate_config(config: dict[str, Any]) -> list[str]:
                         )
             if "output_subdir" in debug and not isinstance(debug["output_subdir"], str):
                 errors.append("debug.output_subdir must be a string")
-
-    # Boolean keys
-    for key in ("no_cli", "no_script_log"):
-        if key in config and not isinstance(config[key], bool):
-            errors.append(f"{key} must be a boolean")
-
-    # Non-negative integer keys
-    for key in ("duration",):
-        if key in config:
-            if not _is_int(config[key]) or config[key] < 0:
-                errors.append(f"{key} must be an integer >= 0")
-
-    # Nullable integer keys
-    for key in ("cache_default_rct_ms", "publisher_host"):
-        if key in config and config[key] is not None:
-            if not _is_int(config[key]):
-                errors.append(f"{key} must be an integer or null")
-
-    # Numeric CLI/config keys merged into runtime args.
-    for key in ("node_per_switch", "down_interval", "down_duration", "down_count", "down_stagger", "cache_count"):
-        if key in config and (not _is_int(config[key]) or config[key] < 0):
-            errors.append(f"{key} must be an integer >= 0")
-    if "webui_port" in config and (
-        config["webui_port"] is not None
-        and (not _is_int(config["webui_port"]) or config["webui_port"] <= 0)
-    ):
-        errors.append("webui_port must be a positive integer or null")
-
-    # String keys
-    for key in ("results_json", "script_log"):
-        if key in config and config[key] is not None and not isinstance(config[key], str):
-            errors.append(f"{key} must be a string")
 
     return errors
 
