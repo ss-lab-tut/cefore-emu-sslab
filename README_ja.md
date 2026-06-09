@@ -13,6 +13,7 @@ CeforeEmu は、Ubuntu 22.04 上で Cefore（コンテンツ指向ネットワ�
 | `linear` | 線形トポロジ（コンシューマ−ルータ−パブリッシャの連鎖） |
 | `mesh` | マルチパス FIB を持つランダムメッシュトポロジ |
 | `disaster` | 定期的なホスト障害・帯域制御・外部インタフェース接続を持つメッシュトポロジ |
+| `connect` | 物理 Cefore 機器と接続する外部ネットワークメッシュ |
 
 ## 前提条件
 
@@ -281,21 +282,26 @@ cefore-emu/
 │   │   └── cli.py                 # argparse CLI
 │   ├── runtime/                   # ランタイム操作
 │   │   ├── bandwidth.py           # リンク帯域制御
-│   │   ├── base.py                # ベースランタイムユーティリティ
 │   │   ├── bridge.py              # Linux ブリッジ & ルート NS ブリッジング
 │   │   ├── cache_manager.py       # キャッシュマネージャ操作
+│   │   ├── cef_argv.py            # Cefore コマンド argv ビルダ
 │   │   ├── cefore.py              # Cefore デーモンの起動/停止/待機
+│   │   ├── cleanup.py             # クリーンアップユーティリティ
+│   │   ├── command_runner.py      # CommandRunner seam（ホストコマンド実行）
+│   │   ├── content_ops.py         # コンテンツ操作（put/get/pub/sub）
 │   │   ├── external_net.py        # 外部ネットワークメッシュシナリオ
 │   │   ├── failure_manager.py     # ホスト障害シミュレーション
 │   │   ├── links.py               # リンク状態制御（up/down）
 │   │   ├── monitoring.py          # 定期的なステータス収集
 │   │   ├── net_config.py          # IP アドレス & FIB 適用
+│   │   ├── result_detect.py       # 結果/成功検出
 │   │   ├── scheduler.py           # タイムドイベントスケジューラ
 │   │   ├── template.py            # ホストディレクトリテンプレート管理
 │   │   ├── topo.py                # Mininet Topo サブクラス（MeshTopo）
 │   │   └── viz.py                 # トポロジ可視化 & PNG 出力
 │   └── scenarios/                 # シナリオ実装
 │       ├── base.py                # 共通シナリオユーティリティ
+│       ├── connect.py             # 外部ネットワーク接続シナリオ
 │       ├── linear.py              # 線形トポロジシナリオ
 │       ├── mesh.py                # メッシュトポロジシナリオ
 │       └── disaster.py            # ディザスタシミュレーション付きメッシュ
@@ -320,6 +326,9 @@ cefore-emu/
 - [doc/autotest_plan_reviewed.md](doc/autotest_plan_reviewed.md) - 自動テスト実装計画
 - [doc/cefore_emu_autotest_spec.md](doc/cefore_emu_autotest_spec.md) - 自動テスト仕様
 - [doc/branch-retirement-feature-test.md](doc/branch-retirement-feature-test.md) - ブランチ廃止ノート
+- [doc/chatGPT_assumed-Plan.md](doc/chatGPT_assumed-Plan.md) - Bridge レビュー結果（Codex）
+- [ONBOARDING.md](ONBOARDING.md) - チームオンボーディングガイド
+- [CONTEXT.md](CONTEXT.md) - プロジェクト用語辞書
 
 ## ノードロール
 

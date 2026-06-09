@@ -13,6 +13,7 @@ Three topology types are available via a unified CLI:
 | `linear` | Linear topology (consumer-router-publisher chain) |
 | `mesh` | Random mesh topology with multi-path FIB |
 | `disaster` | Mesh with periodic host failures, bandwidth control, and external interface support |
+| `connect` | External network mesh with physical Cefore device connectivity |
 
 ## Prerequisites
 
@@ -282,21 +283,26 @@ cefore-emu/
 │   │   └── cli.py                 # argparse CLI
 │   ├── runtime/                   # Runtime operations
 │   │   ├── bandwidth.py           # Link bandwidth control
-│   │   ├── base.py                # Base runtime utilities
 │   │   ├── bridge.py              # Linux bridge & root NS bridging
 │   │   ├── cache_manager.py       # Cache manager operations
+│   │   ├── cef_argv.py            # Cefore command argv builder
 │   │   ├── cefore.py              # Cefore daemon start/stop/wait
+│   │   ├── cleanup.py             # Cleanup utilities
+│   │   ├── command_runner.py      # CommandRunner seam (host command execution)
+│   │   ├── content_ops.py         # Content operations (put/get/pub/sub)
 │   │   ├── external_net.py        # External network mesh scenario
 │   │   ├── failure_manager.py     # Host failure simulation
 │   │   ├── links.py               # Link state control (up/down)
 │   │   ├── monitoring.py          # Periodic status collection
 │   │   ├── net_config.py          # IP address & FIB application
+│   │   ├── result_detect.py       # Result/success detection
 │   │   ├── scheduler.py           # Timed event scheduler
 │   │   ├── template.py            # Host directory template management
 │   │   ├── topo.py                # Mininet Topo subclass (MeshTopo)
 │   │   └── viz.py                 # Topology visualization & PNG output
 │   └── scenarios/                 # Scenario implementations
 │       ├── base.py                # Shared scenario utilities
+│       ├── connect.py             # External network connectivity scenario
 │       ├── linear.py              # Linear topology scenario
 │       ├── mesh.py                # Mesh topology scenario
 │       └── disaster.py            # Mesh with disaster simulation
@@ -321,6 +327,9 @@ cefore-emu/
 - [doc/autotest_plan_reviewed.md](doc/autotest_plan_reviewed.md) - Autotest implementation plan
 - [doc/cefore_emu_autotest_spec.md](doc/cefore_emu_autotest_spec.md) - Autotest specification
 - [doc/branch-retirement-feature-test.md](doc/branch-retirement-feature-test.md) - Branch retirement notes
+- [doc/chatGPT_assumed-Plan.md](doc/chatGPT_assumed-Plan.md) - Bridge review findings (Codex)
+- [ONBOARDING.md](ONBOARDING.md) - Team onboarding guide
+- [CONTEXT.md](CONTEXT.md) - Project glossary (domain language)
 
 ## Node Roles
 
