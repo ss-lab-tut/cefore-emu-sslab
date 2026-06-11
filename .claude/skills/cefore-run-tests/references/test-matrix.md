@@ -2,10 +2,13 @@
 
 ## Pytest Targets
 
-- `tests/runtime/test_cefore.py`
-  Confirms the runtime wrappers build commands with `2>&1`, keep log filenames stable, and avoid passing `stderr=DEVNULL` style kwargs for the covered call sites.
-- `tests/scenarios/test_disaster_pubsub.py`
-  Confirms `_detect_sub_success()` handles empty directories, zero-byte files, non-zero exit codes, and discovered `RNP0x*.out` artifacts correctly.
+- `tests/` — the full unit suite. No root needed: `tests/integration/test_smoke.py`
+  is a self-skipping placeholder and `tests/synthetic/` skips unless
+  `CEFEMU_SYNTHETIC_ROOT=1` and running as root.
+  Notable coverage includes the runtime wrapper logging behavior
+  (`tests/runtime/test_cefore.py`) and disaster pub/sub success detection
+  (`tests/scenarios/test_disaster_pubsub.py`) that the gate previously ran in
+  isolation.
 
 ## Smoke Configs
 
@@ -25,7 +28,7 @@
 - Required checks:
   - every row has `success == true`
   - every `op_type == "sub"` row has `has_output_file == true`
-  - every `op_type == "sub"` row keeps `has_completed_log == false`
+  - every `op_type == "sub"` row keeps `has_completed_log` falsy (`null`: the marker Factor is not applicable to sub)
   - every `op_type == "sub"` `out_file` points at a discovered `RNP0x*.out` artifact
 
 ### `min_pubsub_verify`
@@ -36,7 +39,7 @@
 - Required checks:
   - every row has `success == true`
   - every `op_type == "sub"` row has `has_output_file == true`
-  - every `op_type == "sub"` row keeps `has_completed_log == false`
+  - every `op_type == "sub"` row keeps `has_completed_log` falsy (`null`: the marker Factor is not applicable to sub)
   - every `op_type == "sub"` `out_file` points at a discovered `RNP0x*.out` artifact
 
 ### `min_empty`
@@ -56,7 +59,7 @@
   - all entries have `success == true`
   - every `op_type == "get"` row has `has_completed_log == true`
   - every `op_type == "sub"` row has `has_output_file == true`
-  - every `op_type == "sub"` row keeps `has_completed_log == false`
+  - every `op_type == "sub"` row keeps `has_completed_log` falsy (`null`: the marker Factor is not applicable to sub)
 
 ### `min_event_putget`
 
@@ -77,6 +80,39 @@
   - every row has `success == true`
   - every `op_type == "sub"` row has `has_output_file == true`
   - every `op_type == "sub"` `out_file` points at a discovered `RNP0x*.out` artifact
+
+### `min_failure`
+
+- File: `config/examples/min_failure.yaml`
+- 障害サイクル (legacy --down-* 相当) の outcome record 証拠。publisher (h2) は自動除外、
+  h0 は down_exclude で除外 → h1 が flap する。
+- Expected `results.json`: put row + `op_type == "event"` の host_down/host_up rows
+- Required checks (cycle evidence only — content rows are NOT gated because gets
+  during a failure window may legitimately fail):
+  - at least 1 `event_type == "host_down"` and 1 `event_type == "host_up"` record
+  - every event record has `success == true`
+
+### `min_event_link`
+
+- File: `config/examples/min_event_link.yaml`
+- link_down/link_up イベントの outcome record + 復旧後 get。seed=42 トポロジの
+  h1-h2 リンク（get 経路 h0→s1→h2 に影響しない側）を down/up する。
+- Expected `results.json`: put + get rows + link_down/link_up event rows
+- Required checks:
+  - every row has `success == true`（イベント失敗も gate で検出される）
+  - at least 1 `link_down` and 1 `link_up` event record
+  - every `op_type == "get"` row has `has_completed_log == true` and
+    `has_output_file == true`
+
+### `min_monitoring`
+
+- File: `config/examples/min_monitoring.yaml`
+- monitoring (cefstatus 収集) の gate 検証。
+- Expected: results.json (put + get rows) に加え、case output 配下に
+  `monitor.json`（Monitor.stop() 時に書き出される収集記録）
+- Required checks:
+  - every row has `success == true`
+  - `monitor.json` exists with at least 1 entry
 
 ### `connect`
 

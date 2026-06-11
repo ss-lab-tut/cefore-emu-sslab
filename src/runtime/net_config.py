@@ -101,7 +101,9 @@ def cefroute_del(net, host_idx, prefix, protocol, next_hop, node_dir=None):
         "-d", node_dir,
     ]
     print(node_name, "command:", argv)
-    info(MininetCommandRunner(net).run(node_name, argv).stdout)
+    result = MininetCommandRunner(net).run(node_name, argv)
+    info(result.stdout)
+    return result.returncode == 0
 
 
 def cefroute_enable(net, host_idx, prefix, protocol, next_hop, node_dir=None):
@@ -123,4 +125,6 @@ def cefroute_enable(net, host_idx, prefix, protocol, next_hop, node_dir=None):
         "-d", node_dir,
     ]
     print(node_name, "command:", argv)
-    info(MininetCommandRunner(net).run(node_name, argv).stdout)
+    result = MininetCommandRunner(net).run(node_name, argv)
+    info(result.stdout)
+    return result.returncode == 0

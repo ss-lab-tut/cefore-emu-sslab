@@ -13,6 +13,7 @@ from .compute_client import check_external_connectivity
 from .compute_client import compute_call as _do_compute_call
 from .links import link_down, link_up
 from .net_config import cefroute_del, cefroute_enable
+from .result_detect import timestamp_utc
 
 
 def _cefroute_add(net, host_idx, prefix, protocol, next_hop):
@@ -24,11 +25,16 @@ def _cefroute_add(net, host_idx, prefix, protocol, next_hop):
         "-d", node_dir,
     ]
     print(node_name, "command:", argv)
-    info(MininetCommandRunner(net).run(node_name, argv).stdout)
+    result = MininetCommandRunner(net).run(node_name, argv)
+    info(result.stdout)
+    return result.returncode == 0
 
 
 def _handle_compute_call(net, event, mesh_links, ctx):
-    """Handle compute_call event with connectivity check."""
+    """Handle compute_call event with connectivity check.
+
+    Returns False on failure so the scheduler records an honest event Verdict.
+    """
     host_idx = event["host"]
     endpoint = event["endpoint"]
 
@@ -37,7 +43,7 @@ def _handle_compute_call(net, event, mesh_links, ctx):
             f"[scheduler] compute_call: h{host_idx} cannot reach {endpoint}. "
             f"Ensure ext/bridges are configured for this host.\n"
         )
-        return
+        return False
 
     exit_code, stdout = _do_compute_call(
         net,
@@ -52,6 +58,8 @@ def _handle_compute_call(net, event, mesh_links, ctx):
     )
     if exit_code != 0:
         info(f"[scheduler] compute_call failed for h{host_idx}: exit={exit_code}\n")
+        return False
+    return True
 
 
 def _handle_content_op(op_type):
@@ -104,6 +112,10 @@ _EVENT_PRIORITY = {
     "get": 3,
 }
 
+# Content events are recorded by the ContentOperationRunner with their own
+# Verdicts; the scheduler emits outcome records only for the rest.
+_CONTENT_EVENT_TYPES = {"put", "get", "pubsub_sub", "pubsub_pub"}
+
 
 class EventScheduler:
     """Execute timed events on a Mininet network.
@@ -135,10 +147,12 @@ class EventScheduler:
         run_dir=None,
         content_runner=None,
         start_time=None,
+        result_callback=None,
     ):
         self.net = net
         self.mesh_links = mesh_links
         self._context = {"run_dir": run_dir, "content_runner": content_runner}
+        self._result_callback = result_callback
         self._stop_event = threading.Event()
         self._thread = None
 
@@ -228,17 +242,42 @@ class EventScheduler:
                     f"({late_by:.1f}s late)\n"
                 )
             info(f"[scheduler] t={elapsed:.1f}s  {event_type} {event}\n")
+            success = True
+            error = None
             try:
-                handler(self.net, event, self.mesh_links, self._context)
+                if handler(self.net, event, self.mesh_links, self._context) is False:
+                    success = False
+                    error = "handler reported failure"
             except Exception as exc:
                 info(f"[scheduler] error handling {event_type}: {exc}\n")
+                success = False
+                error = str(exc)
             except BaseException as exc:
                 info(
                     f"[scheduler] fatal error handling {event_type}: {exc}; stopping\n"
                 )
                 break
 
+            self._record_event_outcome(event, event_type, at_sec, success, error)
             self._handle_repeat(event, at_sec)
+
+    def _record_event_outcome(self, event, event_type, at_sec, success, error):
+        """Emit an outcome record for a non-content event into the results sink."""
+        if self._result_callback is None or event_type in _CONTENT_EVENT_TYPES:
+            return
+        actual_at = time.monotonic() - self._start_time
+        self._result_callback(
+            {
+                "op_type": "event",
+                "event_type": event_type,
+                "ts": timestamp_utc(),
+                "scheduled_at": at_sec,
+                "actual_at": round(actual_at, 3),
+                "success": success,
+                "error": error,
+                "event": {k: v for k, v in event.items() if k != "repeat"},
+            }
+        )
 
     def start(self):
         """Start background event execution thread."""

@@ -7,7 +7,11 @@ import json
 from collections import defaultdict
 from pathlib import Path
 
-COMPLETED_MARKER = "Completed to get all the chunks."
+from src.core.verdict import COMPLETED_MARKER, Verdict, failure_reasons, from_record
+
+# Rows whose outcome counts toward eval success rates. put/pub rows are
+# publisher-side evidence and must not inflate the consumer denominators.
+EVAL_OP_TYPES = ("get", "sub")
 
 
 def discover_results(paths: list[Path]) -> list[Path]:
@@ -30,9 +34,8 @@ def discover_results(paths: list[Path]) -> list[Path]:
     return unique
 
 
-def _has_completed_log(record: dict) -> bool:
-    if isinstance(record.get("has_completed_log"), bool):
-        return record["has_completed_log"]
+def _probe_completed_log(record: dict) -> bool:
+    """Legacy fallback: read the log file when no Factor was stored."""
     log_file = record.get("log_file")
     if not log_file:
         return False
@@ -43,9 +46,8 @@ def _has_completed_log(record: dict) -> bool:
     return COMPLETED_MARKER in text
 
 
-def _has_output_file(record: dict) -> bool:
-    if isinstance(record.get("has_output_file"), bool):
-        return record["has_output_file"]
+def _probe_output_file(record: dict) -> bool:
+    """Legacy fallback: stat the output file when no Factor was stored."""
     out_file = record.get("out_file")
     if not out_file:
         return False
@@ -53,20 +55,40 @@ def _has_output_file(record: dict) -> bool:
     return path.exists() and path.stat().st_size > 0
 
 
-def classify(record: dict) -> tuple[bool, dict[str, int]]:
+def _legacy_verdict(record: dict) -> Verdict:
+    """Re-derive a Verdict for records that predate stored Factors."""
     exit_code = int(record.get("exit_code", 1))
-    has_completed = _has_completed_log(record)
-    has_output = _has_output_file(record)
-    success = (
-        bool(record.get("success"))
-        if "success" in record
-        else (exit_code == 0 and has_completed and has_output)
+    has_completed = (
+        record["has_completed_log"]
+        if isinstance(record.get("has_completed_log"), bool)
+        else _probe_completed_log(record)
     )
-    reasons = {
-        "exit_code_nonzero": 1 if exit_code != 0 else 0,
-        "missing_completed_log": 1 if not has_completed else 0,
-        "missing_output_file": 1 if not has_output else 0,
-    }
+    has_output = (
+        record["has_output_file"]
+        if isinstance(record.get("has_output_file"), bool)
+        else _probe_output_file(record)
+    )
+    return Verdict(
+        op_type=record.get("op_type") or "get",
+        success=exit_code == 0 and has_completed and has_output,
+        has_completed_log=has_completed,
+        has_output_file=has_output,
+        exit_code=exit_code,
+    )
+
+
+def classify(record: dict) -> tuple[bool, dict[str, int]]:
+    """Judge a record from its stored Verdict Factors.
+
+    Failure reasons count only for failed records and only for known-False
+    Factors; unknown / not-applicable Factors (``null``) never count.
+    """
+    verdict = from_record(record) if "success" in record else _legacy_verdict(record)
+    success = verdict.success is True
+    if success:
+        reasons = {key: 0 for key in failure_reasons(verdict)}
+    else:
+        reasons = {key: int(flag) for key, flag in failure_reasons(verdict).items()}
     return success, reasons
 
 
@@ -87,6 +109,8 @@ def summarize(records: list[dict]) -> list[dict]:
     for rec in records:
         uri = rec.get("uri", "")
         if not uri:
+            continue
+        if (rec.get("op_type") or "get") not in EVAL_OP_TYPES:
             continue
         row = by_uri[uri]
         row["uri"] = uri

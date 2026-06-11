@@ -34,9 +34,9 @@ class TestDetectSubSuccess:
         output_dir = tmp_path / "recvdir"
         output_dir.mkdir()
         result = _detect_sub_success(_result(0), output_dir, tmp_path / "sub.log")
-        assert result["success"] is False
-        assert result["has_output_file"] is False
-        assert result["artifact_path"] is None
+        assert result.success is False
+        assert result.has_output_file is False
+        assert result.artifact_path is None
 
     def test_nonempty_out_file_is_success(self, tmp_path):
         output_dir = tmp_path / "recvdir"
@@ -44,9 +44,9 @@ class TestDetectSubSuccess:
         artifact = output_dir / "RNP0x0a1b2c.out"
         artifact.write_bytes(b"content data")
         result = _detect_sub_success(_result(0), output_dir, tmp_path / "sub.log")
-        assert result["success"] is True
-        assert result["has_output_file"] is True
-        assert result["artifact_path"] == str(artifact)
+        assert result.success is True
+        assert result.has_output_file is True
+        assert result.artifact_path == str(artifact)
 
     def test_nonzero_exit_code_is_failure_even_with_file(self, tmp_path):
         output_dir = tmp_path / "recvdir"
@@ -54,8 +54,8 @@ class TestDetectSubSuccess:
         artifact = output_dir / "RNP0xdeadbeef.out"
         artifact.write_bytes(b"content data")
         result = _detect_sub_success(_result(1), output_dir, tmp_path / "sub.log")
-        assert result["success"] is False
-        assert result["has_output_file"] is True
+        assert result.success is False
+        assert result.has_output_file is True
 
     def test_timed_out_with_file_is_success(self, tmp_path):
         # Killed by the deadline AFTER content was delivered -> still success.
@@ -65,7 +65,7 @@ class TestDetectSubSuccess:
         result = _detect_sub_success(
             _result(-15, timed_out=True), output_dir, tmp_path / "sub.log"
         )
-        assert result["success"] is True
+        assert result.success is True
 
     def test_cancelled_with_file_is_success(self, tmp_path):
         # Cancelled AFTER content was delivered -> still success.
@@ -75,7 +75,7 @@ class TestDetectSubSuccess:
         result = _detect_sub_success(
             _result(-15, cancelled=True), output_dir, tmp_path / "sub.log"
         )
-        assert result["success"] is True
+        assert result.success is True
 
     def test_timed_out_without_file_is_failure(self, tmp_path):
         output_dir = tmp_path / "recvdir"
@@ -83,21 +83,21 @@ class TestDetectSubSuccess:
         result = _detect_sub_success(
             _result(-15, timed_out=True), output_dir, tmp_path / "sub.log"
         )
-        assert result["success"] is False
+        assert result.success is False
 
     def test_zero_byte_file_is_failure(self, tmp_path):
         output_dir = tmp_path / "recvdir"
         output_dir.mkdir()
         (output_dir / "RNP0xempty.out").write_bytes(b"")
         result = _detect_sub_success(_result(0), output_dir, tmp_path / "sub.log")
-        assert result["success"] is False
-        assert result["has_output_file"] is False
+        assert result.success is False
+        assert result.has_output_file is False
 
     def test_nonexistent_directory_is_failure(self, tmp_path):
         output_dir = tmp_path / "does_not_exist"
         result = _detect_sub_success(_result(0), output_dir, tmp_path / "sub.log")
-        assert result["success"] is False
-        assert result["has_output_file"] is False
+        assert result.success is False
+        assert result.has_output_file is False
 
     def test_returns_first_artifact_path(self, tmp_path):
         output_dir = tmp_path / "recvdir"
@@ -107,14 +107,15 @@ class TestDetectSubSuccess:
         a1.write_bytes(b"a")
         a2.write_bytes(b"b")
         result = _detect_sub_success(_result(0), output_dir, tmp_path / "sub.log")
-        assert result["artifact_path"] in (str(a1), str(a2))
+        assert result.artifact_path in (str(a1), str(a2))
 
-    def test_has_completed_log_always_false(self, tmp_path):
+    def test_has_completed_log_not_applicable(self, tmp_path):
+        # The completed-marker Factor does not apply to sub: tri-state None.
         output_dir = tmp_path / "recvdir"
         output_dir.mkdir()
         (output_dir / "RNP0xabc.out").write_bytes(b"data")
         result = _detect_sub_success(_result(0), output_dir, tmp_path / "sub.log")
-        assert result["has_completed_log"] is False
+        assert result.has_completed_log is None
 
 
 # ---------------------------------------------------------------------------
@@ -326,3 +327,63 @@ class TestContentOperationRunnerDeadline:
         # pub_opts does not acquire the disaster 3000 default; omitted stays omitted.
         assert "-e" not in pub_argv
         assert "-t" not in pub_argv
+
+
+# ---------------------------------------------------------------------------
+# put record (ContentOperationRunner)
+# ---------------------------------------------------------------------------
+
+
+class TestPutRecord:
+    """_do_put records a runtime Verdict; put failures are no longer silent."""
+
+    @patch("src.runtime.content_ops.run_cefputfile")
+    def test_put_success_record(self, mock_put, tmp_path):
+        mock_put.return_value = 0
+        runner = _make_runner(tmp_path)
+        runner._do_put({"host": 9, "uri": "ccnx:/test/seed"})
+        record = runner._result_callback.call_args[0][0]
+        assert record["op_type"] == "put"
+        assert record["success"] is True
+        assert record["exit_code"] == 0
+        # exit code is the only runtime evidence: other Factors not applicable.
+        assert record["has_completed_log"] is None
+        assert record["has_output_file"] is None
+        assert record["out_file"] is None
+        assert record["publisher_host"] == 9
+        assert record["publisher_down"] is False
+
+    @patch("src.runtime.content_ops.run_cefputfile")
+    def test_put_failure_record(self, mock_put, tmp_path):
+        mock_put.return_value = 1
+        runner = _make_runner(tmp_path)
+        runner._do_put({"host": 9, "uri": "ccnx:/test/seed"})
+        record = runner._result_callback.call_args[0][0]
+        assert record["success"] is False
+        assert record["exit_code"] == 1
+
+
+class TestPubRecordPublisherDown:
+    """pub records report publisher_down honestly (audit fix, was hard-coded False)."""
+
+    def test_pub_publisher_down_reflects_flap_state(self, tmp_path):
+        fake = FakeCommandRunner()
+        flap_state = MagicMock()
+        flap_state.snapshot.return_value = [2]
+        records = []
+        runner = ContentOperationRunner(
+            MagicMock(),
+            run_dir=tmp_path,
+            result_callback=records.append,
+            flap_state=flap_state,
+            seed_label="test",
+            startup_grace=0,
+            runner=fake,
+        )
+        runner._do_pubsub_pub(
+            {"host": 2, "uri": "ccnx:/test/live", "file": "./sample-putfile"}
+        )
+        pub_rows = [r for r in records if r["op_type"] == "pub"]
+        assert pub_rows
+        assert pub_rows[0]["publisher_down"] is True
+        assert pub_rows[0]["down_hosts"] == [2]

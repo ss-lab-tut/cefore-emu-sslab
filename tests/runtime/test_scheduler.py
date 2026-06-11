@@ -167,3 +167,73 @@ class TestEventScheduler:
             sched.start()
             assert sched.wait_all(timeout=1) is True
         assert fired[0] - before < 0.2
+
+
+class TestEventOutcomeRecords:
+    """Non-content events emit outcome records into the results sink (K)."""
+
+    def _run_one(self, event, handler, handlers_key="test"):
+        records = []
+        net = _make_net()
+        with patch.dict(
+            "src.runtime.scheduler._EVENT_HANDLERS", {handlers_key: handler}
+        ):
+            sched = EventScheduler(net, [event], result_callback=records.append)
+            sched.start()
+            sched.wait_all(timeout=3)
+        return records
+
+    def test_success_record(self):
+        event = {"at": 0.0, "type": "test", "nodes": [0, 1]}
+        records = self._run_one(event, lambda net, ev, ml, ctx: None)
+        assert len(records) == 1
+        rec = records[0]
+        assert rec["op_type"] == "event"
+        assert rec["event_type"] == "test"
+        assert rec["success"] is True
+        assert rec["error"] is None
+        assert rec["scheduled_at"] == 0.0
+        assert rec["event"]["nodes"] == [0, 1]
+
+    def test_handler_false_is_failure(self):
+        records = self._run_one(
+            {"at": 0.0, "type": "test"}, lambda net, ev, ml, ctx: False
+        )
+        assert records[0]["success"] is False
+        assert records[0]["error"] == "handler reported failure"
+
+    def test_handler_exception_is_failure(self):
+        def boom(net, ev, ml, ctx):
+            raise ValueError("link not found")
+
+        records = self._run_one({"at": 0.0, "type": "test"}, boom)
+        assert records[0]["success"] is False
+        assert "link not found" in records[0]["error"]
+
+    def test_content_events_are_not_recorded(self):
+        # Content ops get their own Verdict records from ContentOperationRunner.
+        records = self._run_one(
+            {"at": 0.0, "type": "get", "host": 0, "uri": "ccnx:/a"},
+            lambda net, ev, ml, ctx: None,
+            handlers_key="get",
+        )
+        assert records == []
+
+    def test_repeat_key_excluded_from_record(self):
+        event = {
+            "at": 0.0,
+            "type": "test",
+            "repeat": {"interval": 0.05, "count": 1},
+        }
+        records = self._run_one(event, lambda net, ev, ml, ctx: None)
+        assert "repeat" not in records[0]["event"]
+
+    def test_no_callback_is_noop(self):
+        net = _make_net()
+        with patch.dict(
+            "src.runtime.scheduler._EVENT_HANDLERS",
+            {"test": lambda net, ev, ml, ctx: None},
+        ):
+            sched = EventScheduler(net, [{"at": 0.0, "type": "test"}])
+            sched.start()
+            assert sched.wait_all(timeout=3) is True

@@ -54,7 +54,7 @@ def set_switch_bandwidth(net, mesh_links, host_a, host_b, bandwidth):
     link = find_link(mesh_links, host_a, host_b)
     if link is None:
         info(f"[bw] no shared switch between h{host_a} and h{host_b}\n")
-        return
+        return False
     switch_name = link["switch"]
     if "hosts" in link:
         hosts_on_switch = link["hosts"]
@@ -64,3 +64,4 @@ def set_switch_bandwidth(net, mesh_links, host_a, host_b, bandwidth):
     for host_idx in hosts_on_switch:
         host_name = f"h{host_idx}"
         set_link_bandwidth(net, host_name, switch_name, bandwidth)
+    return True

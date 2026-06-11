@@ -2,7 +2,6 @@
 
 from src.log.parser import (
     PARSERS,
-    _detect_success,
     _extract_timestamp,
     _parse_numeric,
     _strip_unit,
@@ -43,18 +42,8 @@ def test_strip_unit_no_unit():
     assert _strip_unit("42") == "42"
 
 
-def test_detect_success_empty():
-    assert _detect_success("") is False
-    assert _detect_success("   ") is False
-
-
-def test_detect_success_failure_pattern():
-    assert _detect_success("Could not receive anything") is False
-    assert _detect_success("Received frame ... NG") is False
-
-
-def test_detect_success_normal():
-    assert _detect_success("Transfer completed successfully") is True
+# Success judgment itself is pinned in tests/core/test_verdict.py; the tests
+# below pin how the parsers feed the log-only Verdict adapter.
 
 
 # ── cefputfile ──
@@ -109,6 +98,17 @@ def test_parse_cefgetfile_failure():
     assert result["uri"] == "ccnx:/test/fail"
 
 
+def test_parse_cefgetfile_partial_without_marker_is_failure():
+    # Fields parsed but no completed marker: the definitive Factor decides.
+    text = (
+        "[cefgetfile] URI = ccnx:/test/partial\n"
+        "[cefgetfile] Duration = 1.234 sec\n"
+    )
+    result = parse_cefgetfile(text)
+    assert result["success"] is False
+    assert result["duration_sec"] == 1.234
+
+
 # ── cefpubfile / cefsubfile ──
 
 
@@ -123,7 +123,8 @@ def test_parse_cefpubfile_dynamic_keys():
     assert result["uri"] == "ccnx:/test/pub1"
     assert result["tx_frames"] == 50
     assert result["duration"] == 2.5
-    assert result["success"] is True
+    # pub has no in-log definitive Factor: success stays unknown.
+    assert result["success"] is None
 
 
 def test_parse_cefsubfile_dynamic_keys():
@@ -134,6 +135,7 @@ def test_parse_cefsubfile_dynamic_keys():
     result = parse_cefsubfile(text)
     assert result["uri"] == "ccnx:/test/sub1"
     assert result["rx_bytes"] == 1024
+    assert result["success"] is None
 
 
 # ── PARSERS dispatcher ──

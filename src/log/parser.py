@@ -3,6 +3,8 @@
 import re
 from typing import Any
 
+from ..core.verdict import from_log
+
 
 # ---------- timestamp extraction ----------
 
@@ -31,21 +33,9 @@ def _strip_unit(raw: str) -> str:
     return re.sub(r"\s+(Mbps|Bytes|bytes|sec|bps|us)\s*$", "", raw.strip())
 
 
-# ---------- success detection ----------
-
-_FAILURE_PATTERNS = (
-    "Could not receive anything",
-    "Received frame ... NG",
-)
-
-
-def _detect_success(text: str) -> bool:
-    if not text.strip():
-        return False
-    for pat in _FAILURE_PATTERNS:
-        if pat in text:
-            return False
-    return True
+# Success judgment is the Verdict module's job (src/core/verdict.py); the
+# log-only adapter `from_log` is used below. Factors invisible in log text
+# (exit code, output artifacts) stay unknown, so success can be None.
 
 
 # ---------- cefputfile ----------
@@ -80,9 +70,10 @@ def parse_cefputfile(text: str) -> dict[str, Any]:
         else:
             record[key] = None
 
-    record["success"] = _detect_success(text) and any(
+    fields_present = any(
         v is not None for k, v in record.items() if k not in ("timestamp", "success")
     )
+    record["success"] = from_log("cefputfile", text, fields_present=fields_present).success
     return record
 
 
@@ -125,9 +116,7 @@ def parse_cefgetfile(text: str) -> dict[str, Any]:
         else:
             record[key] = None
 
-    record["success"] = _detect_success(text) and any(
-        v is not None for k, v in record.items() if k not in ("timestamp", "success")
-    )
+    record["success"] = from_log("cefgetfile", text).success
     return record
 
 
@@ -173,7 +162,7 @@ def _parse_generic(text: str, command: str) -> dict[str, Any]:
         except ValueError:
             record[key] = raw
 
-    record["success"] = _detect_success(text)
+    record["success"] = from_log(command, text).success
     return record
 
 

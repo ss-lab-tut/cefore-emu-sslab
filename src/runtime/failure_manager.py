@@ -7,6 +7,23 @@ from mininet.log import info
 
 from ..core.flap_state import FlapState
 from .links import set_node_links_state
+from .result_detect import timestamp_utc
+
+
+def _record_flap(result_callback, event_type, host_idx, success, error):
+    """Emit a host_down/host_up outcome record into the results sink."""
+    if result_callback is None:
+        return
+    result_callback(
+        {
+            "op_type": "event",
+            "event_type": event_type,
+            "ts": timestamp_utc(),
+            "host": host_idx,
+            "success": success,
+            "error": error,
+        }
+    )
 
 
 def periodic_host_flap(
@@ -21,6 +38,7 @@ def periodic_host_flap(
     stagger: int,
     quiet: bool = False,
     on_host_up: Callable[[int], None] | None = None,
+    result_callback=None,
 ):
     """Start periodic host flapping in background thread."""
     host_ids = [idx for idx in range(host_num) if idx not in exclude]
@@ -50,6 +68,8 @@ def periodic_host_flap(
                 host_name = f"h{host_idx}"
                 if not quiet:
                     info(f"\n[flap] up {host_name}\n")
+                success = True
+                error = None
                 try:
                     set_node_links_state(net, host_name, "up")
                     if on_host_up is not None:
@@ -59,9 +79,14 @@ def periodic_host_flap(
                             info(
                                 f"\n[flap] host-up callback failed for {host_name}: {exc}\n"
                             )
+                            success = False
+                            error = f"host-up callback failed: {exc}"
                 except (AssertionError, OSError) as exc:
                     if not quiet:
                         info(f"\n[flap] failed to up {host_name}: {exc}\n")
+                    success = False
+                    error = str(exc)
+                _record_flap(result_callback, "host_up", host_idx, success, error)
                 active_down.discard(host_idx)
                 update_state()
 
@@ -92,11 +117,16 @@ def periodic_host_flap(
                 update_state(last_down=host_idx)
                 if not quiet:
                     info(f"\n[flap] down {host_name}\n")
+                success = True
+                error = None
                 try:
                     set_node_links_state(net, host_name, "down")
                 except (AssertionError, OSError) as exc:
                     if not quiet:
                         info(f"\n[flap] failed to down {host_name}: {exc}\n")
+                    success = False
+                    error = str(exc)
+                _record_flap(result_callback, "host_down", host_idx, success, error)
                 schedule_up(host_idx)
 
             stop_event.wait(interval)
@@ -116,6 +146,7 @@ class FlexibleFailureManager:
         rng,
         publisher_ids: set[int],
         on_host_up: Callable[[int], None] | None = None,
+        result_callback=None,
     ):
         self.strategy = scenario_config.get("strategy", "simple")
         self.cycles = scenario_config.get("cycles", [])
@@ -124,6 +155,7 @@ class FlexibleFailureManager:
         self.rng = rng
         self.publisher_ids = publisher_ids
         self.on_host_up = on_host_up
+        self.result_callback = result_callback
 
     def start(self, net, state: FlapState, quiet: bool = False):
         if self.strategy == "simple":
@@ -163,6 +195,7 @@ class FlexibleFailureManager:
             stagger,
             quiet=quiet,
             on_host_up=self.on_host_up,
+            result_callback=self.result_callback,
         )
         return stop_event, None
 
@@ -256,6 +289,8 @@ class FlexibleFailureManager:
                     if not quiet:
                         info(f"[failure] cycle {cycle_idx}: down {host_name}\n")
 
+                    success = True
+                    error = None
                     try:
                         set_node_links_state(net, host_name, "down")
                     except (AssertionError, OSError) as exc:
@@ -263,6 +298,11 @@ class FlexibleFailureManager:
                             info(
                                 f"[failure] cycle {cycle_idx}: failed to down {host_name}: {exc}\n"
                             )
+                        success = False
+                        error = str(exc)
+                    _record_flap(
+                        self.result_callback, "host_down", host_idx, success, error
+                    )
 
                 def schedule_up(down_set: set[int], cycle_num: int):
                     timer = None
@@ -279,6 +319,8 @@ class FlexibleFailureManager:
                             host_name = f"h{host_idx}"
                             if not quiet:
                                 info(f"[failure] cycle {cycle_num}: up {host_name}\n")
+                            success = True
+                            error = None
                             try:
                                 set_node_links_state(net, host_name, "up")
                                 restored_hosts.append(host_idx)
@@ -290,11 +332,18 @@ class FlexibleFailureManager:
                                             f"[failure] cycle {cycle_num}: "
                                             f"host-up callback failed for {host_name}: {exc}\n"
                                         )
+                                        success = False
+                                        error = f"host-up callback failed: {exc}"
                             except (AssertionError, OSError) as exc:
                                 if not quiet:
                                     info(
                                         f"[failure] cycle {cycle_num}: failed to up {host_name}: {exc}\n"
                                     )
+                                success = False
+                                error = str(exc)
+                            _record_flap(
+                                self.result_callback, "host_up", host_idx, success, error
+                            )
                         with state_lock:
                             for host_idx in restored_hosts:
                                 shared_down.discard(host_idx)

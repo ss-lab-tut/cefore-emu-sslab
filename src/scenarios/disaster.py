@@ -368,6 +368,7 @@ class DisasterScenario(BaseScenario):
                 rng=self.rng,
                 publisher_ids=self.publisher_ids,
                 on_host_up=lambda host_idx: self._restore_fib_for_host(net, host_idx),
+                result_callback=self._append_result,
             )
             self.stop_event, self.stop_thread = failure_manager.start(
                 net, self.flap_state, quiet=use_cli
@@ -388,6 +389,7 @@ class DisasterScenario(BaseScenario):
                 args.down_stagger,
                 quiet=use_cli,
                 on_host_up=lambda host_idx: self._restore_fib_for_host(net, host_idx),
+                result_callback=self._append_result,
             )
 
     def _run_warmup(self, net, events_config):
@@ -488,6 +490,7 @@ class DisasterScenario(BaseScenario):
                 run_dir=self.run_dir,
                 content_runner=self.content_runner,
                 start_time=origin,
+                result_callback=self._append_result,
             )
             self.event_scheduler.start()
 
@@ -507,6 +510,7 @@ class DisasterScenario(BaseScenario):
                 run_dir=self.run_dir,
                 content_runner=put_runner,
                 start_time=origin,
+                result_callback=self._append_result,
             )
             put_runner.start()
             try:
@@ -549,6 +553,7 @@ class DisasterScenario(BaseScenario):
                 run_dir=self.run_dir,
                 content_runner=self.content_runner,
                 start_time=origin,
+                result_callback=self._append_result,
             )
             self.event_scheduler.start()
 

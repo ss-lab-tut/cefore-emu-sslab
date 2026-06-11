@@ -58,6 +58,15 @@ def _get_metric(rec: dict[str, Any], *keys: str) -> float | None:
     return None
 
 
+def _known_success(records: list[dict[str, Any]]) -> list[str]:
+    # Verdict success is tri-state; unknown (empty) stays out of denominators.
+    return [
+        s
+        for s in (str(record.get("success", "")).lower() for record in records)
+        if s in ("true", "false")
+    ]
+
+
 def _filter_eval(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
     # Records without a phase field (linear/mesh logs) are treated as eval records.
     return [
@@ -149,12 +158,10 @@ def _grouped_bar_by_cycle(
                 if (_safe_int(record.get("cycle")) or 0) == cycle
             ]
             if is_success_rate:
-                total = len(cycle_records)
-                success = sum(
-                    1 for record in cycle_records
-                    if str(record.get("success", "")).lower() == "true"
+                known = _known_success(cycle_records)
+                values.append(
+                    (known.count("true") / len(known) * 100) if known else 0.0
                 )
-                values.append((success / total * 100) if total > 0 else 0.0)
             else:
                 nums = [_get_metric(record, *metric_keys) for record in cycle_records]
                 nums = [value / divisor for value in nums if value is not None]
@@ -324,12 +331,10 @@ def plot_cefpubfile(records: list[dict[str, Any]], output_dir: Path) -> list[Pat
         rate_values = [value for value in rate_values if value is not None]
         rates.append(sum(rate_values) / len(rate_values) if rate_values else 0.0)
 
-        total = len(records_for_uri)
-        success = sum(
-            1 for record in records_for_uri
-            if str(record.get("success", "")).lower() == "true"
+        known = _known_success(records_for_uri)
+        success_pcts.append(
+            (known.count("true") / len(known) * 100) if known else 0.0
         )
-        success_pcts.append((success / total * 100) if total > 0 else 0.0)
 
     fig, (ax_rate, ax_success) = plt.subplots(1, 2, figsize=(max(8, len(uris) * 2), 5))
 

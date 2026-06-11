@@ -45,6 +45,55 @@ def test_classify_explicit_success_field():
     assert success is True
 
 
+def test_classify_successful_record_counts_no_reasons():
+    """Failure reasons must not be charged to successful records."""
+    record = {
+        "op_type": "pub",
+        "exit_code": 0,
+        "success": True,
+        "has_completed_log": None,
+        "has_output_file": None,
+    }
+    success, reasons = classify(record)
+    assert success is True
+    assert reasons == {
+        "exit_code_nonzero": 0,
+        "missing_completed_log": 0,
+        "missing_output_file": 0,
+    }
+
+
+def test_classify_null_factors_never_count_as_reasons():
+    """Tri-state None (unknown / not-applicable) is not a failure reason."""
+    record = {
+        "op_type": "pub",
+        "exit_code": 1,
+        "success": False,
+        "has_completed_log": None,
+        "has_output_file": None,
+    }
+    success, reasons = classify(record)
+    assert success is False
+    assert reasons["exit_code_nonzero"] == 1
+    assert reasons["missing_completed_log"] == 0
+    assert reasons["missing_output_file"] == 0
+
+
+def test_classify_known_false_factors_count_on_failure():
+    record = {
+        "op_type": "get",
+        "exit_code": 0,
+        "success": False,
+        "has_completed_log": False,
+        "has_output_file": False,
+    }
+    success, reasons = classify(record)
+    assert success is False
+    assert reasons["missing_completed_log"] == 1
+    assert reasons["missing_output_file"] == 1
+    assert reasons["exit_code_nonzero"] == 0
+
+
 # ── summarize ──
 
 
@@ -101,6 +150,33 @@ def test_summarize_eval_total_zero_returns_none():
     rows = summarize(records)
     assert rows[0]["eval_total"] == 0
     assert rows[0]["eval_success_rate"] is None
+
+
+def test_summarize_excludes_put_and_pub_from_eval():
+    """Publisher-side rows must not inflate consumer eval denominators."""
+    records = [
+        {"uri": "ccnx:/a", "op_type": "put", "exit_code": 0, "success": True,
+         "has_completed_log": None, "has_output_file": None},
+        {"uri": "ccnx:/a", "op_type": "pub", "exit_code": 0, "success": True,
+         "has_completed_log": None, "has_output_file": None},
+        {"uri": "ccnx:/a", "op_type": "get", "exit_code": 0, "success": True,
+         "has_completed_log": True, "has_output_file": True},
+        {"uri": "ccnx:/a", "op_type": "sub", "exit_code": 0, "success": True,
+         "has_completed_log": None, "has_output_file": True},
+    ]
+    rows = summarize(records)
+    assert rows[0]["eval_total"] == 2
+    assert rows[0]["eval_success"] == 2
+    assert rows[0]["fail_missing_completed_log"] == 0
+    assert rows[0]["fail_missing_output_file"] == 0
+
+
+def test_summarize_put_only_uri_produces_no_row():
+    records = [
+        {"uri": "ccnx:/seed", "op_type": "put", "exit_code": 0, "success": True,
+         "has_completed_log": None, "has_output_file": None},
+    ]
+    assert summarize(records) == []
 
 
 def test_fmt_rate_none():

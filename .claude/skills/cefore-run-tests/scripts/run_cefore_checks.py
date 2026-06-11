@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run targeted pytest coverage and minimal disaster smoke checks."""
+"""Run the full unit pytest suite and minimal disaster smoke checks."""
 
 from __future__ import annotations
 
@@ -13,13 +13,11 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 
-PYTEST_TARGETS = (
-    "tests/runtime/test_cefore.py",
-    "tests/scenarios/test_disaster_pubsub.py",
-)
+PYTEST_TARGETS = ("tests",)
 SMOKE_CONFIGS = (
     "min_putget", "min_pubsub", "min_pubsub_verify", "min_empty", "min_mixed",
-    "min_event_putget", "min_event_pubsub", "connect",
+    "min_event_putget", "min_event_pubsub", "min_failure", "min_event_link",
+    "min_monitoring", "connect",
 )
 
 
@@ -29,7 +27,8 @@ class SmokeCase:
 
     ``kind`` selects how the case is run and validated:
     - ``"disaster"``: ``python -m src disaster --config <config_relpath> --no-cli``
-      writing a ``results.json`` that is then content-validated.
+      writing a ``results.json`` that is then validated against the
+      declarative ``expect`` spec (see ``validate_results``).
     - ``"connect"``: the ConnectScenario path (ceforeemu-connect), which has no
       ``--results-json`` and produces no results.json; validated by exit 0 plus
       the topology PNG that proves the configure stage completed.
@@ -38,11 +37,12 @@ class SmokeCase:
     name: str
     kind: str = "disaster"
     config_relpath: str | None = None
+    expect: dict | None = None
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Run targeted pytest checks and minimal disaster smoke configs."
+        description="Run the full unit pytest suite and minimal disaster smoke configs."
     )
     parser.add_argument(
         "--repo-root",
@@ -145,7 +145,7 @@ def run_command(cmd: list[str], cwd: Path, env: dict[str, str] | None = None) ->
 
 
 def run_pytest_phase(repo_root: Path, python_bin: Path, tmp_dir: Path) -> None:
-    """Run the targeted pytest files."""
+    """Run the full unit suite (root/env-gated tests skip themselves)."""
     cmd = [
         str(python_bin),
         "-m",
@@ -187,16 +187,108 @@ def mn_cleanup(repo_root: Path) -> None:
         print(f"[WARN] best-effort Mininet cleanup failed with exit code {result.returncode}")
 
 
+# Verdict Factor expectations shared by several configs. Values: True means
+# the Factor must be truthy on every row of that op_type; "falsy" means it
+# must stay false/null; "out_file_contains" substring-matches the artifact.
+GET_FACTORS = {"has_completed_log": True, "has_output_file": True}
+SUB_FACTORS = {
+    "has_output_file": True,
+    "has_completed_log": "falsy",
+    "out_file_contains": "RNP0x",
+}
+
+PUTGET_EXPECT = {
+    "min_rows": 1,
+    "all_success": True,
+    "require_op_types": ("get",),
+    "op_factors": {"get": GET_FACTORS},
+}
+PUBSUB_EXPECT = {
+    "min_rows": 1,
+    "all_success": True,
+    "require_op_types": ("sub",),
+    "op_factors": {"sub": SUB_FACTORS},
+}
+
+
 def build_smoke_cases() -> list[SmokeCase]:
-    """Return the known smoke configs."""
+    """Return the known smoke configs with their expected-outcome specs."""
     return [
-        SmokeCase("min_putget", config_relpath="config/examples/min_putget.yaml"),
-        SmokeCase("min_pubsub", config_relpath="config/examples/min_pubsub.yaml"),
-        SmokeCase("min_pubsub_verify", config_relpath="config/examples/min_pubsub_verify.yaml"),
-        SmokeCase("min_empty", config_relpath="config/examples/min_empty.yaml"),
-        SmokeCase("min_mixed", config_relpath="config/examples/min_mixed.yaml"),
-        SmokeCase("min_event_putget", config_relpath="config/examples/min_event_putget.yaml"),
-        SmokeCase("min_event_pubsub", config_relpath="config/examples/min_event_pubsub.yaml"),
+        SmokeCase(
+            "min_putget",
+            config_relpath="config/examples/min_putget.yaml",
+            expect=PUTGET_EXPECT,
+        ),
+        SmokeCase(
+            "min_pubsub",
+            config_relpath="config/examples/min_pubsub.yaml",
+            expect=PUBSUB_EXPECT,
+        ),
+        SmokeCase(
+            "min_pubsub_verify",
+            config_relpath="config/examples/min_pubsub_verify.yaml",
+            expect=PUBSUB_EXPECT,
+        ),
+        SmokeCase(
+            "min_empty",
+            config_relpath="config/examples/min_empty.yaml",
+            expect={"empty": True},
+        ),
+        SmokeCase(
+            "min_mixed",
+            config_relpath="config/examples/min_mixed.yaml",
+            expect={
+                "min_rows": 1,
+                "all_success": True,
+                "require_op_types": ("get", "sub"),
+                "op_factors": {
+                    "get": {"has_completed_log": True},
+                    "sub": {"has_output_file": True, "has_completed_log": "falsy"},
+                },
+            },
+        ),
+        SmokeCase(
+            "min_event_putget",
+            config_relpath="config/examples/min_event_putget.yaml",
+            expect=PUTGET_EXPECT,
+        ),
+        SmokeCase(
+            "min_event_pubsub",
+            config_relpath="config/examples/min_event_pubsub.yaml",
+            expect=PUBSUB_EXPECT,
+        ),
+        SmokeCase(
+            "min_failure",
+            config_relpath="config/examples/min_failure.yaml",
+            expect={
+                # Cycle evidence only: gets during a failure window may
+                # legitimately fail, so content rows are not gated here.
+                "min_rows": 1,
+                "require_event_types": ("host_down", "host_up"),
+                "all_events_success": True,
+            },
+        ),
+        SmokeCase(
+            "min_event_link",
+            config_relpath="config/examples/min_event_link.yaml",
+            expect={
+                "min_rows": 1,
+                "all_success": True,
+                "require_op_types": ("get",),
+                "require_event_types": ("link_down", "link_up"),
+                "op_factors": {"get": GET_FACTORS},
+            },
+        ),
+        SmokeCase(
+            "min_monitoring",
+            config_relpath="config/examples/min_monitoring.yaml",
+            expect={
+                "min_rows": 1,
+                "all_success": True,
+                "require_op_types": ("get",),
+                "monitor_json": {"min_entries": 1},
+            },
+        ),
         SmokeCase("connect", kind="connect"),
     ]
 
@@ -216,95 +308,68 @@ def load_results(results_path: Path) -> list[dict]:
     return json.loads(results_path.read_text(encoding="utf-8"))
 
 
-def validate_min_putget(data: list[dict]) -> None:
-    """Validate the normal put/get smoke output."""
-    if not data:
-        raise RuntimeError("min_putget expected at least 1 result")
-    if not all(row.get("success") for row in data):
-        raise RuntimeError("min_putget contains an unsuccessful result")
-    get_rows = [row for row in data if row.get("op_type") == "get"]
-    if not get_rows:
-        raise RuntimeError("min_putget expected at least 1 get result")
-    for row in get_rows:
-        if not row.get("has_completed_log"):
-            raise RuntimeError("min_putget get row missing completed-log marker")
-        if not row.get("has_output_file"):
-            raise RuntimeError("min_putget get row missing output artifact")
+def validate_results(
+    case_name: str, data: list[dict], expect: dict, case_output_dir: Path
+) -> None:
+    """Validate results.json against a declarative expectation spec.
 
+    Spec keys:
+    - ``empty``: results must be exactly ``[]``.
+    - ``min_rows``: minimum number of result rows.
+    - ``all_success``: every row must have a truthy ``success``.
+    - ``require_op_types``: at least one row per listed op_type.
+    - ``op_factors``: per-op_type Verdict Factor requirements; ``True`` =
+      truthy, ``"falsy"`` = must stay false/null, ``out_file_contains`` =
+      substring of ``out_file``.
+    - ``require_event_types``: at least one ``op_type == "event"`` record per
+      listed event_type (scheduler / failure-cycle outcome records).
+    - ``all_events_success``: every event record must have truthy ``success``.
+    - ``monitor_json``: a monitor.json with at least ``min_entries`` entries
+      must exist under the case output directory.
+    """
 
-def validate_min_pubsub(data: list[dict]) -> None:
-    """Validate the pub/sub smoke output."""
-    if not data:
-        raise RuntimeError("min_pubsub expected at least 1 result")
-    if not all(row.get("success") for row in data):
-        raise RuntimeError("min_pubsub contains an unsuccessful result")
-    sub_rows = [row for row in data if row.get("op_type") == "sub"]
-    if not sub_rows:
-        raise RuntimeError("min_pubsub expected at least 1 sub result")
-    for row in sub_rows:
-        if not row.get("has_output_file"):
-            raise RuntimeError("min_pubsub sub row missing output artifact")
-        if row.get("has_completed_log"):
-            raise RuntimeError("min_pubsub should not rely on completed-log detection")
-        if "RNP0x" not in str(row.get("out_file", "")):
-            raise RuntimeError("min_pubsub out_file does not point to an RNP0x*.out artifact")
+    def fail(msg: str) -> None:
+        raise RuntimeError(f"{case_name}: {msg}")
 
-
-def validate_min_empty(data: list[dict]) -> None:
-    """Validate the empty-op smoke output."""
-    if data != []:
-        raise RuntimeError(f"min_empty expected [], got {data!r}")
-
-
-def validate_min_mixed(data: list[dict]) -> None:
-    """Validate the mixed normal/pubsub smoke output."""
-    if not data:
-        raise RuntimeError("min_mixed expected at least 1 result")
-    if not all(row.get("success") for row in data):
-        raise RuntimeError("min_mixed contains unsuccessful results")
-
-    get_rows = [row for row in data if row.get("op_type") == "get"]
-    sub_rows = [row for row in data if row.get("op_type") == "sub"]
-    if not get_rows or not sub_rows:
-        raise RuntimeError("min_mixed missing get or sub results")
-    if not all(row.get("has_completed_log") for row in get_rows):
-        raise RuntimeError("min_mixed get rows missing completed-log markers")
-    if not all(row.get("has_output_file") for row in sub_rows):
-        raise RuntimeError("min_mixed sub rows missing output artifacts")
-    if any(row.get("has_completed_log") for row in sub_rows):
-        raise RuntimeError("min_mixed sub rows should keep has_completed_log == false")
-
-
-def validate_min_event_putget(data: list[dict]) -> None:
-    """Validate event-based put/get output."""
-    if not data:
-        raise RuntimeError("min_event_putget expected at least 1 result")
-    if not all(row.get("success") for row in data):
-        raise RuntimeError("min_event_putget contains an unsuccessful result")
-    get_rows = [row for row in data if row.get("op_type") == "get"]
-    if not get_rows:
-        raise RuntimeError("min_event_putget expected at least 1 get result")
-    for row in get_rows:
-        if not row.get("has_completed_log"):
-            raise RuntimeError("min_event_putget get row missing completed-log marker")
-        if not row.get("has_output_file"):
-            raise RuntimeError("min_event_putget get row missing output artifact")
-
-
-def validate_min_event_pubsub(data: list[dict]) -> None:
-    """Validate event-based pub/sub output."""
-    if not data:
-        raise RuntimeError("min_event_pubsub expected at least 1 result")
-    if not all(row.get("success") for row in data):
-        raise RuntimeError("min_event_pubsub contains an unsuccessful result")
-    sub_rows = [row for row in data if row.get("op_type") == "sub"]
-    if not sub_rows:
-        raise RuntimeError("min_event_pubsub expected at least 1 sub result")
-    for row in sub_rows:
-        if not row.get("has_output_file"):
-            raise RuntimeError("min_event_pubsub sub row missing output artifact")
-        if "RNP0x" not in str(row.get("out_file", "")):
-            raise RuntimeError("min_event_pubsub out_file does not point to an RNP0x*.out artifact")
+    if expect.get("empty"):
+        if data != []:
+            fail(f"expected [], got {data!r}")
+        return
+    if len(data) < expect.get("min_rows", 0):
+        fail(f"expected at least {expect['min_rows']} result rows, got {len(data)}")
+    if expect.get("all_success") and not all(row.get("success") for row in data):
+        fail("contains an unsuccessful result row")
+    for op_type in expect.get("require_op_types", ()):
+        if not any(row.get("op_type") == op_type for row in data):
+            fail(f"expected at least 1 {op_type} result")
+    for op_type, factors in expect.get("op_factors", {}).items():
+        for row in (r for r in data if r.get("op_type") == op_type):
+            for key, want in factors.items():
+                if key == "out_file_contains":
+                    if want not in str(row.get("out_file", "")):
+                        fail(f"{op_type} row out_file does not contain {want!r}")
+                elif want == "falsy":
+                    if row.get(key):
+                        fail(f"{op_type} row should keep {key} falsy")
+                elif not row.get(key):
+                    fail(f"{op_type} row missing {key}")
+    event_rows = [r for r in data if r.get("op_type") == "event"]
+    for event_type in expect.get("require_event_types", ()):
+        if not any(r.get("event_type") == event_type for r in event_rows):
+            fail(f"expected at least 1 {event_type} event record")
+    if expect.get("all_events_success") and not all(
+        r.get("success") for r in event_rows
+    ):
+        fail("contains a failed event record")
+    monitor_spec = expect.get("monitor_json")
+    if monitor_spec:
+        matches = sorted(case_output_dir.rglob("monitor.json"))
+        if not matches:
+            fail("no monitor.json produced")
+        entries = json.loads(matches[0].read_text(encoding="utf-8"))
+        min_entries = monitor_spec.get("min_entries", 1)
+        if len(entries) < min_entries:
+            fail(f"monitor.json has {len(entries)} entries, expected >= {min_entries}")
 
 
 def validate_connect(case_output_dir: Path) -> None:
@@ -323,20 +388,6 @@ def validate_connect(case_output_dir: Path) -> None:
         )
     if list(case_output_dir.rglob("results.json")):
         raise RuntimeError("connect unexpectedly produced results.json")
-
-
-def validate_results(case_name: str, data: list[dict]) -> None:
-    """Dispatch per-config result validation."""
-    validators = {
-        "min_putget": validate_min_putget,
-        "min_pubsub": validate_min_pubsub,
-        "min_pubsub_verify": validate_min_pubsub,
-        "min_empty": validate_min_empty,
-        "min_mixed": validate_min_mixed,
-        "min_event_putget": validate_min_event_putget,
-        "min_event_pubsub": validate_min_event_pubsub,
-    }
-    validators[case_name](data)
 
 
 def run_single_smoke(
@@ -404,7 +455,7 @@ def run_single_smoke(
 
         results_path = find_results_json(case_output_dir)
         data = load_results(results_path)
-        validate_results(case.name, data)
+        validate_results(case.name, data, case.expect or {}, case_output_dir)
         print(f"[OK] {case.name}: {results_path}")
         return case_output_dir
     finally:

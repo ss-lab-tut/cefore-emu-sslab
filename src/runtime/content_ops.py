@@ -17,6 +17,8 @@ from .command_runner import MininetCommandRunner
 from .result_detect import (
     clear_sub_output_artifacts,
     detect_get_success,
+    detect_pub_success,
+    detect_put_success,
     detect_sub_success,
     timestamp_utc,
 )
@@ -38,7 +40,7 @@ class ContentOperationRunner:
         results via the result_callback.
 
     get events run cefgetfile and record results.
-    put events run cefputfile (no result recording).
+    put events run cefputfile and record a put Verdict row (exit code only).
     """
 
     def __init__(
@@ -195,8 +197,9 @@ class ContentOperationRunner:
         uri = event["uri"]
         infile = event.get("file", "./sample-putfile")
         log_path = self._log_path("cefputfile", host, uri)
+        down_hosts = self._flap_state.snapshot()
         info(f"[content_runner] put h{host} uri={uri}\n")
-        run_cefputfile(
+        exit_code = run_cefputfile(
             self._runner,
             host,
             uri,
@@ -209,6 +212,25 @@ class ContentOperationRunner:
             port_num=event.get("port_num"),
             log_name=str(log_path),
             cancel_event=self._cancel_event,
+        )
+        verdict = detect_put_success(exit_code)
+        self._result_callback(
+            {
+                "op_type": "put",
+                "ts": timestamp_utc(),
+                "phase": self._phase,
+                "host": host,
+                "uri": uri,
+                "out_file": None,
+                "log_file": str(log_path),
+                "exit_code": exit_code,
+                "down_hosts": down_hosts,
+                "publisher_host": host,
+                "publisher_down": host in down_hosts,
+                "success": verdict.success,
+                "has_completed_log": verdict.has_completed_log,
+                "has_output_file": verdict.has_output_file,
+            }
         )
 
     # ------------------------------------------------------------------
@@ -255,9 +277,9 @@ class ContentOperationRunner:
                 "down_hosts": down_hosts,
                 "publisher_host": publisher_host,
                 "publisher_down": publisher_down,
-                "success": verdict["success"],
-                "has_completed_log": verdict["has_completed_log"],
-                "has_output_file": verdict["has_output_file"],
+                "success": verdict.success,
+                "has_completed_log": verdict.has_completed_log,
+                "has_output_file": verdict.has_output_file,
             }
         )
 
@@ -382,21 +404,23 @@ class ContentOperationRunner:
             )
 
         # Record pub completion before waiting on subscribers
+        pub_verdict = detect_pub_success(pub_exit, pub_timed_out)
+        pub_down_hosts = self._flap_state.snapshot()
         self._result_callback({
             "op_type":           "pub",
             "ts":                timestamp_utc(),
             "phase":             self._phase,
             "host":              host,
             "uri":               uri,
-            "out_file":          str(log_path),
+            "out_file":          None,
             "log_file":          str(log_path),
             "exit_code":         pub_exit,
-            "down_hosts":        self._flap_state.snapshot(),
+            "down_hosts":        pub_down_hosts,
             "publisher_host":    host,
-            "publisher_down":    False,
-            "success":           pub_exit == 0 and not pub_timed_out,
-            "has_completed_log": False,
-            "has_output_file":   False,
+            "publisher_down":    host in pub_down_hosts,
+            "success":           pub_verdict.success,
+            "has_completed_log": pub_verdict.has_completed_log,
+            "has_output_file":   pub_verdict.has_output_file,
         })
 
         for item in sub_entries:
@@ -423,7 +447,7 @@ class ContentOperationRunner:
         host = int(op["host"])
         uri = op["uri"]
         verdict = detect_sub_success(result, item["output_dir"], item["log_path"])
-        out_file = verdict.get("artifact_path") or str(item["output_dir"])
+        out_file = verdict.artifact_path or str(item["output_dir"])
         publisher_host = op.get("publisher_host") or self._uri_publishers.get(uri)
         down_hosts = item["down_hosts"]
         publisher_down = (
@@ -442,8 +466,8 @@ class ContentOperationRunner:
                 "down_hosts": down_hosts,
                 "publisher_host": publisher_host,
                 "publisher_down": publisher_down,
-                "success": verdict["success"],
-                "has_completed_log": verdict["has_completed_log"],
-                "has_output_file": verdict["has_output_file"],
+                "success": verdict.success,
+                "has_completed_log": verdict.has_completed_log,
+                "has_output_file": verdict.has_output_file,
             }
         )

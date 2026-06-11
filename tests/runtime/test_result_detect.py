@@ -21,9 +21,9 @@ class TestDetectGetSuccess:
         out = tmp_path / "recv"
         out.write_bytes(b"data")
         result = detect_get_success(log, out, exit_code=0)
-        assert result["success"] is True
-        assert result["has_completed_log"] is True
-        assert result["has_output_file"] is True
+        assert result.success is True
+        assert result.has_completed_log is True
+        assert result.has_output_file is True
 
     def test_failure_exit_code_nonzero(self, tmp_path):
         log = tmp_path / "get.log"
@@ -31,9 +31,9 @@ class TestDetectGetSuccess:
         out = tmp_path / "recv"
         out.write_bytes(b"data")
         result = detect_get_success(log, out, exit_code=1)
-        assert result["success"] is False
-        assert result["has_completed_log"] is True
-        assert result["has_output_file"] is True
+        assert result.success is False
+        assert result.has_completed_log is True
+        assert result.has_output_file is True
 
     def test_failure_missing_log_marker(self, tmp_path):
         log = tmp_path / "get.log"
@@ -41,8 +41,8 @@ class TestDetectGetSuccess:
         out = tmp_path / "recv"
         out.write_bytes(b"data")
         result = detect_get_success(log, out, exit_code=0)
-        assert result["success"] is False
-        assert result["has_completed_log"] is False
+        assert result.success is False
+        assert result.has_completed_log is False
 
     def test_failure_empty_output_file(self, tmp_path):
         log = tmp_path / "get.log"
@@ -50,15 +50,15 @@ class TestDetectGetSuccess:
         out = tmp_path / "recv"
         out.write_bytes(b"")
         result = detect_get_success(log, out, exit_code=0)
-        assert result["success"] is False
-        assert result["has_output_file"] is False
+        assert result.success is False
+        assert result.has_output_file is False
 
     def test_failure_missing_log_file(self, tmp_path):
         log = tmp_path / "get.log"  # not created
         out = tmp_path / "recv"
         out.write_bytes(b"data")
         result = detect_get_success(log, out, exit_code=0)
-        assert result["has_completed_log"] is False
+        assert result.has_completed_log is False
 
 
 class TestTimestampUtc:
