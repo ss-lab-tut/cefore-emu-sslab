@@ -1,6 +1,5 @@
 """Disaster topology scenario with periodic host failure simulation."""
 
-import json
 import random
 import sys
 import threading
@@ -28,6 +27,7 @@ from ..runtime.bridge import (
 from ..runtime.command_runner import MininetCommandRunner
 from ..runtime.content_ops import ContentOperationRunner
 from ..runtime.monitoring import Monitor
+from ..runtime.results_sink import ResultsSink
 from ..runtime.scheduler import EventScheduler
 from ..runtime.cefore import (
     run_cefstatus_all,
@@ -90,8 +90,7 @@ class DisasterScenario(BaseScenario):
         self.rng = (
             random.Random(args.seed) if args.seed is not None else random.Random()
         )
-        self.results = []
-        self._results_lock = threading.Lock()
+        self.results_sink = ResultsSink()
         self._host_cmd_locks: dict[int, threading.Lock] = {}
         self.bridge_manager = BridgeManager()
         self.stop_event = None
@@ -300,6 +299,7 @@ class DisasterScenario(BaseScenario):
             self.dashboard.set_topology(self.topo.mesh_links)
             self.webui = WebUIServer(self.dashboard, port=webui_port)
             self.webui.start()
+            self.results_sink.subscribe(self.dashboard.record_operation)
             info(f"[webui] dashboard: http://0.0.0.0:{webui_port}/\n")
             # Pre-populate initial host state before Monitor starts polling
             webui_runner = MininetCommandRunner(net)
@@ -315,13 +315,6 @@ class DisasterScenario(BaseScenario):
                 self.dashboard.record_monitor({
                     "elapsed_sec": 0.0, "type": "csmgrstatus", "host": idx, "output": output,
                 })
-
-    def _append_result(self, record):
-        """Thread-safe append to results list."""
-        with self._results_lock:
-            self.results.append(record)
-        if self.dashboard is not None:
-            self.dashboard.record_operation(record)
 
     def _restore_fib_for_host(self, net, host_idx: int):
         """Re-apply dynamic FIB routes for a host after it comes back up."""
@@ -348,7 +341,7 @@ class DisasterScenario(BaseScenario):
         return ContentOperationRunner(
             net,
             run_dir=self.run_dir,
-            result_callback=self._append_result,
+            sink=self.results_sink,
             flap_state=self.flap_state,
             seed_label=self.seed_label,
             uri_publishers=self.uri_publishers,
@@ -368,7 +361,7 @@ class DisasterScenario(BaseScenario):
                 rng=self.rng,
                 publisher_ids=self.publisher_ids,
                 on_host_up=lambda host_idx: self._restore_fib_for_host(net, host_idx),
-                result_callback=self._append_result,
+                sink=self.results_sink,
             )
             self.stop_event, self.stop_thread = failure_manager.start(
                 net, self.flap_state, quiet=use_cli
@@ -389,7 +382,7 @@ class DisasterScenario(BaseScenario):
                 args.down_stagger,
                 quiet=use_cli,
                 on_host_up=lambda host_idx: self._restore_fib_for_host(net, host_idx),
-                result_callback=self._append_result,
+                sink=self.results_sink,
             )
 
     def _run_warmup(self, net, events_config):
@@ -490,7 +483,7 @@ class DisasterScenario(BaseScenario):
                 run_dir=self.run_dir,
                 content_runner=self.content_runner,
                 start_time=origin,
-                result_callback=self._append_result,
+                sink=self.results_sink,
             )
             self.event_scheduler.start()
 
@@ -510,7 +503,7 @@ class DisasterScenario(BaseScenario):
                 run_dir=self.run_dir,
                 content_runner=put_runner,
                 start_time=origin,
-                result_callback=self._append_result,
+                sink=self.results_sink,
             )
             put_runner.start()
             try:
@@ -553,7 +546,7 @@ class DisasterScenario(BaseScenario):
                 run_dir=self.run_dir,
                 content_runner=self.content_runner,
                 start_time=origin,
-                result_callback=self._append_result,
+                sink=self.results_sink,
             )
             self.event_scheduler.start()
 
@@ -655,10 +648,7 @@ class DisasterScenario(BaseScenario):
         if self.results_path is None:
             return []
         try:
-            self.results_path.write_text(
-                json.dumps(self.results, ensure_ascii=False, indent=2),
-                encoding="utf-8",
-            )
+            self.results_sink.write_json(self.results_path)
         except BaseException as exc:
             return [("results_write", exc)]
         return []

@@ -7,6 +7,7 @@ from unittest.mock import MagicMock, patch, call
 import pytest
 
 from src.core.flap_state import FlapState
+from src.runtime.results_sink import RecordingSink
 from src.runtime.failure_manager import FlexibleFailureManager, periodic_host_flap
 
 
@@ -174,15 +175,16 @@ class TestFlapOutcomeRecords:
     def test_down_and_up_records_emitted(self, mock_links):
         net = _make_net(3)
         state = FlapState()
-        records = []
+        sink = RecordingSink()
         stop = periodic_host_flap(
             net, 3, interval=0.05, down_time=0.05, rng=None,
             exclude=[], state=state, down_count=1, stagger=0, quiet=True,
-            result_callback=records.append,
+            sink=sink,
         )
         time.sleep(0.3)
         stop.set()
         time.sleep(0.15)
+        records = sink.records
         downs = [r for r in records if r["event_type"] == "host_down"]
         ups = [r for r in records if r["event_type"] == "host_up"]
         assert downs and ups
@@ -197,16 +199,16 @@ class TestFlapOutcomeRecords:
         mock_links.side_effect = OSError("veth gone")
         net = _make_net(3)
         state = FlapState()
-        records = []
+        sink = RecordingSink()
         stop = periodic_host_flap(
             net, 3, interval=0.05, down_time=0.05, rng=None,
             exclude=[], state=state, down_count=1, stagger=0, quiet=True,
-            result_callback=records.append,
+            sink=sink,
         )
         time.sleep(0.2)
         stop.set()
         time.sleep(0.1)
-        downs = [r for r in records if r["event_type"] == "host_down"]
+        downs = [r for r in sink.records if r["event_type"] == "host_down"]
         assert downs
         assert downs[0]["success"] is False
         assert "veth gone" in downs[0]["error"]

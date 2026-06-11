@@ -13,7 +13,6 @@ from .compute_client import check_external_connectivity
 from .compute_client import compute_call as _do_compute_call
 from .links import link_down, link_up
 from .net_config import cefroute_del, cefroute_enable
-from .result_detect import timestamp_utc
 
 
 def _cefroute_add(net, host_idx, prefix, protocol, next_hop):
@@ -147,12 +146,12 @@ class EventScheduler:
         run_dir=None,
         content_runner=None,
         start_time=None,
-        result_callback=None,
+        sink=None,
     ):
         self.net = net
         self.mesh_links = mesh_links
         self._context = {"run_dir": run_dir, "content_runner": content_runner}
-        self._result_callback = result_callback
+        self._sink = sink
         self._stop_event = threading.Event()
         self._thread = None
 
@@ -262,21 +261,17 @@ class EventScheduler:
             self._handle_repeat(event, at_sec)
 
     def _record_event_outcome(self, event, event_type, at_sec, success, error):
-        """Emit an outcome record for a non-content event into the results sink."""
-        if self._result_callback is None or event_type in _CONTENT_EVENT_TYPES:
+        """Emit an outcome record for a non-content event into the ResultsSink."""
+        if self._sink is None or event_type in _CONTENT_EVENT_TYPES:
             return
         actual_at = time.monotonic() - self._start_time
-        self._result_callback(
-            {
-                "op_type": "event",
-                "event_type": event_type,
-                "ts": timestamp_utc(),
-                "scheduled_at": at_sec,
-                "actual_at": round(actual_at, 3),
-                "success": success,
-                "error": error,
-                "event": {k: v for k, v in event.items() if k != "repeat"},
-            }
+        self._sink.record_event(
+            event_type,
+            success=success,
+            error=error,
+            scheduled_at=at_sec,
+            actual_at=round(actual_at, 3),
+            event={k: v for k, v in event.items() if k != "repeat"},
         )
 
     def start(self):

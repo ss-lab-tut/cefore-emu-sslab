@@ -115,7 +115,7 @@ class DashboardState:
     # ------------------------------------------------------------------ #
 
     def record_operation(self, result: dict) -> None:
-        """Called from DisasterScenario._append_result after get/sub completes."""
+        """ResultsSink subscriber: receives each serialized record dict."""
         elapsed = round(time.time() - self.started_at, 1)
         with self._lock:
             if len(self._operations) >= self.MAX_OPERATIONS:

@@ -14,6 +14,7 @@ from unittest.mock import MagicMock, patch
 
 from src.runtime.command_runner import CommandResult, FakeCommandRunner
 from src.runtime.content_ops import ContentOperationRunner
+from src.runtime.results_sink import RecordingSink
 from src.runtime.result_detect import (
     clear_sub_output_artifacts as _clear_sub_output_artifacts,
     detect_sub_success as _detect_sub_success,
@@ -156,7 +157,7 @@ def _make_runner(tmp_path, pub_lifetime_by_uri=None, runner=None):
     return ContentOperationRunner(
         net,
         run_dir=tmp_path,
-        result_callback=MagicMock(),
+        sink=RecordingSink(),
         flap_state=flap_state,
         seed_label="test",
         pub_lifetime_by_uri=pub_lifetime_by_uri,
@@ -230,13 +231,13 @@ class TestPubsubFullPathFake:
 
         fake.on_start = deliver_then_die
 
-        results = []
+        sink = RecordingSink()
         flap_state = MagicMock()
         flap_state.snapshot.return_value = []
         runner = ContentOperationRunner(
             MagicMock(),
             run_dir=tmp_path,
-            result_callback=results.append,
+            sink=sink,
             flap_state=flap_state,
             seed_label="test",
             startup_grace=0,
@@ -249,7 +250,7 @@ class TestPubsubFullPathFake:
             {"host": 2, "uri": "ccnx:/test/live", "file": "./sample-putfile"}
         )
 
-        sub_results = [r for r in results if r["op_type"] == "sub"]
+        sub_results = sink.of_type("sub")
         assert len(sub_results) == 1
         assert sub_results[0]["success"] is True
         assert sub_results[0]["has_output_file"] is True
@@ -265,7 +266,7 @@ class TestContentOperationRunnerPhase:
         runner = ContentOperationRunner(
             net=MagicMock(),
             run_dir="/tmp",
-            result_callback=MagicMock(),
+            sink=RecordingSink(),
             flap_state=MagicMock(),
             seed_label="test",
         )
@@ -275,7 +276,7 @@ class TestContentOperationRunnerPhase:
         runner = ContentOperationRunner(
             net=MagicMock(),
             run_dir="/tmp",
-            result_callback=MagicMock(),
+            sink=RecordingSink(),
             flap_state=MagicMock(),
             seed_label="test",
             phase="warmup",
@@ -311,11 +312,13 @@ class TestContentOperationRunnerDeadline:
 
     def test_pubsub_pub_keeps_expiry_and_cache_time_explicit_only(self, tmp_path):
         fake = FakeCommandRunner()
+        flap_state = MagicMock()
+        flap_state.snapshot.return_value = []
         runner = ContentOperationRunner(
             MagicMock(),
             run_dir=tmp_path,
-            result_callback=MagicMock(),
-            flap_state=MagicMock(),
+            sink=RecordingSink(),
+            flap_state=flap_state,
             seed_label="test",
             startup_grace=0,
             runner=fake,
@@ -342,7 +345,7 @@ class TestPutRecord:
         mock_put.return_value = 0
         runner = _make_runner(tmp_path)
         runner._do_put({"host": 9, "uri": "ccnx:/test/seed"})
-        record = runner._result_callback.call_args[0][0]
+        record = runner._sink.records[-1]
         assert record["op_type"] == "put"
         assert record["success"] is True
         assert record["exit_code"] == 0
@@ -358,7 +361,7 @@ class TestPutRecord:
         mock_put.return_value = 1
         runner = _make_runner(tmp_path)
         runner._do_put({"host": 9, "uri": "ccnx:/test/seed"})
-        record = runner._result_callback.call_args[0][0]
+        record = runner._sink.records[-1]
         assert record["success"] is False
         assert record["exit_code"] == 1
 
@@ -370,11 +373,11 @@ class TestPubRecordPublisherDown:
         fake = FakeCommandRunner()
         flap_state = MagicMock()
         flap_state.snapshot.return_value = [2]
-        records = []
+        sink = RecordingSink()
         runner = ContentOperationRunner(
             MagicMock(),
             run_dir=tmp_path,
-            result_callback=records.append,
+            sink=sink,
             flap_state=flap_state,
             seed_label="test",
             startup_grace=0,
@@ -383,7 +386,7 @@ class TestPubRecordPublisherDown:
         runner._do_pubsub_pub(
             {"host": 2, "uri": "ccnx:/test/live", "file": "./sample-putfile"}
         )
-        pub_rows = [r for r in records if r["op_type"] == "pub"]
+        pub_rows = sink.of_type("pub")
         assert pub_rows
         assert pub_rows[0]["publisher_down"] is True
         assert pub_rows[0]["down_hosts"] == [2]

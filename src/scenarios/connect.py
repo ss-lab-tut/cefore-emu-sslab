@@ -36,6 +36,7 @@ from ..runtime.cefore import (
 from ..runtime.command_runner import MininetCommandRunner
 from ..runtime.content_ops import ContentOperationRunner
 from ..runtime.net_config import apply_fib, apply_ip_addr
+from ..runtime.results_sink import RecordingSink
 from ..runtime.scheduler import EventScheduler
 from ..runtime.template import apply_cache_node_settings, ensure_node_dirs
 from ..runtime.topo import MeshTopo
@@ -199,7 +200,7 @@ class ConnectScenario(BaseScenario):
         runner = ContentOperationRunner(
             net,
             run_dir=self.run_dir,
-            result_callback=lambda _record: None,
+            sink=RecordingSink(),
             flap_state=FlapState(),
             seed_label=self.seed_label,
             uri_publishers=self.uri_publishers,

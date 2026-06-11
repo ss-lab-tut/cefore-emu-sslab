@@ -20,7 +20,6 @@ from .result_detect import (
     detect_pub_success,
     detect_put_success,
     detect_sub_success,
-    timestamp_utc,
 )
 
 
@@ -37,7 +36,7 @@ class ContentOperationRunner:
       - pubsub_sub events spawn cefsubfile immediately and store the pending handle.
       - pubsub_pub events apply the startup grace delay, then run cefpubfile,
         then wait for all pending subscriber processes for the same URI and record
-        results via the result_callback.
+        results via the ResultsSink.
 
     get events run cefgetfile and record results.
     put events run cefputfile and record a put Verdict row (exit code only).
@@ -47,7 +46,7 @@ class ContentOperationRunner:
         self,
         net,
         run_dir,
-        result_callback,
+        sink,
         flap_state,
         seed_label,
         uri_publishers=None,
@@ -59,7 +58,7 @@ class ContentOperationRunner:
         self._net = net
         self._runner = runner or MininetCommandRunner(net)
         self._run_dir = Path(run_dir)
-        self._result_callback = result_callback
+        self._sink = sink
         self._flap_state = flap_state
         self._seed_label = seed_label
         self._uri_publishers = uri_publishers or {}
@@ -214,23 +213,17 @@ class ContentOperationRunner:
             cancel_event=self._cancel_event,
         )
         verdict = detect_put_success(exit_code)
-        self._result_callback(
-            {
-                "op_type": "put",
-                "ts": timestamp_utc(),
-                "phase": self._phase,
-                "host": host,
-                "uri": uri,
-                "out_file": None,
-                "log_file": str(log_path),
-                "exit_code": exit_code,
-                "down_hosts": down_hosts,
-                "publisher_host": host,
-                "publisher_down": host in down_hosts,
-                "success": verdict.success,
-                "has_completed_log": verdict.has_completed_log,
-                "has_output_file": verdict.has_output_file,
-            }
+        self._sink.record_content(
+            "put",
+            verdict,
+            host=host,
+            uri=uri,
+            phase=self._phase,
+            out_file=None,
+            log_file=str(log_path),
+            exit_code=exit_code,
+            down_hosts=down_hosts,
+            publisher_host=host,
         )
 
     # ------------------------------------------------------------------
@@ -261,26 +254,17 @@ class ContentOperationRunner:
         )
         verdict = detect_get_success(log_path, out_path, exit_code)
         publisher_host = event.get("publisher_host") or self._uri_publishers.get(uri)
-        publisher_down = (
-            publisher_host in down_hosts if publisher_host is not None else False
-        )
-        self._result_callback(
-            {
-                "op_type": "get",
-                "ts": timestamp_utc(),
-                "phase": self._phase,
-                "host": host,
-                "uri": uri,
-                "out_file": str(out_path),
-                "log_file": str(log_path),
-                "exit_code": exit_code,
-                "down_hosts": down_hosts,
-                "publisher_host": publisher_host,
-                "publisher_down": publisher_down,
-                "success": verdict.success,
-                "has_completed_log": verdict.has_completed_log,
-                "has_output_file": verdict.has_output_file,
-            }
+        self._sink.record_content(
+            "get",
+            verdict,
+            host=host,
+            uri=uri,
+            phase=self._phase,
+            out_file=str(out_path),
+            log_file=str(log_path),
+            exit_code=exit_code,
+            down_hosts=down_hosts,
+            publisher_host=publisher_host,
         )
 
     # ------------------------------------------------------------------
@@ -406,22 +390,18 @@ class ContentOperationRunner:
         # Record pub completion before waiting on subscribers
         pub_verdict = detect_pub_success(pub_exit, pub_timed_out)
         pub_down_hosts = self._flap_state.snapshot()
-        self._result_callback({
-            "op_type":           "pub",
-            "ts":                timestamp_utc(),
-            "phase":             self._phase,
-            "host":              host,
-            "uri":               uri,
-            "out_file":          None,
-            "log_file":          str(log_path),
-            "exit_code":         pub_exit,
-            "down_hosts":        pub_down_hosts,
-            "publisher_host":    host,
-            "publisher_down":    host in pub_down_hosts,
-            "success":           pub_verdict.success,
-            "has_completed_log": pub_verdict.has_completed_log,
-            "has_output_file":   pub_verdict.has_output_file,
-        })
+        self._sink.record_content(
+            "pub",
+            pub_verdict,
+            host=host,
+            uri=uri,
+            phase=self._phase,
+            out_file=None,
+            log_file=str(log_path),
+            exit_code=pub_exit,
+            down_hosts=pub_down_hosts,
+            publisher_host=host,
+        )
 
         for item in sub_entries:
             result = self._runner.wait(
@@ -442,32 +422,22 @@ class ContentOperationRunner:
             self.record_sub_result(item, result)
 
     def record_sub_result(self, item, result):
-        """Record a cefsubfile result via the result_callback."""
+        """Record a cefsubfile result via the ResultsSink."""
         op = item["op"]
         host = int(op["host"])
         uri = op["uri"]
         verdict = detect_sub_success(result, item["output_dir"], item["log_path"])
         out_file = verdict.artifact_path or str(item["output_dir"])
         publisher_host = op.get("publisher_host") or self._uri_publishers.get(uri)
-        down_hosts = item["down_hosts"]
-        publisher_down = (
-            publisher_host in down_hosts if publisher_host is not None else False
-        )
-        self._result_callback(
-            {
-                "op_type": "sub",
-                "ts": timestamp_utc(),
-                "phase": self._phase,
-                "host": host,
-                "uri": uri,
-                "out_file": out_file,
-                "log_file": str(item["log_path"]),
-                "exit_code": result.returncode,
-                "down_hosts": down_hosts,
-                "publisher_host": publisher_host,
-                "publisher_down": publisher_down,
-                "success": verdict.success,
-                "has_completed_log": verdict.has_completed_log,
-                "has_output_file": verdict.has_output_file,
-            }
+        self._sink.record_content(
+            "sub",
+            verdict,
+            host=host,
+            uri=uri,
+            phase=self._phase,
+            out_file=out_file,
+            log_file=str(item["log_path"]),
+            exit_code=result.returncode,
+            down_hosts=item["down_hosts"],
+            publisher_host=publisher_host,
         )

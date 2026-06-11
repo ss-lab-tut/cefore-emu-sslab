@@ -6,6 +6,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from src.runtime.results_sink import RecordingSink
 from src.runtime.scheduler import EventScheduler, _EVENT_PRIORITY
 
 
@@ -173,15 +174,15 @@ class TestEventOutcomeRecords:
     """Non-content events emit outcome records into the results sink (K)."""
 
     def _run_one(self, event, handler, handlers_key="test"):
-        records = []
+        sink = RecordingSink()
         net = _make_net()
         with patch.dict(
             "src.runtime.scheduler._EVENT_HANDLERS", {handlers_key: handler}
         ):
-            sched = EventScheduler(net, [event], result_callback=records.append)
+            sched = EventScheduler(net, [event], sink=sink)
             sched.start()
             sched.wait_all(timeout=3)
-        return records
+        return sink.records
 
     def test_success_record(self):
         event = {"at": 0.0, "type": "test", "nodes": [0, 1]}

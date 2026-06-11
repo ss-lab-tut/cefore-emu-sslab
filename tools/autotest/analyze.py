@@ -7,7 +7,7 @@ import json
 from collections import defaultdict
 from pathlib import Path
 
-from src.core.verdict import COMPLETED_MARKER, Verdict, failure_reasons, from_record
+from src.core.verdict import failure_reasons, from_record
 
 # Rows whose outcome counts toward eval success rates. put/pub rows are
 # publisher-side evidence and must not inflate the consumer denominators.
@@ -34,56 +34,15 @@ def discover_results(paths: list[Path]) -> list[Path]:
     return unique
 
 
-def _probe_completed_log(record: dict) -> bool:
-    """Legacy fallback: read the log file when no Factor was stored."""
-    log_file = record.get("log_file")
-    if not log_file:
-        return False
-    path = Path(log_file)
-    if not path.exists():
-        return False
-    text = path.read_text(encoding="utf-8", errors="replace")
-    return COMPLETED_MARKER in text
-
-
-def _probe_output_file(record: dict) -> bool:
-    """Legacy fallback: stat the output file when no Factor was stored."""
-    out_file = record.get("out_file")
-    if not out_file:
-        return False
-    path = Path(out_file)
-    return path.exists() and path.stat().st_size > 0
-
-
-def _legacy_verdict(record: dict) -> Verdict:
-    """Re-derive a Verdict for records that predate stored Factors."""
-    exit_code = int(record.get("exit_code", 1))
-    has_completed = (
-        record["has_completed_log"]
-        if isinstance(record.get("has_completed_log"), bool)
-        else _probe_completed_log(record)
-    )
-    has_output = (
-        record["has_output_file"]
-        if isinstance(record.get("has_output_file"), bool)
-        else _probe_output_file(record)
-    )
-    return Verdict(
-        op_type=record.get("op_type") or "get",
-        success=exit_code == 0 and has_completed and has_output,
-        has_completed_log=has_completed,
-        has_output_file=has_output,
-        exit_code=exit_code,
-    )
-
-
 def classify(record: dict) -> tuple[bool, dict[str, int]]:
     """Judge a record from its stored Verdict Factors.
 
     Failure reasons count only for failed records and only for known-False
-    Factors; unknown / not-applicable Factors (``null``) never count.
+    Factors; unknown / not-applicable Factors (``null``) never count. Records
+    that predate stored Factors classify as unknown (never success) — no disk
+    probing happens here.
     """
-    verdict = from_record(record) if "success" in record else _legacy_verdict(record)
+    verdict = from_record(record)
     success = verdict.success is True
     if success:
         reasons = {key: 0 for key in failure_reasons(verdict)}
