@@ -5,6 +5,8 @@ import threading
 import time
 from typing import Callable
 
+from ..core.topology import TopologyModel
+
 
 def _cefnetd_is_up(output: str) -> bool:
     """Infer cefnetd liveness from cefstatus text output."""
@@ -75,20 +77,15 @@ class DashboardState:
     def set_topology(self, mesh_links: list) -> None:
         """Convert MeshTopo.mesh_links to vis-network nodes/edges.
 
-        mesh_links format: [{"subnet":int, "switch":str, "hosts":[int,...], ...}, ...]
         All host pairs sharing a switch become edges (logical connectivity).
         """
         nodes = [{"id": i, "label": f"h{i}"} for i in range(self.host_count)]
         edges: list[dict] = []
         seen: set[tuple] = set()
-        for link in mesh_links:
-            hosts = link["hosts"]
-            for a in range(len(hosts)):
-                for b in range(a + 1, len(hosts)):
-                    key = (min(hosts[a], hosts[b]), max(hosts[a], hosts[b]))
-                    if key not in seen:
-                        seen.add(key)
-                        edges.append({"from": key[0], "to": key[1]})
+        for host_a, host_b, _link in TopologyModel(mesh_links).edges():
+            if (host_a, host_b) not in seen:
+                seen.add((host_a, host_b))
+                edges.append({"from": host_a, "to": host_b})
         with self._lock:
             self._topology = {"nodes": nodes, "edges": edges}
 

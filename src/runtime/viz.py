@@ -2,6 +2,8 @@
 
 from mininet.log import info
 
+from ..core.topology import TopologyModel
+
 # Lazy import for optional dependencies
 HAVE_TOPO_DEPS = True
 TOPO_DEPS_ERROR = None
@@ -38,22 +40,10 @@ def build_host_graph(mesh_links):
     """
     graph = {}
     link_switch = {}
-    for link in mesh_links:
-        if "hosts" in link:
-            hosts = link["hosts"]
-            for idx, host_a in enumerate(hosts):
-                for host_b in hosts[idx + 1 :]:
-                    graph.setdefault(host_a, set()).add(host_b)
-                    graph.setdefault(host_b, set()).add(host_a)
-                    key = tuple(sorted((host_a, host_b)))
-                    link_switch[key] = link["switch"]
-            continue
-        host_a = link["host_a"]
-        host_b = link["host_b"]
+    for host_a, host_b, link in TopologyModel(mesh_links).edges():
         graph.setdefault(host_a, set()).add(host_b)
         graph.setdefault(host_b, set()).add(host_a)
-        key = tuple(sorted((host_a, host_b)))
-        link_switch[key] = link["switch"]
+        link_switch[(host_a, host_b)] = link.switch
     return graph, link_switch
 
 
@@ -140,27 +130,17 @@ def render_topology_png(mesh_links, output_path, seed=None, layout="spring"):
     nx = _nx
     plt = _plt
 
-    host_num = 0
-    for link in mesh_links:
-        if "hosts" in link:
-            host_num = max(host_num, max(link["hosts"]) + 1)
-        else:
-            host_num = max(host_num, max(link["host_a"], link["host_b"]) + 1)
+    model = TopologyModel(mesh_links)
+    host_num = model.host_count
     graph = nx.Graph()
     host_nodes = {f"h{idx}" for idx in range(host_num)}
     switch_nodes = set()
 
-    for link in mesh_links:
-        switch = str(link["switch"])
+    for link in model.links:
+        switch = str(link.switch)
         switch_nodes.add(switch)
-        if "hosts" in link:
-            for host in link["hosts"]:
-                graph.add_edge(f"h{host}", switch)
-            continue
-        host_a = f"h{link['host_a']}"
-        host_b = f"h{link['host_b']}"
-        graph.add_edge(host_a, switch)
-        graph.add_edge(host_b, switch)
+        for host in link.hosts:
+            graph.add_edge(f"h{host}", switch)
 
     graph.add_nodes_from(host_nodes)
     graph.add_nodes_from(switch_nodes)

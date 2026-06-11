@@ -6,6 +6,8 @@ The model is: one /24 per link, 3rd octet = link subnet id, 4th octet = host_idx
 
 import ipaddress
 
+from .topology import TopologyModel
+
 DEFAULT_NETWORK_CIDR = "192.168.0.0/16"
 
 
@@ -96,16 +98,11 @@ class AddressingScheme:
             ValueError: If host_idx is not attached to any link.
         """
         best_subnet: int | None = None
-        for link in mesh_links:
-            subnet = link.get("subnet")
-            if subnet is None:
+        for link in TopologyModel(mesh_links).links_for_host(host_idx):
+            if link.subnet is None:
                 continue
-            if "hosts" in link:
-                attached = host_idx in link["hosts"]
-            else:
-                attached = host_idx in (link.get("host_a"), link.get("host_b"))
-            if attached and (best_subnet is None or subnet < best_subnet):
-                best_subnet = subnet
+            if best_subnet is None or link.subnet < best_subnet:
+                best_subnet = link.subnet
 
         if best_subnet is None:
             raise ValueError(f"host {host_idx} is not attached to any mesh link")

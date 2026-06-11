@@ -25,7 +25,6 @@ from .links import (
     find_link,
     link_down,
     link_up,
-    pick_publish_link,
     set_link_state,
     set_node_links_state,
 )
@@ -96,7 +95,6 @@ __all__ = [
     "set_link_state",
     "link_down",
     "link_up",
-    "pick_publish_link",
     "set_node_links_state",
     "periodic_host_flap",
     "FlexibleFailureManager",

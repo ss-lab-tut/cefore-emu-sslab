@@ -26,6 +26,16 @@ _Avoid_: host index, idx, host id (as an interface argument)
 The reserved Node name that tells the CommandRunner to execute in the root namespace (plain subprocess) instead of a host netns. Used by bridge/external-network setup.
 _Avoid_: root ns flag, "root" special case
 
+## Topology
+
+**TopologyModel**:
+The single owner of the mesh_links schema. Consumers (FIB computation, link state ops, bandwidth, IP assignment, visualization, bridge root-IP resolution, webui topology view) query it — `find_link`, `links_for_host`, `edges`, `subnet_of_switch`, `peer_of`, `links` — instead of branching on the link dict shape. Lives in `src/core/topology.py`; absorbs both the canonical multi-host shape MeshTopo emits and the legacy point-to-point shape at construction.
+_Avoid_: mesh_links parsing, `"hosts" in link` branching, raw link dict
+
+**Link**:
+The value object a TopologyModel query returns for one switch-mediated link: `switch`, `subnet`, `hosts` (every host sharing the switch), `eth_of(host)`.
+_Avoid_: link dict, link entry
+
 ## Experiment results
 
 **Verdict**:

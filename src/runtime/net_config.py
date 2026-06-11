@@ -5,6 +5,7 @@ from mininet.log import info
 from ..core.addressing import AddressingScheme
 from ..core.fib import get_routing_strategy
 from ..core.protocols import normalize_route_protocol
+from ..core.topology import TopologyModel
 from .command_runner import MininetCommandRunner
 
 
@@ -19,23 +20,11 @@ def apply_ip_addr(net, mesh_links, scheme=None):
     if scheme is None:
         scheme = AddressingScheme()
     runner = MininetCommandRunner(net)
-    for link in mesh_links:
-        subnet = link["subnet"]
-        if "hosts" in link:
-            for host_idx in link["hosts"]:
-                eth_idx = link["host_eth"][host_idx]
-                node_name = f"h{host_idx}"
-                ip = scheme.host_ip(subnet, host_idx)
-                argv = ["ifconfig", f"{node_name}-eth{eth_idx}", str(ip)]
-                print(node_name, "command:", argv)
-                runner.run(node_name, argv)
-            continue
-        for host_idx, eth_idx in (
-            (link["host_a"], link["host_a_eth"]),
-            (link["host_b"], link["host_b_eth"]),
-        ):
+    for link in TopologyModel(mesh_links).links:
+        for host_idx in link.hosts:
+            eth_idx = link.eth_of(host_idx)
             node_name = f"h{host_idx}"
-            ip = scheme.host_ip(subnet, host_idx)
+            ip = scheme.host_ip(link.subnet, host_idx)
             argv = ["ifconfig", f"{node_name}-eth{eth_idx}", str(ip)]
             print(node_name, "command:", argv)
             runner.run(node_name, argv)

@@ -5,6 +5,7 @@ from dataclasses import dataclass
 
 from .addressing import AddressingScheme, DEFAULT_NETWORK_CIDR
 from .graph import dijkstra_all
+from .topology import TopologyModel
 
 
 @dataclass
@@ -35,31 +36,14 @@ def build_graph_and_subnets(mesh_links):
     Returns:
         Tuple of (host_num, graph dict, link_subnets dict).
     """
-    host_num = 0
-    for link in mesh_links:
-        if "hosts" in link:
-            host_num = max(host_num, max(link["hosts"]) + 1)
-        else:
-            host_num = max(host_num, max(link["host_a"], link["host_b"]) + 1)
+    model = TopologyModel(mesh_links)
+    host_num = model.host_count
     graph = {idx: set() for idx in range(host_num)}
     link_subnets = {}
-    for link in mesh_links:
-        if "hosts" in link:
-            hosts = link["hosts"]
-            subnet = link["subnet"]
-            for idx, host_a in enumerate(hosts):
-                for host_b in hosts[idx + 1 :]:
-                    graph[host_a].add(host_b)
-                    graph[host_b].add(host_a)
-                    key = tuple(sorted((host_a, host_b)))
-                    link_subnets[key] = subnet
-            continue
-        host_a = link["host_a"]
-        host_b = link["host_b"]
+    for host_a, host_b, link in model.edges():
         graph[host_a].add(host_b)
         graph[host_b].add(host_a)
-        key = tuple(sorted((host_a, host_b)))
-        link_subnets[key] = link["subnet"]
+        link_subnets[(host_a, host_b)] = link.subnet
     return host_num, graph, link_subnets
 
 

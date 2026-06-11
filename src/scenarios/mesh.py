@@ -20,7 +20,7 @@ from ..runtime.cefore import (
 )
 from ..core.addressing import AddressingScheme
 from ..core.roles import assign_roles
-from ..runtime.links import pick_publish_link
+from ..core.topology import TopologyModel
 from ..runtime.net_config import apply_fib, apply_ip_addr
 from ..runtime.template import ensure_node_dirs
 from ..runtime.topo import MeshTopo, max_possible_links, min_required_links
@@ -131,13 +131,8 @@ class MeshScenario(BaseScenario):
 
     def run_experiment(self, net):
         publisher = self.host_num - 1
-        publish_link = pick_publish_link(self.topo.mesh_links, publisher)
         publish_uri = f"ccnx:/test/example{publisher + 1}/test.py"
-        consumer = (
-            publish_link["host_b"]
-            if publish_link["host_a"] == publisher
-            else publish_link["host_a"]
-        )
+        consumer = TopologyModel(self.topo.mesh_links).peer_of(publisher)
 
         runner = MininetCommandRunner(net)
         put_log = str(self.run_dir / f"cefputfile_h{publisher}.log")

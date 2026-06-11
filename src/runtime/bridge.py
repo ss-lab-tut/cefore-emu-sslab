@@ -13,6 +13,7 @@ from mininet.net import Mininet
 from mininet.node import Node
 
 from ..core.addressing import AddressingScheme
+from ..core.topology import TopologyModel
 from .command_runner import ROOT_SENTINEL, MininetCommandRunner
 
 
@@ -1125,11 +1126,9 @@ def _resolve_root_ip(
         return root_ip
     if scheme is None:
         scheme = AddressingScheme()
-    for link in mesh_links:
-        if link.get("switch") == switch_name:
-            subnet = link.get("subnet")
-            if subnet is not None:
-                return scheme.root_gateway(subnet)
+    subnet = TopologyModel(mesh_links).subnet_of_switch(switch_name)
+    if subnet is not None:
+        return scheme.root_gateway(subnet)
     return root_ip
 
 
@@ -1141,12 +1140,9 @@ def _find_host_intf(
     """Find the host interface connected to a specific switch."""
     if not mesh_links:
         return None
-    for link in mesh_links:
-        if link.get("switch") != switch_name:
-            continue
-        host_eth = link.get("host_eth") or {}
-        if host_idx in host_eth:
-            return f"h{host_idx}-eth{host_eth[host_idx]}"
+    for link in TopologyModel(mesh_links).links:
+        if link.switch == switch_name and host_idx in link.host_eth:
+            return f"h{host_idx}-eth{link.eth_of(host_idx)}"
     return None
 
 
