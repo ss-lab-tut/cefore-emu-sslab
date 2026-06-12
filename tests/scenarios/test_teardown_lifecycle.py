@@ -79,7 +79,6 @@ class TestL1DebugPreTeardown:
         Pass-after: ValueError is caught; teardown() and cleanup_all() run.
         """
         scenario = _make_scenario(tmp_path)
-        scenario.started_csmgrd_hosts = set()
         scenario.generated_node_dirs = []
         scenario.results_path = None
         scenario.results = {}
@@ -130,7 +129,6 @@ class TestL2DebugPostTeardown:
         Pass-after: ValueError caught; cleanup_all() runs.
         """
         scenario = _make_scenario(tmp_path)
-        scenario.started_csmgrd_hosts = set()
         scenario.generated_node_dirs = []
         scenario.results_path = None
         scenario.results = {}
@@ -172,20 +170,19 @@ class TestL3DaemonStop:
         Pass-after: all daemon stops attempted; bridge cleanup runs.
         """
         scenario = _make_scenario(tmp_path)
-        scenario.started_csmgrd_hosts = set()
 
         stop_calls = []
 
-        def stop_cefnetd_side_effect(net, idx):
+        def stop_cefnetd_side_effect(net, idx, runner=None):
             stop_calls.append(idx)
             if idx == 0:
                 raise RuntimeError("daemon stop failed")
 
         with patch(
-            "src.scenarios.disaster.stop_cefnetd",
+            "src.runtime.daemon_fleet.stop_cefnetd",
             side_effect=stop_cefnetd_side_effect,
         ):
-            with patch("src.scenarios.disaster.stop_csmgrd"):
+            with patch("src.runtime.daemon_fleet.stop_csmgrd"):
                 scenario.bridge_manager.cleanup = MagicMock()
                 with patch("src.scenarios.disaster.cleanup_external_bridges"):
                     net = MagicMock()
@@ -215,7 +212,6 @@ class TestL4DualCleanupFailure:
         Pass-after: both failures observable.
         """
         scenario = _make_scenario(tmp_path)
-        scenario.started_csmgrd_hosts = set()
 
         scenario.bridge_manager.cleanup = MagicMock(
             side_effect=TeardownError([("nat restore", 1, "error")])
@@ -225,8 +221,8 @@ class TestL4DualCleanupFailure:
             "src.scenarios.disaster.cleanup_external_bridges",
             side_effect=RuntimeError("external bridge failed"),
         ):
-            with patch("src.scenarios.disaster.stop_cefnetd"):
-                with patch("src.scenarios.disaster.stop_csmgrd"):
+            with patch("src.runtime.daemon_fleet.stop_cefnetd"):
+                with patch("src.runtime.daemon_fleet.stop_csmgrd"):
                     net = MagicMock()
 
                     with pytest.raises(Exception) as exc_info:
@@ -258,7 +254,6 @@ class TestL5PrimaryAndCleanupFailure:
         Pass-after: both observable via ExceptionGroup or chaining.
         """
         scenario = _make_scenario(tmp_path)
-        scenario.started_csmgrd_hosts = set()
         scenario.generated_node_dirs = []
         scenario.results_path = None
         scenario.results = {}
@@ -268,8 +263,8 @@ class TestL5PrimaryAndCleanupFailure:
         )
 
         with patch("src.scenarios.disaster.cleanup_external_bridges"):
-            with patch("src.scenarios.disaster.stop_cefnetd"):
-                with patch("src.scenarios.disaster.stop_csmgrd"):
+            with patch("src.runtime.daemon_fleet.stop_cefnetd"):
+                with patch("src.runtime.daemon_fleet.stop_csmgrd"):
                     net = MagicMock()
 
                     # Simulate: primary failure during configure
@@ -308,7 +303,6 @@ class TestL6ResultsWriteOrdering:
         Pass-after: cleanup always precedes results write.
         """
         scenario = _make_scenario(tmp_path)
-        scenario.started_csmgrd_hosts = set()
         scenario.generated_node_dirs = []
         scenario.results_path = tmp_path / "results.json"
         scenario.results = {}
@@ -414,7 +408,6 @@ class TestP01SystemExitAggregationStrong:
         Pass-after: BaseExceptionGroup with SystemExit(2) and TeardownError both present.
         """
         scenario = _make_scenario(tmp_path)
-        scenario.started_csmgrd_hosts = set()
         scenario.generated_node_dirs = []
         scenario.results_path = None
         scenario.results = {}
@@ -424,8 +417,8 @@ class TestP01SystemExitAggregationStrong:
         )
 
         with patch("src.scenarios.disaster.cleanup_external_bridges"):
-            with patch("src.scenarios.disaster.stop_cefnetd"):
-                with patch("src.scenarios.disaster.stop_csmgrd"):
+            with patch("src.runtime.daemon_fleet.stop_cefnetd"):
+                with patch("src.runtime.daemon_fleet.stop_csmgrd"):
                     with patch("src.scenarios.base.cleanup_all"):
                         net = MagicMock()
 
@@ -474,7 +467,6 @@ class TestP02InterruptDuringShutdown:
         Pass-after: KeyboardInterrupt captured; cleanup runs; interrupt observable.
         """
         scenario = _make_scenario(tmp_path)
-        scenario.started_csmgrd_hosts = set()
         scenario.generated_node_dirs = []
         scenario.results_path = None
         scenario.results = {}
@@ -512,7 +504,6 @@ class TestP02InterruptDuringShutdown:
         Pass-after: SystemExit captured; cleanup_all runs; SystemExit observable.
         """
         scenario = _make_scenario(tmp_path)
-        scenario.started_csmgrd_hosts = set()
         scenario.generated_node_dirs = []
         scenario.results_path = None
         scenario.results = {}
@@ -552,7 +543,6 @@ class TestH1HookRaises:
 
     def test_shutdown_hook_raising_still_runs_cleanup(self, tmp_path):
         scenario = _make_scenario(tmp_path)
-        scenario.started_csmgrd_hosts = set()
         scenario.generated_node_dirs = []
         scenario.results_path = None
         scenario.results = {}
@@ -582,7 +572,6 @@ class TestH1HookRaises:
 
     def test_write_results_hook_raising_still_propagates(self, tmp_path):
         scenario = _make_scenario(tmp_path)
-        scenario.started_csmgrd_hosts = set()
         scenario.generated_node_dirs = []
         scenario.results_path = None
         scenario.results = {}
@@ -628,7 +617,6 @@ class TestS1MonitorStop:
         Pass-after: monitor failure caught; cleanup runs.
         """
         scenario = _make_scenario(tmp_path)
-        scenario.started_csmgrd_hosts = set()
         scenario.generated_node_dirs = []
         scenario.results_path = None
         scenario.results = {}
@@ -670,7 +658,6 @@ class TestS2WebuiStop:
         Pass-after: webui failure caught; cleanup runs.
         """
         scenario = _make_scenario(tmp_path)
-        scenario.started_csmgrd_hosts = set()
         scenario.generated_node_dirs = []
         scenario.results_path = None
         scenario.results = {}
@@ -711,7 +698,6 @@ class TestS3SchedulerStop:
         Pass-after: scheduler failure caught; cleanup runs.
         """
         scenario = _make_scenario(tmp_path)
-        scenario.started_csmgrd_hosts = set()
         scenario.generated_node_dirs = []
         scenario.results_path = None
         scenario.results = {}
@@ -752,7 +738,6 @@ class TestS4ContentRunnerStop:
         Pass-after: content_runner failure caught; cleanup runs.
         """
         scenario = _make_scenario(tmp_path)
-        scenario.started_csmgrd_hosts = set()
         scenario.generated_node_dirs = []
         scenario.results_path = None
         scenario.results = {}
@@ -794,7 +779,6 @@ class TestS5MultipleShutdownFailures:
         Pass-after: all failures observable in aggregate.
         """
         scenario = _make_scenario(tmp_path)
-        scenario.started_csmgrd_hosts = set()
         scenario.generated_node_dirs = []
         scenario.results_path = None
         scenario.results = {}
@@ -808,8 +792,8 @@ class TestS5MultipleShutdownFailures:
         )
 
         with patch("src.scenarios.disaster.cleanup_external_bridges"):
-            with patch("src.scenarios.disaster.stop_cefnetd"):
-                with patch("src.scenarios.disaster.stop_csmgrd"):
+            with patch("src.runtime.daemon_fleet.stop_cefnetd"):
+                with patch("src.runtime.daemon_fleet.stop_csmgrd"):
                     with patch("src.scenarios.base.cleanup_all"):
                         net = MagicMock()
 
@@ -847,7 +831,6 @@ class TestS6SystemExitAggregation:
         Pass-after: BaseExceptionGroup used for non-Exception primary.
         """
         scenario = _make_scenario(tmp_path)
-        scenario.started_csmgrd_hosts = set()
         scenario.generated_node_dirs = []
         scenario.results_path = None
         scenario.results = {}
@@ -858,8 +841,8 @@ class TestS6SystemExitAggregation:
         )
 
         with patch("src.scenarios.disaster.cleanup_external_bridges"):
-            with patch("src.scenarios.disaster.stop_cefnetd"):
-                with patch("src.scenarios.disaster.stop_csmgrd"):
+            with patch("src.runtime.daemon_fleet.stop_cefnetd"):
+                with patch("src.runtime.daemon_fleet.stop_csmgrd"):
                     with patch("src.scenarios.base.cleanup_all"):
                         net = MagicMock()
 
@@ -906,7 +889,6 @@ class TestS7KeyboardInterrupt:
         still be surfaced.
         """
         scenario = _make_scenario(tmp_path)
-        scenario.started_csmgrd_hosts = set()
         scenario.generated_node_dirs = []
         scenario.results_path = None
         scenario.results = {}
@@ -937,7 +919,6 @@ class TestS7KeyboardInterrupt:
     def test_keyboard_interrupt_with_cleanup_failure_surfaces_failure(self, tmp_path):
         """If cleanup fails during KeyboardInterrupt, the failure is raised."""
         scenario = _make_scenario(tmp_path)
-        scenario.started_csmgrd_hosts = set()
         scenario.generated_node_dirs = []
         scenario.results_path = None
         scenario.results = {}
@@ -947,8 +928,8 @@ class TestS7KeyboardInterrupt:
         )
 
         with patch("src.scenarios.disaster.cleanup_external_bridges"):
-            with patch("src.scenarios.disaster.stop_cefnetd"):
-                with patch("src.scenarios.disaster.stop_csmgrd"):
+            with patch("src.runtime.daemon_fleet.stop_cefnetd"):
+                with patch("src.runtime.daemon_fleet.stop_csmgrd"):
                     with patch("src.scenarios.base.cleanup_all"):
                         net = MagicMock()
 
@@ -979,7 +960,6 @@ class TestBaseExceptionMixedCleanup:
         self, tmp_path
     ):
         scenario = _make_scenario(tmp_path)
-        scenario.started_csmgrd_hosts = set()
         scenario.generated_node_dirs = []
         scenario.results_path = None
         scenario.results = {}
@@ -995,8 +975,8 @@ class TestBaseExceptionMixedCleanup:
         )
 
         with patch("src.scenarios.disaster.cleanup_external_bridges"):
-            with patch("src.scenarios.disaster.stop_cefnetd"):
-                with patch("src.scenarios.disaster.stop_csmgrd"):
+            with patch("src.runtime.daemon_fleet.stop_cefnetd"):
+                with patch("src.runtime.daemon_fleet.stop_csmgrd"):
                     with patch("src.scenarios.base.cleanup_all"):
                         net = MagicMock()
 
@@ -1067,7 +1047,6 @@ class TestT6ContentRunnerWaitAllRaises:
 
     def test_T6_wait_all_raises_stop_still_runs_and_failure_propagated(self, tmp_path):
         scenario = _make_scenario(tmp_path)
-        scenario.started_csmgrd_hosts = set()
         scenario.generated_node_dirs = []
         scenario.results_path = None
         scenario.results = {}

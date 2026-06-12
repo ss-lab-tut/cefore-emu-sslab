@@ -25,14 +25,8 @@ from ..runtime.bridge import (
     parse_ext_args,
     setup_bridges,
 )
-from ..runtime.cefore import (
-    run_cefstatus_all,
-    start_cefnetd,
-    start_csmgrd,
-    stop_cefnetd,
-    stop_csmgrd,
-    wait_for_cefnetd,
-)
+from ..runtime.cefore import run_cefstatus_all
+from ..runtime.daemon_fleet import DaemonFleet
 from ..runtime.command_runner import MininetCommandRunner
 from ..runtime.content_ops import ContentOperationRunner
 from ..runtime.net_config import apply_fib, apply_ip_addr
@@ -94,6 +88,7 @@ class ConnectScenario(BaseScenario):
 
         self.bridge_manager = BridgeManager()
         self.topo = None
+        self.daemon_fleet = None
         self.cache_node_set: set[int] = set()
         self.generated_node_dirs: list[Path] = []
 
@@ -150,15 +145,13 @@ class ConnectScenario(BaseScenario):
             args.hosts, self.cache_node_set, None, publishers=self.publisher_ids
         )
 
-        for idx in sorted(self.cache_node_set):
-            start_csmgrd(net, idx)
-
-        for idx in range(args.hosts):
-            start_cefnetd(net, idx)
-
-        for idx in range(args.hosts):
-            if not wait_for_cefnetd(net, idx):
-                info(f"WARNING: h{idx} cefnetd not ready\n")
+        self.daemon_fleet = DaemonFleet(
+            net,
+            node_names=[f"h{idx}" for idx in range(args.hosts)],
+            csmgrd_nodes={f"h{idx}" for idx in self.cache_node_set},
+        )
+        self.daemon_fleet.start_all()
+        self.daemon_fleet.wait_ready()
 
         apply_fib(
             net,
@@ -257,16 +250,10 @@ class ConnectScenario(BaseScenario):
         """
         teardown_failures: list[tuple[str, BaseException]] = []
 
-        for idx in range(self.args.hosts):
-            try:
-                stop_cefnetd(net, idx)
-            except BaseException as exc:
-                teardown_failures.append((f"stop_cefnetd h{idx}", exc))
-        for idx in sorted(self.cache_node_set):
-            try:
-                stop_csmgrd(net, idx)
-            except BaseException as exc:
-                teardown_failures.append((f"stop_csmgrd h{idx}", exc))
+        fleet = self.daemon_fleet or DaemonFleet(
+            net, node_names=[f"h{idx}" for idx in range(self.args.hosts)]
+        )
+        teardown_failures.extend(fleet.stop_all())
 
         try:
             self.bridge_manager.cleanup()

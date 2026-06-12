@@ -32,12 +32,9 @@ from ..runtime.scheduler import EventScheduler
 from ..runtime.cefore import (
     run_cefstatus_all,
     run_csmgrstatus,
-    start_cefnetd,
-    start_csmgrd,
-    stop_cefnetd,
-    stop_csmgrd,
     wait_for_cefnetd,
 )
+from ..runtime.daemon_fleet import DaemonFleet
 from ..core.parsing import parse_int_list
 from ..runtime.failure_manager import FlexibleFailureManager, periodic_host_flap
 from ..runtime.net_config import apply_fib, apply_fib_routes, apply_ip_addr
@@ -94,7 +91,7 @@ class DisasterScenario(BaseScenario):
         self._host_cmd_locks: dict[int, threading.Lock] = {}
         self.bridge_manager = BridgeManager()
         self.stop_event = None
-        self.started_csmgrd_hosts = set()
+        self.daemon_fleet = None
         self.cache_node_set = set()
         self.flap_state = FlapState()
         self.uri_publishers = {}
@@ -250,23 +247,16 @@ class DisasterScenario(BaseScenario):
                 publishers=self.publisher_ids,
             )
 
-        # Daemon startup: csmgrd -> cefnetd -> wait ready
-        for idx in sorted(self.cache_node_set):
-            start_csmgrd(net, idx)
-            self.started_csmgrd_hosts.add(idx)
-
-        for idx in range(args.hosts):
-            start_cefnetd(net, idx)
-        cefnetd_timeout = getattr(args, "cefnetd_timeout", None) or 10
-        not_ready = []
-        for idx in range(args.hosts):
-            if not wait_for_cefnetd(net, idx, timeout=cefnetd_timeout):
-                not_ready.append(idx)
-        if not_ready:
-            hosts = ", ".join(f"h{idx}" for idx in not_ready)
-            raise RuntimeError(
-                f"cefnetd not ready on {hosts}; aborting before FIB programming"
-            )
+        # Daemon startup: csmgrd -> cefnetd -> wait ready (raise before FIB)
+        self.daemon_fleet = DaemonFleet(
+            net,
+            node_names=[f"h{idx}" for idx in range(args.hosts)],
+            csmgrd_nodes={f"h{idx}" for idx in self.cache_node_set},
+            cefnetd_timeout=getattr(args, "cefnetd_timeout", None) or 10,
+            readiness_policy="raise",
+        )
+        self.daemon_fleet.start_all()
+        self.daemon_fleet.wait_ready()
 
         # FIB programming
         routing_config = getattr(args, "routing", None) or {}
@@ -682,17 +672,11 @@ class DisasterScenario(BaseScenario):
         """
         teardown_failures: list[tuple[str, BaseException]] = []
 
-        # Daemon stops — each host attempted independently
-        for idx in range(self.args.hosts):
-            try:
-                stop_cefnetd(net, idx)
-            except BaseException as exc:
-                teardown_failures.append((f"stop_cefnetd h{idx}", exc))
-        for idx in sorted(self.started_csmgrd_hosts):
-            try:
-                stop_csmgrd(net, idx)
-            except BaseException as exc:
-                teardown_failures.append((f"stop_csmgrd h{idx}", exc))
+        # Daemon stops — each host attempted independently inside the fleet
+        fleet = self.daemon_fleet or DaemonFleet(
+            net, node_names=[f"h{idx}" for idx in range(self.args.hosts)]
+        )
+        teardown_failures.extend(fleet.stop_all())
 
         # BridgeManager cleanup
         try:

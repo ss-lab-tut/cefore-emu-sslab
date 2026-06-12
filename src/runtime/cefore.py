@@ -45,7 +45,7 @@ def cleanup_cefnetd_socket(node_dir, idx):
             info(f"failed to remove stale socket {sock_path}\n")
 
 
-def wait_for_cefnetd(net, idx, timeout=10, interval=0.25):
+def wait_for_cefnetd(net, idx, timeout=10, interval=0.25, runner=None):
     """Wait for cefnetd to become ready.
 
     Args:
@@ -53,12 +53,13 @@ def wait_for_cefnetd(net, idx, timeout=10, interval=0.25):
         idx: Host index.
         timeout: Maximum wait time in seconds.
         interval: Check interval in seconds.
+        runner: Optional CommandRunner (defaults to a Mininet-backed one).
 
     Returns:
         True if ready, False if timeout.
     """
     node_name = f"h{idx}"
-    runner = MininetCommandRunner(net)
+    runner = runner or MininetCommandRunner(net)
     deadline = time.time() + timeout
     while time.time() < deadline:
         result = runner.run(
@@ -71,7 +72,7 @@ def wait_for_cefnetd(net, idx, timeout=10, interval=0.25):
     return False
 
 
-def wait_for_csmgrd(net, idx, timeout=10, interval=0.5):
+def wait_for_csmgrd(net, idx, timeout=10, interval=0.5, runner=None):
     """Wait for csmgrd to become ready.
 
     Args:
@@ -79,12 +80,13 @@ def wait_for_csmgrd(net, idx, timeout=10, interval=0.5):
         idx: Host index.
         timeout: Maximum wait time in seconds.
         interval: Check interval in seconds.
+        runner: Optional CommandRunner (defaults to a Mininet-backed one).
 
     Returns:
         True if ready, False if timeout.
     """
     node_name = f"h{idx}"
-    runner = MininetCommandRunner(net)
+    runner = runner or MininetCommandRunner(net)
     deadline = time.time() + timeout
     while time.time() < deadline:
         result = runner.run(node_name, ["csmgrstatus"], log_path=os.devnull)
@@ -95,7 +97,7 @@ def wait_for_csmgrd(net, idx, timeout=10, interval=0.5):
     return False
 
 
-def start_csmgrd(net, idx, log_dir=None):
+def start_csmgrd(net, idx, log_dir=None, runner=None):
     """Start cache manager daemon for a host.
 
     Args:
@@ -103,9 +105,10 @@ def start_csmgrd(net, idx, log_dir=None):
         idx: Host index.
         log_dir: Directory to write daemon log files (hN-csmgrd-log).
                  If None, logs go to CWD.
+        runner: Optional CommandRunner (defaults to a Mininet-backed one).
     """
     node_name = f"h{idx}"
-    runner = MininetCommandRunner(net)
+    runner = runner or MininetCommandRunner(net)
     if log_dir is not None:
         abs_node_dir = os.path.abspath(f"./{node_name}")
         argv = ["csmgrdstart", "-d", abs_node_dir]
@@ -115,23 +118,25 @@ def start_csmgrd(net, idx, log_dir=None):
         cwd = None
     info(f"{node_name} command: {argv} cwd: {cwd}\n")
     runner.run(node_name, argv, cwd=cwd, log_path=os.devnull)
-    wait_for_csmgrd(net, idx)
+    wait_for_csmgrd(net, idx, runner=runner)
 
 
-def stop_csmgrd(net, idx):
+def stop_csmgrd(net, idx, runner=None):
     """Stop cache manager daemon for a host.
 
     Args:
         net: Mininet network instance.
         idx: Host index.
+        runner: Optional CommandRunner (defaults to a Mininet-backed one).
     """
     node_name = f"h{idx}"
     argv = ["csmgrdstop", "-d", f"./{node_name}"]
     info("hosts[", idx, "]:", argv, "\n")
-    MininetCommandRunner(net).run(node_name, argv)
+    runner = runner or MininetCommandRunner(net)
+    runner.run(node_name, argv)
 
 
-def start_cefnetd(net, idx, log_dir=None):
+def start_cefnetd(net, idx, log_dir=None, runner=None):
     """Start cefnetd forwarding daemon for a host.
 
     Args:
@@ -139,10 +144,11 @@ def start_cefnetd(net, idx, log_dir=None):
         idx: Host index.
         log_dir: Directory to write daemon log files (hN-cefnetd-log).
                  If None, logs go to CWD.
+        runner: Optional CommandRunner (defaults to a Mininet-backed one).
     """
     node_name = f"h{idx}"
     cleanup_cefnetd_socket(node_name, idx)
-    runner = MininetCommandRunner(net)
+    runner = runner or MininetCommandRunner(net)
     if log_dir is not None:
         abs_node_dir = os.path.abspath(f"./{node_name}")
         argv = ["cefnetdstart", "-d", abs_node_dir]
@@ -155,17 +161,19 @@ def start_cefnetd(net, idx, log_dir=None):
     time.sleep(1)
 
 
-def stop_cefnetd(net, idx):
+def stop_cefnetd(net, idx, runner=None):
     """Stop cefnetd forwarding daemon for a host.
 
     Args:
         net: Mininet network instance.
         idx: Host index.
+        runner: Optional CommandRunner (defaults to a Mininet-backed one).
     """
     node_name = f"h{idx}"
     argv = ["cefnetdstop", "-F", "-d", f"./{node_name}"]
     info("hosts[", idx, "]:", argv, "\n")
-    MininetCommandRunner(net).run(node_name, argv)
+    runner = runner or MininetCommandRunner(net)
+    runner.run(node_name, argv)
 
 
 def run_cefputfile(

@@ -28,6 +28,7 @@ from .links import (
     set_link_state,
     set_node_links_state,
 )
+from .daemon_fleet import DaemonFleet
 from .failure_manager import FlexibleFailureManager, periodic_host_flap
 from .net_config import (
     apply_fib,
@@ -99,6 +100,8 @@ __all__ = [
     "set_node_links_state",
     "periodic_host_flap",
     "FlexibleFailureManager",
+    # daemon_fleet
+    "DaemonFleet",
     # net_config
     "apply_ip_addr",
     "apply_fib",

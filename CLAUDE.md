@@ -66,6 +66,7 @@ cefore-emu/
 │   │   ├── bridge.py              # Linux bridge & root NS bridging
 │   │   ├── cache_manager.py       # Cache manager operations
 │   │   ├── cefore.py              # Cefore daemon start/stop/wait
+│   │   ├── daemon_fleet.py        # DaemonFleet: daemon lifecycle seam
 │   │   ├── external_net.py        # External network mesh scenario
 │   │   ├── failure_manager.py     # Host failure simulation
 │   │   ├── links.py               # Link state control (up/down)

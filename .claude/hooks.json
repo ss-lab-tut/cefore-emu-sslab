@@ -1,0 +1,2 @@
+{"hooks":{"Stop":[{"matcher":"","hooks":[{"type":"command","command":"'/home/yamakawa/.agents/skills/agmsg/scripts/check-inbox.sh' 'codex' '/home/lab_shared/cefore-emu-sslab'","commandWindows":"& 'C:\\Program Files\\Git\\bin\\bash.exe' -lc \"'/home/yamakawa/.agents/skills/agmsg/scripts/check-inbox.sh' 'codex' '/home/lab_shared/cefore-emu-sslab'\""}]}]}}
+

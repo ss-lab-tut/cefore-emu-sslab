@@ -26,6 +26,12 @@ _Avoid_: host index, idx, host id (as an interface argument)
 The reserved Node name that tells the CommandRunner to execute in the root namespace (plain subprocess) instead of a host netns. Used by bridge/external-network setup.
 _Avoid_: root ns flag, "root" special case
 
+## Daemon lifecycle
+
+**DaemonFleet**:
+The single seam through which the Cefore daemons (csmgrd + cefnetd) of one experiment are started, readiness-checked, and stopped. Owns the csmgrd→cefnetd startup order, the readiness policy (`warn` logs and continues; `raise` aborts before FIB programming), stop-failure aggregation, and started-csmgrd tracking. Lives in `src/runtime/daemon_fleet.py`; speaks Node names at its interface and drives every command through a CommandRunner. All four scenarios construct one in `configure` and reuse it in `teardown`.
+_Avoid_: daemon loops, start/stop loops, started_csmgrd_hosts
+
 ## Topology
 
 **TopologyModel**:

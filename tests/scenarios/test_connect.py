@@ -5,6 +5,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from src.runtime.daemon_fleet import DaemonFleet
 from src.scenarios.connect import ConnectScenario
 
 
@@ -34,14 +35,21 @@ def test_run_experiment_without_events_is_noop(tmp_path):
     runner_cls.assert_not_called()
 
 
+def _seed_fleet(scenario, net):
+    """Give the scenario a DaemonFleet that has started csmgrd on h1."""
+    fleet = DaemonFleet(net, node_names=["h0", "h1", "h2"], csmgrd_nodes={"h1"})
+    fleet.started_csmgrd = {"h1"}
+    scenario.daemon_fleet = fleet
+
+
 def test_teardown_success_runs_all_stages(tmp_path):
     scenario = _make_scenario(tmp_path)
-    scenario.cache_node_set = {1}
     scenario.bridge_manager.cleanup = MagicMock()
     net = MagicMock()
+    _seed_fleet(scenario, net)
 
-    with patch("src.scenarios.connect.stop_cefnetd") as stop_cefnetd:
-        with patch("src.scenarios.connect.stop_csmgrd") as stop_csmgrd:
+    with patch("src.runtime.daemon_fleet.stop_cefnetd") as stop_cefnetd:
+        with patch("src.runtime.daemon_fleet.stop_csmgrd") as stop_csmgrd:
             scenario.teardown(net)
 
     assert stop_cefnetd.call_count == 3
@@ -53,15 +61,15 @@ def test_teardown_daemon_stop_failure_still_runs_bridge_cleanup(tmp_path):
     """A stop_cefnetd failure must not skip bridge_manager.cleanup(), and the
     failure must surface as an aggregated exception."""
     scenario = _make_scenario(tmp_path)
-    scenario.cache_node_set = {1}
     scenario.bridge_manager.cleanup = MagicMock()
     net = MagicMock()
+    _seed_fleet(scenario, net)
 
     with patch(
-        "src.scenarios.connect.stop_cefnetd",
+        "src.runtime.daemon_fleet.stop_cefnetd",
         side_effect=RuntimeError("cefnetd stop failed"),
     ):
-        with patch("src.scenarios.connect.stop_csmgrd"):
+        with patch("src.runtime.daemon_fleet.stop_csmgrd"):
             with pytest.raises(BaseException):
                 scenario.teardown(net)
 

@@ -194,3 +194,43 @@ class TestRunCsmgrstatus:
         with patch.object(cefore_mod, "MininetCommandRunner", return_value=fake):
             out = run_csmgrstatus(MagicMock(), 1, host="127.0.0.1", quiet=True)
         assert out == "error: command timeout"
+
+
+# ---------------------------------------------------------------------------
+# Daemon control — runner DI (N: DaemonFleet)
+# ---------------------------------------------------------------------------
+
+
+class TestDaemonRunnerInjection:
+    def test_start_csmgrd_runs_through_injected_runner(self):
+        fake = FakeCommandRunner()
+        cefore_mod.start_csmgrd(None, 1, runner=fake)
+        assert fake.runs[0]["node"] == "h1"
+        assert fake.runs[0]["argv"][0] == "csmgrdstart"
+        # The readiness poll (csmgrstatus) goes through the same runner.
+        assert fake.runs[1]["argv"][0] == "csmgrstatus"
+
+    def test_start_cefnetd_runs_through_injected_runner(self):
+        fake = FakeCommandRunner()
+        with patch.object(cefore_mod.time, "sleep"):
+            cefore_mod.start_cefnetd(None, 2, runner=fake)
+        assert fake.runs[0]["node"] == "h2"
+        assert fake.runs[0]["argv"][0] == "cefnetdstart"
+
+    def test_stop_daemons_run_through_injected_runner(self):
+        fake = FakeCommandRunner()
+        cefore_mod.stop_cefnetd(None, 0, runner=fake)
+        cefore_mod.stop_csmgrd(None, 0, runner=fake)
+        assert fake.runs[0]["argv"][0] == "cefnetdstop"
+        assert fake.runs[1]["argv"][0] == "csmgrdstop"
+
+    def test_wait_for_cefnetd_polls_through_injected_runner(self):
+        fake = FakeCommandRunner()
+        assert cefore_mod.wait_for_cefnetd(None, 3, runner=fake) is True
+        assert fake.runs[0]["node"] == "h3"
+        assert fake.runs[0]["argv"][0] == "cefstatus"
+
+    def test_wait_for_csmgrd_polls_through_injected_runner(self):
+        fake = FakeCommandRunner()
+        assert cefore_mod.wait_for_csmgrd(None, 3, runner=fake) is True
+        assert fake.runs[0]["argv"] == ["csmgrstatus"]

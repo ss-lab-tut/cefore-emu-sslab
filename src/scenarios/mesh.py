@@ -12,12 +12,8 @@ from ..runtime.cefore import (
     run_cefgetfile,
     run_cefputfile,
     run_cefstatus_all,
-    start_cefnetd,
-    start_csmgrd,
-    stop_cefnetd,
-    stop_csmgrd,
-    wait_for_cefnetd,
 )
+from ..runtime.daemon_fleet import DaemonFleet
 from ..core.addressing import AddressingScheme
 from ..core.roles import assign_roles
 from ..core.topology import TopologyModel
@@ -80,6 +76,7 @@ class MeshScenario(BaseScenario):
 
         self.rng = random.Random(seed)
         self.topo = None
+        self.daemon_fleet = None
 
     def build_topology(self):
         rng_state = self.rng.getstate()
@@ -107,14 +104,17 @@ class MeshScenario(BaseScenario):
             info(runner.run(node_name, ["ifconfig"]).stdout)
 
         log_dir = str(self.run_dir) if self.run_dir != Path(".") else None
-        for idx in range(self.host_num):
-            if self.roles.get(idx) and self.roles[idx].runs_csmgrd:
-                start_csmgrd(net, idx, log_dir=log_dir)
-        for idx in range(self.host_num):
-            start_cefnetd(net, idx, log_dir=log_dir)
-        for idx in range(self.host_num):
-            if not wait_for_cefnetd(net, idx):
-                info(f"WARNING: h{idx} cefnetd not ready\n")
+        self.daemon_fleet = DaemonFleet(
+            net,
+            node_names=[f"h{idx}" for idx in range(self.host_num)],
+            csmgrd_nodes={
+                f"h{idx}" for idx in range(self.host_num)
+                if self.roles.get(idx) and self.roles[idx].runs_csmgrd
+            },
+            log_dir=log_dir,
+        )
+        self.daemon_fleet.start_all()
+        self.daemon_fleet.wait_ready()
 
         apply_fib(net, self.topo.mesh_links, self.k_paths, scheme=self.scheme)
         run_cefstatus_all(net, self.host_num)
@@ -150,11 +150,10 @@ class MeshScenario(BaseScenario):
             sys.exit(1)
 
     def teardown(self, net):
-        for idx in range(self.host_num):
-            stop_cefnetd(net, idx)
-        for idx in range(self.host_num):
-            if self.roles.get(idx) and self.roles[idx].runs_csmgrd:
-                stop_csmgrd(net, idx)
+        fleet = self.daemon_fleet or DaemonFleet(
+            net, node_names=[f"h{idx}" for idx in range(self.host_num)]
+        )
+        fleet.stop_all()
 
 
 def run_mesh_scenario(
