@@ -1,5 +1,7 @@
 """Network configuration application (Mininet-dependent)."""
 
+from dataclasses import dataclass
+
 from mininet.log import info
 
 from ..core.addressing import AddressingScheme
@@ -30,7 +32,17 @@ def apply_ip_addr(net, mesh_links, scheme=None):
             runner.run(node_name, argv)
 
 
-def apply_fib_routes(net, routes, source: int | None = None):
+@dataclass(frozen=True)
+class RouteApplyFailure:
+    """One ``cefroute add`` that did not succeed, identified by its Route."""
+
+    source: int
+    prefix: str
+    next_hop_ip: str
+    returncode: int | None
+
+
+def apply_fib_routes(net, routes, source: int | None = None, runner=None):
     """Apply precomputed FIB route entries.
 
     Args:
@@ -38,8 +50,15 @@ def apply_fib_routes(net, routes, source: int | None = None):
         routes: Iterable of Route objects.
         source: Optional host index filter. When provided, only routes for that
             source host are applied.
+        runner: Optional CommandRunner (defaults to a Mininet-backed one).
+
+    Returns:
+        List of RouteApplyFailure — empty when every route applied cleanly.
+        Failures are also logged as warnings here, so callers may ignore the
+        return value without the failure becoming silent.
     """
-    runner = MininetCommandRunner(net)
+    runner = runner or MininetCommandRunner(net)
+    failures = []
     for route in routes:
         if source is not None and route.source != source:
             continue
@@ -49,11 +68,33 @@ def apply_fib_routes(net, routes, source: int | None = None):
             "-d", f"./{node_name}",
         ]
         print(node_name, "command:", argv)
-        info(runner.run(node_name, argv).stdout)
+        result = runner.run(node_name, argv)
+        info(result.stdout)
+        if result.returncode != 0:
+            failures.append(
+                RouteApplyFailure(
+                    source=route.source,
+                    prefix=route.prefix,
+                    next_hop_ip=route.next_hop_ip,
+                    returncode=result.returncode,
+                )
+            )
+            info(
+                f"[fib] warning: cefroute add failed on {node_name} "
+                f"prefix={route.prefix} next_hop={route.next_hop_ip} "
+                f"exit={result.returncode}\n"
+            )
+    return failures
 
 
 def apply_fib(
-    net, mesh_links, k_paths, strategy="dijkstra", uri_publishers=None, scheme=None
+    net,
+    mesh_links,
+    k_paths,
+    strategy="dijkstra",
+    uri_publishers=None,
+    scheme=None,
+    runner=None,
 ):
     """Apply FIB entries using the specified routing strategy.
 
@@ -64,10 +105,15 @@ def apply_fib(
         strategy: Routing strategy name (dijkstra, shortest_path, ecmp).
         uri_publishers: Optional dict mapping URI prefix to publisher host ID.
         scheme: AddressingScheme for IP generation (defaults to 192.168.0.0/16).
+        runner: Optional CommandRunner (defaults to a Mininet-backed one).
+
+    Returns:
+        The computed routes. Application failures are logged (and surfaced)
+        by apply_fib_routes.
     """
     strat = get_routing_strategy(strategy)
     routes = strat.compute_routes(mesh_links, k_paths, uri_publishers, scheme=scheme)
-    apply_fib_routes(net, routes)
+    apply_fib_routes(net, routes, runner=runner)
     return routes
 
 
