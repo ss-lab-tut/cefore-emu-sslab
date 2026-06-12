@@ -15,7 +15,6 @@ from mininet.log import info
 
 from ..core.addressing import AddressingScheme, DEFAULT_NETWORK_CIDR
 from ..core.flap_state import FlapState
-from ..core.graph import select_k_centers
 from ..core.paths import resolve_run_path
 from ..runtime.bandwidth import parse_bw_args, set_link_bandwidth
 from ..runtime.bridge import (
@@ -32,7 +31,8 @@ from ..runtime.content_ops import ContentOperationRunner
 from ..runtime.net_config import apply_fib, apply_ip_addr
 from ..runtime.results_sink import RecordingSink
 from ..runtime.scheduler import EventScheduler
-from ..runtime.template import apply_cache_node_settings, ensure_node_dirs
+from ..runtime.cache_manager import CachePlacement
+from ..runtime.template import ensure_node_dirs
 from ..runtime.topo import MeshTopo
 from ..runtime.viz import build_host_graph, print_mesh_links, render_topology_png
 from .base import BaseScenario, _propagate_failures
@@ -132,18 +132,15 @@ class ConnectScenario(BaseScenario):
         for idx in range(args.hosts):
             info(ifconfig_runner.run(f"h{idx}", ["ifconfig"]).stdout)
 
-        # Cache node selection (no publisher exclusion, unlike disaster).
         host_graph, _ = build_host_graph(self.topo.mesh_links)
-        cache_count = (
-            args.cache_count if args.cache_count > 0 else args.down_count + 1
-        )
-        cache_nodes = select_k_centers(host_graph, cache_count)
-        if not cache_nodes and args.hosts > 0:
-            cache_nodes = [args.hosts - 1]
-        self.cache_node_set = set(cache_nodes)
-        apply_cache_node_settings(
-            args.hosts, self.cache_node_set, None, publishers=self.publisher_ids
-        )
+        self.cache_node_set = CachePlacement(
+            host_count=args.hosts,
+            host_graph=host_graph,
+            publisher_ids=self.publisher_ids,
+            cache_count=args.cache_count,
+            down_count=args.down_count,
+            exclude_publishers=False,
+        ).place()
 
         self.daemon_fleet = DaemonFleet(
             net,
@@ -177,8 +174,6 @@ class ConnectScenario(BaseScenario):
             seed=args.seed,
             layout=args.topo_layout,
         )
-        if cache_nodes:
-            info("cache nodes: " + ", ".join(f"h{idx}" for idx in cache_nodes) + "\n")
         time.sleep(1)
 
         for node_a, node_b, bandwidth in parse_bw_args(args.bw):

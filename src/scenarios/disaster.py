@@ -11,7 +11,6 @@ from mininet.log import info
 
 from ..core.addressing import AddressingScheme, DEFAULT_NETWORK_CIDR
 from ..core.flap_state import FlapState
-from ..core.graph import select_k_centers
 from ..core.paths import ensure_within_run_dir, resolve_run_path
 
 from ..runtime.bandwidth import parse_bw_args, set_link_bandwidth
@@ -24,6 +23,7 @@ from ..runtime.bridge import (
     parse_ext_args,
     setup_bridges,
 )
+from ..runtime.cache_manager import CachePlacement
 from ..runtime.command_runner import MininetCommandRunner
 from ..runtime.content_ops import ContentOperationRunner
 from ..runtime.monitoring import Monitor
@@ -38,10 +38,7 @@ from ..runtime.daemon_fleet import DaemonFleet
 from ..core.parsing import parse_int_list
 from ..runtime.failure_manager import FlexibleFailureManager, periodic_host_flap
 from ..runtime.net_config import apply_fib, apply_fib_routes, apply_ip_addr
-from ..runtime.template import (
-    apply_cache_node_settings,
-    ensure_node_dirs,
-)
+from ..runtime.template import ensure_node_dirs
 from ..runtime.topo import MeshTopo
 from ..runtime.viz import build_host_graph, print_mesh_links, render_topology_png
 
@@ -208,44 +205,17 @@ class DisasterScenario(BaseScenario):
             layout=args.topo_layout,
         )
 
-        # Cache node selection
+        # Cache node selection (publishers excluded from caching)
         host_graph, _ = build_host_graph(self.topo.mesh_links)
-        cache_config = getattr(args, "cache_config", None) or {}
-        if cache_config:
-            from ..runtime.cache_manager import CacheConfigManager
-
-            manager = CacheConfigManager(
-                cache_config, args.hosts, host_graph, self.publisher_ids
-            )
-            cache_nodes = manager.select_cache_nodes(exclude=self.publisher_ids)
-            if not cache_nodes and args.hosts > 0:
-                cache_nodes = [args.hosts - 1]
-            self.cache_node_set = set(cache_nodes)
-            if cache_nodes:
-                info(
-                    "cache nodes: " + ", ".join(f"h{idx}" for idx in cache_nodes) + "\n"
-                )
-            manager.apply_configs(self.cache_node_set)
-        else:
-            cache_count = (
-                args.cache_count if args.cache_count > 0 else args.down_count + 1
-            )
-            cache_nodes = select_k_centers(
-                host_graph, cache_count, exclude=self.publisher_ids
-            )
-            if not cache_nodes and args.hosts > 0:
-                cache_nodes = [args.hosts - 1]
-            self.cache_node_set = set(cache_nodes)
-            if cache_nodes:
-                info(
-                    "cache nodes: " + ", ".join(f"h{idx}" for idx in cache_nodes) + "\n"
-                )
-            apply_cache_node_settings(
-                args.hosts,
-                self.cache_node_set,
-                getattr(args, "cache_default_rct_ms", None),
-                publishers=self.publisher_ids,
-            )
+        self.cache_node_set = CachePlacement(
+            host_count=args.hosts,
+            host_graph=host_graph,
+            publisher_ids=self.publisher_ids,
+            cache_config=getattr(args, "cache_config", None) or None,
+            cache_count=args.cache_count,
+            down_count=args.down_count,
+            cache_default_rct_ms=getattr(args, "cache_default_rct_ms", None),
+        ).place()
 
         # Daemon startup: csmgrd -> cefnetd -> wait ready (raise before FIB)
         self.daemon_fleet = DaemonFleet(

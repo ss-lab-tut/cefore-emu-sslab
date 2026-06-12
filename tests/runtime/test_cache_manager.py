@@ -4,7 +4,7 @@ from unittest.mock import patch
 
 import pytest
 
-from src.runtime.cache_manager import CacheConfigManager
+from src.runtime.cache_manager import CacheConfigManager, CachePlacement
 
 
 @pytest.fixture
@@ -113,3 +113,90 @@ class TestCacheConfigManager:
         assert "CACHE_ALGORITHM=libcsmgrd_lfu" in (
             tmp_path / "h1" / "csmgrd.conf"
         ).read_text()
+
+
+class TestCachePlacement:
+    """One placement decision for disaster (exclusion) and connect (no exclusion)."""
+
+    def test_legacy_path_excludes_publishers_by_default(self, linear_graph):
+        placement = CachePlacement(
+            host_count=5,
+            host_graph=linear_graph,
+            publisher_ids={4},
+            cache_count=2,
+        )
+        nodes = placement.decide()
+        assert len(nodes) == 2
+        assert 4 not in nodes
+
+    def test_legacy_path_can_keep_publishers(self, linear_graph):
+        # connect: publishers stay eligible for caching
+        with_pub = CachePlacement(
+            host_count=5,
+            host_graph=linear_graph,
+            publisher_ids={0, 4},
+            cache_count=5,
+            exclude_publishers=False,
+        )
+        assert sorted(with_pub.decide()) == [0, 1, 2, 3, 4]
+
+    def test_cache_count_zero_falls_back_to_down_count_plus_one(self, linear_graph):
+        placement = CachePlacement(
+            host_count=5,
+            host_graph=linear_graph,
+            publisher_ids=set(),
+            cache_count=0,
+            down_count=2,
+        )
+        assert len(placement.decide()) == 3
+
+    def test_empty_selection_falls_back_to_last_host(self, triangle_graph):
+        placement = CachePlacement(
+            host_count=3,
+            host_graph=triangle_graph,
+            publisher_ids={0, 1, 2},
+            cache_count=2,
+        )
+        assert placement.decide() == [2]
+
+    def test_cache_config_path_uses_configured_strategy(self, triangle_graph):
+        placement = CachePlacement(
+            host_count=3,
+            host_graph=triangle_graph,
+            publisher_ids={0},
+            cache_config={"strategy": "manual", "nodes": [{"id": [0, 1]}]},
+        )
+        assert placement.decide() == [1]  # 0 excluded as publisher
+
+    def test_place_applies_legacy_settings_and_returns_set(self, linear_graph):
+        placement = CachePlacement(
+            host_count=5,
+            host_graph=linear_graph,
+            publisher_ids={4},
+            cache_count=2,
+            cache_default_rct_ms=1234,
+        )
+        with patch("src.runtime.cache_manager.apply_cache_node_settings") as mock_apply:
+            cache_set = placement.place()
+        assert cache_set == set(placement.decide())
+        args, kwargs = mock_apply.call_args
+        assert args[0] == 5
+        assert args[1] == cache_set
+        assert args[2] == 1234
+        assert kwargs["publishers"] == {4}
+
+    def test_place_applies_cache_config_through_the_manager(self, triangle_graph):
+        placement = CachePlacement(
+            host_count=3,
+            host_graph=triangle_graph,
+            publisher_ids=set(),
+            cache_config={
+                "strategy": "manual",
+                "nodes": [{"id": 1}],
+                "default": {"capacity": 512},
+            },
+        )
+        with patch("src.runtime.cache_manager.apply_cache_node_settings") as mock_apply:
+            cache_set = placement.place()
+        assert cache_set == {1}
+        assert mock_apply.call_args.kwargs["cache_capacity"] == 512
