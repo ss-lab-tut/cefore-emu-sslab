@@ -6,27 +6,11 @@ import time
 
 from mininet.log import info
 
-from ..core.protocols import normalize_route_protocol
 from .bandwidth import set_switch_bandwidth
-from .command_runner import MininetCommandRunner
 from .compute_client import check_external_connectivity
 from .compute_client import compute_call as _do_compute_call
 from .links import link_down, link_up
-from .net_config import cefroute_del, cefroute_enable
-
-
-def _cefroute_add(net, host_idx, prefix, protocol, next_hop):
-    """Add a FIB entry via cefroute add."""
-    node_name = f"h{host_idx}"
-    node_dir = f"./{node_name}"
-    argv = [
-        "cefroute", "add", prefix, normalize_route_protocol(protocol), next_hop,
-        "-d", node_dir,
-    ]
-    print(node_name, "command:", argv)
-    result = MininetCommandRunner(net).run(node_name, argv)
-    info(result.stdout)
-    return result.returncode == 0
+from .net_config import cefroute_add, cefroute_del, cefroute_enable
 
 
 def _handle_compute_call(net, event, mesh_links, ctx):
@@ -83,9 +67,9 @@ _EVENT_HANDLERS = {
     "link_up": lambda net, ev, ml, ctx: link_up(
         net, ml, ev["nodes"][0], ev["nodes"][1]
     ),
-    "fib_add": lambda net, ev, _, ctx: _cefroute_add(
+    "fib_add": lambda net, ev, _, ctx: cefroute_add(
         net, ev["host"], ev["prefix"], ev.get("protocol"), ev["next_hop"]
-    ),
+    ).returncode == 0,
     "fib_del": lambda net, ev, _, ctx: cefroute_del(
         net, ev["host"], ev["prefix"], ev.get("protocol"), ev["next_hop"]
     ),

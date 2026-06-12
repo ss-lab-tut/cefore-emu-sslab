@@ -2,7 +2,13 @@
 
 from src.core.fib import Route
 from src.runtime.command_runner import CommandResult, FakeCommandRunner
-from src.runtime.net_config import apply_fib, apply_fib_routes
+from src.runtime.net_config import (
+    apply_fib,
+    apply_fib_routes,
+    cefroute_add,
+    cefroute_del,
+    cefroute_enable,
+)
 
 # Two switches: s0 joins h0-h1, s1 joins h1-h2 (MeshTopo canonical shape).
 MESH = [
@@ -16,6 +22,38 @@ def _routes():
         Route(source=0, prefix="ccnx:/test/a", next_hop=1, next_hop_ip="192.168.1.2"),
         Route(source=1, prefix="ccnx:/test/a", next_hop=2, next_hop_ip="192.168.2.3"),
     ]
+
+
+class TestCefrouteAdd:
+    def test_runs_cefroute_add_on_the_host_and_returns_the_result(self):
+        fake = FakeCommandRunner()
+        result = cefroute_add(
+            None, 3, "ccnx:/test/a", "udp", "192.168.1.2", runner=fake
+        )
+        assert result.returncode == 0
+        assert len(fake.runs) == 1
+        run = fake.runs[0]
+        assert run["node"] == "h3"
+        assert run["argv"] == [
+            "cefroute", "add", "ccnx:/test/a", "udp", "192.168.1.2",
+            "-d", "./h3",
+        ]
+
+class TestCefrouteDelEnable:
+    def test_del_runs_through_an_injected_runner(self):
+        fake = FakeCommandRunner()
+        ok = cefroute_del(None, 2, "ccnx:/test/a", None, "192.168.1.2", runner=fake)
+        assert ok is True
+        run = fake.runs[0]
+        assert run["node"] == "h2"
+        assert run["argv"][:3] == ["cefroute", "del", "ccnx:/test/a"]
+
+    def test_enable_runs_through_an_injected_runner(self):
+        fake = FakeCommandRunner()
+        fake.script_run(returncode=1)
+        ok = cefroute_enable(None, 2, "ccnx:/test/a", None, "192.168.1.2", runner=fake)
+        assert ok is False
+        assert fake.runs[0]["argv"][:2] == ["cefroute", "enable"]
 
 
 class TestApplyFibRoutes:

@@ -33,6 +33,7 @@ from .net_config import (
     apply_fib,
     apply_fib_routes,
     apply_ip_addr,
+    cefroute_add,
     cefroute_del,
     cefroute_enable,
 )
@@ -102,6 +103,7 @@ __all__ = [
     "apply_ip_addr",
     "apply_fib",
     "apply_fib_routes",
+    "cefroute_add",
     "cefroute_del",
     "cefroute_enable",
     # topo

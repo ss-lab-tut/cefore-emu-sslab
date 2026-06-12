@@ -20,6 +20,7 @@ from ..runtime.cefore import (
     stop_csmgrd,
     wait_for_cefnetd,
 )
+from ..runtime.net_config import cefroute_add
 from ..runtime.template import ensure_node_dirs
 from ..runtime.topo import LineTopo
 
@@ -116,18 +117,12 @@ class LinearScenario(BaseScenario):
                 print(node_name, "command:", argv)
                 runner.run(node_name, argv)
 
-    def _set_fib(self, net):
+    def _set_fib(self, net, runner=None):
         """Set FIB for linear topology (forward toward publisher)."""
-        runner = MininetCommandRunner(net)
+        runner = runner or MininetCommandRunner(net)
         for idx in irange(0, self.host_num - 2):
-            node_name = f"h{idx}"
             next_hop_ip = self.scheme.host_ip(idx, idx + 1)
-            argv = [
-                "cefroute", "add", "ccnx:/test", "udp", str(next_hop_ip),
-                "-d", f"./{node_name}",
-            ]
-            print(node_name, "command:", argv)
-            info(runner.run(node_name, argv).stdout)
+            cefroute_add(net, idx, "ccnx:/test", "udp", str(next_hop_ip), runner=runner)
 
 
 def run_linear_scenario(host_num, run_dir=None, debug_config=None):

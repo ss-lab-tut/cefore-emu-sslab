@@ -170,6 +170,40 @@ class TestEventScheduler:
         assert fired[0] - before < 0.2
 
 
+class TestFibAddDelegation:
+    """fib_add delegates to net_config.cefroute_add (Q: single argv owner)."""
+
+    def _run_fib_add(self, returncode):
+        from src.runtime.command_runner import CommandResult
+
+        sink = RecordingSink()
+        net = _make_net()
+        event = {
+            "at": 0.0,
+            "type": "fib_add",
+            "host": 1,
+            "prefix": "ccnx:/test/a",
+            "next_hop": "192.168.1.2",
+        }
+        with patch(
+            "src.runtime.scheduler.cefroute_add",
+            return_value=CommandResult(returncode=returncode),
+        ) as add:
+            sched = EventScheduler(net, [event], sink=sink)
+            sched.start()
+            sched.wait_all(timeout=3)
+        add.assert_called_once_with(net, 1, "ccnx:/test/a", None, "192.168.1.2")
+        return sink.records
+
+    def test_successful_add_records_success(self):
+        records = self._run_fib_add(returncode=0)
+        assert records[0]["success"] is True
+
+    def test_failed_add_records_failure(self):
+        records = self._run_fib_add(returncode=1)
+        assert records[0]["success"] is False
+
+
 class TestEventOutcomeRecords:
     """Non-content events emit outcome records into the results sink (K)."""
 

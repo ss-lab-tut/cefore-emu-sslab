@@ -42,6 +42,43 @@ class RouteApplyFailure:
     returncode: int | None
 
 
+def cefroute_add(net, host_idx, prefix, protocol, next_hop, node_dir=None, runner=None):
+    """Add a FIB entry via cefroute add.
+
+    Args:
+        net: Mininet network instance.
+        host_idx: Host index.
+        prefix: Content name prefix (e.g. "ccnx:/test/sample").
+        protocol: Protocol (defaults to udp when None).
+        next_hop: Next hop IP address.
+        node_dir: Node directory (defaults to ./h{host_idx}).
+        runner: Optional CommandRunner (defaults to a Mininet-backed one).
+
+    Returns:
+        The CommandResult. A failed add is logged as a warning here, so
+        callers may ignore the return value without the failure becoming
+        silent.
+    """
+    node_name = f"h{host_idx}"
+    if node_dir is None:
+        node_dir = f"./{node_name}"
+    argv = [
+        "cefroute", "add", prefix, normalize_route_protocol(protocol), next_hop,
+        "-d", node_dir,
+    ]
+    print(node_name, "command:", argv)
+    runner = runner or MininetCommandRunner(net)
+    result = runner.run(node_name, argv)
+    info(result.stdout)
+    if result.returncode != 0:
+        info(
+            f"[fib] warning: cefroute add failed on {node_name} "
+            f"prefix={prefix} next_hop={next_hop} "
+            f"exit={result.returncode}\n"
+        )
+    return result
+
+
 def apply_fib_routes(net, routes, source: int | None = None, runner=None):
     """Apply precomputed FIB route entries.
 
@@ -62,14 +99,10 @@ def apply_fib_routes(net, routes, source: int | None = None, runner=None):
     for route in routes:
         if source is not None and route.source != source:
             continue
-        node_name = f"h{route.source}"
-        argv = [
-            "cefroute", "add", route.prefix, "udp", route.next_hop_ip,
-            "-d", f"./{node_name}",
-        ]
-        print(node_name, "command:", argv)
-        result = runner.run(node_name, argv)
-        info(result.stdout)
+        result = cefroute_add(
+            net, route.source, route.prefix, "udp", route.next_hop_ip,
+            runner=runner,
+        )
         if result.returncode != 0:
             failures.append(
                 RouteApplyFailure(
@@ -78,11 +111,6 @@ def apply_fib_routes(net, routes, source: int | None = None, runner=None):
                     next_hop_ip=route.next_hop_ip,
                     returncode=result.returncode,
                 )
-            )
-            info(
-                f"[fib] warning: cefroute add failed on {node_name} "
-                f"prefix={route.prefix} next_hop={route.next_hop_ip} "
-                f"exit={result.returncode}\n"
             )
     return failures
 
@@ -117,7 +145,7 @@ def apply_fib(
     return routes
 
 
-def cefroute_del(net, host_idx, prefix, protocol, next_hop, node_dir=None):
+def cefroute_del(net, host_idx, prefix, protocol, next_hop, node_dir=None, runner=None):
     """Delete a FIB entry via cefroute del.
 
     Args:
@@ -127,6 +155,7 @@ def cefroute_del(net, host_idx, prefix, protocol, next_hop, node_dir=None):
         protocol: Protocol (e.g. "udp").
         next_hop: Next hop IP address.
         node_dir: Node directory (defaults to ./h{host_idx}).
+        runner: Optional CommandRunner (defaults to a Mininet-backed one).
     """
     node_name = f"h{host_idx}"
     if node_dir is None:
@@ -136,12 +165,13 @@ def cefroute_del(net, host_idx, prefix, protocol, next_hop, node_dir=None):
         "-d", node_dir,
     ]
     print(node_name, "command:", argv)
-    result = MininetCommandRunner(net).run(node_name, argv)
+    runner = runner or MininetCommandRunner(net)
+    result = runner.run(node_name, argv)
     info(result.stdout)
     return result.returncode == 0
 
 
-def cefroute_enable(net, host_idx, prefix, protocol, next_hop, node_dir=None):
+def cefroute_enable(net, host_idx, prefix, protocol, next_hop, node_dir=None, runner=None):
     """Enable a FIB entry via cefroute enable.
 
     Args:
@@ -151,6 +181,7 @@ def cefroute_enable(net, host_idx, prefix, protocol, next_hop, node_dir=None):
         protocol: Protocol (e.g. "udp").
         next_hop: Next hop IP address.
         node_dir: Node directory (defaults to ./h{host_idx}).
+        runner: Optional CommandRunner (defaults to a Mininet-backed one).
     """
     node_name = f"h{host_idx}"
     if node_dir is None:
@@ -160,6 +191,7 @@ def cefroute_enable(net, host_idx, prefix, protocol, next_hop, node_dir=None):
         "-d", node_dir,
     ]
     print(node_name, "command:", argv)
-    result = MininetCommandRunner(net).run(node_name, argv)
+    runner = runner or MininetCommandRunner(net)
+    result = runner.run(node_name, argv)
     info(result.stdout)
     return result.returncode == 0
