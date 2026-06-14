@@ -200,7 +200,7 @@ For topologies with >3 hosts, additional directories (h3, h4, ...) are generated
 
 **Dynamic Configuration:**
 - `update_local_sock_id()`: Modifies LOCAL_SOCK_ID in config files to avoid socket conflicts
-- `ensure_node_dirs()`: Creates host directories from templates based on role heuristics
+- `provision_node_dirs()`: Creates host directories from templates for a given roles mapping (roles passed in, not re-derived); raises `NodeDirError` and rolls back partial work on failure
 - `select_template()`: Determines which template (h0/h1/h2) to use for each host index
 
 **Content Operations (exported from `src/runtime`):**
