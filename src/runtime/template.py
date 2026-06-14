@@ -8,8 +8,6 @@ import re
 import shutil
 from pathlib import Path
 
-from mininet.log import info
-
 from ..core.paths import TEMPLATE_ROOT
 
 # Marker file written inside every hN directory created by provision_node_dirs().
