@@ -50,7 +50,7 @@ class BaseScenario(ABC):
     Guarantees teardown runs even on SIGINT or exception.
 
     Subclasses should set:
-        self.generated_node_dirs  -- list[Path] returned by ensure_node_dirs()
+        self.generated_node_dirs  -- list[Path] returned by provision_node_dirs()
         self.debug_config         -- DebugConfig instance
         self.run_dir              -- Path for output artifacts
     """

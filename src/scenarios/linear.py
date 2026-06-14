@@ -14,7 +14,7 @@ from ..runtime.command_runner import MininetCommandRunner
 from ..runtime.cefore import run_cefgetfile, run_cefputfile
 from ..runtime.daemon_fleet import DaemonFleet
 from ..runtime.net_config import cefroute_add
-from ..runtime.template import ensure_node_dirs
+from ..runtime.template import provision_node_dirs
 from ..runtime.topo import LineTopo
 
 from .base import BaseScenario
@@ -37,12 +37,8 @@ class LinearScenario(BaseScenario):
         self.daemon_fleet = None
 
     def build_topology(self):
-        # Compute roles first, then restore rng state so ensure_node_dirs
-        # uses the same rng sequence (ensure_node_dirs also calls assign_roles).
-        rng_state = self.rng.getstate()
         self.roles = assign_roles(self.host_num, self.rng)
-        self.rng.setstate(rng_state)
-        self.generated_node_dirs = ensure_node_dirs(self.host_num, self.rng)
+        self.generated_node_dirs = provision_node_dirs(self.roles)
         return LineTopo(hosts=self.host_num)
 
     def configure(self, net):

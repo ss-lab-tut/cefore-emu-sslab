@@ -18,7 +18,7 @@ from ..core.addressing import AddressingScheme
 from ..core.roles import assign_roles
 from ..core.topology import TopologyModel
 from ..runtime.net_config import apply_fib, apply_ip_addr
-from ..runtime.template import ensure_node_dirs
+from ..runtime.template import provision_node_dirs
 from ..runtime.topo import MeshTopo, max_possible_links, min_required_links
 from ..runtime.viz import print_mesh_links, render_topology_png
 
@@ -79,10 +79,8 @@ class MeshScenario(BaseScenario):
         self.daemon_fleet = None
 
     def build_topology(self):
-        rng_state = self.rng.getstate()
         self.roles = assign_roles(self.host_num, self.rng)
-        self.rng.setstate(rng_state)
-        self.generated_node_dirs = ensure_node_dirs(self.host_num, self.rng)
+        self.generated_node_dirs = provision_node_dirs(self.roles)
         self.topo = MeshTopo(
             hosts=self.host_num,
             swhich_num=self.swhich_num,

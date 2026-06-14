@@ -38,7 +38,8 @@ from ..runtime.daemon_fleet import DaemonFleet
 from ..core.parsing import parse_int_list
 from ..runtime.failure_manager import FlexibleFailureManager, periodic_host_flap
 from ..runtime.net_config import apply_fib, apply_fib_routes, apply_ip_addr
-from ..runtime.template import ensure_node_dirs
+from ..core.roles import assign_roles
+from ..runtime.template import provision_node_dirs
 from ..runtime.topo import MeshTopo
 from ..runtime.viz import build_host_graph, print_mesh_links, render_topology_png
 
@@ -145,9 +146,8 @@ class DisasterScenario(BaseScenario):
     def build_topology(self):
         """Create mesh topology."""
         args = self.args
-        self.generated_node_dirs = ensure_node_dirs(
-            args.hosts, self.rng, self.publisher_ids
-        )
+        roles = assign_roles(args.hosts, self.rng, self.publisher_ids)
+        self.generated_node_dirs = provision_node_dirs(roles)
 
         self.topo = MeshTopo(
             hosts=args.hosts,

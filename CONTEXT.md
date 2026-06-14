@@ -26,6 +26,12 @@ _Avoid_: host index, idx, host id (as an interface argument)
 The reserved Node name that tells the CommandRunner to execute in the root namespace (plain subprocess) instead of a host netns. Used by bridge/external-network setup.
 _Avoid_: root ns flag, "root" special case
 
+## Node provisioning
+
+**provision_node_dirs**:
+The single owner of creating each host's `hN` directory from its role template. Takes the `assign_roles` result as an argument (never re-derives roles, so callers make one `assign_roles` call with no rng save/restore dance), takes an explicit `base_dir`, raises `NodeDirError` instead of `sys.exit` (the scenario's staged cleanup runs instead of the process dying), and is atomic — a mid-loop failure removes the directories that call created and leaves any unmanaged directory intact. Lives in `src/runtime/template.py`; a function, not a runner seam — its only substrate is the filesystem, tested through `tmp_path`. Paired with `cleanup_node_dirs` via the STAMP_FILENAME marker.
+_Avoid_: ensure_node_dirs, role re-derivation, rng save/restore dance, sys.exit on bad dir
+
 ## Daemon lifecycle
 
 **DaemonFleet**:

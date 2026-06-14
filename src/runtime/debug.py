@@ -18,7 +18,7 @@ def archive_node_dirs(generated_dirs: list[Path], dest_dir: Path) -> None:
     """Copy generated hN directories to dest_dir/hN/.
 
     Args:
-        generated_dirs: List of hN Path objects returned by ensure_node_dirs().
+        generated_dirs: List of hN Path objects returned by provision_node_dirs().
         dest_dir: Destination directory (created if absent).
     """
     dest_dir.mkdir(parents=True, exist_ok=True)

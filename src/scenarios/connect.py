@@ -32,7 +32,8 @@ from ..runtime.net_config import apply_fib, apply_ip_addr
 from ..runtime.results_sink import RecordingSink
 from ..runtime.scheduler import EventScheduler
 from ..runtime.cache_manager import CachePlacement
-from ..runtime.template import ensure_node_dirs
+from ..core.roles import assign_roles
+from ..runtime.template import provision_node_dirs
 from ..runtime.topo import MeshTopo
 from ..runtime.viz import build_host_graph, print_mesh_links, render_topology_png
 from .base import BaseScenario, _propagate_failures
@@ -94,9 +95,10 @@ class ConnectScenario(BaseScenario):
 
     def build_topology(self):
         args = self.args
-        self.generated_node_dirs = ensure_node_dirs(
+        roles = assign_roles(
             args.hosts, self.rng or random.Random(), self.publisher_ids
         )
+        self.generated_node_dirs = provision_node_dirs(roles)
         self.topo = MeshTopo(
             hosts=args.hosts,
             swhich_num=args.switches,

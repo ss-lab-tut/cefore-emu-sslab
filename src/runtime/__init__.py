@@ -39,9 +39,10 @@ from .net_config import (
     cefroute_enable,
 )
 from .template import (
+    NodeDirError,
     cleanup_cefnetd_socket,
     cleanup_node_dirs,
-    ensure_node_dirs,
+    provision_node_dirs,
     read_port_num,
     update_local_sock_id,
     update_node_name,
@@ -80,8 +81,9 @@ __all__ = [
     "update_node_name",
     "read_port_num",
     "cleanup_cefnetd_socket",
-    "ensure_node_dirs",
+    "provision_node_dirs",
     "cleanup_node_dirs",
+    "NodeDirError",
     # debug
     "archive_node_dirs",
     # bridge
