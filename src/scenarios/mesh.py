@@ -13,7 +13,7 @@ from ..runtime.cefore import (
     run_cefputfile,
     run_cefstatus_all,
 )
-from ..runtime.daemon_fleet import DaemonFleet
+from ..runtime.daemon_fleet import build_fleet
 from ..core.addressing import AddressingScheme
 from ..core.roles import assign_roles
 from ..core.topology import TopologyModel
@@ -101,15 +101,8 @@ class MeshScenario(BaseScenario):
             print(node_name, "command:", "ifconfig")
             info(runner.run(node_name, ["ifconfig"]).stdout)
 
-        log_dir = str(self.run_dir) if self.run_dir != Path(".") else None
-        self.daemon_fleet = DaemonFleet(
-            net,
-            node_names=[f"h{idx}" for idx in range(self.host_num)],
-            csmgrd_nodes={
-                f"h{idx}" for idx in range(self.host_num)
-                if self.roles.get(idx) and self.roles[idx].runs_csmgrd
-            },
-            log_dir=log_dir,
+        self.daemon_fleet = build_fleet(
+            net, self.host_num, self._csmgrd_host_ids(), self.run_dir
         )
         self.daemon_fleet.start_all()
         self.daemon_fleet.wait_ready()
@@ -148,10 +141,16 @@ class MeshScenario(BaseScenario):
             sys.exit(1)
 
     def teardown(self, net):
-        fleet = self.daemon_fleet or DaemonFleet(
-            net, node_names=[f"h{idx}" for idx in range(self.host_num)]
+        fleet = self.daemon_fleet or build_fleet(
+            net, self.host_num, self._csmgrd_host_ids(), self.run_dir
         )
         fleet.stop_all()
+
+    def _csmgrd_host_ids(self):
+        return {
+            idx for idx in range(self.host_num)
+            if self.roles.get(idx) and self.roles[idx].runs_csmgrd
+        }
 
 
 def run_mesh_scenario(

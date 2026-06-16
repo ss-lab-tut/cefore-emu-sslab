@@ -1,12 +1,13 @@
 """Behavior tests for the DaemonFleet lifecycle seam."""
 
+from pathlib import Path
 from unittest.mock import patch
 
 import pytest
 
 import src.runtime.cefore as cefore_mod
 from src.runtime.command_runner import CommandResult, FakeCommandRunner
-from src.runtime.daemon_fleet import DaemonFleet
+from src.runtime.daemon_fleet import DaemonFleet, build_fleet
 
 
 def _fleet(fake, **kwargs):
@@ -17,6 +18,23 @@ def _fleet(fake, **kwargs):
     )
     defaults.update(kwargs)
     return DaemonFleet(None, **defaults)
+
+
+class TestBuildFleet:
+    def test_builds_node_names_and_csmgrd_nodes_from_host_ids(self):
+        fleet = build_fleet(None, 4, {1, 3}, Path("."))
+
+        assert fleet.node_names == ["h0", "h1", "h2", "h3"]
+        assert fleet.csmgrd_nodes == {"h1", "h3"}
+        assert fleet._log_dir is None
+
+    def test_uses_run_dir_as_log_dir_when_not_current_directory(self):
+        run_dir = Path("/tmp/cefore-run")
+        fleet = build_fleet(None, 2, [], run_dir)
+
+        assert fleet.node_names == ["h0", "h1"]
+        assert fleet.csmgrd_nodes == set()
+        assert fleet._log_dir == str(run_dir)
 
 
 class TestStartAll:

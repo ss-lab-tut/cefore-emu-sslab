@@ -5,6 +5,8 @@ Owns the csmgrd -> cefnetd startup order, the readiness policy
 so scenarios do not replicate the daemon loops.
 """
 
+from pathlib import Path
+
 from mininet.log import info
 
 from .cefore import (
@@ -20,6 +22,32 @@ from .command_runner import MininetCommandRunner
 def _host_idx(node_name):
     """Host index of a Node name ("h3" -> 3)."""
     return int(node_name[1:])
+
+
+def build_fleet(
+    net,
+    host_num,
+    csmgrd_host_ids,
+    run_dir,
+    *,
+    cefnetd_timeout=10,
+    readiness_policy="warn",
+):
+    """Build a DaemonFleet from host-count and decided csmgrd host ids.
+
+    start_all()/wait_ready() remain caller-owned so teardown fallback can build
+    the same fleet shape without starting anything.
+    """
+    run_dir = Path(run_dir)
+    log_dir = str(run_dir) if run_dir != Path(".") else None
+    return DaemonFleet(
+        net,
+        node_names=[f"h{idx}" for idx in range(host_num)],
+        csmgrd_nodes={f"h{idx}" for idx in csmgrd_host_ids},
+        log_dir=log_dir,
+        cefnetd_timeout=cefnetd_timeout,
+        readiness_policy=readiness_policy,
+    )
 
 
 class DaemonFleet:

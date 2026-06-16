@@ -34,7 +34,7 @@ from ..runtime.cefore import (
     run_csmgrstatus,
     wait_for_cefnetd,
 )
-from ..runtime.daemon_fleet import DaemonFleet
+from ..runtime.daemon_fleet import build_fleet
 from ..core.parsing import parse_int_list
 from ..runtime.failure_manager import FlexibleFailureManager, periodic_host_flap
 from ..runtime.net_config import apply_fib, apply_fib_routes, apply_ip_addr
@@ -218,10 +218,11 @@ class DisasterScenario(BaseScenario):
         ).place()
 
         # Daemon startup: csmgrd -> cefnetd -> wait ready (raise before FIB)
-        self.daemon_fleet = DaemonFleet(
+        self.daemon_fleet = build_fleet(
             net,
-            node_names=[f"h{idx}" for idx in range(args.hosts)],
-            csmgrd_nodes={f"h{idx}" for idx in self.cache_node_set},
+            args.hosts,
+            self.cache_node_set,
+            self.run_dir,
             cefnetd_timeout=getattr(args, "cefnetd_timeout", None) or 10,
             readiness_policy="raise",
         )
@@ -643,8 +644,13 @@ class DisasterScenario(BaseScenario):
         teardown_failures: list[tuple[str, BaseException]] = []
 
         # Daemon stops — each host attempted independently inside the fleet
-        fleet = self.daemon_fleet or DaemonFleet(
-            net, node_names=[f"h{idx}" for idx in range(self.args.hosts)]
+        fleet = self.daemon_fleet or build_fleet(
+            net,
+            self.args.hosts,
+            self.cache_node_set,
+            self.run_dir,
+            cefnetd_timeout=getattr(self.args, "cefnetd_timeout", None) or 10,
+            readiness_policy="raise",
         )
         teardown_failures.extend(fleet.stop_all())
 

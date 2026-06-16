@@ -25,7 +25,7 @@ from ..runtime.bridge import (
     setup_bridges,
 )
 from ..runtime.cefore import run_cefstatus_all
-from ..runtime.daemon_fleet import DaemonFleet
+from ..runtime.daemon_fleet import build_fleet
 from ..runtime.command_runner import MininetCommandRunner
 from ..runtime.content_ops import ContentOperationRunner
 from ..runtime.net_config import apply_fib, apply_ip_addr
@@ -144,10 +144,8 @@ class ConnectScenario(BaseScenario):
             exclude_publishers=False,
         ).place()
 
-        self.daemon_fleet = DaemonFleet(
-            net,
-            node_names=[f"h{idx}" for idx in range(args.hosts)],
-            csmgrd_nodes={f"h{idx}" for idx in self.cache_node_set},
+        self.daemon_fleet = build_fleet(
+            net, args.hosts, self.cache_node_set, self.run_dir
         )
         self.daemon_fleet.start_all()
         self.daemon_fleet.wait_ready()
@@ -247,8 +245,8 @@ class ConnectScenario(BaseScenario):
         """
         teardown_failures: list[tuple[str, BaseException]] = []
 
-        fleet = self.daemon_fleet or DaemonFleet(
-            net, node_names=[f"h{idx}" for idx in range(self.args.hosts)]
+        fleet = self.daemon_fleet or build_fleet(
+            net, self.args.hosts, self.cache_node_set, self.run_dir
         )
         teardown_failures.extend(fleet.stop_all())
 
