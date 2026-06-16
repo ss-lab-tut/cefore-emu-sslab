@@ -6,6 +6,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from ..events import EVENT_SCHEMA, event_types
 from ..protocols import VALID_ROUTE_PROTOCOLS, normalize_route_protocol
 
 HAVE_YAML = True
@@ -488,11 +489,7 @@ def validate_config(config: dict[str, Any]) -> list[str]:
         if not isinstance(config["events"], list):
             errors.append("events must be a list")
         else:
-            valid_event_types = (
-                "link_down", "link_up", "fib_add", "fib_del", "fib_enable",
-                "bw_set", "compute_call",
-                "put", "get", "pubsub_pub", "pubsub_sub",
-            )
+            valid_event_types = event_types()
             host_count = config.get("hosts")
             for idx, event in enumerate(config["events"]):
                 if not isinstance(event, dict):
@@ -539,7 +536,7 @@ def validate_config(config: dict[str, Any]) -> list[str]:
                         elif not _is_number(event["bandwidth"]) or event["bandwidth"] < 0:
                             errors.append(f"events[{idx}].bandwidth must be a non-negative number")
                     elif etype == "compute_call":
-                        for field in ("host", "endpoint"):
+                        for field in EVENT_SCHEMA[etype].required_fields:
                             if field not in event:
                                 errors.append(f"events[{idx}] missing required field '{field}'")
                         if "host" in event and not _is_int(event["host"]):
@@ -552,7 +549,7 @@ def validate_config(config: dict[str, Any]) -> list[str]:
                             if not _is_number(event["timeout"]) or event["timeout"] <= 0:
                                 errors.append(f"events[{idx}].timeout must be a positive number")
                     elif etype in ("fib_add", "fib_del", "fib_enable"):
-                        for field in ("host", "prefix", "next_hop"):
+                        for field in EVENT_SCHEMA[etype].required_fields:
                             if field not in event:
                                 errors.append(f"events[{idx}] missing required field '{field}'")
                         if "protocol" in event:
@@ -567,7 +564,7 @@ def validate_config(config: dict[str, Any]) -> list[str]:
                             errors.append(f"events[{idx}].host must be an integer")
 
                     elif etype in ("put", "pubsub_pub"):
-                        for field in ("host", "uri", "file"):
+                        for field in EVENT_SCHEMA[etype].required_fields:
                             if field not in event:
                                 errors.append(f"events[{idx}] missing required field '{field}'")
                         if "host" in event and not _is_int(event["host"]):
@@ -591,7 +588,7 @@ def validate_config(config: dict[str, Any]) -> list[str]:
                                 errors, f"events[{idx}]", event, etype
                             )
                     elif etype in ("get", "pubsub_sub"):
-                        for field in ("host", "uri"):
+                        for field in EVENT_SCHEMA[etype].required_fields:
                             if field not in event:
                                 errors.append(f"events[{idx}] missing required field '{field}'")
                         if "host" in event and not _is_int(event["host"]):

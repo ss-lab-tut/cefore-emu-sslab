@@ -6,6 +6,7 @@ import time
 
 from mininet.log import info
 
+from ..core.events import content_event_types, event_priorities
 from .bandwidth import set_switch_bandwidth
 from .compute_client import check_external_connectivity
 from .compute_client import compute_call as _do_compute_call
@@ -86,18 +87,13 @@ _EVENT_HANDLERS = {
     "pubsub_pub": _handle_content_op("pubsub_pub"),
 }
 
-# Same-time priority: lower value fires first.
-# pubsub_sub must start before pubsub_pub; put before get.
-_EVENT_PRIORITY = {
-    "pubsub_sub": 0,
-    "put": 1,
-    "pubsub_pub": 2,
-    "get": 3,
-}
-
-# Content events are recorded by the ContentOperationRunner with their own
-# Verdicts; the scheduler emits outcome records only for the rest.
-_CONTENT_EVENT_TYPES = {"put", "get", "pubsub_sub", "pubsub_pub"}
+# Same-time priority (lower value fires first; pubsub_sub before pubsub_pub,
+# put before get) and content classification are derived from EVENT_SCHEMA so
+# this module and the config validator cannot drift. Content events are recorded
+# by the ContentOperationRunner with their own Verdicts; the scheduler emits
+# outcome records only for the rest.
+_EVENT_PRIORITY = event_priorities()
+_CONTENT_EVENT_TYPES = content_event_types()
 
 
 class EventScheduler:
