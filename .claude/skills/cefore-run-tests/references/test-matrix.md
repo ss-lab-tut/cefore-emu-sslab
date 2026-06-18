@@ -21,6 +21,18 @@
   - every `op_type == "get"` row has `has_completed_log == true`
   - every `op_type == "get"` row has `has_output_file == true`
 
+### `min_putget_class_a`
+
+- File: `config/examples/min_putget_class_a.yaml`
+- Same put/get topology as `min_putget` but on a Class A network
+  (`addressing.network_cidr: 10.0.0.0/16`).
+- Regression guard for the `ifconfig` classful-default-netmask bug: a bare
+  `ifconfig <iface> 10.0.x.y` gets `/8` (class A default), collapsing every
+  interface onto one flat `10.0.0.0/8` and breaking per-link routing so get
+  times out with `Rx Frames = 0`. `min_putget` (192.168) cannot catch this
+  because class C defaults to `/24`.
+- Required checks: identical to `min_putget` (`PUTGET_EXPECT`).
+
 ### `min_pubsub`
 
 - File: `config/examples/min_pubsub.yaml`

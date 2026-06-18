@@ -4,30 +4,36 @@ from dataclasses import dataclass
 
 from mininet.log import info
 
-from ..core.addressing import AddressingScheme
+from ..core.addressing import AddressingScheme, LINK_NETMASK
 from ..core.fib import get_routing_strategy
 from ..core.protocols import normalize_route_protocol
 from ..core.topology import TopologyModel
 from .command_runner import MininetCommandRunner
 
 
-def apply_ip_addr(net, mesh_links, scheme=None):
+def apply_ip_addr(net, mesh_links, scheme=None, runner=None):
     """Assign IP addresses to all host interfaces.
+
+    The explicit ``netmask`` is mandatory: ``ifconfig <iface> <ip>`` with no
+    netmask applies the classful default (/8 for 10.x, /16 for 172.x), which
+    collapses every interface onto one flat network and breaks per-link
+    routing. Each Cefore link is a /24 (see AddressingScheme).
 
     Args:
         net: Mininet network instance.
         mesh_links: List of link definitions.
         scheme: AddressingScheme for IP generation (defaults to 192.168.0.0/16).
+        runner: Optional CommandRunner (defaults to a Mininet-backed one).
     """
     if scheme is None:
         scheme = AddressingScheme()
-    runner = MininetCommandRunner(net)
+    runner = runner or MininetCommandRunner(net)
     for link in TopologyModel(mesh_links).links:
         for host_idx in link.hosts:
             eth_idx = link.eth_of(host_idx)
             node_name = f"h{host_idx}"
             ip = scheme.host_ip(link.subnet, host_idx)
-            argv = ["ifconfig", f"{node_name}-eth{eth_idx}", str(ip)]
+            argv = ["ifconfig", f"{node_name}-eth{eth_idx}", str(ip), "netmask", LINK_NETMASK]
             print(node_name, "command:", argv)
             runner.run(node_name, argv)
 

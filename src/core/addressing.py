@@ -10,6 +10,14 @@ from .topology import TopologyModel
 
 DEFAULT_NETWORK_CIDR = "192.168.0.0/16"
 
+# Every Cefore link is a /24 (see module docstring). Interface assignments must
+# carry this netmask explicitly: ``ifconfig <iface> <ip>`` with no netmask falls
+# back to the classful default (/8 for 10.x, /16 for 172.x), which collapses
+# every interface onto one flat network and breaks per-link routing. Only
+# 192.168.x.x happens to default to /24, which is why the bug stayed hidden.
+LINK_PREFIXLEN = 24
+LINK_NETMASK = str(ipaddress.IPv4Network(f"0.0.0.0/{LINK_PREFIXLEN}").netmask)
+
 
 class AddressingScheme:
     """Computes Cefore link addresses from a configurable IPv4 /16 base.

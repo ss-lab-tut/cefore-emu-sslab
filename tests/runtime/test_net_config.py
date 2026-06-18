@@ -1,10 +1,14 @@
 """Behavior tests for FIB route application (net_config)."""
 
+import pytest
+
+from src.core.addressing import AddressingScheme
 from src.core.fib import Route
 from src.runtime.command_runner import CommandResult, FakeCommandRunner
 from src.runtime.net_config import (
     apply_fib,
     apply_fib_routes,
+    apply_ip_addr,
     cefroute_add,
     cefroute_del,
     cefroute_enable,
@@ -22,6 +26,43 @@ def _routes():
         Route(source=0, prefix="ccnx:/test/a", next_hop=1, next_hop_ip="192.168.1.2"),
         Route(source=1, prefix="ccnx:/test/a", next_hop=2, next_hop_ip="192.168.2.3"),
     ]
+
+
+class TestApplyIpAddr:
+    """Interface addressing must carry an explicit /24 netmask.
+
+    Note: this asserts the argv apply_ip_addr constructs, not the netmask the
+    kernel ends up applying. The classful-default fallback is a net-tools
+    ``ifconfig`` behavior that only manifests in a real netns; proving the
+    kernel assigns /24 needs the Class-A end-to-end smoke run.
+    """
+
+    @pytest.mark.parametrize(
+        "cidr", ["192.168.0.0/16", "10.0.0.0/16", "100.64.0.0/16", "172.20.0.0/16"]
+    )
+    def test_every_interface_gets_explicit_slash24_netmask(self, cidr):
+        fake = FakeCommandRunner()
+        apply_ip_addr(None, MESH, scheme=AddressingScheme(cidr), runner=fake)
+        assert len(fake.runs) == 4
+        for run in fake.runs:
+            argv = run["argv"]
+            assert argv[0] == "ifconfig"
+            # Without this the kernel would apply a classful default (/8 for
+            # 10.x, /16 for 172.x) and break per-link routing.
+            assert argv[-2:] == ["netmask", "255.255.255.0"]
+
+    def test_class_a_scheme_assigns_expected_addresses(self):
+        fake = FakeCommandRunner()
+        apply_ip_addr(None, MESH, scheme=AddressingScheme("10.0.0.0/16"), runner=fake)
+        seen = {(run["node"], tuple(run["argv"])) for run in fake.runs}
+        assert (
+            "h0",
+            ("ifconfig", "h0-eth0", "10.0.1.1", "netmask", "255.255.255.0"),
+        ) in seen
+        assert (
+            "h2",
+            ("ifconfig", "h2-eth0", "10.0.2.3", "netmask", "255.255.255.0"),
+        ) in seen
 
 
 class TestCefrouteAdd:

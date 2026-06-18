@@ -15,9 +15,9 @@ from pathlib import Path
 
 PYTEST_TARGETS = ("tests",)
 SMOKE_CONFIGS = (
-    "min_putget", "min_pubsub", "min_pubsub_verify", "min_empty", "min_mixed",
-    "min_event_putget", "min_event_pubsub", "min_failure", "min_event_link",
-    "min_monitoring", "connect",
+    "min_putget", "min_putget_class_a", "min_pubsub", "min_pubsub_verify",
+    "min_empty", "min_mixed", "min_event_putget", "min_event_pubsub",
+    "min_failure", "min_event_link", "min_monitoring", "connect",
 )
 
 
@@ -217,6 +217,16 @@ def build_smoke_cases() -> list[SmokeCase]:
         SmokeCase(
             "min_putget",
             config_relpath="config/examples/min_putget.yaml",
+            expect=PUTGET_EXPECT,
+        ),
+        SmokeCase(
+            # Same as min_putget but on a Class A (10.0.0.0/16) network, where
+            # get must actually receive content end-to-end. Functional
+            # regression guard for the ifconfig classful-default-netmask bug
+            # (bare 10.x → /8) that broke get; success here means the kernel
+            # got a working per-link netmask, not asserted directly.
+            "min_putget_class_a",
+            config_relpath="config/examples/min_putget_class_a.yaml",
             expect=PUTGET_EXPECT,
         ),
         SmokeCase(

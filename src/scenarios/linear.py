@@ -8,7 +8,7 @@ from pathlib import Path
 from mininet.log import info
 from mininet.util import irange
 
-from ..core.addressing import AddressingScheme
+from ..core.addressing import AddressingScheme, LINK_NETMASK
 from ..core.roles import assign_roles
 from ..runtime.command_runner import MininetCommandRunner
 from ..runtime.cefore import run_cefgetfile, run_cefputfile
@@ -91,20 +91,23 @@ class LinearScenario(BaseScenario):
             if self.roles.get(idx) and self.roles[idx].runs_csmgrd
         }
 
-    def _set_ip_addr(self, net):
-        """Assign IPs for linear topology."""
-        runner = MininetCommandRunner(net)
+    def _set_ip_addr(self, net, runner=None):
+        """Assign IPs for linear topology.
+
+        The explicit ``netmask`` is mandatory; see net_config.apply_ip_addr.
+        """
+        runner = runner or MininetCommandRunner(net)
         for idx in irange(0, self.host_num - 1):
             node_name = f"h{idx}"
             if idx > 0:
                 left_ip = self.scheme.host_ip(idx - 1, idx)
-                argv = ["ifconfig", f"{node_name}-eth0", str(left_ip)]
+                argv = ["ifconfig", f"{node_name}-eth0", str(left_ip), "netmask", LINK_NETMASK]
                 print(node_name, "command:", argv)
                 runner.run(node_name, argv)
             if idx < self.host_num - 1:
                 right_ip = self.scheme.host_ip(idx, idx)
                 eth_name = "eth1" if idx > 0 else "eth0"
-                argv = ["ifconfig", f"{node_name}-{eth_name}", str(right_ip)]
+                argv = ["ifconfig", f"{node_name}-{eth_name}", str(right_ip), "netmask", LINK_NETMASK]
                 print(node_name, "command:", argv)
                 runner.run(node_name, argv)
 

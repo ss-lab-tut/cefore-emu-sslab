@@ -1,6 +1,6 @@
 ---
 name: cefore-run-tests
-description: Run the CeforeEmu regression checks — the full unit pytest suite (root/env-gated tests auto-skip), plus minimal end-to-end `src disaster --config ... --no-cli` smoke runs with `config/examples/min_putget.yaml`, `min_pubsub.yaml`, `min_pubsub_verify.yaml`, `min_empty.yaml`, `min_mixed.yaml`, `min_event_putget.yaml`, `min_event_pubsub.yaml`, `min_failure.yaml` (host_down/host_up cycle evidence), `min_event_link.yaml` (link_down/link_up outcome records), and `min_monitoring.yaml` (monitor.json), plus a `connect` ConnectScenario (ceforeemu-connect) plain-mesh smoke run. Use when Codex needs to validate recent code changes, reproduce a failing test, or sanity-check this repository before or after edits.
+description: Run the CeforeEmu regression checks — the full unit pytest suite (root/env-gated tests auto-skip), plus minimal end-to-end `src disaster --config ... --no-cli` smoke runs with `config/examples/min_putget.yaml`, `min_putget_class_a.yaml` (Class A 10.0.0.0/16 addressing — guards the ifconfig classful-netmask bug), `min_pubsub.yaml`, `min_pubsub_verify.yaml`, `min_empty.yaml`, `min_mixed.yaml`, `min_event_putget.yaml`, `min_event_pubsub.yaml`, `min_failure.yaml` (host_down/host_up cycle evidence), `min_event_link.yaml` (link_down/link_up outcome records), and `min_monitoring.yaml` (monitor.json), plus a `connect` ConnectScenario (ceforeemu-connect) plain-mesh smoke run. Use when Codex needs to validate recent code changes, reproduce a failing test, or sanity-check this repository before or after edits.
 ---
 
 # Cefore Run Tests
@@ -38,6 +38,7 @@ For the home-skill copy:
 - `tests/` — the full unit suite (the integration placeholder and the
   root/env-gated synthetic tests skip themselves without root)
 - `config/examples/min_putget.yaml`
+- `config/examples/min_putget_class_a.yaml` (Class A 10.0.0.0/16 — guards the ifconfig classful-netmask regression)
 - `config/examples/min_pubsub.yaml`
 - `config/examples/min_pubsub_verify.yaml`
 - `config/examples/min_empty.yaml`
