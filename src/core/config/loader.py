@@ -459,6 +459,24 @@ def validate_config(config: dict[str, Any]) -> list[str]:
                     errors.append(f"bridges[{idx}].switch must be an integer")
                 if "root_ip" not in bridge:
                     errors.append(f"bridges[{idx}] missing required field 'root_ip'")
+                elif not isinstance(bridge["root_ip"], str):
+                    errors.append(f"bridges[{idx}].root_ip must be a string")
+                elif bridge["root_ip"] != "auto":
+                    root_ip_val = bridge["root_ip"]
+                    if "/" not in root_ip_val:
+                        errors.append(
+                            f"bridges[{idx}].root_ip must be CIDR form"
+                            f" (e.g. '10.0.0.1/24') or 'auto';"
+                            f" got {root_ip_val!r}"
+                        )
+                    else:
+                        try:
+                            ipaddress.ip_interface(root_ip_val)
+                        except (ValueError, TypeError):
+                            errors.append(
+                                f"bridges[{idx}].root_ip is not a valid CIDR"
+                                f" address: {root_ip_val!r}"
+                            )
                 if "local_routes" not in bridge:
                     errors.append(f"bridges[{idx}] missing required field 'local_routes'")
                 elif not isinstance(bridge["local_routes"], str):
@@ -742,7 +760,7 @@ def validate_merged_args(args: Any) -> list[str]:
     structured_keys = (
         "events", "monitoring", "routing",
         "cache_config", "failure_scenarios", "addressing",
-        "warmup_gets",
+        "warmup_gets", "bridges",
     )
     nullable_keys = {"seed", "results_json", "script_log", "cache_default_rct_ms", "publisher_host"}
 

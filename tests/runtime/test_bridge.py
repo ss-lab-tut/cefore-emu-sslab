@@ -69,6 +69,51 @@ class TestResolveRootIP:
 
 
 # ---------------------------------------------------------------------------
+# connect_to_root_ns — CIDR validation
+# ---------------------------------------------------------------------------
+
+
+class TestConnectToRootNsCidrValidation:
+    """Verify connect_to_root_ns rejects bare IPs before any mutation."""
+
+    def test_bare_ip_rejected(self):
+        from src.runtime.bridge import BridgeManager
+        manager = BridgeManager(runner=FakeCommandRunner())
+        net = MagicMock()
+        net.get.return_value = MagicMock()
+        with pytest.raises(RuntimeError, match="CIDR"):
+            manager.connect_to_root_ns(net, "s1", "10.0.0.1", "192.168.0.0/16")
+        assert manager.root_node is None
+        net.addLink.assert_not_called()
+
+    def test_cidr_ip_does_not_raise_validation_error(self):
+        from src.runtime.bridge import BridgeManager
+        fake = FakeCommandRunner()
+        fake.on_run = lambda node, argv: CommandResult(0)
+        manager = BridgeManager(runner=fake)
+        root = MagicMock()
+        manager.root_node = root
+        net = MagicMock()
+        switch = MagicMock()
+        net.get.return_value = switch
+        link = MagicMock()
+        link.intf1 = "root-eth0"
+        net.addLink.return_value = link
+        manager.connect_to_root_ns(net, "s1", "10.0.0.1/24", "192.168.0.0/16")
+        root.setIP.assert_called_once()
+
+    def test_unresolved_auto_rejected(self):
+        from src.runtime.bridge import BridgeManager
+        manager = BridgeManager(runner=FakeCommandRunner())
+        net = MagicMock()
+        net.get.return_value = MagicMock()
+        with pytest.raises(RuntimeError, match="CIDR"):
+            manager.connect_to_root_ns(net, "s1", "auto", "192.168.0.0/16")
+        assert manager.root_node is None
+        net.addLink.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
 # setup_bridges — wiring test
 # ---------------------------------------------------------------------------
 

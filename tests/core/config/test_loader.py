@@ -9,6 +9,7 @@ from src.core.config.loader import (
     load_config,
     merge_cli_and_config,
     validate_config,
+    validate_merged_args,
     warn_ignored_legacy_content_keys,
 )
 
@@ -263,7 +264,7 @@ def test_validate_monitoring_valid():
 
 def test_validate_bridges_valid():
     errors = validate_config({
-        "bridges": [{"switch": 0, "root_ip": "10.0.0.1", "local_routes": "192.168.0.0/16"}]
+        "bridges": [{"switch": 0, "root_ip": "10.0.0.1/24", "local_routes": "192.168.0.0/16"}]
     })
     assert errors == []
 
@@ -620,23 +621,66 @@ def test_validate_bridges_non_dict_entry():
 
 def test_validate_bridges_local_routes_non_string():
     errors = validate_config({
-        "bridges": [{"switch": 0, "root_ip": "10.0.0.1", "local_routes": 123}]
+        "bridges": [{"switch": 0, "root_ip": "10.0.0.1/24", "local_routes": 123}]
     })
     assert any("local_routes" in e for e in errors)
 
 
 def test_validate_bridges_nat_non_boolean():
     errors = validate_config({
-        "bridges": [{"switch": 0, "root_ip": "10.0.0.1", "local_routes": "192.168.0.0/16", "nat": "yes"}]
+        "bridges": [{"switch": 0, "root_ip": "10.0.0.1/24", "local_routes": "192.168.0.0/16", "nat": "yes"}]
     })
     assert any("nat" in e for e in errors)
 
 
 def test_validate_bridges_nat_out_non_string():
     errors = validate_config({
-        "bridges": [{"switch": 0, "root_ip": "10.0.0.1", "local_routes": "192.168.0.0/16", "nat_out": 123}]
+        "bridges": [{"switch": 0, "root_ip": "10.0.0.1/24", "local_routes": "192.168.0.0/16", "nat_out": 123}]
     })
     assert any("nat_out" in e for e in errors)
+
+
+def test_validate_bridges_root_ip_bare_rejected():
+    errors = validate_config({
+        "bridges": [{"switch": 0, "root_ip": "10.0.0.1", "local_routes": "192.168.0.0/16"}]
+    })
+    assert any("root_ip" in e and "CIDR" in e for e in errors)
+
+
+def test_validate_bridges_root_ip_auto_accepted():
+    errors = validate_config({
+        "bridges": [{"switch": 0, "root_ip": "auto", "local_routes": "192.168.0.0/16"}]
+    })
+    assert not any("root_ip" in e for e in errors)
+
+
+def test_validate_bridges_root_ip_cidr_accepted():
+    errors = validate_config({
+        "bridges": [{"switch": 0, "root_ip": "10.0.0.1/24", "local_routes": "192.168.0.0/16"}]
+    })
+    assert not any("root_ip" in e for e in errors)
+
+
+def test_validate_bridges_root_ip_invalid_cidr_rejected():
+    errors = validate_config({
+        "bridges": [{"switch": 0, "root_ip": "999.999.999.999/24", "local_routes": "192.168.0.0/16"}]
+    })
+    assert any("root_ip" in e for e in errors)
+
+
+def test_validate_bridges_root_ip_non_string_rejected():
+    errors = validate_config({
+        "bridges": [{"switch": 0, "root_ip": None, "local_routes": "192.168.0.0/16"}]
+    })
+    assert any("root_ip" in e for e in errors)
+
+
+def test_validate_merged_args_bridges_bare_root_ip_rejected():
+    args = SimpleNamespace(
+        bridges=[{"switch": 0, "root_ip": "10.0.0.1", "local_routes": "192.168.0.0/16"}]
+    )
+    errors = validate_merged_args(args)
+    assert any("root_ip" in e and "CIDR" in e for e in errors)
 
 
 def test_validate_script_log_non_string():

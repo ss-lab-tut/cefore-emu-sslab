@@ -693,12 +693,14 @@ class BridgeManager:
             root_ip: IP address for root namespace node (e.g., "192.168.100.1/24").
             local_routes: Local Mininet host networks to route to.
         """
-        root = self.get_or_create_root()
         switch = net.get(switch_name)
         if switch is None:
             info(f"*** Warning: switch {switch_name} not found\n")
             return
 
+        _validate_static_ip(root_ip)
+
+        root = self.get_or_create_root()
         link = net.addLink(root, switch)
         self.root_intf = link.intf1
 
