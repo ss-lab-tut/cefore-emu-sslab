@@ -275,7 +275,7 @@ def validate_config(config: dict[str, Any]) -> list[str]:
         if not isinstance(cc, dict):
             errors.append("cache_config must be a dict")
         else:
-            valid_strategies = ("k_centers", "manual", "degree_based")
+            valid_strategies = ("k_centers", "manual", "degree_based", "random")
             strategy = cc.get("strategy", "k_centers")
             if strategy not in valid_strategies:
                 errors.append(

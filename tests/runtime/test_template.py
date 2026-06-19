@@ -75,3 +75,28 @@ class TestCleanupRoundtrip:
         assert not (tmp_path / "h0").exists()
         assert not (tmp_path / "h1").exists()
         assert unmanaged.is_dir()
+
+
+# ---------------------------------------------------------------------------
+# apply_cs_modes
+# ---------------------------------------------------------------------------
+
+
+class TestApplyCsModes:
+
+    def test_writes_cs_mode_to_cefnetd_conf(self, tmp_path):
+        from src.runtime.template import apply_cs_modes
+        generated = provision_node_dirs(
+            {0: CONSUMER, 1: ROUTER, 2: PUBLISHER}, base_dir=tmp_path,
+        )
+        apply_cs_modes({0: 2, 1: 0, 2: 1}, base_dir=tmp_path)
+        for idx, expected in [(0, "2"), (1, "0"), (2, "1")]:
+            conf = tmp_path / f"h{idx}" / "cefnetd.conf"
+            text = conf.read_text()
+            assert f"CS_MODE={expected}" in text
+        cleanup_node_dirs(generated)
+
+    def test_skips_missing_dirs(self, tmp_path):
+        from src.runtime.template import apply_cs_modes
+        # h99 doesn't exist — should not raise
+        apply_cs_modes({99: 1}, base_dir=tmp_path)

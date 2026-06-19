@@ -16,7 +16,6 @@ from ..core.paths import ensure_within_run_dir, resolve_run_path
 from ..runtime.bandwidth import parse_bw_args, set_link_bandwidth
 from ..runtime.bridge import (
     BridgeManager,
-    TeardownError,
     attach_external_interface,
     cleanup_external_bridges,
     parse_bridge_args,
@@ -38,8 +37,8 @@ from ..runtime.daemon_fleet import build_fleet
 from ..core.parsing import parse_int_list
 from ..runtime.failure_manager import FlexibleFailureManager, periodic_host_flap
 from ..runtime.net_config import apply_fib, apply_fib_routes, apply_ip_addr
-from ..core.roles import assign_roles
-from ..runtime.template import provision_node_dirs
+from ..core.roles import assign_roles, assign_random_cs_modes, derive_seed
+from ..runtime.template import apply_cs_modes, provision_node_dirs
 from ..runtime.topo import MeshTopo
 from ..runtime.viz import build_host_graph, print_mesh_links, render_topology_png
 
@@ -205,17 +204,7 @@ class DisasterScenario(BaseScenario):
             layout=args.topo_layout,
         )
 
-        # Cache node selection (publishers excluded from caching)
-        host_graph, _ = build_host_graph(self.topo.mesh_links)
-        self.cache_node_set = CachePlacement(
-            host_count=args.hosts,
-            host_graph=host_graph,
-            publisher_ids=self.publisher_ids,
-            cache_config=getattr(args, "cache_config", None) or None,
-            cache_count=args.cache_count,
-            down_count=args.down_count,
-            cache_default_rct_ms=getattr(args, "cache_default_rct_ms", None),
-        ).place()
+        self._configure_cache_nodes()
 
         # Daemon startup: csmgrd -> cefnetd -> wait ready (raise before FIB)
         self.daemon_fleet = build_fleet(
@@ -276,6 +265,34 @@ class DisasterScenario(BaseScenario):
                 self.dashboard.record_monitor({
                     "elapsed_sec": 0.0, "type": "csmgrstatus", "host": idx, "output": output,
                 })
+
+    def _configure_cache_nodes(self):
+        """Apply the configured cache strategy and record external-cache nodes."""
+        args = self.args
+        cache_config = getattr(args, "cache_config", None) or None
+        cache_strategy = (cache_config or {}).get("strategy", "k_centers")
+        if cache_strategy == "random":
+            # Random CS_MODE: put/pub nodes get mode 1 or 2 (need cache
+            # to avoid content vanishing), others get 0/1/2 uniformly.
+            cs_mode_rng = random.Random(derive_seed(args.seed, "cs-mode"))
+            cs_modes = assign_random_cs_modes(
+                range(args.hosts), self.publisher_ids, cs_mode_rng,
+            )
+            apply_cs_modes(cs_modes)
+            self.cache_node_set = {
+                idx for idx, mode in cs_modes.items() if mode == 2
+            }
+        else:
+            host_graph, _ = build_host_graph(self.topo.mesh_links)
+            self.cache_node_set = CachePlacement(
+                host_count=args.hosts,
+                host_graph=host_graph,
+                publisher_ids=self.publisher_ids,
+                cache_config=cache_config,
+                cache_count=args.cache_count,
+                down_count=args.down_count,
+                cache_default_rct_ms=getattr(args, "cache_default_rct_ms", None),
+            ).place()
 
     def _restore_fib_for_host(self, net, host_idx: int):
         """Re-apply dynamic FIB routes for a host after it comes back up."""

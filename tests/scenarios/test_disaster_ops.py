@@ -70,6 +70,55 @@ def test_legacy_content_keys_do_not_drive_publishers(tmp_path):
     assert scenario.uri_publishers == {}
 
 
+def test_random_cache_strategy_assigns_cs_modes_without_cache_placement(tmp_path):
+    scenario = DisasterScenario(
+        _make_args(
+            cache_config={"strategy": "random"},
+            cache_count=0,
+            down_count=0,
+        ),
+        run_dir=tmp_path,
+    )
+    scenario.publisher_ids = {2}
+    with (
+        patch(
+            "src.scenarios.disaster.assign_random_cs_modes",
+            return_value={0: 0, 1: 2, 2: 1},
+        ) as assign_modes,
+        patch("src.scenarios.disaster.apply_cs_modes") as apply_modes,
+        patch("src.scenarios.disaster.CachePlacement") as cache_placement,
+    ):
+        scenario._configure_cache_nodes()
+
+    assert scenario.cache_node_set == {1}
+    assert assign_modes.call_args.args[:2] == (range(3), {2})
+    apply_modes.assert_called_once_with({0: 0, 1: 2, 2: 1})
+    cache_placement.assert_not_called()
+
+
+def test_non_random_cache_strategy_uses_cache_placement(tmp_path):
+    scenario = DisasterScenario(
+        _make_args(
+            cache_config={"strategy": "manual", "nodes": [{"id": 1}]},
+            cache_count=0,
+            down_count=0,
+        ),
+        run_dir=tmp_path,
+    )
+    scenario.topo = SimpleNamespace(mesh_links=[])
+    with (
+        patch("src.scenarios.disaster.build_host_graph", return_value=({}, None)),
+        patch("src.scenarios.disaster.CachePlacement") as cache_placement,
+        patch("src.scenarios.disaster.apply_cs_modes") as apply_modes,
+    ):
+        cache_placement.return_value.place.return_value = {1}
+        scenario._configure_cache_nodes()
+
+    assert scenario.cache_node_set == {1}
+    assert cache_placement.call_args.kwargs["cache_config"]["strategy"] == "manual"
+    apply_modes.assert_not_called()
+
+
 @patch("src.scenarios.disaster.info")
 def test_event_diagnostics_warn_for_unobserved_publications(mock_info, tmp_path):
     scenario = DisasterScenario(_make_args(), run_dir=tmp_path)

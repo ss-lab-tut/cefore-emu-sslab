@@ -126,7 +126,7 @@ def test_validate_events_fib_del_missing_fields():
 
 
 def test_validate_cache_config_invalid_strategy():
-    errors = validate_config({"cache_config": {"strategy": "random"}})
+    errors = validate_config({"cache_config": {"strategy": "nonexistent"}})
     assert any("strategy" in e for e in errors)
 
 
@@ -736,6 +736,32 @@ def test_validate_addressing_empty_dict():
     # No network_cidr specified — valid (optional field)
     errors = validate_config({"addressing": {}})
     assert errors == []
+
+
+# ---------------------------------------------------------------------------
+# cache_config.strategy=random validation
+# ---------------------------------------------------------------------------
+
+
+def test_validate_cache_config_strategy_random_accepted():
+    errors = validate_config({"cache_config": {"strategy": "random"}})
+    assert not any("strategy" in e for e in errors)
+
+
+def test_validate_cache_config_strategy_k_centers_accepted():
+    errors = validate_config({"cache_config": {"strategy": "k_centers"}})
+    assert not any("strategy" in e for e in errors)
+
+
+def test_validate_cache_config_strategy_invalid_rejected():
+    errors = validate_config({"cache_config": {"strategy": "invalid"}})
+    assert any("strategy" in e for e in errors)
+
+
+def test_validate_merged_args_cache_config_strategy_random():
+    args = SimpleNamespace(cache_config={"strategy": "random"})
+    errors = validate_merged_args(args)
+    assert not any("strategy" in e for e in errors)
 
 
 # ---------------------------------------------------------------------------

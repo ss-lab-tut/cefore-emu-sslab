@@ -9,6 +9,7 @@ import shutil
 from pathlib import Path
 
 from ..core.paths import TEMPLATE_ROOT
+from .cefore import cleanup_cefnetd_socket, read_port_num  # noqa: F401 (re-export)
 
 # Marker file written inside every hN directory created by provision_node_dirs().
 # cleanup_node_dirs() only removes directories that carry this stamp,
@@ -71,10 +72,6 @@ def update_node_name(node_dir, idx, base_uri="example.com/xxx/router-"):
         new_lines.append(f'#NODE_NAME="{base_uri}{idx}"\n')
     with open(conf_path, "w", encoding="utf-8") as conf_file:
         conf_file.writelines(new_lines)
-
-
-from .cefore import cleanup_cefnetd_socket, read_port_num  # noqa: F401 (re-export)
-
 
 def provision_node_dirs(roles, base_dir: Path = Path(".")) -> list[Path]:
     """Create node directories from templates for the given roles.
@@ -243,3 +240,14 @@ def apply_cache_node_settings(
             current = _read_config_value(cefnetd_conf, "CS_MODE")
             if current == "2":
                 _set_config_value(cefnetd_conf, "CS_MODE", "0")
+
+
+def apply_cs_modes(cs_modes, base_dir=Path(".")):
+    """Write CS_MODE values to each host's cefnetd.conf.
+
+    Used by the random cache strategy instead of apply_cache_node_settings.
+    """
+    for idx, mode in cs_modes.items():
+        conf = base_dir / f"h{idx}" / "cefnetd.conf"
+        if conf.exists():
+            _set_config_value(conf, "CS_MODE", str(mode))
