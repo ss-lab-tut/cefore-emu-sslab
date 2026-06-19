@@ -19,10 +19,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 Write comments generously — treat them as first-class documentation, not noise.
 Current AI models benefit from heavy inline context; so do human readers six months later.
 
+In addition to comments, write function and class descriptions and intentions in docstring.
+
 - **Always comment intent, not mechanics.** Explain *why* a block exists, what invariant it protects, or what would break without it. Don't restate what the code does — explain what it *means*.
 - **Record fix provenance inline.** When code exists because of a specific bug or incident, leave a dated note: `# 2026-05-12 crash fix: bare ifconfig omits netmask → classful /8 on Class A`. This is the kind of context that git blame buries and developers lose.
 - **Keep context close to code.** A comment explaining a constraint belongs next to the line it constrains, not in a separate design doc. If someone reads the function, they should see the warning without leaving the file.
-- **Prefer one-line comments; use multi-line sparingly.** A single `#` line above a block is almost always enough. Reserve multi-line only for genuinely complex invariants (e.g., protocol state machines, non-obvious mathematical relationships).
 - **Don't write comments that rot.** Avoid referencing ticket numbers, PR links, or caller names ("used by X") — those change. Describe the *constraint* the code enforces; that outlives the ticket.
 
 ## Notice
