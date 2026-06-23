@@ -27,6 +27,14 @@ Three topology types are available via a unified CLI:
 uv sync   # Install dependencies
 ```
 
+**Python dependencies** (managed via `pyproject.toml`):
+- `mininet>=2.3.0`
+- `networkx>=3.6.1` (topology algorithms and PNG output)
+- `matplotlib>=3.10.8` (PNG output)
+- `pyyaml>=6.0` (YAML configuration support)
+
+After modifying `[project.scripts]` in `pyproject.toml`, run `uv pip install -e .` to register new CLI entry points.
+
 ## Quick Start
 
 ```bash
@@ -178,6 +186,36 @@ monitoring:
     - {type: csmgrstatus, hosts: "cache"}
 ```
 
+**Cache configuration (`cache_config`):**
+Supersedes legacy `cache_count`/`cache_default_rct_ms` when present.
+```yaml
+cache_config:
+  strategy: "k_centers"    # k_centers / manual / degree_based / random
+  default:
+    count: 3
+    capacity: 819200
+    default_rct_ms: 1800000
+    algorithm: "LRU"       # LRU / LFU / FIFO / None
+    type: "memory"         # memory / filesystem
+```
+
+**Failure scenarios (`failure_scenarios`):**
+Supersedes legacy `down_interval`/`down_duration`/etc when present.
+```yaml
+failure_scenarios:
+  strategy: "cyclic"       # simple / cyclic / random / manual
+  cycles:
+    - {interval: 30, duration: 10, count: 2}
+```
+
+**Routing strategy (`routing`):**
+```yaml
+routing:
+  strategy: "dijkstra"     # dijkstra / shortest_path / ecmp
+```
+
+See `config/examples/example.yaml` for the complete reference with all parameters.
+
 ## Log Output Directory
 
 When `num` is specified (config or `--num`), logs are organized into a dedicated directory:
@@ -255,6 +293,45 @@ ceforeemu-log logs/ex1_seed42/ --stdout | head -20
 
 If not installed, use `uv run ceforeemu-log` instead.
 
+### Supported Log Filename Patterns
+
+| Pattern | Example | Extracted Fields |
+|---------|---------|-----------------|
+| host+content | `cefputfile_h13_c10.log` | command, host_id, content_id |
+| host only | `cefputfile_h9.log` | command, host_id |
+| disaster | `cefgetfile_seed42_downhosts0,1_idx16_h4.log` | command, host_id, seed, down_hosts, idx |
+| legacy | `cefgetfile-h0.log` | command, host_id |
+
+### CSV Column Structure
+
+**Common metadata columns (from meta.json + filename):**
+
+| Column | Source |
+|--------|--------|
+| experiment_dir | Directory name |
+| num, hosts, switches, seed, k | meta.json |
+| down_interval, down_duration, down_count, down_stagger, down_exclude, cache_count | meta.json |
+| filename, host_id, content_id, file_seed, down_hosts, get_idx | Filename |
+
+**cefputfile-specific columns:**
+timestamp, uri, file, rate_mbps, block_size_bytes, cache_time_sec, expiration_sec, tx_frames, tx_bytes, duration_sec, throughput_bps, success
+
+**cefgetfile-specific columns:**
+timestamp, uri, rx_frames_all, rx_frames_content, rx_bytes_all, rx_bytes_content, duration_sec, throughput_bps, goodput_bps, jitter_ave_us, jitter_max_us, jitter_var_us, success
+
+**cefpubfile/cefsubfile:** Columns are extracted dynamically from `[command] Key = Value` lines in the log.
+
+## Runtime Artifacts
+
+After running scripts, the following files appear in the working directory (or under `logs/ex{num}_seed{seed}/` when `num` is set):
+
+- `hN-cefnetd-log` — Forwarding daemon logs for host N
+- `hN-csmgrd-log` — Cache manager logs for router hosts
+- `cefputfile-log` / `cefputfile_*.log` — Publisher operation logs
+- `cefgetfile-log` / `cefgetfile_*.log` — Consumer operation logs
+- `recvfile_at_h0` / `recvfile_at_hN` — Retrieved content files
+- `ex-seed*.png` — Topology visualization images (when `--topo-png` used)
+
 ## Project Structure
 
 ```
@@ -321,6 +398,85 @@ cefore-emu/
 ├── pyproject.toml                 # Package configuration
 └── CLAUDE.md                      # Development guidance
 ```
+
+## Architecture
+
+### Topology Scripts Structure
+
+All topology scripts follow a common pattern:
+
+1. **Topology Definition** — Mininet Topo subclass defines network structure
+2. **IP Address Assignment** — Each link gets a /24 subnet (192.168.X.Y)
+3. **Cefore Daemon Startup** — Start csmgrd (cache managers) and cefnetd (forwarding daemons)
+4. **FIB Configuration** — Set forwarding rules using `cefroute add`
+5. **Content Operations** — Publisher runs `cefputfile`, consumer runs `cefgetfile`
+6. **Cleanup** — Stop daemons and remove temporary host directories
+
+### Host Configuration Templates
+
+Templates are located in `config/templates/`:
+
+- `h0/` — Consumer template (CS_MODE=0, no caching)
+- `h1/` — Router template (CS_MODE=2, external cache manager)
+- `h2/` — Publisher template (CS_MODE=1, local cache mode)
+
+For topologies with >3 hosts, additional directories (h3, h4, ...) are generated dynamically by copying templates and cleaned up after script completion via `cleanup_node_dirs()`.
+
+**Configuration files per host:**
+- `cefnetd.conf` — Forwarding daemon config (includes LOCAL_SOCK_ID)
+- `cefnetd.fib` — Static forwarding table
+- `csmgrd.conf` — Cache manager config
+- `conpubd.conf` — Publisher daemon config
+- `plugin.conf` — Plugin configuration
+- `cefnetd.key` — Key configuration
+- `default-private-key`, `default-public-key` — Cryptographic keys (sensitive)
+
+### Key Functions
+
+**IP Address Assignment:**
+- Linear topologies: Sequential /24 subnets (192.168.0.x, 192.168.1.x, ...)
+- Mesh topologies: One /24 per link, host ID determines last octet
+
+**FIB Configuration (`src/core/fib.py`, `src/runtime/net_config.py`):**
+- Linear: Forward all interests toward publisher (next hop in line)
+- Mesh: Uses per-source Dijkstra for efficient multipath routing
+  - `dijkstra_all()`: Computes shortest distances from a source to all destinations (`src/core/graph.py`)
+  - `shortest_path()`: Dijkstra's algorithm with edge/node banning support (constrained pathfinding)
+  - `k_shortest_paths()`: Yen's algorithm for k alternate paths
+  - `compute_fib()`: Computes FIB entries for all destinations with default URI pattern `ccnx:/test/exampleN`
+  - `compute_fib_for_uris()`: Computes FIB entries for specific URI-to-publisher mappings (publication events)
+  - `apply_fib()`: Applies computed FIB entries to live Mininet hosts via `cefroute add` (`src/runtime/net_config.py`)
+
+**Dynamic Configuration (`src/runtime/template.py`, `src/core/roles.py`):**
+- `update_local_sock_id()`: Modifies LOCAL_SOCK_ID in config files to avoid socket conflicts
+- `provision_node_dirs()`: Creates host directories from templates for a given roles mapping; raises `NodeDirError` and rolls back partial work on failure
+- `assign_roles()`: Determines `NodeRole` (CONSUMER/ROUTER/PUBLISHER) for each host index; each `NodeRole` carries a `.template` attribute (`"h0"`, `"h1"`, or `"h2"`)
+
+**Content Operations (defined in `src/runtime/cefore.py`):**
+- `run_cefputfile()`: Publish content via cefputfile with configurable options
+- `run_cefgetfile()`: Retrieve content via cefgetfile with configurable options
+- `run_cefpubfile()`: Publish content via cefpubfile (pub/sub model, returns a CommandHandle)
+- `start_cefsubfile()`: Subscribe to content via cefsubfile (pub/sub model, returns a CommandHandle)
+
+**Status/Info Commands:**
+- `run_csmgrstatus()`: Query cache manager status via csmgrstatus
+- `cefroute_del()`: Delete a FIB entry via `cefroute del`
+- `cefroute_enable()`: Enable a FIB entry via `cefroute enable`
+
+## Common Modifications
+
+**Adding a new host role:**
+Modify `assign_roles()` in `src/core/roles.py` to return the appropriate `NodeRole` (CONSUMER/ROUTER/PUBLISHER) based on index and host count. Each `NodeRole` carries a `.template` attribute that maps to the `config/templates/hN` directory.
+
+**Changing content URI:**
+Update the URI prefix in `compute_fib()` / `compute_fib_for_uris()` (`src/core/fib.py`) and corresponding `cefputfile`/`cefgetfile` commands. For disaster topology, define content operations with `events` in a JSON/YAML config.
+
+**Adjusting cache behavior:**
+Edit `config/templates/h1/csmgrd.conf` (applies to all router nodes).
+
+**Testing link failures:**
+- Basic: Use `link_down()` / `link_up()` in `src/runtime/links.py`
+- Advanced: Use disaster topology with `--down-*` options or `failure_scenarios` in a config file
 
 ## Documents
 
