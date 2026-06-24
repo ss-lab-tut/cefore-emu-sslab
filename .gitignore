@@ -28,3 +28,5 @@ package.json
 
 # Local Claude Code hooks (machine-specific paths, do not commit)
 .claude/hooks.json
+.codex/hooks.json
+.agents/hooks.json
