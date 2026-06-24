@@ -9,10 +9,10 @@ This module is intentionally pure (dataclass + constant only): it is imported
 by both ``core`` (the config validator) and ``runtime`` (the scheduler), so it
 must never import from ``runtime`` or the core->runtime layering would break.
 
-Scope note: the publisher/content event-type sets still embedded in
-``scenarios/disaster.py`` and ``scenarios/connect.py`` are intentionally NOT
-consolidated here yet (tracked as a follow-up); the single source of truth this
-module establishes covers the loader / scheduler / content_ops triangle.
+Scope: the canonical source for valid types, required fields, content
+classification, publication classification, and same-timestamp priority.
+Loader, scheduler, content_ops, and the scenario publisher-metadata builders
+(``disaster.py``/``connect.py``) all derive from this module.
 """
 
 from dataclasses import dataclass
@@ -34,6 +34,7 @@ class EventSpec:
 
     required_fields: tuple[str, ...]
     is_content: bool = False
+    is_publication: bool = False
     priority: int = 5
 
 
@@ -48,9 +49,9 @@ EVENT_SCHEMA: dict[str, EventSpec] = {
     "fib_enable":   EventSpec(("host", "prefix", "next_hop")),
     "bw_set":       EventSpec(("nodes", "bandwidth")),
     "compute_call": EventSpec(("host", "endpoint")),
-    "put":          EventSpec(("host", "uri", "file"), is_content=True, priority=1),
+    "put":          EventSpec(("host", "uri", "file"), is_content=True, is_publication=True, priority=1),
     "get":          EventSpec(("host", "uri"), is_content=True, priority=3),
-    "pubsub_pub":   EventSpec(("host", "uri", "file"), is_content=True, priority=2),
+    "pubsub_pub":   EventSpec(("host", "uri", "file"), is_content=True, is_publication=True, priority=2),
     "pubsub_sub":   EventSpec(("host", "uri"), is_content=True, priority=0),
 }
 
@@ -63,6 +64,17 @@ def event_types() -> tuple[str, ...]:
 def content_event_types() -> frozenset[str]:
     """Event types recorded by the ContentOperationRunner (put/get/pub/sub)."""
     return frozenset(t for t, spec in EVENT_SCHEMA.items() if spec.is_content)
+
+
+def publication_event_types() -> frozenset[str]:
+    """Producer-side content ops that introduce content into the network.
+
+    Currently {"put", "pubsub_pub"}. The disaster and connect scenarios use
+    this set to build their URI-to-publisher maps; if a new producer type is
+    added to EVENT_SCHEMA, marking ``is_publication=True`` is enough -- the
+    scenarios pick it up without edits.
+    """
+    return frozenset(t for t, spec in EVENT_SCHEMA.items() if spec.is_publication)
 
 
 def event_priorities() -> dict[str, int]:

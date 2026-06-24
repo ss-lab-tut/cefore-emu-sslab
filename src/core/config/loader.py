@@ -6,7 +6,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from ..events import EVENT_SCHEMA, event_types
+from ..events import EVENT_SCHEMA, event_types, publication_event_types
 from ..protocols import VALID_ROUTE_PROTOCOLS, normalize_route_protocol
 
 HAVE_YAML = True
@@ -581,7 +581,7 @@ def validate_config(config: dict[str, Any]) -> list[str]:
                         if "host" in event and not _is_int(event["host"]):
                             errors.append(f"events[{idx}].host must be an integer")
 
-                    elif etype in ("put", "pubsub_pub"):
+                    elif etype in publication_event_types():
                         for field in EVENT_SCHEMA[etype].required_fields:
                             if field not in event:
                                 errors.append(f"events[{idx}] missing required field '{field}'")

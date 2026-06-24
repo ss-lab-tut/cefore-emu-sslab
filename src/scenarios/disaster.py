@@ -10,6 +10,7 @@ from mininet.link import TCLink
 from mininet.log import info
 
 from ..core.addressing import AddressingScheme, DEFAULT_NETWORK_CIDR
+from ..core.events import content_event_types, publication_event_types
 from ..core.flap_state import FlapState
 from ..core.paths import ensure_within_run_dir, resolve_run_path
 
@@ -126,8 +127,9 @@ class DisasterScenario(BaseScenario):
     def _prepare_event_publishers(self):
         """Collect publisher metadata from event-driven content operations."""
         args = self.args
+        pub_types = publication_event_types()
         for ev in getattr(args, "events", None) or []:
-            if ev.get("type") in ("put", "pubsub_pub"):
+            if ev.get("type") in pub_types:
                 self.publisher_ids.add(ev["host"])
                 self.uri_publishers[ev["uri"]] = ev["host"]
 
@@ -445,9 +447,9 @@ class DisasterScenario(BaseScenario):
 
     def _run_normal_experiment(self, net, events_config, origin, use_cli):
         """Run interactive or non-autotest execution with all events together."""
-        content_event_types = {"put", "get", "pubsub_pub", "pubsub_sub"}
+        ctypes = content_event_types()
         has_content_events = any(
-            e.get("type") in content_event_types for e in events_config
+            e.get("type") in ctypes for e in events_config
         )
         self._start_failure_manager(net, use_cli)
 
@@ -511,8 +513,10 @@ class DisasterScenario(BaseScenario):
             )
 
         self._start_failure_manager(net, use_cli)
-        content_event_types = {"get", "pubsub_pub", "pubsub_sub"}
-        if any(ev.get("type") in content_event_types for ev in eval_events):
+        # Eval phase = all content types minus "put": put events were already
+        # seeded and awaited in the preceding seed phase (see put_events above).
+        eval_content_types = content_event_types() - {"put"}
+        if any(ev.get("type") in eval_content_types for ev in eval_events):
             self.content_runner = self._make_content_runner(
                 net, eval_events, phase="eval"
             )

@@ -11,6 +11,7 @@ from src.core.events import (
     content_event_types,
     event_priorities,
     event_types,
+    publication_event_types,
 )
 
 
@@ -49,6 +50,27 @@ def test_content_event_types_are_put_get_pub_sub():
     assert content_event_types() == frozenset(
         {"put", "get", "pubsub_pub", "pubsub_sub"}
     )
+
+
+def test_publication_event_types_are_put_and_pubsub_pub():
+    # publication = ops that introduce content into the network (producer side);
+    # consumption (get/pubsub_sub) is the deliberately-excluded counterpart.
+    # The scenarios' publisher-metadata builders read this set; if a new
+    # producer-side content type is added to EVENT_SCHEMA without flagging
+    # is_publication, the scenario's publisher map silently drops it -- this
+    # test is the cross-file pin that catches that drift.
+    assert publication_event_types() == frozenset({"put", "pubsub_pub"})
+
+
+def test_publication_is_strict_subset_of_content():
+    # Every publication is also a content op; the converse is not true
+    # (get/pubsub_sub are content but not publication).
+    assert publication_event_types() < content_event_types()
+
+
+def test_is_publication_flag_set_on_producer_specs():
+    pubs = {t for t, spec in EVENT_SCHEMA.items() if spec.is_publication}
+    assert pubs == {"put", "pubsub_pub"}
 
 
 def test_priorities_only_for_content_ordering():

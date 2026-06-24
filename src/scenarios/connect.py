@@ -14,6 +14,7 @@ from mininet.link import TCLink
 from mininet.log import info
 
 from ..core.addressing import AddressingScheme, DEFAULT_NETWORK_CIDR
+from ..core.events import publication_event_types
 from ..core.flap_state import FlapState
 from ..core.paths import resolve_run_path
 from ..runtime.bandwidth import parse_bw_args, set_link_bandwidth
@@ -41,9 +42,8 @@ from .base import BaseScenario, _propagate_failures
 
 def _publication_metadata(events):
     """Return publication events and their URI-to-publisher mapping."""
-    publications = [
-        event for event in events if event.get("type") in ("put", "pubsub_pub")
-    ]
+    pub_types = publication_event_types()
+    publications = [event for event in events if event.get("type") in pub_types]
     publishers = {event["uri"]: event["host"] for event in publications}
     return publications, publishers
 
