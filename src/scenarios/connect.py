@@ -7,7 +7,6 @@ run_connect() had no try/finally and leaked daemons on failure).
 
 import random
 import sys
-import time
 from pathlib import Path
 
 from mininet.link import TCLink
@@ -17,26 +16,16 @@ from ..core.addressing import AddressingScheme, DEFAULT_NETWORK_CIDR
 from ..core.events import publication_event_types
 from ..core.flap_state import FlapState
 from ..core.paths import resolve_run_path
-from ..runtime.bandwidth import parse_bw_args, set_link_bandwidth
-from ..runtime.bridge import (
-    BridgeManager,
-    attach_external_interface,
-    parse_bridge_args,
-    parse_ext_args,
-    setup_bridges,
-)
-from ..runtime.cefore import run_cefstatus_all
-from ..runtime.daemon_fleet import build_fleet
-from ..runtime.command_runner import MininetCommandRunner
+from ..runtime.bridge import BridgeManager, parse_bridge_args
+from ..runtime.cache_strategy import KCentersStrategy
 from ..runtime.content_ops import ContentOperationRunner
-from ..runtime.net_config import apply_fib, apply_ip_addr
+from ..runtime.daemon_fleet import build_fleet
 from ..runtime.results_sink import RecordingSink
+from ..runtime.scenario_setup import ScenarioSetupSpec, setup_scenario
 from ..runtime.scheduler import EventScheduler
-from ..runtime.cache_manager import CachePlacement
 from ..core.roles import assign_roles
 from ..runtime.template import provision_node_dirs
 from ..runtime.topo import MeshTopo
-from ..runtime.viz import build_host_graph, print_mesh_links, render_topology_png
 from .base import BaseScenario, _propagate_failures
 
 
@@ -117,50 +106,6 @@ class ConnectScenario(BaseScenario):
 
     def configure(self, net):
         args = self.args
-
-        apply_ip_addr(net, self.topo.mesh_links, scheme=self.scheme)
-
-        if self.bridge_configs:
-            setup_bridges(
-                net,
-                self.bridge_manager,
-                self.bridge_configs,
-                args.hosts,
-                self.topo.mesh_links,
-                scheme=self.scheme,
-            )
-
-        ifconfig_runner = MininetCommandRunner(net)
-        for idx in range(args.hosts):
-            info(ifconfig_runner.run(f"h{idx}", ["ifconfig"]).stdout)
-
-        host_graph, _ = build_host_graph(self.topo.mesh_links)
-        self.cache_node_set = CachePlacement(
-            host_count=args.hosts,
-            host_graph=host_graph,
-            publisher_ids=self.publisher_ids,
-            cache_count=args.cache_count,
-            down_count=args.down_count,
-            exclude_publishers=False,
-        ).place()
-
-        self.daemon_fleet = build_fleet(
-            net, args.hosts, self.cache_node_set, self.run_dir
-        )
-        self.daemon_fleet.start_all()
-        self.daemon_fleet.wait_ready()
-
-        apply_fib(
-            net,
-            self.topo.mesh_links,
-            args.k,
-            uri_publishers=self.uri_publishers or None,
-            scheme=self.scheme,
-        )
-
-        run_cefstatus_all(net, args.hosts)
-        print_mesh_links(self.topo.mesh_links)
-
         topo_png_path = str(
             resolve_run_path(
                 self.run_dir,
@@ -168,19 +113,30 @@ class ConnectScenario(BaseScenario):
                 f"ex{args.hosts}_seed{self.seed_label}.png",
             )
         )
-        render_topology_png(
-            self.topo.mesh_links,
-            topo_png_path,
-            seed=args.seed,
-            layout=args.topo_layout,
+        spec = ScenarioSetupSpec(
+            mesh_links=self.topo.mesh_links,
+            scheme=self.scheme,
+            host_count=args.hosts,
+            publisher_ids=set(self.publisher_ids),
+            cache_strategy=KCentersStrategy(
+                cache_count=args.cache_count,
+                down_count=args.down_count,
+                exclude_publishers=False,
+            ),
+            fleet_run_dir=self.run_dir,
+            fib_k=args.k,
+            bridge_manager=self.bridge_manager,
+            bridge_configs=self.bridge_configs,
+            bw_args=args.bw,
+            ext_args=args.ext,
+            topo_png_path=topo_png_path,
+            topo_seed=args.seed,
+            topo_layout=args.topo_layout,
+            fib_uri_publishers=self.uri_publishers or None,
         )
-        time.sleep(1)
-
-        for node_a, node_b, bandwidth in parse_bw_args(args.bw):
-            set_link_bandwidth(net, node_a, node_b, bandwidth)
-
-        for host_name, intf_name, ip, mtu in parse_ext_args(args.ext):
-            attach_external_interface(net, host_name, intf_name, ip, mtu)
+        result = setup_scenario(net, spec)
+        self.daemon_fleet = result.daemon_fleet
+        self.cache_node_set = result.cache_node_set
 
     def run_experiment(self, net):
         if not self.publication_events:

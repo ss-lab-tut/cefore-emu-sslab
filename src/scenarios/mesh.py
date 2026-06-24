@@ -8,19 +8,15 @@ from pathlib import Path
 from mininet.log import info
 
 from ..runtime.command_runner import MininetCommandRunner
-from ..runtime.cefore import (
-    run_cefgetfile,
-    run_cefputfile,
-    run_cefstatus_all,
-)
+from ..runtime.cefore import run_cefgetfile, run_cefputfile
 from ..runtime.daemon_fleet import build_fleet
+from ..runtime.cache_strategy import RolesCacheStrategy
+from ..runtime.scenario_setup import ScenarioSetupSpec, setup_scenario
 from ..core.addressing import AddressingScheme
 from ..core.roles import assign_roles
 from ..core.topology import TopologyModel
-from ..runtime.net_config import apply_fib, apply_ip_addr
 from ..runtime.template import provision_node_dirs
 from ..runtime.topo import MeshTopo, max_possible_links, min_required_links
-from ..runtime.viz import print_mesh_links, render_topology_png
 
 from .base import BaseScenario
 
@@ -93,32 +89,23 @@ class MeshScenario(BaseScenario):
         return self.topo
 
     def configure(self, net):
-        apply_ip_addr(net, self.topo.mesh_links, scheme=self.scheme)
-
-        runner = MininetCommandRunner(net)
-        for idx in range(self.host_num):
-            node_name = f"h{idx}"
-            print(node_name, "command:", "ifconfig")
-            info(runner.run(node_name, ["ifconfig"]).stdout)
-
-        self.daemon_fleet = build_fleet(
-            net, self.host_num, self._csmgrd_host_ids(), self.run_dir
-        )
-        self.daemon_fleet.start_all()
-        self.daemon_fleet.wait_ready()
-
-        apply_fib(net, self.topo.mesh_links, self.k_paths, scheme=self.scheme)
-        run_cefstatus_all(net, self.host_num)
-        print_mesh_links(self.topo.mesh_links)
-
         topo_png_path = self.topo_png
         if topo_png_path:
             topo_png_path = str(self.run_dir / Path(topo_png_path).name)
-        render_topology_png(
-            self.topo.mesh_links, topo_png_path,
-            seed=self.seed, layout=self.topo_layout,
+        spec = ScenarioSetupSpec(
+            mesh_links=self.topo.mesh_links,
+            scheme=self.scheme,
+            host_count=self.host_num,
+            publisher_ids=set(),
+            cache_strategy=RolesCacheStrategy(roles=self.roles),
+            fleet_run_dir=self.run_dir,
+            fib_k=self.k_paths,
+            topo_png_path=topo_png_path,
+            topo_seed=self.seed,
+            topo_layout=self.topo_layout,
         )
-        time.sleep(1)
+        result = setup_scenario(net, spec)
+        self.daemon_fleet = result.daemon_fleet
 
     def run_experiment(self, net):
         publisher = self.host_num - 1

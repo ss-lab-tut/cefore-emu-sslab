@@ -14,34 +14,26 @@ from ..core.events import content_event_types, publication_event_types
 from ..core.flap_state import FlapState
 from ..core.paths import ensure_within_run_dir, resolve_run_path
 
-from ..runtime.bandwidth import parse_bw_args, set_link_bandwidth
 from ..runtime.bridge import (
     BridgeManager,
-    attach_external_interface,
     cleanup_external_bridges,
     parse_bridge_args,
-    parse_ext_args,
-    setup_bridges,
 )
-from ..runtime.cache_manager import CachePlacement
+from ..runtime.cache_strategy import KCentersStrategy, RandomCSModeStrategy
 from ..runtime.command_runner import MininetCommandRunner
 from ..runtime.content_ops import ContentOperationRunner
 from ..runtime.monitoring import Monitor
 from ..runtime.results_sink import ResultsSink
+from ..runtime.scenario_setup import ScenarioSetupSpec, setup_scenario
 from ..runtime.scheduler import EventScheduler
-from ..runtime.cefore import (
-    run_cefstatus_all,
-    run_csmgrstatus,
-    wait_for_cefnetd,
-)
+from ..runtime.cefore import run_csmgrstatus, wait_for_cefnetd
 from ..runtime.daemon_fleet import build_fleet
 from ..core.parsing import parse_int_list
 from ..runtime.failure_manager import FlexibleFailureManager, periodic_host_flap
-from ..runtime.net_config import apply_fib, apply_fib_routes, apply_ip_addr
-from ..core.roles import assign_roles, assign_random_cs_modes, derive_seed
-from ..runtime.template import apply_cs_modes, provision_node_dirs
+from ..runtime.net_config import apply_fib_routes
+from ..core.roles import assign_roles
+from ..runtime.template import provision_node_dirs
 from ..runtime.topo import MeshTopo
-from ..runtime.viz import build_host_graph, print_mesh_links, render_topology_png
 
 from .base import BaseScenario, _propagate_failures
 
@@ -170,71 +162,36 @@ class DisasterScenario(BaseScenario):
     def configure(self, net):
         """Configure network: IP, bridges, bandwidth, daemons, FIB."""
         args = self.args
-
-        apply_ip_addr(net, self.topo.mesh_links, scheme=self.scheme)
-
-        if self.bridge_configs:
-            setup_bridges(
-                net,
-                self.bridge_manager,
-                self.bridge_configs,
-                args.hosts,
-                self.topo.mesh_links,
-                scheme=self.scheme,
-            )
-
-        ifconfig_runner = MininetCommandRunner(net)
-        for idx in range(args.hosts):
-            info(ifconfig_runner.run(f"h{idx}", ["ifconfig"]).stdout)
-
-        for node_a, node_b, bandwidth in parse_bw_args(args.bw):
-            set_link_bandwidth(net, node_a, node_b, bandwidth)
-
-        for host_name, intf_name, ip, mtu in parse_ext_args(args.ext):
-            attach_external_interface(net, host_name, intf_name, ip, mtu)
-
-        # Topology visualization
+        routing_config = getattr(args, "routing", None) or {}
         topo_png = _artifact_path(
             self.run_dir,
             args.topo_png,
             f"ex{args.hosts}_seed{self.seed_label}.png",
         )
-        render_topology_png(
-            self.topo.mesh_links,
-            str(topo_png),
-            seed=args.seed,
-            layout=args.topo_layout,
-        )
-
-        self._configure_cache_nodes()
-
-        # Daemon startup: csmgrd -> cefnetd -> wait ready (raise before FIB)
-        self.daemon_fleet = build_fleet(
-            net,
-            args.hosts,
-            self.cache_node_set,
-            self.run_dir,
-            cefnetd_timeout=getattr(args, "cefnetd_timeout", None) or 10,
-            readiness_policy="raise",
-        )
-        self.daemon_fleet.start_all()
-        self.daemon_fleet.wait_ready()
-
-        # FIB programming
-        routing_config = getattr(args, "routing", None) or {}
-        routing_strategy = routing_config.get("strategy", "dijkstra")
-        routing_k = routing_config.get("k", args.k)
-        self._fib_routes = apply_fib(
-            net,
-            self.topo.mesh_links,
-            routing_k,
-            strategy=routing_strategy,
-            uri_publishers=self.uri_publishers or None,
+        spec = ScenarioSetupSpec(
+            mesh_links=self.topo.mesh_links,
             scheme=self.scheme,
+            host_count=args.hosts,
+            publisher_ids=set(self.publisher_ids),
+            cache_strategy=self._build_cache_strategy(),
+            fleet_run_dir=self.run_dir,
+            fib_k=routing_config.get("k", args.k),
+            bridge_manager=self.bridge_manager,
+            bridge_configs=self.bridge_configs,
+            bw_args=args.bw,
+            ext_args=args.ext,
+            topo_png_path=str(topo_png),
+            topo_seed=args.seed,
+            topo_layout=args.topo_layout,
+            fleet_cefnetd_timeout=getattr(args, "cefnetd_timeout", None) or 10,
+            fleet_readiness_policy="raise",
+            fib_strategy=routing_config.get("strategy", "dijkstra"),
+            fib_uri_publishers=self.uri_publishers or None,
         )
-
-        run_cefstatus_all(net, args.hosts)
-        print_mesh_links(self.topo.mesh_links)
+        result = setup_scenario(net, spec)
+        self.daemon_fleet = result.daemon_fleet
+        self.cache_node_set = result.cache_node_set
+        self._fib_routes = result.fib_routes
 
         webui_port = getattr(args, "webui_port", None)
         if webui_port:
@@ -268,33 +225,20 @@ class DisasterScenario(BaseScenario):
                     "elapsed_sec": 0.0, "type": "csmgrstatus", "host": idx, "output": output,
                 })
 
-    def _configure_cache_nodes(self):
-        """Apply the configured cache strategy and record external-cache nodes."""
+    def _build_cache_strategy(self):
+        """Choose the CacheStrategy that matches ``args.cache_config.strategy``."""
         args = self.args
         cache_config = getattr(args, "cache_config", None) or None
-        cache_strategy = (cache_config or {}).get("strategy", "k_centers")
-        if cache_strategy == "random":
-            # Random CS_MODE: put/pub nodes get mode 1 or 2 (need cache
-            # to avoid content vanishing), others get 0/1/2 uniformly.
-            cs_mode_rng = random.Random(derive_seed(args.seed, "cs-mode"))
-            cs_modes = assign_random_cs_modes(
-                range(args.hosts), self.publisher_ids, cs_mode_rng,
-            )
-            apply_cs_modes(cs_modes)
-            self.cache_node_set = {
-                idx for idx, mode in cs_modes.items() if mode == 2
-            }
-        else:
-            host_graph, _ = build_host_graph(self.topo.mesh_links)
-            self.cache_node_set = CachePlacement(
-                host_count=args.hosts,
-                host_graph=host_graph,
-                publisher_ids=self.publisher_ids,
-                cache_config=cache_config,
-                cache_count=args.cache_count,
-                down_count=args.down_count,
-                cache_default_rct_ms=getattr(args, "cache_default_rct_ms", None),
-            ).place()
+        strategy_name = (cache_config or {}).get("strategy", "k_centers")
+        if strategy_name == "random":
+            return RandomCSModeStrategy(seed=args.seed)
+        return KCentersStrategy(
+            cache_config=cache_config,
+            cache_count=args.cache_count,
+            down_count=args.down_count,
+            exclude_publishers=True,
+            cache_default_rct_ms=getattr(args, "cache_default_rct_ms", None),
+        )
 
     def _restore_fib_for_host(self, net, host_idx: int):
         """Re-apply dynamic FIB routes for a host after it comes back up."""
