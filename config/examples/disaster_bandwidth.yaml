@@ -73,16 +73,16 @@ events:
   - {at: 20, type: get, host: 2, uri: "ccnx:/test/video1"}
   - {at: 25, type: get, host: 4, uri: "ccnx:/test/video1"}
 
-  # 一発ものの帯域変更: 15秒後に h0-h3 間の共有スイッチ全体を 5Mbps に
+  # 一発ものの帯域変更: 15秒後に h0-h6 間の共有スイッチ全体を 5Mbps に
   - at: 15
     type: bw_set
-    nodes: [0, 3]           # ホストインデックスのペア
+    nodes: [0, 6]           # hosts=14,switches=40,seed=42 で存在するペア
     bandwidth: 5            # Mbps
 
   # 周期的帯域劣化: 30秒目から開始、30秒間隔で5回
   - at: 30
     type: bw_set
-    nodes: [1, 5]
+    nodes: [1, 9]           # hosts=14,switches=40,seed=42 で存在するペア
     bandwidth: 1            # 劣化時の帯域（1Mbps）
     repeat:
       interval: 30          # 30秒ごとに繰り返す
@@ -94,7 +94,7 @@ events:
   # 周期的リンク断: 60秒目から3回
   - at: 60
     type: link_down
-    nodes: [2, 4]
+    nodes: [2, 8]           # hosts=14,switches=40,seed=42 で存在するペア
     repeat:
       interval: 45          # 45秒間隔
       duration: 15          # 15秒後に復旧
