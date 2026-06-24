@@ -178,6 +178,36 @@ monitoring:
     - {type: csmgrstatus, hosts: "cache"}
 ```
 
+**キャッシュ設定 (`cache_config`):**
+`cache_count`/`cache_default_rct_ms` より優先されます。
+```yaml
+cache_config:
+  strategy: "k_centers"    # k_centers / manual / degree_based / random
+  default:
+    count: 3
+    capacity: 819200
+    default_rct_ms: 1800000
+    algorithm: "LRU"       # LRU / LFU / FIFO / None
+    type: "memory"         # memory / filesystem
+```
+
+**障害シナリオ (`failure_scenarios`):**
+`down_interval`/`down_duration` 等より優先されます。
+```yaml
+failure_scenarios:
+  strategy: "cyclic"       # simple / cyclic / random / manual
+  cycles:
+    - {interval: 30, duration: 10, count: 2}
+```
+
+**ルーティング戦略 (`routing`):**
+```yaml
+routing:
+  strategy: "dijkstra"     # dijkstra / shortest_path / ecmp
+```
+
+全パラメータは `config/examples/example.yaml` を参照してください。
+
 ## ログ出力ディレクトリ
 
 `num` を指定した場合（設定ファイルまたは `--num`）、ログは専用ディレクトリに整理されます：

@@ -1,3 +1,5 @@
+> **Historical design document (2026-03).** File paths reference pre-`src/scenarios/*` architecture. For current config schema, see `config/examples/example.yaml`.
+
 ## Autotest基盤実装計画（Warmup-Prefetch / 非対話実行）—レビュー反映版
 
 > 前提: `--no-cli` は feature/mesh ブランチで実装済み。  

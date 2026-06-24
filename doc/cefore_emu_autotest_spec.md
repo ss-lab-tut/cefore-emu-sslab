@@ -1,3 +1,5 @@
+> **Historical design document (2026-03).** File paths reference pre-`src/scenarios/*` architecture. For current config schema, see `config/examples/example.yaml`.
+
 # cefore-emu 自動テスト基盤（AIなし / Warmup-Prefetch 方式）仕様書 & Codex CLI 指示
 
 > 方針: **AIは今回スコープ外**。Hotコンテンツを事前定義し、**prefetch（warmup get）**でキャッシュに載せてから、host down/up（disaster）中の取得成功率を測る。  
