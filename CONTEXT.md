@@ -93,3 +93,37 @@ _Avoid_: per-scenario IP/bridge/cache/fleet/FIB sequencing, ordering knobs
 **CacheStrategy**:
 Polymorphic decision module for "which hosts run csmgrd as cache nodes". One protocol `place(ctx: CacheContext) -> set[int]` with three real adapters in `src/runtime/cache_strategy.py`: `KCentersStrategy` (graph/manual/degree_based via CachePlacement; disaster + connect use it, connect with `exclude_publishers=False`), `RandomCSModeStrategy` (per-host random CS_MODE 0/1/2 with `apply_cs_modes` side effect; disaster's `cache_config.strategy="random"`), `RolesCacheStrategy` (csmgrd hosts from `assign_roles`; mesh). The scenario picks one; setup_scenario calls `.place()` polymorphically. `CacheContext` is the immutable snapshot (`host_count`, `host_graph`, `publisher_ids`) every adapter reads from.
 _Avoid_: cache strategy branching in scenarios, `_configure_cache_nodes`, inline `assign_random_cs_modes` calls
+
+## Configuration
+
+**ConfigValidator**:
+The single owner of every config-validation rule. Lives in `src/core/config/validator.py`; pure-fn module composed of per-block validators (`_validate_flat_keys` over `_FLAT_SPECS`, `_validate_cache_config`, `_validate_failure_scenarios`, `_validate_bridges`, `_validate_events`) and the public `validate_config(config) → list[str]` / `validate_merged_args(args) → list[str]` entries. The loader (`src/core/config/loader.py`) shrinks to I/O (`load_config`, YAML/JSON), legacy-key warning (`warn_ignored_legacy_content_keys`), and CLI/config merge (`merge_cli_and_config`); it re-exports `_FLAT_SPECS`, `validate_config`, `validate_merged_args` so external import sites (`runtime/external_net`, `cli/main`, `tools/autotest`, `tests/core/config`) stay stable. Event-type missing-field checks bind to `EVENT_SCHEMA[etype].required_fields` (the EventSchema scope's loader edge); error append order and message strings are mechanically preserved across the extraction (verified by 137 tests + a HEAD-vs-new differential test over 6 cross-block malformed configs, 38 error strings byte-identical).
+_Avoid_: validation rules in loader.py, per-block hand-rolled if/elif chains, duplicate event-type required-field lists, splitting `_FLAT_SPECS` from the validator
+
+## 次回実装候補 — Architecture review backlog (2026-06-26 round)
+
+このセクションは domain glossary ではなく、未着手の deepening candidate を次のセッションで再提案されないよう pin する backlog。`/tmp/architecture-review-20260626-165236.html` のレポート由来。完了したら該当エントリを削除し、上の domain section に正式名を追記すること。
+
+**候補2 — `runtime/bridge.py` を3 module に split**:
+1240 LOC の god-module が3つの独立 interface (external-NIC attach + 取消し用 state machine / `BridgeManager` root-namespace + NAT/proxy-ARP / `parse_bridge_args` 純 data) を同居させている。`bridge_external.py` / `bridge_root.py` / `bridge_args.py` に分割。Strong。memory `gate-bug-discovery` の候補3 (cleanup 二台帳統合) とは別角度 — こちらは「split-by-concern」、候補3 は「ledger 統一」。
+_Avoid_: cleanup-only 統一に絞ること (interface 3つ同居問題が残る)
+
+**候補3 — content-op `_dispatch` を EventSchema-bound table に**:
+`src/runtime/content_ops.py:173-183` の if/elif chain (put/get/pubsub_sub/pubsub_pub) を `_HANDLERS` dict + import-time `assert set(_HANDLERS) == content_event_types()` に置換。EventSchema 駆動の最後の content-type literal 残りを畳む。1b の symmetric closure。Worth exploring (small)。
+_Avoid_: 文字列 literal を残したまま priority だけ derive すること
+
+**候補4 — `teardown_scenario` seam で4 scenario の fleet-stop boilerplate を統合**:
+disaster.py:601-636 / connect.py:195-210 / mesh.py:130-134 / linear.py:82-85 で `fleet = self.daemon_fleet or build_fleet(...); failures.extend(fleet.stop_all())` を反復。`setup_scenario` と対称な `teardown_scenario(net, spec) → TeardownResult` を `src/runtime/scenario_setup.py` に。bridge cleanup は opt-in hook で disaster だけ追加。Worth exploring。
+_Avoid_: configure 経路に対称ある teardown を per-scenario に残すこと、build_fleet fallback drift を放置すること
+
+**候補5 — publication metadata 抽出を `core/events.py` に**:
+disaster.py:122-126 (`_prepare_event_publishers` メソッド) と connect.py:32-37 (`_publication_metadata` 関数) が `publication_event_types()` を使った同じ抽出ロジックを別 shape で重複。`extract_publications(events) → (publications, publishers_dict, publisher_ids)` を `src/core/events.py` に純関数で1本化。Worth exploring (small)。
+_Avoid_: scenario 個別の shape 維持、scenario 外で `publication_event_types()` を直接 iterate すること
+
+**候補6 — `runtime/result_detect.py` を Verdict に吸収**:
+74 LOC の薄い adapter。`detect_*` 5 関数は `from_runtime_*` Verdict factory の evidence-unpacking wrapper で、CONTEXT.md の Verdict `_Avoid_` リスト ("detect result") に名前が抵触。5 関数を `src/core/verdict.py` の runtime-adapter section に移管 + `timestamp_utc` は `src/core/paths.py` 等に分離 → `result_detect.py` 削除。Worth exploring。
+_Avoid_: 名前を `result_detect` のまま残すこと、Verdict factory と別モジュールに散らすこと
+
+**候補7 — `runtime/topo.py` を `runtime/mesh_topo.py` にリネーム**:
+`runtime/topo.py` (Mininet Topo subclasses) と `core/topology.py` (TopologyModel pure query) の名前近接 (4文字+1ディレクトリ差) が読者を混乱させる純 housekeeping。Speculative — 上記候補が片付いた後の cleanup pass で。
+_Avoid_: 単独でこのリネームに取り掛かること (他の deepening が optimal の後でまとめて)
