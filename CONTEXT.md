@@ -78,7 +78,12 @@ _Avoid_: result callback, results list, `_append_result`
 **EventSchema**:
 The canonical, pure-data description of each scheduler/config event type. `EVENT_SCHEMA` maps a type name to an `EventSpec` carrying its `required_fields`, `is_content` flag, and same-time `priority`. Lives in `src/core/events.py`; intentionally pure (dataclass + constant, no `runtime` import) so both the config validator (`core`) and the scheduler (`runtime`) import it without breaking the core→runtime layering. Insertion order is load-bearing — `event_types()` derives the validator's valid-type tuple and the "must be one of: …" error order from it.
 Binding is asymmetric, by design: the config validator's missing-field checks are **bound** to `required_fields` (for `fib_*`/`compute_call`/`put`/`pubsub_pub`/`get`/`pubsub_sub`; `link_down`/`link_up`/`bw_set` keep their existing shape checks), and the scheduler derives `_EVENT_PRIORITY`/`_CONTENT_EVENT_TYPES` from it. The scheduler/content-runner handlers' field access (`ev["host"]`, `ev["prefix"]`, …) is **documented by convention** against `required_fields`, not mechanically enforced — so the schema⇄handler drift class is concentrated to one place to read, not eliminated. The publisher set (`is_publication=True` → `publication_event_types()`) is bound for `scenarios/disaster.py` and `scenarios/connect.py` publisher-metadata builders and for `loader.py`'s publication-validation branch, so the loader / scheduler / content_ops / scenarios quadrangle is now drift-free.
-_Avoid_: `valid_event_types` literal, `_EVENT_PRIORITY`/`_CONTENT_EVENT_TYPES` literals, per-type required-field literals, `("put", "pubsub_pub")` tuple literal, "event type table"
+`ContentOperationRunner._HANDLERS` in `src/runtime/content_ops.py` maps each content event type name to its handler method name (`"put"→"_do_put"` etc.); an import-time `assert set(_HANDLERS) == content_event_types()` locks the dispatch table to EventSchema so drift is caught at module load, not at runtime.
+_Avoid_: `valid_event_types` literal, `_EVENT_PRIORITY`/`_CONTENT_EVENT_TYPES` literals, per-type required-field literals, `("put", "pubsub_pub")` tuple literal, "event type table", if/elif dispatch in content_ops
+
+**extract_publications**:
+The single owner of "which events introduce content into the network and who publishes them". Pure function in `src/core/events.py`: `extract_publications(events: list[dict]) → (publications, publishers_dict, publisher_ids)` where `publications` is the filtered list, `publishers_dict` is `{uri: host_idx}`, and `publisher_ids` is `frozenset[int]` (integer host indices, matching `ScenarioSetupSpec.publisher_ids: set[int]`). Both `DisasterScenario` and `ConnectScenario` derive their publisher state from it; `runtime/external_net.py` re-exports it as the public surface.
+_Avoid_: `_prepare_event_publishers` (removed), `_publication_metadata` (removed), per-scenario iteration over `publication_event_types()`
 
 ## Scenario setup
 
@@ -108,17 +113,9 @@ _Avoid_: validation rules in loader.py, per-block hand-rolled if/elif chains, du
 1240 LOC の god-module が3つの独立 interface (external-NIC attach + 取消し用 state machine / `BridgeManager` root-namespace + NAT/proxy-ARP / `parse_bridge_args` 純 data) を同居させている。`bridge_external.py` / `bridge_root.py` / `bridge_args.py` に分割。Strong。memory `gate-bug-discovery` の候補3 (cleanup 二台帳統合) とは別角度 — こちらは「split-by-concern」、候補3 は「ledger 統一」。
 _Avoid_: cleanup-only 統一に絞ること (interface 3つ同居問題が残る)
 
-**候補3 — content-op `_dispatch` を EventSchema-bound table に**:
-`src/runtime/content_ops.py:173-183` の if/elif chain (put/get/pubsub_sub/pubsub_pub) を `_HANDLERS` dict + import-time `assert set(_HANDLERS) == content_event_types()` に置換。EventSchema 駆動の最後の content-type literal 残りを畳む。1b の symmetric closure。Worth exploring (small)。
-_Avoid_: 文字列 literal を残したまま priority だけ derive すること
-
 **候補4 — `teardown_scenario` seam で4 scenario の fleet-stop boilerplate を統合**:
 disaster.py:601-636 / connect.py:195-210 / mesh.py:130-134 / linear.py:82-85 で `fleet = self.daemon_fleet or build_fleet(...); failures.extend(fleet.stop_all())` を反復。`setup_scenario` と対称な `teardown_scenario(net, spec) → TeardownResult` を `src/runtime/scenario_setup.py` に。bridge cleanup は opt-in hook で disaster だけ追加。Worth exploring。
 _Avoid_: configure 経路に対称ある teardown を per-scenario に残すこと、build_fleet fallback drift を放置すること
-
-**候補5 — publication metadata 抽出を `core/events.py` に**:
-disaster.py:122-126 (`_prepare_event_publishers` メソッド) と connect.py:32-37 (`_publication_metadata` 関数) が `publication_event_types()` を使った同じ抽出ロジックを別 shape で重複。`extract_publications(events) → (publications, publishers_dict, publisher_ids)` を `src/core/events.py` に純関数で1本化。Worth exploring (small)。
-_Avoid_: scenario 個別の shape 維持、scenario 外で `publication_event_types()` を直接 iterate すること
 
 **候補6 — `runtime/result_detect.py` を Verdict に吸収**:
 74 LOC の薄い adapter。`detect_*` 5 関数は `from_runtime_*` Verdict factory の evidence-unpacking wrapper で、CONTEXT.md の Verdict `_Avoid_` リスト ("detect result") に名前が抵触。5 関数を `src/core/verdict.py` の runtime-adapter section に移管 + `timestamp_utc` は `src/core/paths.py` 等に分離 → `result_detect.py` 削除。Worth exploring。
@@ -127,3 +124,4 @@ _Avoid_: 名前を `result_detect` のまま残すこと、Verdict factory と�
 **候補7 — `runtime/topo.py` を `runtime/mesh_topo.py` にリネーム**:
 `runtime/topo.py` (Mininet Topo subclasses) と `core/topology.py` (TopologyModel pure query) の名前近接 (4文字+1ディレクトリ差) が読者を混乱させる純 housekeeping。Speculative — 上記候補が片付いた後の cleanup pass で。
 _Avoid_: 単独でこのリネームに取り掛かること (他の deepening が optimal の後でまとめて)
+

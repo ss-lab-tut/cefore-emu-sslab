@@ -92,6 +92,11 @@ class TestGetfileArgv:
         # -o must not be followed by a value
         assert argv[argv.index("-o") + 1] == "-d"
 
+    def test_sg_emits_literal_sg_keyword(self):
+        argv = build_cefgetfile_argv("ccnx:/x", "/out", node_name="h0", sg=True)
+        idx = argv.index("-z")
+        assert argv[idx + 1] == "sg"
+
     def test_all_flags(self):
         argv = build_cefgetfile_argv(
             "ccnx:/x",
@@ -101,13 +106,13 @@ class TestGetfileArgv:
             pipeline=8,
             valid_algo="rsa-sha256",
             port_num=9695,
-            sg=1,
+            sg=True,
         )
         assert argv[argv.index("-m") + 1] == "50"
         assert argv[argv.index("-s") + 1] == "8"
         assert argv[argv.index("-v") + 1] == "rsa-sha256"
         assert argv[argv.index("-p") + 1] == "9695"
-        assert argv[argv.index("-z") + 1] == "1"
+        assert argv[argv.index("-z") + 1] == "sg"
         assert argv[-2:] == ["-d", "./h0"]
         _assert_no_shell_artifacts(argv)
 

@@ -246,7 +246,7 @@ def run_cefgetfile(
     pipeline=None,
     valid_algo=None,
     port_num=None,
-    sg=None,
+    sg: bool = False,
     log_name=None,
     timeout=None,
     cancel_event=None,
@@ -263,7 +263,7 @@ def run_cefgetfile(
         pipeline: Number of pipeline.
         valid_algo: Validation algorithm (crc32c or rsa-sha256).
         port_num: Port number.
-        sg: Send Long Life Interest.
+        sg (bool): If True, pass -z sg (Send Long Life Interest) flag.
         log_name: Name of the log file.
         timeout: Optional maximum number of seconds to wait.
         cancel_event: Optional threading event used to cancel the command.

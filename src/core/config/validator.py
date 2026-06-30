@@ -369,7 +369,10 @@ def _validate_get_options(errors, prefix, event):
         errors.append(f"{prefix}.owner_only must be a boolean")
     for field in ("chunk", "pipeline", "port_num"):
         _validate_number_option(errors, prefix, event, field, integer=True, minimum=1)
-    _validate_number_option(errors, prefix, event, "sg", integer=True, minimum=0)
+    if "sg" in event and not isinstance(event["sg"], bool):
+        errors.append(
+            f"{prefix}.sg must be a boolean (true to send Long Life Interest)"
+        )
     _validate_algo_option(errors, prefix, event, "valid_algo")
 
 

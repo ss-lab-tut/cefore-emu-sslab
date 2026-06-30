@@ -831,6 +831,7 @@ def test_validate_event_content_options():
                     "host": 0,
                     "uri": "ccnx:/put",
                     "owner_only": "yes",
+                    "sg": 1,
                 },
                 {
                     "at": 0,
@@ -853,6 +854,7 @@ def test_validate_event_content_options():
     assert any("valid_algo" in error for error in errors)
     assert any("expiry" in error for error in errors)
     assert any("owner_only" in error for error in errors)
+    assert any("sg" in error for error in errors)
     assert any("lifetime" in error for error in errors)
     assert any("target" in error for error in errors)
     assert any("wait" in error for error in errors)

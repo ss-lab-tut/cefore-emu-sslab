@@ -75,7 +75,7 @@ def build_cefgetfile_argv(
     pipeline: Optional[int] = None,
     valid_algo: Optional[str] = None,
     port_num: Optional[int] = None,
-    sg: Optional[int] = None,
+    sg: bool = False,
 ) -> List[str]:
     """Build the argv for ``cefgetfile``."""
     head = [uri, "-f", output_path]
@@ -89,7 +89,7 @@ def build_cefgetfile_argv(
             ("-s", pipeline),
             ("-v", valid_algo),
             ("-p", port_num),
-            ("-z", sg),
+            ("-z", "sg" if sg else None),
         ],
         node_name,
     )

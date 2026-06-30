@@ -11,6 +11,7 @@ from src.core.events import (
     content_event_types,
     event_priorities,
     event_types,
+    extract_publications,
     publication_event_types,
 )
 
@@ -60,6 +61,25 @@ def test_publication_event_types_are_put_and_pubsub_pub():
     # is_publication, the scenario's publisher map silently drops it -- this
     # test is the cross-file pin that catches that drift.
     assert publication_event_types() == frozenset({"put", "pubsub_pub"})
+
+
+def test_extract_publications_returns_three_tuple():
+    events = [
+        {"type": "put", "host": 1, "uri": "ccnx:/a", "file": "f1"},
+        {"type": "get", "host": 2, "uri": "ccnx:/a"},
+        {"type": "pubsub_pub", "host": 3, "uri": "ccnx:/b", "file": "f2"},
+    ]
+    pubs, pub_dict, pub_ids = extract_publications(events)
+    assert len(pubs) == 2
+    assert pub_dict == {"ccnx:/a": 1, "ccnx:/b": 3}
+    assert pub_ids == frozenset({1, 3})
+
+
+def test_extract_publications_empty():
+    pubs, pub_dict, pub_ids = extract_publications([])
+    assert pubs == []
+    assert pub_dict == {}
+    assert pub_ids == frozenset()
 
 
 def test_publication_is_strict_subset_of_content():

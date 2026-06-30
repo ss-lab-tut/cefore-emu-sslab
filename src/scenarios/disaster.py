@@ -10,7 +10,7 @@ from mininet.link import TCLink
 from mininet.log import info
 
 from ..core.addressing import AddressingScheme, DEFAULT_NETWORK_CIDR
-from ..core.events import content_event_types, publication_event_types
+from ..core.events import content_event_types, extract_publications
 from ..core.flap_state import FlapState
 from ..core.paths import ensure_within_run_dir, resolve_run_path
 
@@ -109,21 +109,14 @@ class DisasterScenario(BaseScenario):
         if self.autotest_mode and (args.ext or self.bridge_configs):
             sys.exit("autotest mode forbids ext/bridge configuration")
 
-        self._prepare_event_publishers()
+        events = getattr(args, "events", None) or []
+        _, self.uri_publishers, publisher_ids = extract_publications(events)
+        self.publisher_ids = set(publisher_ids)
 
     def _host_lock(self, host_idx: int) -> threading.Lock:
         if host_idx not in self._host_cmd_locks:
             self._host_cmd_locks[host_idx] = threading.Lock()
         return self._host_cmd_locks[host_idx]
-
-    def _prepare_event_publishers(self):
-        """Collect publisher metadata from event-driven content operations."""
-        args = self.args
-        pub_types = publication_event_types()
-        for ev in getattr(args, "events", None) or []:
-            if ev.get("type") in pub_types:
-                self.publisher_ids.add(ev["host"])
-                self.uri_publishers[ev["uri"]] = ev["host"]
 
     def _warn_event_diagnostics(self, events_config):
         """Warn about event sets that cannot produce observable retrievals."""

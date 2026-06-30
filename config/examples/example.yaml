@@ -186,7 +186,7 @@ events:
     # pipeline: 4                # パイプライン数 [オプション]
     # chunk: 100                 # 最大チャンク数 [オプション]
     # port_num: 9896             # ポート番号 [オプション]
-    # sg: 1                      # Send Long Life Interest (>=0) [オプション]
+    # sg: true                   # true: Send Long Life Interest (-z sg) [オプション]
     # owner_only: false          # true: オーナーオンリーモード [オプション]
     # valid_algo: "crc32c"       # 検証アルゴリズム: crc32c / rsa-sha256 [オプション]
 

@@ -7,6 +7,7 @@ from pathlib import Path
 
 from mininet.log import info
 
+from ..core.events import content_event_types
 from .cefore import (
     run_cefgetfile,
     run_cefpubfile,
@@ -41,6 +42,13 @@ class ContentOperationRunner:
     get events run cefgetfile and record results.
     put events run cefputfile and record a put Verdict row (exit code only).
     """
+
+    _HANDLERS: dict[str, str] = {
+        "put": "_do_put",
+        "get": "_do_get",
+        "pubsub_sub": "_do_pubsub_sub",
+        "pubsub_pub": "_do_pubsub_pub",
+    }
 
     def __init__(
         self,
@@ -171,16 +179,11 @@ class ContentOperationRunner:
                 self._queue.task_done()
 
     def _dispatch(self, op_type, event):
-        if op_type == "put":
-            self._do_put(event)
-        elif op_type == "get":
-            self._do_get(event)
-        elif op_type == "pubsub_sub":
-            self._do_pubsub_sub(event)
-        elif op_type == "pubsub_pub":
-            self._do_pubsub_pub(event)
-        else:
+        handler_name = self._HANDLERS.get(op_type)
+        if handler_name is None:
             info(f"[content_runner] unknown op_type: {op_type}\n")
+            return
+        getattr(self, handler_name)(event)
 
     def _log_path(self, cmd, host, uri, suffix=""):
         label = _safe_uri_label(uri)
@@ -441,3 +444,12 @@ class ContentOperationRunner:
             down_hosts=item["down_hosts"],
             publisher_host=publisher_host,
         )
+
+# Keep the runtime dispatch table locked to the EventSchema-derived content set.
+# If EVENT_SCHEMA gains or loses a content operation, importing this module should
+# fail loudly instead of letting scheduler/content dispatch drift apart.
+assert set(ContentOperationRunner._HANDLERS) == content_event_types(), (
+    "ContentOperationRunner._HANDLERS must match content_event_types() -- "
+    "update _HANDLERS when EVENT_SCHEMA changes"
+)
+

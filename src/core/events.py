@@ -80,3 +80,21 @@ def publication_event_types() -> frozenset[str]:
 def event_priorities() -> dict[str, int]:
     """Same-timestamp ordering, only for types with a non-default priority."""
     return {t: spec.priority for t, spec in EVENT_SCHEMA.items() if spec.priority != 5}
+
+
+def extract_publications(
+    events: list[dict],
+) -> tuple[list[dict], dict[str, int], frozenset[int]]:
+    """Pure extraction of publisher metadata from a raw events list.
+
+    Returns:
+        publications: events whose type is in publication_event_types().
+        publishers_dict: {uri: host_idx} for each publication event.
+        publisher_ids: publisher host indices as ints, matching
+            ScenarioSetupSpec.publisher_ids: set[int].
+    """
+    pub_types = publication_event_types()
+    publications = [ev for ev in events if ev.get("type") in pub_types]
+    publishers_dict = {ev["uri"]: ev["host"] for ev in publications}
+    publisher_ids = frozenset(ev["host"] for ev in publications)
+    return publications, publishers_dict, publisher_ids

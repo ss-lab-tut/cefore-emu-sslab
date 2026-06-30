@@ -17,11 +17,9 @@ from ..core.config.loader import (
     validate_config,
     warn_ignored_legacy_content_keys,
 )
+from ..core.events import extract_publications  # noqa: F401 (re-export)
 from ..core.paths import resolve_run_dir, resolve_run_path
-from ..scenarios.connect import (  # noqa: F401 (_publication_metadata re-export)
-    ConnectScenario,
-    _publication_metadata,
-)
+from ..scenarios.connect import ConnectScenario
 
 
 def run_connect(args, run_dir: Path = None, log_context=None):
