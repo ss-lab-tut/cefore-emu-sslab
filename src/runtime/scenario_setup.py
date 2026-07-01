@@ -29,6 +29,7 @@ from .bandwidth import parse_bw_args, set_link_bandwidth
 from .bridge import (
     attach_external_interface,
     BridgeManager,
+    cleanup_external_bridges,
     parse_ext_args,
     setup_bridges,
 )
@@ -84,6 +85,64 @@ class SetupResult:
     daemon_fleet: DaemonFleet
     cache_node_set: set[int]
     fib_routes: Any
+
+
+@dataclass(frozen=True)
+class TeardownSpec:
+    """Policy and resources for the common scenario teardown recipe.
+
+    This is intentionally narrower than ``ScenarioSetupSpec``: teardown only
+    needs fleet shape, optional root-bridge cleanup, and whether the legacy
+    external bridge cleanup stage is opted in. The fleet timeout/readiness
+    fields are pass-through parity for fallback ``build_fleet`` construction;
+    teardown itself does not call ``wait_ready()``.
+    """
+
+    host_count: int
+    csmgrd_host_ids: set[int]
+    fleet_run_dir: Path
+    daemon_fleet: DaemonFleet | None = None
+    fleet_cefnetd_timeout: int = 10
+    fleet_readiness_policy: str = "warn"
+    bridge_manager: BridgeManager | None = None
+    cleanup_external_bridges: bool = False
+
+
+@dataclass(frozen=True)
+class TeardownResult:
+    """Failures collected from independent teardown stages."""
+
+    failures: list[tuple[str, BaseException]]
+
+
+def teardown_scenario(net, spec: TeardownSpec) -> TeardownResult:
+    """Run daemon and bridge teardown stages without raising stage failures.
+
+    Fallback fleet construction is deliberately outside the guarded stages,
+    matching the existing scenario teardown behavior where invalid fleet shape
+    is a programming error rather than a recoverable cleanup failure.
+    """
+    failures: list[tuple[str, BaseException]] = []
+    fleet = spec.daemon_fleet or build_fleet(
+        net,
+        spec.host_count,
+        spec.csmgrd_host_ids,
+        spec.fleet_run_dir,
+        cefnetd_timeout=spec.fleet_cefnetd_timeout,
+        readiness_policy=spec.fleet_readiness_policy,
+    )
+    failures.extend(fleet.stop_all())
+    if spec.bridge_manager is not None:
+        try:
+            spec.bridge_manager.cleanup()
+        except BaseException as exc:
+            failures.append(("bridge_manager.cleanup", exc))
+    if spec.cleanup_external_bridges:
+        try:
+            cleanup_external_bridges()
+        except BaseException as exc:
+            failures.append(("cleanup_external_bridges", exc))
+    return TeardownResult(failures=failures)
 
 
 def _log_ifconfig(net, host_count: int) -> None:

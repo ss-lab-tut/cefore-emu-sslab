@@ -19,9 +19,13 @@ from ..core.paths import resolve_run_path
 from ..runtime.bridge import BridgeManager, parse_bridge_args
 from ..runtime.cache_strategy import KCentersStrategy
 from ..runtime.content_ops import ContentOperationRunner
-from ..runtime.daemon_fleet import build_fleet
 from ..runtime.results_sink import RecordingSink
-from ..runtime.scenario_setup import ScenarioSetupSpec, setup_scenario
+from ..runtime.scenario_setup import (
+    ScenarioSetupSpec,
+    TeardownSpec,
+    setup_scenario,
+    teardown_scenario,
+)
 from ..runtime.scheduler import EventScheduler
 from ..core.roles import assign_roles
 from ..runtime.template import provision_node_dirs
@@ -189,23 +193,15 @@ class ConnectScenario(BaseScenario):
             sys.stderr = self.log_context["tee_stderr"]
 
     def teardown(self, net):
-        """Stop daemons and clean up bridges.
-
-        Each stage is attempted independently; failures are accumulated and
-        raised as an aggregate so a single daemon-stop failure cannot skip
-        bridge_manager.cleanup().
-        """
-        teardown_failures: list[tuple[str, BaseException]] = []
-
-        fleet = self.daemon_fleet or build_fleet(
-            net, self.args.hosts, self.cache_node_set, self.run_dir
+        """Stop daemons and clean up bridges via the teardown seam."""
+        spec = TeardownSpec(
+            host_count=self.args.hosts,
+            csmgrd_host_ids=self.cache_node_set,
+            fleet_run_dir=self.run_dir,
+            daemon_fleet=self.daemon_fleet,
+            bridge_manager=self.bridge_manager,
+            cleanup_external_bridges=False,
         )
-        teardown_failures.extend(fleet.stop_all())
-
-        try:
-            self.bridge_manager.cleanup()
-        except BaseException as exc:
-            teardown_failures.append(("bridge_manager.cleanup", exc))
-
-        if teardown_failures:
-            _propagate_failures(None, teardown_failures)
+        result = teardown_scenario(net, spec)
+        if result.failures:
+            _propagate_failures(None, result.failures)

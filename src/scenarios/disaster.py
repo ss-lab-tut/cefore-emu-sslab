@@ -16,7 +16,6 @@ from ..core.paths import ensure_within_run_dir, resolve_run_path
 
 from ..runtime.bridge import (
     BridgeManager,
-    cleanup_external_bridges,
     parse_bridge_args,
 )
 from ..runtime.cache_strategy import KCentersStrategy, RandomCSModeStrategy
@@ -24,10 +23,14 @@ from ..runtime.command_runner import MininetCommandRunner
 from ..runtime.content_ops import ContentOperationRunner
 from ..runtime.monitoring import Monitor
 from ..runtime.results_sink import ResultsSink
-from ..runtime.scenario_setup import ScenarioSetupSpec, setup_scenario
+from ..runtime.scenario_setup import (
+    ScenarioSetupSpec,
+    TeardownSpec,
+    setup_scenario,
+    teardown_scenario,
+)
 from ..runtime.scheduler import EventScheduler
 from ..runtime.cefore import run_csmgrstatus, wait_for_cefnetd
-from ..runtime.daemon_fleet import build_fleet
 from ..core.parsing import parse_int_list
 from ..runtime.failure_manager import FlexibleFailureManager, periodic_host_flap
 from ..runtime.net_config import apply_fib_routes
@@ -592,41 +595,20 @@ class DisasterScenario(BaseScenario):
         archive_daemon_logs(self.args.hosts, dest)
 
     def teardown(self, net):
-        """Stop daemons and clean up bridges.
-
-        All cleanup stages are attempted independently. Failures are
-        accumulated and raised as an aggregate after all stages complete.
-        BaseException (not just Exception) is caught so that SystemExit,
-        KeyboardInterrupt, etc. during teardown do not abort remaining cleanup.
-        """
-        teardown_failures: list[tuple[str, BaseException]] = []
-
-        # Daemon stops — each host attempted independently inside the fleet
-        fleet = self.daemon_fleet or build_fleet(
-            net,
-            self.args.hosts,
-            self.cache_node_set,
-            self.run_dir,
-            cefnetd_timeout=getattr(self.args, "cefnetd_timeout", None) or 10,
-            readiness_policy="raise",
+        """Stop daemons and clean up bridges via the teardown seam."""
+        spec = TeardownSpec(
+            host_count=self.args.hosts,
+            csmgrd_host_ids=self.cache_node_set,
+            fleet_run_dir=self.run_dir,
+            daemon_fleet=self.daemon_fleet,
+            fleet_cefnetd_timeout=getattr(self.args, "cefnetd_timeout", None) or 10,
+            fleet_readiness_policy="raise",
+            bridge_manager=self.bridge_manager,
+            cleanup_external_bridges=True,
         )
-        teardown_failures.extend(fleet.stop_all())
-
-        # BridgeManager cleanup
-        try:
-            self.bridge_manager.cleanup()
-        except BaseException as exc:
-            teardown_failures.append(("bridge_manager.cleanup", exc))
-
-        # External bridge cleanup — always attempted
-        try:
-            cleanup_external_bridges()
-        except BaseException as exc:
-            teardown_failures.append(("cleanup_external_bridges", exc))
-
-        # Aggregate and raise
-        if teardown_failures:
-            _propagate_failures(None, teardown_failures)
+        result = teardown_scenario(net, spec)
+        if result.failures:
+            _propagate_failures(None, result.failures)
 
 
 def run_disaster_scenario(args, run_dir=None, log_context=None, debug_config=None):

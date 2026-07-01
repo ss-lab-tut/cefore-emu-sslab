@@ -9,16 +9,20 @@ from mininet.log import info
 
 from ..runtime.command_runner import MininetCommandRunner
 from ..runtime.cefore import run_cefgetfile, run_cefputfile
-from ..runtime.daemon_fleet import build_fleet
 from ..runtime.cache_strategy import RolesCacheStrategy
-from ..runtime.scenario_setup import ScenarioSetupSpec, setup_scenario
+from ..runtime.scenario_setup import (
+    ScenarioSetupSpec,
+    TeardownSpec,
+    setup_scenario,
+    teardown_scenario,
+)
 from ..core.addressing import AddressingScheme
 from ..core.roles import assign_roles
 from ..core.topology import TopologyModel
 from ..runtime.template import provision_node_dirs
 from ..runtime.topo import MeshTopo, max_possible_links, min_required_links
 
-from .base import BaseScenario
+from .base import BaseScenario, _propagate_failures
 
 
 class MeshScenario(BaseScenario):
@@ -128,10 +132,15 @@ class MeshScenario(BaseScenario):
             sys.exit(1)
 
     def teardown(self, net):
-        fleet = self.daemon_fleet or build_fleet(
-            net, self.host_num, self._csmgrd_host_ids(), self.run_dir
+        spec = TeardownSpec(
+            host_count=self.host_num,
+            csmgrd_host_ids=self._csmgrd_host_ids(),
+            fleet_run_dir=self.run_dir,
+            daemon_fleet=self.daemon_fleet,
         )
-        fleet.stop_all()
+        result = teardown_scenario(net, spec)
+        if result.failures:
+            _propagate_failures(None, result.failures)
 
     def _csmgrd_host_ids(self):
         return {

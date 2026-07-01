@@ -17,7 +17,10 @@ from src.runtime.cache_strategy import CacheContext, KCentersStrategy
 from src.runtime.scenario_setup import (
     ScenarioSetupSpec,
     SetupResult,
+    TeardownResult,
+    TeardownSpec,
     setup_scenario,
+    teardown_scenario,
 )
 
 
@@ -244,3 +247,176 @@ def test_fleet_options_forwarded_to_build_fleet(patched_seam):
     # csmgrd hosts come from the strategy's place() result.
     args, _ = bf.call_args
     assert {1} == set(args[2])
+
+# -- teardown seam ----------------------------------------------------------
+
+def test_teardown_uses_supplied_daemon_fleet_without_building():
+    fleet = MagicMock(name="daemon_fleet")
+    fleet.stop_all.return_value = []
+    spec = TeardownSpec(
+        host_count=3,
+        csmgrd_host_ids={1},
+        fleet_run_dir=Path("/tmp/run_dir"),
+        daemon_fleet=fleet,
+    )
+
+    with patch("src.runtime.scenario_setup.build_fleet") as build:
+        result = teardown_scenario(MagicMock(name="net"), spec)
+
+    build.assert_not_called()
+    fleet.stop_all.assert_called_once_with()
+    assert result == TeardownResult(failures=[])
+
+
+def test_teardown_fallback_forwards_fleet_shape_to_build_fleet():
+    fleet = MagicMock(name="daemon_fleet")
+    fleet.stop_all.return_value = []
+    net = MagicMock(name="net")
+    run_dir = Path("/tmp/disaster_run")
+    spec = TeardownSpec(
+        host_count=4,
+        csmgrd_host_ids={1, 3},
+        fleet_run_dir=run_dir,
+        fleet_cefnetd_timeout=25,
+        fleet_readiness_policy="raise",
+    )
+
+    with patch("src.runtime.scenario_setup.build_fleet", return_value=fleet) as build:
+        teardown_scenario(net, spec)
+
+    build.assert_called_once_with(
+        net,
+        4,
+        {1, 3},
+        run_dir,
+        cefnetd_timeout=25,
+        readiness_policy="raise",
+    )
+
+
+def test_teardown_order_is_fleet_then_bridge_manager_then_external_bridges():
+    calls: list[str] = []
+    fleet = MagicMock(name="daemon_fleet")
+    fleet.stop_all.side_effect = lambda: calls.append("fleet.stop_all") or []
+    bridge_manager = MagicMock(name="bridge_manager")
+    bridge_manager.cleanup.side_effect = lambda: calls.append("bridge_manager.cleanup")
+    spec = TeardownSpec(
+        host_count=2,
+        csmgrd_host_ids=set(),
+        fleet_run_dir=Path("/tmp/run_dir"),
+        daemon_fleet=fleet,
+        bridge_manager=bridge_manager,
+        cleanup_external_bridges=True,
+    )
+
+    with patch("src.runtime.scenario_setup.cleanup_external_bridges") as cleanup:
+        cleanup.side_effect = lambda: calls.append("cleanup_external_bridges")
+        teardown_scenario(MagicMock(name="net"), spec)
+
+    assert calls == [
+        "fleet.stop_all",
+        "bridge_manager.cleanup",
+        "cleanup_external_bridges",
+    ]
+
+
+def test_teardown_runs_bridge_cleanup_when_stop_all_returns_failures():
+    stop_error = RuntimeError("cefnetd stop failed")
+    fleet = MagicMock(name="daemon_fleet")
+    fleet.stop_all.return_value = [("stop_cefnetd h0", stop_error)]
+    bridge_manager = MagicMock(name="bridge_manager")
+    spec = TeardownSpec(
+        host_count=1,
+        csmgrd_host_ids=set(),
+        fleet_run_dir=Path("/tmp/run_dir"),
+        daemon_fleet=fleet,
+        bridge_manager=bridge_manager,
+    )
+
+    result = teardown_scenario(MagicMock(name="net"), spec)
+
+    bridge_manager.cleanup.assert_called_once_with()
+    assert result.failures == [("stop_cefnetd h0", stop_error)]
+
+
+def test_teardown_external_bridge_cleanup_is_opt_in():
+    fleet = MagicMock(name="daemon_fleet")
+    fleet.stop_all.return_value = []
+    spec = TeardownSpec(
+        host_count=1,
+        csmgrd_host_ids=set(),
+        fleet_run_dir=Path("/tmp/run_dir"),
+        daemon_fleet=fleet,
+        cleanup_external_bridges=False,
+    )
+
+    with patch("src.runtime.scenario_setup.cleanup_external_bridges") as cleanup:
+        teardown_scenario(MagicMock(name="net"), spec)
+
+    cleanup.assert_not_called()
+
+
+def test_teardown_skips_missing_bridge_manager():
+    fleet = MagicMock(name="daemon_fleet")
+    fleet.stop_all.return_value = []
+    spec = TeardownSpec(
+        host_count=1,
+        csmgrd_host_ids=set(),
+        fleet_run_dir=Path("/tmp/run_dir"),
+        daemon_fleet=fleet,
+        bridge_manager=None,
+    )
+
+    result = teardown_scenario(MagicMock(name="net"), spec)
+
+    assert result == TeardownResult(failures=[])
+
+
+def test_teardown_accumulates_failures_from_all_stages():
+    stop_error = RuntimeError("stop failed")
+    bridge_error = RuntimeError("bridge failed")
+    external_error = RuntimeError("external failed")
+    fleet = MagicMock(name="daemon_fleet")
+    fleet.stop_all.return_value = [("stop_cefnetd h0", stop_error)]
+    bridge_manager = MagicMock(name="bridge_manager")
+    bridge_manager.cleanup.side_effect = bridge_error
+    spec = TeardownSpec(
+        host_count=1,
+        csmgrd_host_ids=set(),
+        fleet_run_dir=Path("/tmp/run_dir"),
+        daemon_fleet=fleet,
+        bridge_manager=bridge_manager,
+        cleanup_external_bridges=True,
+    )
+
+    with patch(
+        "src.runtime.scenario_setup.cleanup_external_bridges",
+        side_effect=external_error,
+    ):
+        result = teardown_scenario(MagicMock(name="net"), spec)
+
+    assert result.failures == [
+        ("stop_cefnetd h0", stop_error),
+        ("bridge_manager.cleanup", bridge_error),
+        ("cleanup_external_bridges", external_error),
+    ]
+
+
+def test_teardown_all_success_returns_empty_result():
+    fleet = MagicMock(name="daemon_fleet")
+    fleet.stop_all.return_value = []
+    bridge_manager = MagicMock(name="bridge_manager")
+    spec = TeardownSpec(
+        host_count=2,
+        csmgrd_host_ids={0},
+        fleet_run_dir=Path("/tmp/run_dir"),
+        daemon_fleet=fleet,
+        bridge_manager=bridge_manager,
+        cleanup_external_bridges=True,
+    )
+
+    with patch("src.runtime.scenario_setup.cleanup_external_bridges"):
+        result = teardown_scenario(MagicMock(name="net"), spec)
+
+    assert result == TeardownResult(failures=[])
+

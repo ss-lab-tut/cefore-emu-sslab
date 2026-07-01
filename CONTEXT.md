@@ -91,6 +91,10 @@ _Avoid_: `_prepare_event_publishers` (removed), `_publication_metadata` (removed
 The policy bundle a scenario hands to the setup seam. Carries the topology snapshot (`mesh_links`, `scheme`, `host_count`, `publisher_ids`), the chosen `CacheStrategy`, fleet options (`fleet_run_dir`, `fleet_cefnetd_timeout`, `fleet_readiness_policy`), FIB inputs (`fib_k`, `fib_strategy`, `fib_uri_publishers`), optional bridges/bw/ext/PNG. Lives in `src/runtime/scenario_setup.py`; ordering is owned by the seam, not by spec fields.
 _Avoid_: per-scenario setup recipes, configure() copy-paste
 
+**TeardownSpec / TeardownResult / teardown_scenario**:
+The teardown-side seam symmetric with `setup_scenario`, living beside it in `src/runtime/scenario_setup.py`. `teardown_scenario(net, spec) -> TeardownResult` runs `fleet.stop_all()` → `bridge_manager.cleanup()` when present → `cleanup_external_bridges()` only when `spec.cleanup_external_bridges` opts in (currently disaster only). All four scenarios call it from `teardown()` and propagate non-empty `result.failures` through `_propagate_failures(None, result.failures)`, normalizing the old mesh/linear silent-discard behavior.
+_Avoid_: per-scenario teardown boilerplate, reintroducing mesh/linear silent-discard behavior
+
 **setup_scenario / SetupResult**:
 The single seam through which every scenario's network configuration walks the canonical order: `apply_ip_addr` → bridges → ifconfig log → bw → ext → render_png → cache_strategy.place → build_fleet + start + wait_ready → apply_fib → cefstatus + print_mesh_links. Returns `SetupResult(daemon_fleet, cache_node_set, fib_routes)` so the scenario can wire them back into `self.daemon_fleet` / `self.cache_node_set` / `self._fib_routes` for downstream (monitoring, webui, FIB-restore). All three scenarios (disaster, connect, mesh) use it; pre-canonical drift (connect's bw/ext-after-everything, mesh/connect `time.sleep(1)`, mesh debug print) was removed once smoke 12/12 confirmed it carried no semantic load.
 _Avoid_: per-scenario IP/bridge/cache/fleet/FIB sequencing, ordering knobs
@@ -113,10 +117,6 @@ _Avoid_: validation rules in loader.py, per-block hand-rolled if/elif chains, du
 1240 LOC の god-module が3つの独立 interface (external-NIC attach + 取消し用 state machine / `BridgeManager` root-namespace + NAT/proxy-ARP / `parse_bridge_args` 純 data) を同居させている。`bridge_external.py` / `bridge_root.py` / `bridge_args.py` に分割。Strong。memory `gate-bug-discovery` の候補3 (cleanup 二台帳統合) とは別角度 — こちらは「split-by-concern」、候補3 は「ledger 統一」。
 _Avoid_: cleanup-only 統一に絞ること (interface 3つ同居問題が残る)
 
-**候補4 — `teardown_scenario` seam で4 scenario の fleet-stop boilerplate を統合**:
-disaster.py:601-636 / connect.py:195-210 / mesh.py:130-134 / linear.py:82-85 で `fleet = self.daemon_fleet or build_fleet(...); failures.extend(fleet.stop_all())` を反復。`setup_scenario` と対称な `teardown_scenario(net, spec) → TeardownResult` を `src/runtime/scenario_setup.py` に。bridge cleanup は opt-in hook で disaster だけ追加。Worth exploring。
-_Avoid_: configure 経路に対称ある teardown を per-scenario に残すこと、build_fleet fallback drift を放置すること
-
 **候補6 — `runtime/result_detect.py` を Verdict に吸収**:
 74 LOC の薄い adapter。`detect_*` 5 関数は `from_runtime_*` Verdict factory の evidence-unpacking wrapper で、CONTEXT.md の Verdict `_Avoid_` リスト ("detect result") に名前が抵触。5 関数を `src/core/verdict.py` の runtime-adapter section に移管 + `timestamp_utc` は `src/core/paths.py` 等に分離 → `result_detect.py` 削除。Worth exploring。
 _Avoid_: 名前を `result_detect` のまま残すこと、Verdict factory と別モジュールに散らすこと
@@ -124,4 +124,3 @@ _Avoid_: 名前を `result_detect` のまま残すこと、Verdict factory と�
 **候補7 — `runtime/topo.py` を `runtime/mesh_topo.py` にリネーム**:
 `runtime/topo.py` (Mininet Topo subclasses) と `core/topology.py` (TopologyModel pure query) の名前近接 (4文字+1ディレクトリ差) が読者を混乱させる純 housekeeping。Speculative — 上記候補が片付いた後の cleanup pass で。
 _Avoid_: 単独でこのリネームに取り掛かること (他の deepening が optimal の後でまとめて)
-

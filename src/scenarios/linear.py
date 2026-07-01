@@ -14,10 +14,11 @@ from ..runtime.command_runner import MininetCommandRunner
 from ..runtime.cefore import run_cefgetfile, run_cefputfile
 from ..runtime.daemon_fleet import build_fleet
 from ..runtime.net_config import cefroute_add
+from ..runtime.scenario_setup import TeardownSpec, teardown_scenario
 from ..runtime.template import provision_node_dirs
 from ..runtime.topo import LineTopo
 
-from .base import BaseScenario
+from .base import BaseScenario, _propagate_failures
 
 
 class LinearScenario(BaseScenario):
@@ -80,10 +81,15 @@ class LinearScenario(BaseScenario):
             sys.exit(1)
 
     def teardown(self, net):
-        fleet = self.daemon_fleet or build_fleet(
-            net, self.host_num, self._csmgrd_host_ids(), self.run_dir
+        spec = TeardownSpec(
+            host_count=self.host_num,
+            csmgrd_host_ids=self._csmgrd_host_ids(),
+            fleet_run_dir=self.run_dir,
+            daemon_fleet=self.daemon_fleet,
         )
-        fleet.stop_all()
+        result = teardown_scenario(net, spec)
+        if result.failures:
+            _propagate_failures(None, result.failures)
 
     def _csmgrd_host_ids(self):
         return {

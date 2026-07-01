@@ -184,7 +184,7 @@ class TestL3DaemonStop:
         ):
             with patch("src.runtime.daemon_fleet.stop_csmgrd"):
                 scenario.bridge_manager.cleanup = MagicMock()
-                with patch("src.scenarios.disaster.cleanup_external_bridges"):
+                with patch("src.runtime.scenario_setup.cleanup_external_bridges"):
                     net = MagicMock()
 
                     try:
@@ -218,7 +218,7 @@ class TestL4DualCleanupFailure:
         )
 
         with patch(
-            "src.scenarios.disaster.cleanup_external_bridges",
+            "src.runtime.scenario_setup.cleanup_external_bridges",
             side_effect=RuntimeError("external bridge failed"),
         ):
             with patch("src.runtime.daemon_fleet.stop_cefnetd"):
@@ -262,7 +262,7 @@ class TestL5PrimaryAndCleanupFailure:
             side_effect=TeardownError([("cleanup failure", 1, "error")])
         )
 
-        with patch("src.scenarios.disaster.cleanup_external_bridges"):
+        with patch("src.runtime.scenario_setup.cleanup_external_bridges"):
             with patch("src.runtime.daemon_fleet.stop_cefnetd"):
                 with patch("src.runtime.daemon_fleet.stop_csmgrd"):
                     net = MagicMock()
@@ -416,7 +416,7 @@ class TestP01SystemExitAggregationStrong:
             side_effect=TeardownError([("nat restore", 1, "error")])
         )
 
-        with patch("src.scenarios.disaster.cleanup_external_bridges"):
+        with patch("src.runtime.scenario_setup.cleanup_external_bridges"):
             with patch("src.runtime.daemon_fleet.stop_cefnetd"):
                 with patch("src.runtime.daemon_fleet.stop_csmgrd"):
                     with patch("src.scenarios.base.cleanup_all"):
@@ -791,7 +791,7 @@ class TestS5MultipleShutdownFailures:
             side_effect=TeardownError([("nat restore", 1, "error")])
         )
 
-        with patch("src.scenarios.disaster.cleanup_external_bridges"):
+        with patch("src.runtime.scenario_setup.cleanup_external_bridges"):
             with patch("src.runtime.daemon_fleet.stop_cefnetd"):
                 with patch("src.runtime.daemon_fleet.stop_csmgrd"):
                     with patch("src.scenarios.base.cleanup_all"):
@@ -840,7 +840,7 @@ class TestS6SystemExitAggregation:
             side_effect=TeardownError([("nat restore", 1, "error")])
         )
 
-        with patch("src.scenarios.disaster.cleanup_external_bridges"):
+        with patch("src.runtime.scenario_setup.cleanup_external_bridges"):
             with patch("src.runtime.daemon_fleet.stop_cefnetd"):
                 with patch("src.runtime.daemon_fleet.stop_csmgrd"):
                     with patch("src.scenarios.base.cleanup_all"):
@@ -927,7 +927,7 @@ class TestS7KeyboardInterrupt:
             side_effect=TeardownError([("nat", 1, "fail")])
         )
 
-        with patch("src.scenarios.disaster.cleanup_external_bridges"):
+        with patch("src.runtime.scenario_setup.cleanup_external_bridges"):
             with patch("src.runtime.daemon_fleet.stop_cefnetd"):
                 with patch("src.runtime.daemon_fleet.stop_csmgrd"):
                     with patch("src.scenarios.base.cleanup_all"):
@@ -974,7 +974,7 @@ class TestBaseExceptionMixedCleanup:
             side_effect=TeardownError([("nat restore", 1, "error")])
         )
 
-        with patch("src.scenarios.disaster.cleanup_external_bridges"):
+        with patch("src.runtime.scenario_setup.cleanup_external_bridges"):
             with patch("src.runtime.daemon_fleet.stop_cefnetd"):
                 with patch("src.runtime.daemon_fleet.stop_csmgrd"):
                     with patch("src.scenarios.base.cleanup_all"):
