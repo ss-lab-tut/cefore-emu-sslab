@@ -10,7 +10,7 @@ from mininet.link import TCLink
 from mininet.log import info
 
 from ..core.addressing import AddressingScheme, DEFAULT_NETWORK_CIDR
-from ..core.events import content_event_types, extract_publications
+from ..core.events import extract_publications
 from ..core.flap_state import FlapState
 from ..core.paths import ensure_within_run_dir, resolve_run_path
 
@@ -21,6 +21,7 @@ from ..runtime.bridge import (
 from ..runtime.cache_strategy import KCentersStrategy, RandomCSModeStrategy
 from ..runtime.command_runner import MininetCommandRunner
 from ..runtime.content_ops import ContentOperationRunner
+from ..runtime.event_batch import EventBatchSpec, run_event_batch
 from ..runtime.monitoring import Monitor
 from ..runtime.results_sink import ResultsSink
 from ..runtime.scenario_setup import (
@@ -29,7 +30,6 @@ from ..runtime.scenario_setup import (
     setup_scenario,
     teardown_scenario,
 )
-from ..runtime.scheduler import EventScheduler
 from ..runtime.cefore import run_csmgrstatus, wait_for_cefnetd
 from ..core.parsing import parse_int_list
 from ..runtime.failure_manager import FlexibleFailureManager, periodic_host_flap
@@ -44,7 +44,6 @@ from .base import BaseScenario, _propagate_failures
 def _artifact_path(run_dir: Path, raw_path, default_name):
     """Resolve output file path under run_dir."""
     return resolve_run_path(run_dir, raw_path, default_name)
-
 
 
 def _resolve_results_path(args, run_dir: Path):
@@ -130,7 +129,9 @@ class DisasterScenario(BaseScenario):
         for uri in sorted(puts - gets):
             info(f"[warning] put event for {uri} has no matching get event\n")
         for uri in sorted(pubs - subs):
-            info(f"[warning] pubsub_pub event for {uri} has no matching pubsub_sub event\n")
+            info(
+                f"[warning] pubsub_pub event for {uri} has no matching pubsub_sub event\n"
+            )
 
     def build_topology(self):
         """Create mesh topology."""
@@ -194,6 +195,7 @@ class DisasterScenario(BaseScenario):
             import time as _time
             from ..webui.state import DashboardState
             from ..webui.server import WebUIServer
+
             self.dashboard = DashboardState(
                 host_count=args.hosts,
                 cache_nodes=self.cache_node_set,
@@ -212,14 +214,24 @@ class DisasterScenario(BaseScenario):
                 output = webui_runner.run(
                     f"h{idx}", ["cefstatus", "-d", f"./h{idx}"]
                 ).stdout
-                self.dashboard.record_monitor({
-                    "elapsed_sec": 0.0, "type": "cefstatus", "host": idx, "output": output,
-                })
+                self.dashboard.record_monitor(
+                    {
+                        "elapsed_sec": 0.0,
+                        "type": "cefstatus",
+                        "host": idx,
+                        "output": output,
+                    }
+                )
             for idx in sorted(self.cache_node_set):
                 output = run_csmgrstatus(net, idx, host="127.0.0.1")
-                self.dashboard.record_monitor({
-                    "elapsed_sec": 0.0, "type": "csmgrstatus", "host": idx, "output": output,
-                })
+                self.dashboard.record_monitor(
+                    {
+                        "elapsed_sec": 0.0,
+                        "type": "csmgrstatus",
+                        "host": idx,
+                        "output": output,
+                    }
+                )
 
     def _build_cache_strategy(self):
         """Choose the CacheStrategy that matches ``args.cache_config.strategy``."""
@@ -249,7 +261,11 @@ class DisasterScenario(BaseScenario):
             info(f"[failure] restored dynamic FIB entries for h{host_idx}\n")
 
     def _make_content_runner(self, net, events_config, phase="event"):
-        """Create a ContentOperationRunner for the given phase."""
+        """Create the warmup-only ContentOperationRunner.
+
+        Batch event paths are constructed by run_event_batch; warmup stays
+        runner-only because it submits cache-prefetch gets directly.
+        """
         startup_grace = float(getattr(self.args, "pubsub_sub_startup_grace", 1.0))
         pub_lifetime_by_uri = {}
         for ev in events_config:
@@ -315,9 +331,7 @@ class DisasterScenario(BaseScenario):
         if warmup_gets:
             warmup_ops = warmup_gets
         else:
-            put_uris = {
-                ev["uri"] for ev in events_config if ev.get("type") == "put"
-            }
+            put_uris = {ev["uri"] for ev in events_config if ev.get("type") == "put"}
             if not put_uris:
                 return True
             if warmup_cache_only:
@@ -329,9 +343,7 @@ class DisasterScenario(BaseScenario):
             if not warmup_hosts:
                 return True
             warmup_ops = [
-                {"host": h, "uri": u}
-                for u in sorted(put_uris)
-                for h in warmup_hosts
+                {"host": h, "uri": u} for u in sorted(put_uris) for h in warmup_hosts
             ]
 
         if not warmup_ops:
@@ -360,7 +372,7 @@ class DisasterScenario(BaseScenario):
         monitoring_config = dict(getattr(args, "monitoring", None) or {})
         if self.dashboard is not None and not monitoring_config.get("targets"):
             monitoring_config["targets"] = [
-                {"type": "cefstatus",   "hosts": "all"},
+                {"type": "cefstatus", "hosts": "all"},
                 {"type": "csmgrstatus", "hosts": "cache"},
             ]
             monitoring_config.setdefault("interval", 5)
@@ -387,25 +399,27 @@ class DisasterScenario(BaseScenario):
 
     def _run_normal_experiment(self, net, events_config, origin, use_cli):
         """Run interactive or non-autotest execution with all events together."""
-        ctypes = content_event_types()
-        has_content_events = any(
-            e.get("type") in ctypes for e in events_config
-        )
         self._start_failure_manager(net, use_cli)
-
-        if has_content_events:
-            self.content_runner = self._make_content_runner(net, events_config)
-            self.content_runner.start()
-        if events_config:
-            self.event_scheduler = EventScheduler(
-                net, events_config,
-                mesh_links=self.topo.mesh_links,
+        result = run_event_batch(
+            net,
+            EventBatchSpec(
+                events=events_config,
                 run_dir=self.run_dir,
-                content_runner=self.content_runner,
-                start_time=origin,
+                mesh_links=self.topo.mesh_links,
                 sink=self.results_sink,
-            )
-            self.event_scheduler.start()
+                flap_state=self.flap_state,
+                seed_label=self.seed_label,
+                uri_publishers=self.uri_publishers,
+                startup_grace=float(
+                    getattr(self.args, "pubsub_sub_startup_grace", 1.0)
+                ),
+                phase="event",
+                start_time=origin,
+                wait_timeout=None,
+            ),
+        )
+        self.content_runner = result.content_runner
+        self.event_scheduler = result.event_scheduler
 
     def _run_autotest_experiment(self, net, events_config, origin, use_cli):
         """Run seed, warmup, failure and evaluation phases in order."""
@@ -416,25 +430,27 @@ class DisasterScenario(BaseScenario):
             raise ValueError("autotest does not support repeat on put events")
 
         if put_events:
-            put_runner = self._make_content_runner(net, put_events, phase="event")
-            put_scheduler = EventScheduler(
-                net, put_events,
-                mesh_links=self.topo.mesh_links,
-                run_dir=self.run_dir,
-                content_runner=put_runner,
-                start_time=origin,
-                sink=self.results_sink,
+            run_event_batch(
+                net,
+                EventBatchSpec(
+                    events=put_events,
+                    run_dir=self.run_dir,
+                    mesh_links=self.topo.mesh_links,
+                    sink=self.results_sink,
+                    flap_state=self.flap_state,
+                    seed_label=self.seed_label,
+                    uri_publishers=self.uri_publishers,
+                    startup_grace=float(
+                        getattr(self.args, "pubsub_sub_startup_grace", 1.0)
+                    ),
+                    phase="event",
+                    start_time=origin,
+                    wait_timeout=300,
+                    deadline_policy="raise",
+                    scheduler_label="seed event scheduling",
+                    runner_label="seed content operations",
+                ),
             )
-            put_runner.start()
-            try:
-                put_scheduler.start()
-                if not put_scheduler.wait_all(timeout=300):
-                    raise RuntimeError("seed event scheduling exceeded 300s deadline")
-                if not put_runner.wait_all(timeout=300):
-                    raise RuntimeError("seed content operations exceeded 300s deadline")
-            finally:
-                put_scheduler.stop()
-                put_runner.stop()
 
         if not self._run_warmup(net, events_config):
             raise RuntimeError("warmup content operations did not complete")
@@ -453,24 +469,26 @@ class DisasterScenario(BaseScenario):
             )
 
         self._start_failure_manager(net, use_cli)
-        # Eval phase = all content types minus "put": put events were already
-        # seeded and awaited in the preceding seed phase (see put_events above).
-        eval_content_types = content_event_types() - {"put"}
-        if any(ev.get("type") in eval_content_types for ev in eval_events):
-            self.content_runner = self._make_content_runner(
-                net, eval_events, phase="eval"
-            )
-            self.content_runner.start()
-        if eval_events:
-            self.event_scheduler = EventScheduler(
-                net, eval_events,
-                mesh_links=self.topo.mesh_links,
+        result = run_event_batch(
+            net,
+            EventBatchSpec(
+                events=eval_events,
                 run_dir=self.run_dir,
-                content_runner=self.content_runner,
-                start_time=origin,
+                mesh_links=self.topo.mesh_links,
                 sink=self.results_sink,
-            )
-            self.event_scheduler.start()
+                flap_state=self.flap_state,
+                seed_label=self.seed_label,
+                uri_publishers=self.uri_publishers,
+                startup_grace=float(
+                    getattr(self.args, "pubsub_sub_startup_grace", 1.0)
+                ),
+                phase="eval",
+                start_time=origin,
+                wait_timeout=None,
+            ),
+        )
+        self.content_runner = result.content_runner
+        self.event_scheduler = result.event_scheduler
 
     def run_experiment(self, net):
         """Run the disaster experiment with event-driven content operations."""

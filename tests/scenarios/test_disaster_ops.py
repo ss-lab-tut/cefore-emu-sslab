@@ -7,6 +7,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from src.runtime.event_batch import EventBatchResult
 from src.scenarios.disaster import DisasterScenario
 
 
@@ -72,6 +73,7 @@ def test_legacy_content_keys_do_not_drive_publishers(tmp_path):
 
 def test_random_cache_config_yields_random_cs_mode_strategy(tmp_path):
     from src.runtime.cache_strategy import RandomCSModeStrategy
+
     scenario = DisasterScenario(
         _make_args(
             cache_config={"strategy": "random"},
@@ -88,6 +90,7 @@ def test_random_cache_config_yields_random_cs_mode_strategy(tmp_path):
 
 def test_non_random_cache_config_yields_kcenters_strategy(tmp_path):
     from src.runtime.cache_strategy import KCentersStrategy
+
     cfg = {"strategy": "manual", "nodes": [{"id": 1}]}
     scenario = DisasterScenario(
         _make_args(
@@ -110,6 +113,7 @@ def test_non_random_cache_config_yields_kcenters_strategy(tmp_path):
 
 def test_missing_cache_config_defaults_to_kcenters_strategy(tmp_path):
     from src.runtime.cache_strategy import KCentersStrategy
+
     scenario = DisasterScenario(
         _make_args(cache_config=None, cache_count=0, down_count=0),
         run_dir=tmp_path,
@@ -142,23 +146,38 @@ def test_autotest_put_only_duration_zero_skips_failure_phase(tmp_path):
         "file": "./sample-putfile",
     }
     scenario = DisasterScenario(
-        _make_args(no_cli=True, results_json="results.json", duration=0, events=[event]),
+        _make_args(
+            no_cli=True, results_json="results.json", duration=0, events=[event]
+        ),
         run_dir=tmp_path,
     )
     scenario.topo = SimpleNamespace(mesh_links=[])
-    runner = MagicMock()
-    runner.wait_all.return_value = True
-    scheduler = MagicMock()
-    scheduler.wait_all.return_value = True
+    net = MagicMock()
     with (
-        patch.object(scenario, "_make_content_runner", return_value=runner),
         patch.object(scenario, "_run_warmup", return_value=True),
         patch.object(scenario, "_start_failure_manager") as start_failure,
-        patch("src.scenarios.disaster.EventScheduler", return_value=scheduler),
+        patch(
+            "src.scenarios.disaster.run_event_batch",
+            return_value=EventBatchResult(None, None, True, []),
+        ) as run_batch,
     ):
-        scenario._run_autotest_experiment(MagicMock(), [event], time.monotonic(), False)
-    scheduler.stop.assert_called_once()
-    runner.stop.assert_called_once()
+        scenario._run_autotest_experiment(net, [event], time.monotonic(), False)
+    run_batch.assert_called_once()
+    assert run_batch.call_args.args[0] is net
+    spec = run_batch.call_args.args[1]
+    assert spec.events == [event]
+    assert spec.run_dir == tmp_path
+    assert spec.mesh_links == scenario.topo.mesh_links
+    assert spec.sink is scenario.results_sink
+    assert spec.flap_state is scenario.flap_state
+    assert spec.seed_label == scenario.seed_label
+    assert spec.uri_publishers == {"ccnx:/test/sample": 2}
+    assert spec.startup_grace == 1.0
+    assert spec.phase == "event"
+    assert spec.wait_timeout == 300
+    assert spec.deadline_policy == "raise"
+    assert spec.scheduler_label == "seed event scheduling"
+    assert spec.runner_label == "seed content operations"
     start_failure.assert_not_called()
 
 
@@ -172,7 +191,9 @@ def test_autotest_rejects_repeated_put(tmp_path):
         "repeat": {"interval": 1},
     }
     scenario = DisasterScenario(
-        _make_args(no_cli=True, results_json="results.json", duration=1, events=[event]),
+        _make_args(
+            no_cli=True, results_json="results.json", duration=1, events=[event]
+        ),
         run_dir=tmp_path,
     )
     with pytest.raises(ValueError, match="repeat"):
@@ -182,6 +203,7 @@ def test_autotest_rejects_repeated_put(tmp_path):
 @patch("src.scenarios.disaster.info")
 def test_empty_events_warn_in_interactive_execution(mock_info, tmp_path):
     scenario = DisasterScenario(_make_args(no_cli=False), run_dir=tmp_path)
+    scenario.topo = SimpleNamespace(mesh_links=[])
     with (
         patch.object(scenario, "_start_failure_manager"),
         patch.object(scenario, "_start_monitoring"),
