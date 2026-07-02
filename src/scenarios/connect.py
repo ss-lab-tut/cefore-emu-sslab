@@ -18,7 +18,7 @@ from ..core.flap_state import FlapState
 from ..core.paths import resolve_run_path
 from ..runtime.bridge import BridgeManager, parse_bridge_args
 from ..runtime.cache_strategy import KCentersStrategy
-from ..runtime.content_ops import ContentOperationRunner
+from ..runtime.event_batch import EventBatchSpec, run_event_batch
 from ..runtime.results_sink import RecordingSink
 from ..runtime.scenario_setup import (
     ScenarioSetupSpec,
@@ -26,7 +26,6 @@ from ..runtime.scenario_setup import (
     setup_scenario,
     teardown_scenario,
 )
-from ..runtime.scheduler import EventScheduler
 from ..core.roles import assign_roles
 from ..runtime.template import provision_node_dirs
 from ..runtime.topo import MeshTopo
@@ -141,43 +140,24 @@ class ConnectScenario(BaseScenario):
     def run_experiment(self, net):
         if not self.publication_events:
             return
-        runner = ContentOperationRunner(
-            net,
+        spec = EventBatchSpec(
+            events=self.publication_events,
             run_dir=self.run_dir,
+            mesh_links=self.topo.mesh_links,
             sink=RecordingSink(),
             flap_state=FlapState(),
             seed_label=self.seed_label,
             uri_publishers=self.uri_publishers,
             phase="seed",
+            start_time=None,
+            wait_timeout=60,
+            deadline_policy="warn",
+            scheduler_label="publication event scheduling",
+            runner_label="publication seed operations",
         )
-        scheduler = EventScheduler(
-            net,
-            self.publication_events,
-            mesh_links=self.topo.mesh_links,
-            run_dir=self.run_dir,
-            content_runner=runner,
-        )
-        runner.start()
-        try:
-            scheduler.start()
-            if not scheduler.wait_all(timeout=60):
-                info("[warning] publication event scheduling exceeded 60s deadline\n")
-            if not runner.wait_all(timeout=60):
-                info("[warning] publication seed operations exceeded 60s deadline\n")
-        finally:
-            # Stop both independently so a scheduler.stop() failure cannot leak
-            # the runner; aggregate any failures.
-            stop_failures: list[tuple[str, BaseException]] = []
-            try:
-                scheduler.stop()
-            except BaseException as exc:
-                stop_failures.append(("scheduler.stop", exc))
-            try:
-                runner.stop()
-            except BaseException as exc:
-                stop_failures.append(("runner.stop", exc))
-            if stop_failures:
-                _propagate_failures(None, stop_failures)
+        result = run_event_batch(net, spec)
+        if result.failures:
+            _propagate_failures(None, result.failures)
 
     def should_run_cli(self):
         return not getattr(self.args, "no_cli", False)

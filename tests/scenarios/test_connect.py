@@ -6,6 +6,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from src.runtime.daemon_fleet import DaemonFleet
+from src.runtime.event_batch import EventBatchResult
 from src.scenarios.connect import ConnectScenario
 
 
@@ -30,9 +31,42 @@ def test_should_run_cli_reflects_no_cli(tmp_path):
 
 def test_run_experiment_without_events_is_noop(tmp_path):
     scenario = _make_scenario(tmp_path)
-    with patch("src.scenarios.connect.ContentOperationRunner") as runner_cls:
+    with patch("src.scenarios.connect.run_event_batch") as run_batch:
         scenario.run_experiment(MagicMock())
-    runner_cls.assert_not_called()
+    run_batch.assert_not_called()
+
+
+def test_run_experiment_delegates_publications_to_event_batch(tmp_path):
+    event = {
+        "at": 0,
+        "type": "put",
+        "host": 1,
+        "uri": "ccnx:/test/seed",
+        "file": "./sample-putfile",
+    }
+    scenario = _make_scenario(tmp_path, events=[event])
+    scenario.topo = SimpleNamespace(mesh_links=[{"switch": 0, "hosts": [0, 1]}])
+    net = MagicMock()
+
+    with patch(
+        "src.scenarios.connect.run_event_batch",
+        return_value=EventBatchResult(None, None, True, []),
+    ) as run_batch:
+        scenario.run_experiment(net)
+
+    run_batch.assert_called_once()
+    assert run_batch.call_args.args[0] is net
+    spec = run_batch.call_args.args[1]
+    assert spec.events == [event]
+    assert spec.run_dir == tmp_path
+    assert spec.mesh_links == scenario.topo.mesh_links
+    assert spec.uri_publishers == {"ccnx:/test/seed": 1}
+    assert spec.phase == "seed"
+    assert spec.start_time is None
+    assert spec.wait_timeout == 60
+    assert spec.deadline_policy == "warn"
+    assert spec.scheduler_label == "publication event scheduling"
+    assert spec.runner_label == "publication seed operations"
 
 
 def _seed_fleet(scenario, net):
