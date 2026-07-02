@@ -1,6 +1,7 @@
 """Validation helpers for cefore-emu configuration dictionaries."""
 
 import ipaddress
+from dataclasses import dataclass
 from typing import Any
 
 from ..events import EVENT_SCHEMA, event_types, publication_event_types
@@ -19,7 +20,9 @@ def _is_number(value: Any) -> bool:
     return isinstance(value, (int, float)) and not isinstance(value, bool)
 
 
-def _validate_number_option(errors, prefix, options, field, *, integer=False, minimum=0):
+def _validate_number_option(
+    errors, prefix, options, field, *, integer=False, minimum=0
+):
     if field not in options:
         return
     value = options[field]
@@ -34,17 +37,41 @@ def _validate_algo_option(errors, prefix, options, field):
         errors.append(f"{prefix}.{field} must be one of: {', '.join(VALID_ALGOS)}")
 
 
+@dataclass(frozen=True)
+class OptionSpec:
+    """Canonical option identity shared by config validation and merge code."""
+
+    key: str
+    kind: str
+    default: Any = None
+    minimum: int | float | None = None
+    nullable: bool = False
+    message: str | None = None
+    flag: str | None = None
+    action: Any = None
+    choices: tuple[Any, ...] | None = None
+    metavar: str | None = None
+    help: str | None = None
+    block: tuple[str, ...] = ()
+    config_allowed: bool = True
+    cli_allowed: bool = True
+    special_config_merge: bool = False
+
+
 class _Spec:
     """Field validation spec for table-driven flat-key checking."""
 
-    __slots__ = ("key", "kind", "nullable", "minimum", "message")
+    __slots__ = ("key", "kind", "nullable", "minimum", "message", "choices")
 
-    def __init__(self, key, kind, nullable=False, minimum=None, message=None):
+    def __init__(
+        self, key, kind, nullable=False, minimum=None, message=None, choices=None
+    ):
         self.key = key
         self.kind = kind
         self.nullable = nullable
         self.minimum = minimum
         self.message = message
+        self.choices = choices
 
 
 def _flat_key_error(spec):
@@ -69,41 +96,367 @@ def _flat_key_error(spec):
         if spec.minimum is not None:
             return f"{spec.key} must be a number >= {spec.minimum}{suffix}"
         return f"{spec.key} must be a number{suffix}"
+    if k == "enum":
+        return f"{spec.key} must be one of: {', '.join(spec.choices)}"
+    if k == "structured":
+        return f"{spec.key} must be a list"
     return f"{spec.key} is invalid"
 
 
+OPTION_SPECS = {
+    "hosts": OptionSpec(
+        "hosts",
+        "int",
+        default=5,
+        minimum=3,
+        flag="--hosts",
+        help="number of hosts",
+        block=("common", "linear"),
+    ),
+    "switches": OptionSpec(
+        "switches",
+        "int",
+        default=10,
+        minimum=2,
+        flag="--switches",
+        help="number of switches (>= 2)",
+        block=("mesh",),
+    ),
+    "seed": OptionSpec(
+        "seed",
+        "int",
+        nullable=True,
+        flag="--seed",
+        help="random seed",
+        block=("common",),
+    ),
+    "topo_png": OptionSpec(
+        "topo_png",
+        "str",
+        nullable=True,
+        flag="--topo-png",
+        help="write topology PNG to this path",
+        block=("common",),
+    ),
+    "topo_layout": OptionSpec(
+        "topo_layout",
+        "enum",
+        default="spring",
+        choices=("spring", "kamada_kawai", "circular"),
+        metavar="TOPO_LAYOUT",
+        flag="--topo-layout",
+        help="topology layout: spring, kamada_kawai, or circular",
+        block=("common",),
+    ),
+    "k": OptionSpec(
+        "k",
+        "int",
+        default=2,
+        minimum=1,
+        flag="--k",
+        help="number of shortest paths per destination",
+        block=("mesh",),
+    ),
+    "host_degree_min": OptionSpec(
+        "host_degree_min",
+        "int",
+        default=1,
+        minimum=1,
+        flag="--host-degree-min",
+        help="minimum number of switches per host (>=1)",
+        block=("mesh",),
+    ),
+    "host_degree_max": OptionSpec(
+        "host_degree_max",
+        "int",
+        default=2,
+        flag="--host-degree-max",
+        help="maximum number of switches per host",
+        block=("mesh",),
+    ),
+    "node_per_switch": OptionSpec(
+        "node_per_switch",
+        "int",
+        default=2,
+        minimum=0,
+        flag="--node-per-switch",
+        help="max hosts per switch (0=unlimited, 2=one switch per link)",
+        block=("mesh",),
+    ),
+    "switch_use_all": OptionSpec(
+        "switch_use_all",
+        "bool",
+        default=False,
+        flag="--switch-use-all",
+        action="store_true",
+        help="create switches up to --switches and distribute extra links evenly",
+        block=("mesh",),
+    ),
+    "num": OptionSpec(
+        "num",
+        "int",
+        minimum=1,
+        flag="--num",
+        help="experiment number (enables log directory output)",
+        block=("common", "linear"),
+    ),
+    "output_dir": OptionSpec(
+        "output_dir",
+        "str",
+        default="logs",
+        flag="--output-dir",
+        help="base output directory (default: logs)",
+        block=("common", "linear"),
+    ),
+    "results_json": OptionSpec(
+        "results_json",
+        "str",
+        nullable=True,
+        default="",
+        flag="--results-json",
+        help="write eval get results to JSON under output directory",
+        block=("disaster",),
+    ),
+    "timestamp": OptionSpec(
+        "timestamp",
+        "bool",
+        default=False,
+        flag="--timestamp",
+        action="store_true",
+        help="add timestamp to output directory name",
+        block=("common", "linear"),
+    ),
+    "no_cli": OptionSpec(
+        "no_cli",
+        "bool",
+        default=False,
+        flag="--no-cli",
+        action="store_true",
+        help="skip interactive CLI (flap output visible on stdout)",
+        block=("disaster",),
+    ),
+    "no_script_log": OptionSpec(
+        "no_script_log",
+        "bool",
+        default=False,
+        flag="--no-script-log",
+        action="store_true",
+        help="disable script log output",
+        block=("disaster",),
+    ),
+    "duration": OptionSpec(
+        "duration",
+        "int",
+        default=0,
+        minimum=0,
+        flag="--duration",
+        help="eval phase duration in seconds for --no-cli (0: single cycle)",
+        block=("disaster",),
+    ),
+    "cache_default_rct_ms": OptionSpec(
+        "cache_default_rct_ms",
+        "int",
+        nullable=True,
+        minimum=1000,
+        flag="--cache-default-rct-ms",
+        help="override CACHE_DEFAULT_RCT(ms) for cache nodes",
+        block=("disaster",),
+    ),
+    "publisher_host": OptionSpec(
+        "publisher_host",
+        "int",
+        nullable=True,
+        flag="--publisher-host",
+        help="explicit publisher host used for publisher-down metric",
+        block=("disaster",),
+    ),
+    "pubsub_sub_startup_grace": OptionSpec(
+        "pubsub_sub_startup_grace",
+        "number",
+        default=1.0,
+        minimum=0,
+        message="pubsub_sub_startup_grace must be a non-negative number",
+        flag="--pubsub-sub-startup-grace",
+        help="seconds to wait after starting cefsubfile before launching cefpubfile (default: 1.0)",
+        block=("disaster",),
+    ),
+    "warmup_get_interval": OptionSpec(
+        "warmup_get_interval",
+        "number",
+        default=0,
+        minimum=0,
+        message="warmup_get_interval must be a non-negative number",
+        flag="--warmup-get-interval",
+        help="seconds between warmup gets (0=no delay)",
+        block=("disaster",),
+    ),
+    "warmup_only_cache_nodes": OptionSpec(
+        "warmup_only_cache_nodes",
+        "bool",
+        default=True,
+        flag="--warmup-only-cache-nodes",
+        action="BooleanOptionalAction",
+        help="restrict warmup gets to cache nodes (default: true)",
+        block=("disaster",),
+    ),
+    "down_interval": OptionSpec(
+        "down_interval",
+        "int",
+        default=30,
+        minimum=0,
+        flag="--down-interval",
+        help="seconds between down events (0 to disable)",
+        block=("disaster",),
+    ),
+    "down_duration": OptionSpec(
+        "down_duration",
+        "int",
+        default=10,
+        minimum=0,
+        flag="--down-duration",
+        help="seconds to keep host down",
+        block=("disaster",),
+    ),
+    "down_exclude": OptionSpec(
+        "down_exclude",
+        "str",
+        default="",
+        flag="--down-exclude",
+        help="comma-separated host ids to exclude from flapping",
+        block=("disaster",),
+    ),
+    "down_count": OptionSpec(
+        "down_count",
+        "int",
+        default=5,
+        minimum=0,
+        flag="--down-count",
+        help="number of hosts to keep down per cycle",
+        block=("disaster",),
+    ),
+    "down_stagger": OptionSpec(
+        "down_stagger",
+        "int",
+        default=2,
+        minimum=0,
+        flag="--down-stagger",
+        help="seconds to stagger down events within a cycle",
+        block=("disaster",),
+    ),
+    "cache_count": OptionSpec(
+        "cache_count",
+        "int",
+        default=0,
+        minimum=0,
+        flag="--cache-count",
+        help="number of cache nodes (0 = down-count + 1)",
+        block=("disaster",),
+    ),
+    "bw": OptionSpec(
+        "bw",
+        "structured",
+        default=[],
+        flag="--bw",
+        action="append",
+        help="set bandwidth: nodeA,nodeB,mbps (repeatable)",
+        block=("disaster",),
+    ),
+    "ext": OptionSpec(
+        "ext",
+        "structured",
+        default=[],
+        flag="--ext",
+        action="append",
+        help="attach external intf: host,ifname,ip[,mtu]; ip required in CIDR form (repeatable)",
+        block=("disaster",),
+    ),
+    "bridge": OptionSpec(
+        "bridge",
+        "structured",
+        default=[],
+        flag="--bridge",
+        action="append",
+        help="root ns bridge: switch,root_ip,local_routes[,ext_routes,gateway] (repeatable)",
+        block=("disaster",),
+        config_allowed=False,
+    ),
+    "bridges": OptionSpec("bridges", "structured", default=[], cli_allowed=False),
+    "failure_scenarios": OptionSpec(
+        "failure_scenarios", "structured", cli_allowed=False
+    ),
+    "events": OptionSpec("events", "structured", cli_allowed=False),
+    "monitoring": OptionSpec("monitoring", "structured", cli_allowed=False),
+    "routing": OptionSpec("routing", "structured", cli_allowed=False),
+    "addressing": OptionSpec("addressing", "structured", cli_allowed=False),
+    "cache_config": OptionSpec(
+        "cache_config", "structured", cli_allowed=False, special_config_merge=True
+    ),
+    "cefnetd_timeout": OptionSpec("cefnetd_timeout", "number", cli_allowed=False),
+    "warmup_gets": OptionSpec("warmup_gets", "structured", cli_allowed=False),
+    "webui_port": OptionSpec(
+        "webui_port",
+        "int",
+        nullable=True,
+        minimum=1,
+        message="webui_port must be a positive integer or null",
+        flag="--webui-port",
+        metavar="PORT",
+        help="start live dashboard on this port (disabled by default; recommended: 5080)",
+        block=("disaster",),
+    ),
+    "script_log": OptionSpec(
+        "script_log",
+        "str",
+        nullable=True,
+        message="script_log must be a string",
+        flag="--script-log",
+        help="log script output to file",
+        block=("disaster",),
+    ),
+    "debug": OptionSpec(
+        "debug",
+        "structured",
+        flag="--debug",
+        action="store_true",
+        help="enable all debug artifact collection (equivalent to all --debug-artifact choices)",
+        block=("debug",),
+        special_config_merge=True,
+    ),
+    "debug_artifact": OptionSpec(
+        "debug_artifact",
+        "enum",
+        default=[],
+        config_allowed=False,
+        flag="--debug-artifact",
+        action="append",
+        choices=("node_dirs", "fib_dump", "daemon_logs"),
+        metavar="ARTIFACT",
+        help="collect a specific debug artifact (repeatable): node_dirs, fib_dump, daemon_logs",
+        block=("debug",),
+    ),
+    "config": OptionSpec(
+        "config",
+        "str",
+        default="",
+        config_allowed=False,
+        flag="--config",
+        help="JSON/YAML config file to override parameters",
+        block=("disaster",),
+    ),
+}
+
+
 _FLAT_SPECS = [
-    _Spec("hosts", "int", minimum=3),
-    _Spec("switches", "int", minimum=2),
-    _Spec("seed", "int", nullable=True),
-    _Spec("k", "int", minimum=1),
-    _Spec("host_degree_min", "int", minimum=1),
-    _Spec("node_per_switch", "int", minimum=0),
-    _Spec("switch_use_all", "bool"),
-    _Spec("num", "int", minimum=1),
-    _Spec("output_dir", "str"),
-    _Spec("results_json", "str", nullable=True),
-    _Spec("timestamp", "bool"),
-    _Spec("no_cli", "bool"),
-    _Spec("no_script_log", "bool"),
-    _Spec("duration", "int", minimum=0),
-    _Spec("cache_default_rct_ms", "int", nullable=True, minimum=1000),
-    _Spec("publisher_host", "int", nullable=True),
-    _Spec("pubsub_sub_startup_grace", "number", minimum=0,
-          message="pubsub_sub_startup_grace must be a non-negative number"),
-    _Spec("warmup_get_interval", "number", minimum=0,
-          message="warmup_get_interval must be a non-negative number"),
-    _Spec("warmup_only_cache_nodes", "bool"),
-    _Spec("down_interval", "int", minimum=0),
-    _Spec("down_duration", "int", minimum=0),
-    _Spec("down_count", "int", minimum=0),
-    _Spec("down_stagger", "int", minimum=0),
-    _Spec("cache_count", "int", minimum=0),
-    _Spec("webui_port", "int", nullable=True, minimum=1,
-          message="webui_port must be a positive integer or null"),
-    _Spec("script_log", "str", nullable=True,
-          message="script_log must be a string"),
+    _Spec(spec.key, spec.kind, spec.nullable, spec.minimum, spec.message, spec.choices)
+    for spec in OPTION_SPECS.values()
+    if spec.config_allowed
+    and spec.kind in ("bool", "str", "int", "number", "enum")
+    and spec.key not in {"debug", "cefnetd_timeout"}
 ]
+_FLAT_SPECS.extend(
+    _Spec(spec.key, spec.kind, spec.nullable, spec.minimum, spec.message, spec.choices)
+    for spec in (OPTION_SPECS["bw"], OPTION_SPECS["ext"])
+)
 
 
 def _validate_flat_keys(errors, config):
@@ -122,11 +475,61 @@ def _validate_flat_keys(errors, config):
             if not isinstance(value, str):
                 errors.append(msg)
         elif spec.kind == "int":
-            if not _is_int(value) or (spec.minimum is not None and value < spec.minimum):
+            if not _is_int(value) or (
+                spec.minimum is not None and value < spec.minimum
+            ):
                 errors.append(msg)
         elif spec.kind == "number":
-            if not _is_number(value) or (spec.minimum is not None and value < spec.minimum):
+            if not _is_number(value) or (
+                spec.minimum is not None and value < spec.minimum
+            ):
                 errors.append(msg)
+        elif spec.kind == "enum":
+            if value not in spec.choices:
+                errors.append(msg)
+        elif spec.kind == "structured":
+            if not isinstance(value, list) or not all(
+                isinstance(item, str) for item in value
+            ):
+                errors.append(msg)
+
+
+def config_option_keys() -> tuple[str, ...]:
+    """Return config-merge keys from the canonical option table."""
+    return tuple(
+        spec.key
+        for spec in OPTION_SPECS.values()
+        if spec.config_allowed and not spec.special_config_merge
+    )
+
+
+def nullable_option_keys() -> set[str]:
+    """Return options where config null preserves parser defaults."""
+    return {
+        spec.key
+        for spec in OPTION_SPECS.values()
+        if spec.config_allowed and spec.nullable
+    }
+
+
+def scalar_option_keys() -> tuple[str, ...]:
+    """Return scalar keys copied from argparse Namespace for merged validation."""
+    return tuple(
+        spec.key
+        for spec in OPTION_SPECS.values()
+        if spec.config_allowed
+        and spec.kind in ("bool", "str", "int", "number", "enum")
+        and spec.key not in {"debug", "cefnetd_timeout"}
+    ) + ("cefnetd_timeout",)
+
+
+def structured_option_keys() -> tuple[str, ...]:
+    """Return structured keys copied from argparse Namespace for merged validation."""
+    return tuple(
+        spec.key
+        for spec in OPTION_SPECS.values()
+        if spec.config_allowed and spec.kind == "structured" and spec.key != "debug"
+    )
 
 
 def _validate_cache_config(errors, config, host_count):
@@ -149,10 +552,14 @@ def _validate_cache_config(errors, config, host_count):
             else:
                 if "count" in default:
                     if not _is_int(default["count"]) or default["count"] < 0:
-                        errors.append("cache_config.default.count must be an integer >= 0")
+                        errors.append(
+                            "cache_config.default.count must be an integer >= 0"
+                        )
                 if "capacity" in default:
                     if not _is_int(default["capacity"]) or default["capacity"] < 0:
-                        errors.append("cache_config.default.capacity must be an integer >= 0")
+                        errors.append(
+                            "cache_config.default.capacity must be an integer >= 0"
+                        )
                 if "default_rct_ms" in default:
                     if (
                         not _is_int(default["default_rct_ms"])
@@ -242,17 +649,43 @@ def _validate_failure_scenarios(errors, config):
                     errors.append("failure_scenarios.simple must be a dict")
                 else:
                     for field in ("interval", "duration", "count", "stagger"):
-                        if field in simple and simple[field] is not None and not _is_int(simple[field]):
-                            errors.append(f"failure_scenarios.simple.{field} must be an integer")
-                        elif field in simple and simple[field] is not None and simple[field] < 0:
-                            errors.append(f"failure_scenarios.simple.{field} must be an integer >= 0")
-                    if "count" in simple and _is_int(simple.get("count")) and simple["count"] < 0:
-                        errors.append("failure_scenarios.simple.count must be an integer >= 0")
-                    if "stagger" in simple and _is_int(simple.get("stagger")) and simple["stagger"] < 0:
-                        errors.append("failure_scenarios.simple.stagger must be an integer >= 0")
+                        if (
+                            field in simple
+                            and simple[field] is not None
+                            and not _is_int(simple[field])
+                        ):
+                            errors.append(
+                                f"failure_scenarios.simple.{field} must be an integer"
+                            )
+                        elif (
+                            field in simple
+                            and simple[field] is not None
+                            and simple[field] < 0
+                        ):
+                            errors.append(
+                                f"failure_scenarios.simple.{field} must be an integer >= 0"
+                            )
+                    if (
+                        "count" in simple
+                        and _is_int(simple.get("count"))
+                        and simple["count"] < 0
+                    ):
+                        errors.append(
+                            "failure_scenarios.simple.count must be an integer >= 0"
+                        )
+                    if (
+                        "stagger" in simple
+                        and _is_int(simple.get("stagger"))
+                        and simple["stagger"] < 0
+                    ):
+                        errors.append(
+                            "failure_scenarios.simple.stagger must be an integer >= 0"
+                        )
                     if "exclude" in simple and simple["exclude"] is not None:
                         ex = simple["exclude"]
-                        if not isinstance(ex, list) or not all(_is_int(host) for host in ex):
+                        if not isinstance(ex, list) or not all(
+                            _is_int(host) for host in ex
+                        ):
                             errors.append(
                                 "failure_scenarios.simple.exclude must be a list of integers"
                             )
@@ -271,38 +704,63 @@ def _validate_failure_scenarios(errors, config):
                 else:
                     for idx, cycle in enumerate(cycles):
                         if not isinstance(cycle, dict):
-                            errors.append(f"failure_scenarios.cycles[{idx}] must be a dict")
+                            errors.append(
+                                f"failure_scenarios.cycles[{idx}] must be a dict"
+                            )
                             continue
                         for field in ("interval", "duration", "count", "stagger"):
-                            if field in cycle and cycle[field] is not None and not _is_int(cycle[field]):
+                            if (
+                                field in cycle
+                                and cycle[field] is not None
+                                and not _is_int(cycle[field])
+                            ):
                                 errors.append(
                                     f"failure_scenarios.cycles[{idx}].{field} must be an integer"
                                 )
-                            elif field in cycle and cycle[field] is not None and cycle[field] < 0:
+                            elif (
+                                field in cycle
+                                and cycle[field] is not None
+                                and cycle[field] < 0
+                            ):
                                 errors.append(
                                     f"failure_scenarios.cycles[{idx}].{field} must be an integer >= 0"
                                 )
-                        if "count" in cycle and _is_int(cycle.get("count")) and cycle["count"] < 0:
+                        if (
+                            "count" in cycle
+                            and _is_int(cycle.get("count"))
+                            and cycle["count"] < 0
+                        ):
                             errors.append(
                                 f"failure_scenarios.cycles[{idx}].count must be an integer >= 0"
                             )
-                        if "stagger" in cycle and _is_int(cycle.get("stagger")) and cycle["stagger"] < 0:
+                        if (
+                            "stagger" in cycle
+                            and _is_int(cycle.get("stagger"))
+                            and cycle["stagger"] < 0
+                        ):
                             errors.append(
                                 f"failure_scenarios.cycles[{idx}].stagger must be an integer >= 0"
                             )
                         if "exclude" in cycle and cycle["exclude"] is not None:
                             ex = cycle["exclude"]
-                            if not isinstance(ex, list) or not all(_is_int(host) for host in ex):
+                            if not isinstance(ex, list) or not all(
+                                _is_int(host) for host in ex
+                            ):
                                 errors.append(
                                     f"failure_scenarios.cycles[{idx}].exclude must be a list of integers"
                                 )
                         if "target" in cycle and cycle["target"] is not None:
                             tgt = cycle["target"]
-                            if not isinstance(tgt, list) or not all(_is_int(host) for host in tgt):
+                            if not isinstance(tgt, list) or not all(
+                                _is_int(host) for host in tgt
+                            ):
                                 errors.append(
                                     f"failure_scenarios.cycles[{idx}].target must be a list of integers"
                                 )
-                        if "allow_publishers" in cycle and cycle["allow_publishers"] is not None:
+                        if (
+                            "allow_publishers" in cycle
+                            and cycle["allow_publishers"] is not None
+                        ):
                             if not isinstance(cycle["allow_publishers"], bool):
                                 errors.append(
                                     f"failure_scenarios.cycles[{idx}].allow_publishers must be a boolean"
@@ -343,7 +801,9 @@ def _validate_bridges(errors, config):
                                 f" address: {root_ip_val!r}"
                             )
                 if "local_routes" not in bridge:
-                    errors.append(f"bridges[{idx}] missing required field 'local_routes'")
+                    errors.append(
+                        f"bridges[{idx}] missing required field 'local_routes'"
+                    )
                 elif not isinstance(bridge["local_routes"], str):
                     errors.append(
                         f"bridges[{idx}].local_routes must be a string"
@@ -359,7 +819,9 @@ def _validate_put_options(errors, prefix, event):
     _validate_number_option(errors, prefix, event, "rate", minimum=0.001)
     for field in ("expiry", "cache_time"):
         _validate_number_option(errors, prefix, event, field, minimum=1)
-    _validate_number_option(errors, prefix, event, "block_size", integer=True, minimum=60)
+    _validate_number_option(
+        errors, prefix, event, "block_size", integer=True, minimum=60
+    )
     _validate_number_option(errors, prefix, event, "port_num", integer=True, minimum=1)
     _validate_algo_option(errors, prefix, event, "valid_algo")
 
@@ -409,7 +871,6 @@ def _validate_pubsub_options(errors, prefix, event, op_type):
             _validate_algo_option(errors, option_prefix, options, field)
 
 
-
 def _validate_events(errors, config):
     if "events" in config:
         if not isinstance(config["events"], list):
@@ -436,9 +897,13 @@ def _validate_events(errors, config):
                     if etype in ("link_down", "link_up"):
                         nodes = event.get("nodes")
                         if not isinstance(nodes, list) or len(nodes) != 2:
-                            errors.append(f"events[{idx}].nodes must be a list of 2 elements")
+                            errors.append(
+                                f"events[{idx}].nodes must be a list of 2 elements"
+                            )
                         elif not all(_is_int(n) for n in nodes):
-                            errors.append(f"events[{idx}].nodes must be a list of 2 host indices")
+                            errors.append(
+                                f"events[{idx}].nodes must be a list of 2 host indices"
+                            )
                         elif _is_int(host_count):
                             for n in nodes:
                                 if n < 0 or n >= host_count:
@@ -448,9 +913,13 @@ def _validate_events(errors, config):
                     elif etype == "bw_set":
                         nodes = event.get("nodes")
                         if not isinstance(nodes, list) or len(nodes) != 2:
-                            errors.append(f"events[{idx}].nodes must be a list of 2 host indices")
+                            errors.append(
+                                f"events[{idx}].nodes must be a list of 2 host indices"
+                            )
                         elif not all(_is_int(n) for n in nodes):
-                            errors.append(f"events[{idx}].nodes must be a list of 2 host indices")
+                            errors.append(
+                                f"events[{idx}].nodes must be a list of 2 host indices"
+                            )
                         elif _is_int(host_count):
                             for n in nodes:
                                 if n < 0 or n >= host_count:
@@ -458,26 +927,45 @@ def _validate_events(errors, config):
                                         f"events[{idx}].nodes contains out-of-range host index {n}"
                                     )
                         if "bandwidth" not in event:
-                            errors.append(f"events[{idx}] missing required field 'bandwidth'")
-                        elif not _is_number(event["bandwidth"]) or event["bandwidth"] < 0:
-                            errors.append(f"events[{idx}].bandwidth must be a non-negative number")
+                            errors.append(
+                                f"events[{idx}] missing required field 'bandwidth'"
+                            )
+                        elif (
+                            not _is_number(event["bandwidth"]) or event["bandwidth"] < 0
+                        ):
+                            errors.append(
+                                f"events[{idx}].bandwidth must be a non-negative number"
+                            )
                     elif etype == "compute_call":
                         for field in EVENT_SCHEMA[etype].required_fields:
                             if field not in event:
-                                errors.append(f"events[{idx}] missing required field '{field}'")
+                                errors.append(
+                                    f"events[{idx}] missing required field '{field}'"
+                                )
                         if "host" in event and not _is_int(event["host"]):
                             errors.append(f"events[{idx}].host must be an integer")
-                        if "endpoint" in event and not isinstance(event["endpoint"], str):
+                        if "endpoint" in event and not isinstance(
+                            event["endpoint"], str
+                        ):
                             errors.append(f"events[{idx}].endpoint must be a string")
                         if "method" in event and event["method"] not in ("GET", "POST"):
-                            errors.append(f"events[{idx}].method must be 'GET' or 'POST'")
+                            errors.append(
+                                f"events[{idx}].method must be 'GET' or 'POST'"
+                            )
                         if "timeout" in event:
-                            if not _is_number(event["timeout"]) or event["timeout"] <= 0:
-                                errors.append(f"events[{idx}].timeout must be a positive number")
+                            if (
+                                not _is_number(event["timeout"])
+                                or event["timeout"] <= 0
+                            ):
+                                errors.append(
+                                    f"events[{idx}].timeout must be a positive number"
+                                )
                     elif etype in ("fib_add", "fib_del", "fib_enable"):
                         for field in EVENT_SCHEMA[etype].required_fields:
                             if field not in event:
-                                errors.append(f"events[{idx}] missing required field '{field}'")
+                                errors.append(
+                                    f"events[{idx}] missing required field '{field}'"
+                                )
                         if "protocol" in event:
                             try:
                                 normalize_route_protocol(event["protocol"])
@@ -492,7 +980,9 @@ def _validate_events(errors, config):
                     elif etype in publication_event_types():
                         for field in EVENT_SCHEMA[etype].required_fields:
                             if field not in event:
-                                errors.append(f"events[{idx}] missing required field '{field}'")
+                                errors.append(
+                                    f"events[{idx}] missing required field '{field}'"
+                                )
                         if "host" in event and not _is_int(event["host"]):
                             errors.append(f"events[{idx}].host must be an integer")
                         if "uri" in event and not isinstance(event["uri"], str):
@@ -516,7 +1006,9 @@ def _validate_events(errors, config):
                     elif etype in ("get", "pubsub_sub"):
                         for field in EVENT_SCHEMA[etype].required_fields:
                             if field not in event:
-                                errors.append(f"events[{idx}] missing required field '{field}'")
+                                errors.append(
+                                    f"events[{idx}] missing required field '{field}'"
+                                )
                         if "host" in event and not _is_int(event["host"]):
                             errors.append(f"events[{idx}].host must be an integer")
                         if "uri" in event and not isinstance(event["uri"], str):
@@ -529,7 +1021,11 @@ def _validate_events(errors, config):
                             )
 
                     # host range check for fib/compute_call events
-                    if "host" in event and _is_int(event["host"]) and _is_int(host_count):
+                    if (
+                        "host" in event
+                        and _is_int(event["host"])
+                        and _is_int(host_count)
+                    ):
                         if event["host"] < 0 or event["host"] >= host_count:
                             errors.append(
                                 f"events[{idx}].host is out of range (0..{host_count - 1})"
@@ -543,17 +1039,30 @@ def _validate_events(errors, config):
                     else:
                         if "interval" in rep:
                             if not _is_number(rep["interval"]) or rep["interval"] <= 0:
-                                errors.append(f"events[{idx}].repeat.interval must be a positive number")
+                                errors.append(
+                                    f"events[{idx}].repeat.interval must be a positive number"
+                                )
                         if "duration" in rep:
                             if not _is_number(rep["duration"]) or rep["duration"] < 0:
-                                errors.append(f"events[{idx}].repeat.duration must be a non-negative number")
+                                errors.append(
+                                    f"events[{idx}].repeat.duration must be a non-negative number"
+                                )
                         if "count" in rep and rep["count"] is not None:
                             if not _is_int(rep["count"]) or rep["count"] < 1:
-                                errors.append(f"events[{idx}].repeat.count must be a positive integer or null")
+                                errors.append(
+                                    f"events[{idx}].repeat.count must be a positive integer or null"
+                                )
                         if "restore" in rep and not isinstance(rep["restore"], dict):
-                            errors.append(f"events[{idx}].repeat.restore must be a dict")
-                        if "restore_type" in rep and rep["restore_type"] not in valid_event_types:
-                            errors.append(f"events[{idx}].repeat.restore_type must be a valid event type")
+                            errors.append(
+                                f"events[{idx}].repeat.restore must be a dict"
+                            )
+                        if (
+                            "restore_type" in rep
+                            and rep["restore_type"] not in valid_event_types
+                        ):
+                            errors.append(
+                                f"events[{idx}].repeat.restore_type must be a valid event type"
+                            )
 
 
 def validate_config(config: dict[str, Any]) -> list[str]:
@@ -570,12 +1079,10 @@ def validate_config(config: dict[str, Any]) -> list[str]:
     _validate_flat_keys(errors, config)
 
     if "host_degree_max" in config:
-        if not _is_int(config["host_degree_max"]):
-            errors.append("host_degree_max must be an integer")
-        else:
-            min_val = config.get("host_degree_min", 1)
-            if not _is_int(min_val):
-                min_val = 1
+        min_val = config.get("host_degree_min", 1)
+        if not _is_int(min_val):
+            min_val = 1
+        if _is_int(config["host_degree_max"]):
             if config["host_degree_max"] < min_val:
                 errors.append("host_degree_max must be >= host_degree_min")
 
@@ -627,7 +1134,9 @@ def validate_config(config: dict[str, Any]) -> list[str]:
                         errors.append(f"monitoring.targets[{idx}] must be a dict")
                         continue
                     if "type" not in target:
-                        errors.append(f"monitoring.targets[{idx}] missing required field 'type'")
+                        errors.append(
+                            f"monitoring.targets[{idx}] missing required field 'type'"
+                        )
                     elif target["type"] not in valid_monitor_types:
                         errors.append(
                             f"monitoring.targets[{idx}].type must be one of: "
@@ -709,22 +1218,9 @@ def validate_merged_args(args: Any) -> list[str]:
     Returns:
         List of error messages. Empty if valid.
     """
-    scalar_keys = (
-        "hosts", "switches", "seed", "k", "num", "duration",
-        "cache_default_rct_ms", "cefnetd_timeout", "publisher_host",
-        "output_dir", "results_json", "script_log", "timestamp",
-        "no_cli", "no_script_log", "host_degree_min", "host_degree_max",
-        "node_per_switch", "switch_use_all", "pubsub_sub_startup_grace",
-        "warmup_get_interval", "warmup_only_cache_nodes",
-        "down_interval", "down_duration", "down_count", "down_stagger",
-        "cache_count", "webui_port",
-    )
-    structured_keys = (
-        "events", "monitoring", "routing",
-        "cache_config", "failure_scenarios", "addressing",
-        "warmup_gets", "bridges",
-    )
-    nullable_keys = {"seed", "results_json", "script_log", "cache_default_rct_ms", "publisher_host"}
+    scalar_keys = scalar_option_keys()
+    structured_keys = structured_option_keys()
+    nullable_keys = nullable_option_keys()
 
     config: dict[str, Any] = {}
     for key in scalar_keys:

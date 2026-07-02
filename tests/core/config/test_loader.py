@@ -1,11 +1,16 @@
 """Tests for src.core.config.loader."""
+
+import argparse
 from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
 
+from src.cli.args import add_debug_args
+from src.core.config.validator import config_option_keys
 from src.core.config.loader import (
     _FLAT_SPECS,
+    OPTION_SPECS,
     load_config,
     merge_cli_and_config,
     validate_config,
@@ -146,16 +151,12 @@ def test_validate_failure_scenarios_cyclic_no_cycles():
 
 
 def test_validate_monitoring():
-    errors = validate_config({
-        "monitoring": {"interval": -1}
-    })
+    errors = validate_config({"monitoring": {"interval": -1}})
     assert any("interval" in e for e in errors)
 
 
 def test_validate_monitoring_targets_invalid_type():
-    errors = validate_config({
-        "monitoring": {"targets": [{"type": "nonexistent"}]}
-    })
+    errors = validate_config({"monitoring": {"targets": [{"type": "nonexistent"}]}})
     assert any("type" in e for e in errors)
 
 
@@ -207,65 +208,87 @@ def test_validate_cache_default_rct_ms_too_low():
 
 
 def test_validate_events_valid():
-    errors = validate_config({
-        "events": [
-            {"at": 5, "type": "link_down", "nodes": [1, 2]},
-            {"at": 10, "type": "fib_del", "host": 3, "prefix": "ccnx:/test", "next_hop": "192.168.0.1"},
-        ]
-    })
+    errors = validate_config(
+        {
+            "events": [
+                {"at": 5, "type": "link_down", "nodes": [1, 2]},
+                {
+                    "at": 10,
+                    "type": "fib_del",
+                    "host": 3,
+                    "prefix": "ccnx:/test",
+                    "next_hop": "192.168.0.1",
+                },
+            ]
+        }
+    )
     assert errors == []
 
 
 def test_validate_failure_scenarios_simple_valid():
-    errors = validate_config({
-        "failure_scenarios": {
-            "strategy": "simple",
-            "simple": {"interval": 10, "duration": 5, "count": 2},
+    errors = validate_config(
+        {
+            "failure_scenarios": {
+                "strategy": "simple",
+                "simple": {"interval": 10, "duration": 5, "count": 2},
+            }
         }
-    })
+    )
     assert errors == []
 
 
 def test_validate_failure_scenarios_cyclic_valid():
-    errors = validate_config({
-        "failure_scenarios": {
-            "strategy": "cyclic",
-            "cycles": [{"interval": 10, "duration": 5, "count": 2}],
+    errors = validate_config(
+        {
+            "failure_scenarios": {
+                "strategy": "cyclic",
+                "cycles": [{"interval": 10, "duration": 5, "count": 2}],
+            }
         }
-    })
+    )
     assert errors == []
 
 
 def test_validate_cache_config_nodes():
-    errors = validate_config({
-        "cache_config": {
-            "nodes": [{"id": [1, 3], "capacity": 1000, "algorithm": "LRU"}]
+    errors = validate_config(
+        {
+            "cache_config": {
+                "nodes": [{"id": [1, 3], "capacity": 1000, "algorithm": "LRU"}]
+            }
         }
-    })
+    )
     assert errors == []
 
 
 def test_validate_cache_config_invalid_algorithm():
-    errors = validate_config({
-        "cache_config": {"default": {"algorithm": "RANDOM"}}
-    })
+    errors = validate_config({"cache_config": {"default": {"algorithm": "RANDOM"}}})
     assert any("algorithm" in e for e in errors)
 
 
 def test_validate_monitoring_valid():
-    errors = validate_config({
-        "monitoring": {
-            "interval": 5,
-            "targets": [{"type": "cefstatus"}],
+    errors = validate_config(
+        {
+            "monitoring": {
+                "interval": 5,
+                "targets": [{"type": "cefstatus"}],
+            }
         }
-    })
+    )
     assert errors == []
 
 
 def test_validate_bridges_valid():
-    errors = validate_config({
-        "bridges": [{"switch": 0, "root_ip": "10.0.0.1/24", "local_routes": "192.168.0.0/16"}]
-    })
+    errors = validate_config(
+        {
+            "bridges": [
+                {
+                    "switch": 0,
+                    "root_ip": "10.0.0.1/24",
+                    "local_routes": "192.168.0.0/16",
+                }
+            ]
+        }
+    )
     assert errors == []
 
 
@@ -282,8 +305,12 @@ def test_validate_example_json():
 
 def _make_args(**kwargs):
     defaults = {
-        "hosts": None, "switches": None, "seed": None, "k": None,
-        "bw": "", "ext": "",
+        "hosts": None,
+        "switches": None,
+        "seed": None,
+        "k": None,
+        "bw": "",
+        "ext": "",
     }
     defaults.update(kwargs)
     return SimpleNamespace(**defaults)
@@ -338,6 +365,20 @@ def test_merge_null_means_default():
     assert args.results_json is None
 
 
+def test_merge_null_means_default_includes_topo_png_from_spec():
+    """Nullable OptionSpec entries drive config-null-as-default behavior."""
+    import argparse
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--topo_png", default="default.png")
+    parser.add_argument("--bw", default="")
+    parser.add_argument("--ext", default="")
+
+    args = parser.parse_args([])
+    merge_cli_and_config(args, {"topo_png": None}, parser=parser)
+    assert args.topo_png == "default.png"
+
+
 def test_merge_bw_string_to_list():
     args = _make_args(bw="1,2,10")
     merge_cli_and_config(args, {})
@@ -374,11 +415,127 @@ def test_validate_host_degree_max_non_integer():
     assert any("host_degree_max" in e for e in errors)
 
 
+def test_validate_host_degree_max_non_integer_emits_once():
+    errors = validate_config({"host_degree_max": "two"})
+    assert errors.count("host_degree_max must be an integer") == 1
+
+
+def test_option_specs_are_canonical_source_for_flat_view():
+    """The old _FLAT_SPECS view must be derived from the canonical table."""
+    flat_keys = [spec.key for spec in _FLAT_SPECS]
+
+    assert "host_degree_max" in flat_keys
+    assert "topo_png" in flat_keys
+    assert "topo_layout" in flat_keys
+    assert OPTION_SPECS["topo_layout"].choices == ("spring", "kamada_kawai", "circular")
+    assert OPTION_SPECS["cache_config"].kind == "structured"
+
+
+def test_debug_option_specs_match_argparse_identity():
+    parser = argparse.ArgumentParser()
+    add_debug_args(parser)
+    actions = {action.dest: action for action in parser._actions}
+
+    debug_spec = OPTION_SPECS["debug"]
+    assert debug_spec.flag == "--debug"
+    assert debug_spec.action == "store_true"
+    assert debug_spec.cli_allowed
+    assert debug_spec.block == ("debug",)
+    assert debug_spec.help == actions["debug"].help
+
+    artifact_spec = OPTION_SPECS["debug_artifact"]
+    artifact_action = actions["debug_artifact"]
+    assert artifact_spec.flag == "--debug-artifact"
+    assert artifact_spec.action == "append"
+    assert artifact_spec.choices == tuple(artifact_action.choices)
+    assert artifact_spec.metavar == artifact_action.metavar
+    assert artifact_spec.help == artifact_action.help
+
+
+def test_config_option_keys_preserves_current_order_and_excludes_special_merge():
+    assert config_option_keys() == (
+        "hosts",
+        "switches",
+        "seed",
+        "topo_png",
+        "topo_layout",
+        "k",
+        "host_degree_min",
+        "host_degree_max",
+        "node_per_switch",
+        "switch_use_all",
+        "num",
+        "output_dir",
+        "results_json",
+        "timestamp",
+        "no_cli",
+        "no_script_log",
+        "duration",
+        "cache_default_rct_ms",
+        "publisher_host",
+        "pubsub_sub_startup_grace",
+        "warmup_get_interval",
+        "warmup_only_cache_nodes",
+        "down_interval",
+        "down_duration",
+        "down_exclude",
+        "down_count",
+        "down_stagger",
+        "cache_count",
+        "bw",
+        "ext",
+        "bridges",
+        "failure_scenarios",
+        "events",
+        "monitoring",
+        "routing",
+        "addressing",
+        "cefnetd_timeout",
+        "warmup_gets",
+        "webui_port",
+        "script_log",
+    )
+
+
+def test_validate_newly_table_driven_flat_keys():
+    cases = [
+        ("down_exclude", 123, "down_exclude must be a string"),
+        ("topo_png", 123, "topo_png must be a string or null"),
+        ("bw", "h1,h2,10", "bw must be a list"),
+        ("ext", "h1,eth1,10.0.0.1/24", "ext must be a list"),
+        (
+            "topo_layout",
+            "typo",
+            "topo_layout must be one of: spring, kamada_kawai, circular",
+        ),
+    ]
+
+    for key, value, message in cases:
+        assert message in validate_config({key: value})
+
+
+def test_validate_merged_args_includes_spec_derived_flat_keys():
+    args = SimpleNamespace(topo_png=None, topo_layout="typo", bw="bad", ext="bad")
+
+    errors = validate_merged_args(args)
+
+    assert "topo_layout must be one of: spring, kamada_kawai, circular" in errors
+    assert "bw must be a list" in errors
+    assert "ext must be a list" in errors
+    assert not any(error.startswith("topo_png ") for error in errors)
+
+
 def test_validate_host_degree_max_with_non_int_min():
     """When host_degree_min is non-int, host_degree_max uses default min=1."""
     errors = validate_config({"host_degree_min": "bad", "host_degree_max": 2})
     assert any("host_degree_min" in e for e in errors)
     assert not any("host_degree_max" in e and ">=" in e for e in errors)
+
+
+def test_validate_host_degree_max_falls_back_when_min_is_not_int():
+    errors = validate_config({"host_degree_min": "bad", "host_degree_max": 0})
+    assert "host_degree_min must be an integer >= 1" in errors
+    assert "host_degree_max must be >= host_degree_min" in errors
 
 
 def test_validate_switch_use_all_non_boolean():
@@ -427,7 +584,9 @@ def test_validate_events_missing_at():
 
 
 def test_validate_events_negative_at():
-    errors = validate_config({"events": [{"at": -1, "type": "link_down", "nodes": [1, 2]}]})
+    errors = validate_config(
+        {"events": [{"at": -1, "type": "link_down", "nodes": [1, 2]}]}
+    )
     assert any("at" in e for e in errors)
 
 
@@ -447,9 +606,20 @@ def test_validate_events_non_dict_entry():
 
 
 def test_validate_events_protocol_invalid():
-    errors = validate_config({
-        "events": [{"at": 5, "type": "fib_add", "host": 0, "prefix": "ccnx:/test", "next_hop": "10.0.0.1", "protocol": "tcp"}]
-    })
+    errors = validate_config(
+        {
+            "events": [
+                {
+                    "at": 5,
+                    "type": "fib_add",
+                    "host": 0,
+                    "prefix": "ccnx:/test",
+                    "next_hop": "10.0.0.1",
+                    "protocol": "tcp",
+                }
+            ]
+        }
+    )
     assert any("protocol" in e for e in errors)
 
 
@@ -499,12 +669,16 @@ def test_validate_cache_config_nodes_capacity_negative():
 
 
 def test_validate_cache_config_nodes_rct_ms_low():
-    errors = validate_config({"cache_config": {"nodes": [{"id": 1, "default_rct_ms": 500}]}})
+    errors = validate_config(
+        {"cache_config": {"nodes": [{"id": 1, "default_rct_ms": 500}]}}
+    )
     assert any("default_rct_ms" in e for e in errors)
 
 
 def test_validate_cache_config_nodes_algorithm_invalid():
-    errors = validate_config({"cache_config": {"nodes": [{"id": 1, "algorithm": "RANDOM"}]}})
+    errors = validate_config(
+        {"cache_config": {"nodes": [{"id": 1, "algorithm": "RANDOM"}]}}
+    )
     assert any("algorithm" in e for e in errors)
 
 
@@ -524,63 +698,79 @@ def test_validate_failure_scenarios_invalid_strategy():
 
 
 def test_validate_failure_scenarios_simple_non_dict():
-    errors = validate_config({"failure_scenarios": {"strategy": "simple", "simple": "bad"}})
+    errors = validate_config(
+        {"failure_scenarios": {"strategy": "simple", "simple": "bad"}}
+    )
     assert any("simple" in e and "dict" in e for e in errors)
 
 
 def test_validate_failure_scenarios_simple_count_negative():
-    errors = validate_config({
-        "failure_scenarios": {"strategy": "simple", "simple": {"count": -1}}
-    })
+    errors = validate_config(
+        {"failure_scenarios": {"strategy": "simple", "simple": {"count": -1}}}
+    )
     assert any("count" in e for e in errors)
 
 
 def test_validate_failure_scenarios_simple_stagger_negative():
-    errors = validate_config({
-        "failure_scenarios": {"strategy": "simple", "simple": {"stagger": -1}}
-    })
+    errors = validate_config(
+        {"failure_scenarios": {"strategy": "simple", "simple": {"stagger": -1}}}
+    )
     assert any("stagger" in e for e in errors)
 
 
 def test_validate_failure_scenarios_simple_exclude_invalid():
-    errors = validate_config({
-        "failure_scenarios": {"strategy": "simple", "simple": {"exclude": "bad"}}
-    })
+    errors = validate_config(
+        {"failure_scenarios": {"strategy": "simple", "simple": {"exclude": "bad"}}}
+    )
     assert any("exclude" in e for e in errors)
 
 
 def test_validate_failure_scenarios_simple_interval_non_integer():
-    errors = validate_config({
-        "failure_scenarios": {"strategy": "simple", "simple": {"interval": "slow"}}
-    })
+    errors = validate_config(
+        {"failure_scenarios": {"strategy": "simple", "simple": {"interval": "slow"}}}
+    )
     assert any("interval" in e for e in errors)
 
 
 def test_validate_failure_scenarios_cyclic_non_list():
-    errors = validate_config({"failure_scenarios": {"strategy": "cyclic", "cycles": "bad"}})
+    errors = validate_config(
+        {"failure_scenarios": {"strategy": "cyclic", "cycles": "bad"}}
+    )
     assert any("cycles" in e and "list" in e for e in errors)
 
 
 def test_validate_failure_scenarios_cyclic_empty():
-    errors = validate_config({"failure_scenarios": {"strategy": "cyclic", "cycles": []}})
+    errors = validate_config(
+        {"failure_scenarios": {"strategy": "cyclic", "cycles": []}}
+    )
     assert any("at least one cycle" in e for e in errors)
 
 
 def test_validate_failure_scenarios_cyclic_entry_non_dict():
-    errors = validate_config({"failure_scenarios": {"strategy": "cyclic", "cycles": ["bad"]}})
+    errors = validate_config(
+        {"failure_scenarios": {"strategy": "cyclic", "cycles": ["bad"]}}
+    )
     assert any("cycles[0]" in e for e in errors)
 
 
 def test_validate_failure_scenarios_cyclic_entry_fields():
-    errors = validate_config({
-        "failure_scenarios": {
-            "strategy": "cyclic",
-            "cycles": [{
-                "interval": "slow", "count": -1, "stagger": -1,
-                "exclude": "bad", "target": "bad", "allow_publishers": "yes",
-            }]
+    errors = validate_config(
+        {
+            "failure_scenarios": {
+                "strategy": "cyclic",
+                "cycles": [
+                    {
+                        "interval": "slow",
+                        "count": -1,
+                        "stagger": -1,
+                        "exclude": "bad",
+                        "target": "bad",
+                        "allow_publishers": "yes",
+                    }
+                ],
+            }
         }
-    })
+    )
     assert any("interval" in e for e in errors)
     assert any("count" in e for e in errors)
     assert any("stagger" in e for e in errors)
@@ -620,58 +810,100 @@ def test_validate_bridges_non_dict_entry():
 
 
 def test_validate_bridges_local_routes_non_string():
-    errors = validate_config({
-        "bridges": [{"switch": 0, "root_ip": "10.0.0.1/24", "local_routes": 123}]
-    })
+    errors = validate_config(
+        {"bridges": [{"switch": 0, "root_ip": "10.0.0.1/24", "local_routes": 123}]}
+    )
     assert any("local_routes" in e for e in errors)
 
 
 def test_validate_bridges_nat_non_boolean():
-    errors = validate_config({
-        "bridges": [{"switch": 0, "root_ip": "10.0.0.1/24", "local_routes": "192.168.0.0/16", "nat": "yes"}]
-    })
+    errors = validate_config(
+        {
+            "bridges": [
+                {
+                    "switch": 0,
+                    "root_ip": "10.0.0.1/24",
+                    "local_routes": "192.168.0.0/16",
+                    "nat": "yes",
+                }
+            ]
+        }
+    )
     assert any("nat" in e for e in errors)
 
 
 def test_validate_bridges_nat_out_non_string():
-    errors = validate_config({
-        "bridges": [{"switch": 0, "root_ip": "10.0.0.1/24", "local_routes": "192.168.0.0/16", "nat_out": 123}]
-    })
+    errors = validate_config(
+        {
+            "bridges": [
+                {
+                    "switch": 0,
+                    "root_ip": "10.0.0.1/24",
+                    "local_routes": "192.168.0.0/16",
+                    "nat_out": 123,
+                }
+            ]
+        }
+    )
     assert any("nat_out" in e for e in errors)
 
 
 def test_validate_bridges_root_ip_bare_rejected():
-    errors = validate_config({
-        "bridges": [{"switch": 0, "root_ip": "10.0.0.1", "local_routes": "192.168.0.0/16"}]
-    })
+    errors = validate_config(
+        {
+            "bridges": [
+                {"switch": 0, "root_ip": "10.0.0.1", "local_routes": "192.168.0.0/16"}
+            ]
+        }
+    )
     assert any("root_ip" in e and "CIDR" in e for e in errors)
 
 
 def test_validate_bridges_root_ip_auto_accepted():
-    errors = validate_config({
-        "bridges": [{"switch": 0, "root_ip": "auto", "local_routes": "192.168.0.0/16"}]
-    })
+    errors = validate_config(
+        {
+            "bridges": [
+                {"switch": 0, "root_ip": "auto", "local_routes": "192.168.0.0/16"}
+            ]
+        }
+    )
     assert not any("root_ip" in e for e in errors)
 
 
 def test_validate_bridges_root_ip_cidr_accepted():
-    errors = validate_config({
-        "bridges": [{"switch": 0, "root_ip": "10.0.0.1/24", "local_routes": "192.168.0.0/16"}]
-    })
+    errors = validate_config(
+        {
+            "bridges": [
+                {
+                    "switch": 0,
+                    "root_ip": "10.0.0.1/24",
+                    "local_routes": "192.168.0.0/16",
+                }
+            ]
+        }
+    )
     assert not any("root_ip" in e for e in errors)
 
 
 def test_validate_bridges_root_ip_invalid_cidr_rejected():
-    errors = validate_config({
-        "bridges": [{"switch": 0, "root_ip": "999.999.999.999/24", "local_routes": "192.168.0.0/16"}]
-    })
+    errors = validate_config(
+        {
+            "bridges": [
+                {
+                    "switch": 0,
+                    "root_ip": "999.999.999.999/24",
+                    "local_routes": "192.168.0.0/16",
+                }
+            ]
+        }
+    )
     assert any("root_ip" in e for e in errors)
 
 
 def test_validate_bridges_root_ip_non_string_rejected():
-    errors = validate_config({
-        "bridges": [{"switch": 0, "root_ip": None, "local_routes": "192.168.0.0/16"}]
-    })
+    errors = validate_config(
+        {"bridges": [{"switch": 0, "root_ip": None, "local_routes": "192.168.0.0/16"}]}
+    )
     assert any("root_ip" in e for e in errors)
 
 
@@ -696,6 +928,7 @@ def test_validate_no_script_log_non_boolean():
 # ---------------------------------------------------------------------------
 # addressing block validation
 # ---------------------------------------------------------------------------
+
 
 def test_validate_addressing_valid():
     errors = validate_config({"addressing": {"network_cidr": "192.168.0.0/16"}})
@@ -768,30 +1001,29 @@ def test_validate_merged_args_cache_config_strategy_random():
 # monitoring.targets.target_host validation
 # ---------------------------------------------------------------------------
 
+
 def test_validate_monitoring_target_host_valid():
-    errors = validate_config({
-        "monitoring": {
-            "targets": [{"type": "csmgrstatus", "target_host": "192.168.1.1"}]
+    errors = validate_config(
+        {
+            "monitoring": {
+                "targets": [{"type": "csmgrstatus", "target_host": "192.168.1.1"}]
+            }
         }
-    })
+    )
     assert errors == []
 
 
 def test_validate_monitoring_target_host_empty_string():
-    errors = validate_config({
-        "monitoring": {
-            "targets": [{"type": "csmgrstatus", "target_host": ""}]
-        }
-    })
+    errors = validate_config(
+        {"monitoring": {"targets": [{"type": "csmgrstatus", "target_host": ""}]}}
+    )
     assert any("target_host" in e for e in errors)
 
 
 def test_validate_monitoring_target_host_non_string():
-    errors = validate_config({
-        "monitoring": {
-            "targets": [{"type": "csmgrstatus", "target_host": 12345}]
-        }
-    })
+    errors = validate_config(
+        {"monitoring": {"targets": [{"type": "csmgrstatus", "target_host": 12345}]}}
+    )
     assert any("target_host" in e for e in errors)
 
 
@@ -805,7 +1037,11 @@ def test_validate_monitoring_target_host_non_string():
         {"events": [{"at": True, "type": "get", "host": 0, "uri": "ccnx:/x"}]},
         {"events": [{"at": 0, "type": "bw_set", "nodes": [0, 1], "bandwidth": True}]},
         {"events": [{"at": 0, "type": "get", "host": True, "uri": "ccnx:/x"}]},
-        {"events": [{"at": 0, "type": "get", "host": 0, "uri": "ccnx:/x", "pipeline": True}]},
+        {
+            "events": [
+                {"at": 0, "type": "get", "host": 0, "uri": "ccnx:/x", "pipeline": True}
+            ]
+        },
     ],
 )
 def test_validate_numeric_fields_reject_booleans(config):
@@ -956,7 +1192,9 @@ def test_flat_key_message_int_no_min():
     assert "host_degree_min must be an integer >= 1" in errors
 
 
-_SPECS_WITH_MIN = [s for s in _FLAT_SPECS if s.minimum is not None and s.kind in ("int", "number")]
+_SPECS_WITH_MIN = [
+    s for s in _FLAT_SPECS if s.minimum is not None and s.kind in ("int", "number")
+]
 _NULLABLE_SPECS = [s for s in _FLAT_SPECS if s.nullable]
 
 
@@ -971,10 +1209,14 @@ def test_flat_spec_rejects_below_minimum(spec):
 def test_flat_spec_accepts_at_minimum(spec):
     at_min = spec.minimum if spec.kind == "int" else float(spec.minimum)
     errors = validate_config({spec.key: at_min})
-    assert not any(spec.key in e for e in errors), f"unexpected error for {spec.key}={at_min}"
+    assert not any(spec.key in e for e in errors), (
+        f"unexpected error for {spec.key}={at_min}"
+    )
 
 
 @pytest.mark.parametrize("spec", _NULLABLE_SPECS, ids=[s.key for s in _NULLABLE_SPECS])
 def test_flat_spec_accepts_null(spec):
     errors = validate_config({spec.key: None})
-    assert not any(spec.key in e for e in errors), f"unexpected error for {spec.key}=None"
+    assert not any(spec.key in e for e in errors), (
+        f"unexpected error for {spec.key}=None"
+    )

@@ -7,6 +7,9 @@ from typing import Any
 
 from .validator import (
     _FLAT_SPECS as _FLAT_SPECS,
+    OPTION_SPECS as OPTION_SPECS,
+    config_option_keys,
+    nullable_option_keys,
     validate_config as validate_config,
     validate_merged_args as validate_merged_args,
 )
@@ -29,8 +32,7 @@ def warn_ignored_legacy_content_keys(config: dict[str, Any], stream=None) -> boo
         stream = sys.stderr
     keys = ", ".join(present)
     print(
-        "[warning] config keys ignored: "
-        f"{keys}. Use events for content operations.",
+        f"[warning] config keys ignored: {keys}. Use events for content operations.",
         file=stream,
     )
     return True
@@ -77,62 +79,8 @@ def merge_cli_and_config(args: Any, config: dict[str, Any], parser=None) -> None
     did not explicitly set it on the command line).
     The args object is modified in place.
     """
-    config_keys = (
-        "hosts",
-        "switches",
-        "seed",
-        "k",
-        "down_interval",
-        "down_duration",
-        "down_exclude",
-        "down_count",
-        "down_stagger",
-        "cache_count",
-        "bw",
-        "ext",
-        "bridges",
-        "topo_png",
-        "topo_layout",
-        "node_per_switch",
-        "host_degree_min",
-        "host_degree_max",
-        "switch_use_all",
-        "no_cli",
-        "duration",
-        "results_json",
-        "cache_default_rct_ms",
-        "publisher_host",
-        "num",
-        "output_dir",
-        "timestamp",
-        "no_cli",
-        "duration",
-        "results_json",
-        "script_log",
-        "no_script_log",
-        "cache_default_rct_ms",
-        "publisher_host",
-        "failure_scenarios",
-        "events",
-        "monitoring",
-        "routing",
-        "cefnetd_timeout",
-        "addressing",
-        "pubsub_sub_startup_grace",
-        "warmup_get_interval",
-        "warmup_only_cache_nodes",
-        "warmup_gets",
-        "webui_port",
-    )
-
-    _NULL_MEANS_DEFAULT = {
-        "seed",
-        "results_json",
-        "script_log",
-        "cache_default_rct_ms",
-        "publisher_host",
-        "topo_png",
-    }
+    config_keys = config_option_keys()
+    _NULL_MEANS_DEFAULT = nullable_option_keys()
 
     # Compute defaults for CLI-precedence check
     defaults = {}
