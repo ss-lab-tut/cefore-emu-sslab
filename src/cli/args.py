@@ -74,3 +74,8 @@ def add_mesh_args(parser):
 def add_disaster_args(parser):
     """Add arguments for disaster topology."""
     _add_args_for_block(parser, "disaster")
+
+
+def add_connect_args(parser):
+    """Add arguments for the external-network connect entry point."""
+    _add_args_for_block(parser, "connect")

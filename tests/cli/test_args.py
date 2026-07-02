@@ -6,6 +6,7 @@ import pytest
 
 from src.cli.args import (
     add_common_args,
+    add_connect_args,
     add_debug_args,
     add_disaster_args,
     add_linear_args,
@@ -124,3 +125,68 @@ def test_debug_artifact_appends_and_rejects_unknown_choice():
     assert args.debug_artifact == ["node_dirs", "fib_dump"]
     with pytest.raises(SystemExit):
         parser.parse_args(["--debug-artifact", "bad"])
+
+
+# The 26 dests the external_net.py connect parser hand-declared before this
+# ledger existed (R7-1 Slice3). Kept as a literal list, not derived from
+# OPTION_SPECS, so this test fails loudly if a future spec edit accidentally
+# widens or narrows the "connect" block membership.
+_CONNECT_DESTS = {
+    "hosts",
+    "switches",
+    "node_per_switch",
+    "host_degree_min",
+    "host_degree_max",
+    "switch_use_all",
+    "seed",
+    "k",
+    "down_interval",
+    "down_duration",
+    "down_exclude",
+    "down_count",
+    "down_stagger",
+    "cache_count",
+    "bw",
+    "ext",
+    "bridge",
+    "config",
+    "topo_png",
+    "script_log",
+    "no_script_log",
+    "topo_layout",
+    "num",
+    "output_dir",
+    "timestamp",
+    "no_cli",
+}
+
+# Options that must stay out of the connect parser: disaster-only knobs
+# (down-cycle metrics, warmup, cache RCT override, webui) that never had a
+# hand-written --flag in external_net.py's main().
+_CONNECT_FORBIDDEN_DESTS = {
+    "debug",
+    "debug_artifact",
+    "duration",
+    "results_json",
+    "cache_default_rct_ms",
+    "publisher_host",
+    "pubsub_sub_startup_grace",
+    "warmup_get_interval",
+    "warmup_only_cache_nodes",
+    "webui_port",
+}
+
+
+def test_connect_builder_matches_option_specs():
+    _assert_parser_matches_blocks(_parser_for(add_connect_args), "connect")
+
+
+def test_connect_parser_dest_set_matches_hand_written_ledger():
+    parser = _parser_for(add_connect_args)
+    assert set(_actions_by_dest(parser)) == _CONNECT_DESTS
+
+
+def test_connect_parser_excludes_forbidden_dests():
+    parser = _parser_for(add_connect_args)
+    dests = set(_actions_by_dest(parser))
+    assert dests.isdisjoint(_CONNECT_FORBIDDEN_DESTS)

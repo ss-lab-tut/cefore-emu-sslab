@@ -10,6 +10,7 @@ from pathlib import Path
 
 from mininet.log import setLogLevel
 
+from ..cli.args import add_connect_args
 from ..core.tee import Tee  # noqa: F401 (re-export for backward compat)
 from ..core.config.loader import (
     load_config,
@@ -41,32 +42,7 @@ def main():
     parser = argparse.ArgumentParser(
         description="Cefore mesh topology with external bridge"
     )
-    parser.add_argument("--hosts", type=int, default=5)
-    parser.add_argument("--switches", type=int, default=10)
-    parser.add_argument("--node-per-switch", type=int, default=2)
-    parser.add_argument("--host-degree-min", type=int, default=1)
-    parser.add_argument("--host-degree-max", type=int, default=2)
-    parser.add_argument("--switch-use-all", action="store_true")
-    parser.add_argument("--seed", type=int, default=None)
-    parser.add_argument("--k", type=int, default=2)
-    parser.add_argument("--down-interval", type=int, default=30)
-    parser.add_argument("--down-duration", type=int, default=10)
-    parser.add_argument("--down-exclude", type=str, default="")
-    parser.add_argument("--down-count", type=int, default=5)
-    parser.add_argument("--down-stagger", type=int, default=2)
-    parser.add_argument("--cache-count", type=int, default=0)
-    parser.add_argument("--bw", action="append", default=[])
-    parser.add_argument("--ext", action="append", default=[])
-    parser.add_argument("--bridge", action="append", default=[])
-    parser.add_argument("--config", type=str, default="")
-    parser.add_argument("--topo-png", type=str, default=None)
-    parser.add_argument("--script-log", type=str, default=None)
-    parser.add_argument("--no-script-log", action="store_true")
-    parser.add_argument("--topo-layout", type=str, default="spring")
-    parser.add_argument("--num", type=int, default=None)
-    parser.add_argument("--output-dir", type=str, default="logs")
-    parser.add_argument("--timestamp", action="store_true")
-    parser.add_argument("--no-cli", action="store_true")
+    add_connect_args(parser)
     args = parser.parse_args()
 
     config_data = load_config(args.config)

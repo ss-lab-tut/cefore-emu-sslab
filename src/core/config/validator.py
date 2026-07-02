@@ -112,7 +112,7 @@ OPTION_SPECS = {
         minimum=3,
         flag="--hosts",
         help="number of hosts",
-        block=("common", "linear"),
+        block=("common", "linear", "connect"),
         cli_order=10,
     ),
     "switches": OptionSpec(
@@ -122,7 +122,7 @@ OPTION_SPECS = {
         minimum=2,
         flag="--switches",
         help="number of switches (>= 2)",
-        block=("mesh",),
+        block=("mesh", "connect"),
         cli_order=10,
     ),
     "seed": OptionSpec(
@@ -131,7 +131,7 @@ OPTION_SPECS = {
         nullable=True,
         flag="--seed",
         help="random seed",
-        block=("common",),
+        block=("common", "connect"),
         cli_order=20,
     ),
     "topo_png": OptionSpec(
@@ -140,7 +140,7 @@ OPTION_SPECS = {
         nullable=True,
         flag="--topo-png",
         help="write topology PNG to this path",
-        block=("common",),
+        block=("common", "connect"),
         cli_order=30,
     ),
     "topo_layout": OptionSpec(
@@ -151,7 +151,7 @@ OPTION_SPECS = {
         metavar="TOPO_LAYOUT",
         flag="--topo-layout",
         help="topology layout: spring, kamada_kawai, or circular",
-        block=("common",),
+        block=("common", "connect"),
         cli_order=40,
     ),
     "k": OptionSpec(
@@ -161,7 +161,7 @@ OPTION_SPECS = {
         minimum=1,
         flag="--k",
         help="number of shortest paths per destination",
-        block=("mesh",),
+        block=("mesh", "connect"),
         cli_order=60,
     ),
     "host_degree_min": OptionSpec(
@@ -171,7 +171,7 @@ OPTION_SPECS = {
         minimum=1,
         flag="--host-degree-min",
         help="minimum number of switches per host (>=1)",
-        block=("mesh",),
+        block=("mesh", "connect"),
         cli_order=30,
     ),
     "host_degree_max": OptionSpec(
@@ -180,7 +180,7 @@ OPTION_SPECS = {
         default=2,
         flag="--host-degree-max",
         help="maximum number of switches per host",
-        block=("mesh",),
+        block=("mesh", "connect"),
         cli_order=40,
     ),
     "node_per_switch": OptionSpec(
@@ -190,7 +190,7 @@ OPTION_SPECS = {
         minimum=0,
         flag="--node-per-switch",
         help="max hosts per switch (0=unlimited, 2=one switch per link)",
-        block=("mesh",),
+        block=("mesh", "connect"),
         cli_order=20,
     ),
     "switch_use_all": OptionSpec(
@@ -200,7 +200,7 @@ OPTION_SPECS = {
         flag="--switch-use-all",
         action="store_true",
         help="create switches up to --switches and distribute extra links evenly",
-        block=("mesh",),
+        block=("mesh", "connect"),
         cli_order=50,
     ),
     "num": OptionSpec(
@@ -209,7 +209,7 @@ OPTION_SPECS = {
         minimum=1,
         flag="--num",
         help="experiment number (enables log directory output)",
-        block=("common", "linear"),
+        block=("common", "linear", "connect"),
         cli_order=50,
     ),
     "output_dir": OptionSpec(
@@ -218,7 +218,7 @@ OPTION_SPECS = {
         default="logs",
         flag="--output-dir",
         help="base output directory (default: logs)",
-        block=("common", "linear"),
+        block=("common", "linear", "connect"),
         cli_order=60,
     ),
     "results_json": OptionSpec(
@@ -238,7 +238,7 @@ OPTION_SPECS = {
         flag="--timestamp",
         action="store_true",
         help="add timestamp to output directory name",
-        block=("common", "linear"),
+        block=("common", "linear", "connect"),
         cli_order=70,
     ),
     "no_cli": OptionSpec(
@@ -248,7 +248,7 @@ OPTION_SPECS = {
         flag="--no-cli",
         action="store_true",
         help="skip interactive CLI (flap output visible on stdout)",
-        block=("disaster",),
+        block=("disaster", "connect"),
         cli_order=120,
     ),
     "no_script_log": OptionSpec(
@@ -258,7 +258,7 @@ OPTION_SPECS = {
         flag="--no-script-log",
         action="store_true",
         help="disable script log output",
-        block=("disaster",),
+        block=("disaster", "connect"),
         cli_order=110,
     ),
     "duration": OptionSpec(
@@ -329,7 +329,7 @@ OPTION_SPECS = {
         minimum=0,
         flag="--down-interval",
         help="seconds between down events (0 to disable)",
-        block=("disaster",),
+        block=("disaster", "connect"),
         cli_order=10,
     ),
     "down_duration": OptionSpec(
@@ -339,7 +339,7 @@ OPTION_SPECS = {
         minimum=0,
         flag="--down-duration",
         help="seconds to keep host down",
-        block=("disaster",),
+        block=("disaster", "connect"),
         cli_order=20,
     ),
     "down_exclude": OptionSpec(
@@ -348,7 +348,7 @@ OPTION_SPECS = {
         default="",
         flag="--down-exclude",
         help="comma-separated host ids to exclude from flapping",
-        block=("disaster",),
+        block=("disaster", "connect"),
         cli_order=30,
     ),
     "down_count": OptionSpec(
@@ -358,7 +358,7 @@ OPTION_SPECS = {
         minimum=0,
         flag="--down-count",
         help="number of hosts to keep down per cycle",
-        block=("disaster",),
+        block=("disaster", "connect"),
         cli_order=40,
     ),
     "down_stagger": OptionSpec(
@@ -368,7 +368,7 @@ OPTION_SPECS = {
         minimum=0,
         flag="--down-stagger",
         help="seconds to stagger down events within a cycle",
-        block=("disaster",),
+        block=("disaster", "connect"),
         cli_order=50,
     ),
     "cache_count": OptionSpec(
@@ -378,7 +378,7 @@ OPTION_SPECS = {
         minimum=0,
         flag="--cache-count",
         help="number of cache nodes (0 = down-count + 1)",
-        block=("disaster",),
+        block=("disaster", "connect"),
         cli_order=60,
     ),
     "bw": OptionSpec(
@@ -388,7 +388,7 @@ OPTION_SPECS = {
         flag="--bw",
         action="append",
         help="set bandwidth: nodeA,nodeB,mbps (repeatable)",
-        block=("disaster",),
+        block=("disaster", "connect"),
         cli_order=70,
     ),
     "ext": OptionSpec(
@@ -398,7 +398,7 @@ OPTION_SPECS = {
         flag="--ext",
         action="append",
         help="attach external intf: host,ifname,ip[,mtu]; ip required in CIDR form (repeatable)",
-        block=("disaster",),
+        block=("disaster", "connect"),
         cli_order=80,
     ),
     "bridge": OptionSpec(
@@ -408,7 +408,7 @@ OPTION_SPECS = {
         flag="--bridge",
         action="append",
         help="root ns bridge: switch,root_ip,local_routes[,ext_routes,gateway] (repeatable)",
-        block=("disaster",),
+        block=("disaster", "connect"),
         cli_order=90,
         config_allowed=False,
     ),
@@ -444,7 +444,7 @@ OPTION_SPECS = {
         message="script_log must be a string",
         flag="--script-log",
         help="log script output to file",
-        block=("disaster",),
+        block=("disaster", "connect"),
         cli_order=100,
     ),
     "debug": OptionSpec(
@@ -478,7 +478,7 @@ OPTION_SPECS = {
         config_allowed=False,
         flag="--config",
         help="JSON/YAML config file to override parameters",
-        block=("disaster",),
+        block=("disaster", "connect"),
         cli_order=95,
     ),
 }
