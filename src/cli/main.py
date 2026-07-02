@@ -22,12 +22,19 @@ from ..core.config.loader import (
 from ..core.debug import build_debug_config
 from ..core.paths import resolve_run_dir, resolve_run_path
 from ..core.tee import Tee
-from .args import add_common_args, add_debug_args, add_disaster_args, add_mesh_args
+from .args import (
+    add_common_args,
+    add_debug_args,
+    add_disaster_args,
+    add_linear_args,
+    add_mesh_args,
+)
 
 
 def cmd_linear(args):
     """Run linear topology scenario."""
     from ..scenarios.linear import run_linear_scenario
+
     run_dir = resolve_run_dir(args)
     debug_config = build_debug_config(args)
     setLogLevel("info")
@@ -37,6 +44,7 @@ def cmd_linear(args):
 def cmd_mesh(args):
     """Run mesh topology scenario."""
     from ..scenarios.mesh import run_mesh_scenario
+
     run_dir = resolve_run_dir(args)
     debug_config = build_debug_config(args)
     setLogLevel("info")
@@ -125,7 +133,9 @@ def cmd_disaster(args):
 
     try:
         setLogLevel("info")
-        run_disaster_scenario(args, run_dir, log_context=log_context, debug_config=debug_config)
+        run_disaster_scenario(
+            args, run_dir, log_context=log_context, debug_config=debug_config
+        )
     finally:
         if log_fp:
             sys.stdout = original_stdout
@@ -145,26 +155,12 @@ def main():
     linear_parser = subparsers.add_parser(
         "linear", help="linear topology (h0-s0-h1-s1-...-sN-hN)"
     )
-    linear_parser.add_argument("--hosts", type=int, default=5, help="number of hosts")
-    linear_parser.add_argument(
-        "--num", type=int, default=None,
-        help="experiment number (enables log directory output)",
-    )
-    linear_parser.add_argument(
-        "--output-dir", type=str, default="logs",
-        help="base output directory (default: logs)",
-    )
-    linear_parser.add_argument(
-        "--timestamp", action="store_true",
-        help="add timestamp to output directory name",
-    )
+    add_linear_args(linear_parser)
     add_debug_args(linear_parser)
     linear_parser.set_defaults(func=cmd_linear)
 
     # mesh subcommand
-    mesh_parser = subparsers.add_parser(
-        "mesh", help="random mesh topology"
-    )
+    mesh_parser = subparsers.add_parser("mesh", help="random mesh topology")
     add_common_args(mesh_parser)
     add_mesh_args(mesh_parser)
     add_debug_args(mesh_parser)

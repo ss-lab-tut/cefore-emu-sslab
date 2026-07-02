@@ -2,173 +2,75 @@
 
 import argparse
 
-_DEBUG_ARTIFACT_CHOICES = ("node_dirs", "fib_dump", "daemon_logs")
+from ..core.config.validator import OPTION_SPECS
+
+
+def _argparse_type(spec):
+    """Map OptionSpec scalar kind to argparse's conversion callable."""
+    if spec.kind == "int":
+        return int
+    if spec.kind == "number":
+        return float
+    if spec.kind in ("str", "enum"):
+        return str
+    return None
+
+
+def _argparse_action(spec):
+    """Resolve the action names stored in OptionSpec to argparse objects."""
+    if spec.action == "BooleanOptionalAction":
+        return argparse.BooleanOptionalAction
+    return spec.action
+
+
+def _add_args_for_block(parser, block):
+    """Add all CLI options whose canonical spec belongs to a CLI block."""
+    specs = sorted(
+        (
+            spec
+            for spec in OPTION_SPECS.values()
+            if spec.cli_allowed and block in spec.block
+        ),
+        key=lambda spec: spec.cli_order,
+    )
+    for spec in specs:
+        kwargs = {
+            "default": spec.default,
+            "help": spec.help,
+        }
+        action = _argparse_action(spec)
+        if action is not None:
+            kwargs["action"] = action
+        arg_type = _argparse_type(spec)
+        if action is None and arg_type is not None:
+            kwargs["type"] = arg_type
+        if spec.choices is not None:
+            kwargs["choices"] = spec.choices
+        if spec.metavar is not None:
+            kwargs["metavar"] = spec.metavar
+        parser.add_argument(spec.flag, **kwargs)
 
 
 def add_debug_args(parser):
     """Add debug artifact collection arguments."""
-    parser.add_argument(
-        "--debug",
-        action="store_true",
-        help="enable all debug artifact collection (equivalent to all --debug-artifact choices)",
-    )
-    parser.add_argument(
-        "--debug-artifact",
-        action="append",
-        default=[],
-        choices=_DEBUG_ARTIFACT_CHOICES,
-        dest="debug_artifact",
-        metavar="ARTIFACT",
-        help=(
-            "collect a specific debug artifact (repeatable): "
-            + ", ".join(_DEBUG_ARTIFACT_CHOICES)
-        ),
-    )
+    _add_args_for_block(parser, "debug")
+
+
+def add_linear_args(parser):
+    """Add arguments for linear topology."""
+    _add_args_for_block(parser, "linear")
 
 
 def add_common_args(parser):
     """Add arguments common to all topology types."""
-    parser.add_argument("--hosts", type=int, default=5, help="number of hosts")
-    parser.add_argument("--seed", type=int, default=None, help="random seed")
-    parser.add_argument(
-        "--topo-png", type=str, default=None,
-        help="write topology PNG to this path",
-    )
-    parser.add_argument(
-        "--topo-layout", type=str, default="spring",
-        help="topology layout: spring, kamada_kawai, or circular",
-    )
-    parser.add_argument(
-        "--num", type=int, default=None,
-        help="experiment number (enables log directory output)",
-    )
-    parser.add_argument(
-        "--output-dir", type=str, default="logs",
-        help="base output directory (default: logs)",
-    )
-    parser.add_argument(
-        "--timestamp", action="store_true",
-        help="add timestamp to output directory name",
-    )
+    _add_args_for_block(parser, "common")
 
 
 def add_mesh_args(parser):
     """Add arguments for mesh topology types."""
-    parser.add_argument(
-        "--switches", type=int, default=10,
-        help="number of switches (>= 2)",
-    )
-    parser.add_argument(
-        "--node-per-switch", type=int, default=2,
-        help="max hosts per switch (0=unlimited, 2=one switch per link)",
-    )
-    parser.add_argument(
-        "--host-degree-min", type=int, default=1,
-        help="minimum number of switches per host (>=1)",
-    )
-    parser.add_argument(
-        "--host-degree-max", type=int, default=2,
-        help="maximum number of switches per host",
-    )
-    parser.add_argument(
-        "--switch-use-all", action="store_true",
-        help="create switches up to --switches and distribute extra links evenly",
-    )
-    parser.add_argument(
-        "--k", type=int, default=2,
-        help="number of shortest paths per destination",
-    )
+    _add_args_for_block(parser, "mesh")
 
 
 def add_disaster_args(parser):
     """Add arguments for disaster topology."""
-    parser.add_argument(
-        "--down-interval", type=int, default=30,
-        help="seconds between down events (0 to disable)",
-    )
-    parser.add_argument(
-        "--down-duration", type=int, default=10,
-        help="seconds to keep host down",
-    )
-    parser.add_argument(
-        "--down-exclude", type=str, default="",
-        help="comma-separated host ids to exclude from flapping",
-    )
-    parser.add_argument(
-        "--down-count", type=int, default=5,
-        help="number of hosts to keep down per cycle",
-    )
-    parser.add_argument(
-        "--down-stagger", type=int, default=2,
-        help="seconds to stagger down events within a cycle",
-    )
-    parser.add_argument(
-        "--cache-count", type=int, default=0,
-        help="number of cache nodes (0 = down-count + 1)",
-    )
-    parser.add_argument(
-        "--bw", action="append", default=[],
-        help="set bandwidth: nodeA,nodeB,mbps (repeatable)",
-    )
-    parser.add_argument(
-        "--ext", action="append", default=[],
-        help="attach external intf: host,ifname,ip[,mtu]; ip required in CIDR form (repeatable)",
-    )
-    parser.add_argument(
-        "--bridge", action="append", default=[],
-        help="root ns bridge: switch,root_ip,local_routes[,ext_routes,gateway] (repeatable)",
-    )
-    parser.add_argument(
-        "--config", type=str, default="",
-        help="JSON/YAML config file to override parameters",
-    )
-    parser.add_argument(
-        "--script-log", type=str, default=None,
-        help="log script output to file",
-    )
-    parser.add_argument(
-        "--no-script-log", action="store_true",
-        help="disable script log output",
-    )
-    parser.add_argument(
-        "--no-cli", action="store_true",
-        help="skip interactive CLI (flap output visible on stdout)",
-    )
-    parser.add_argument(
-        "--duration", type=int, default=0,
-        help="eval phase duration in seconds for --no-cli (0: single cycle)",
-    )
-    parser.add_argument(
-        "--results-json", type=str, default="",
-        help="write eval get results to JSON under output directory",
-    )
-    parser.add_argument(
-        "--cache-default-rct-ms", type=int, default=None,
-        help="override CACHE_DEFAULT_RCT(ms) for cache nodes",
-    )
-    parser.add_argument(
-        "--publisher-host", type=int, default=None,
-        help="explicit publisher host used for publisher-down metric",
-    )
-    parser.add_argument(
-        "--pubsub-sub-startup-grace", type=float, default=1.0,
-        dest="pubsub_sub_startup_grace",
-        help="seconds to wait after starting cefsubfile before launching cefpubfile (default: 1.0)",
-    )
-    parser.add_argument(
-        "--warmup-get-interval", type=float, default=0,
-        help="seconds between warmup gets (0=no delay)",
-    )
-    parser.add_argument(
-        "--warmup-only-cache-nodes",
-        action=argparse.BooleanOptionalAction, default=True,
-        help="restrict warmup gets to cache nodes (default: true)",
-    )
-    parser.add_argument(
-        "--webui-port",
-        type=int,
-        default=None,
-        metavar="PORT",
-        dest="webui_port",
-        help="start live dashboard on this port (disabled by default; recommended: 5080)",
-    )
+    _add_args_for_block(parser, "disaster")

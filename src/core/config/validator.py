@@ -53,6 +53,7 @@ class OptionSpec:
     metavar: str | None = None
     help: str | None = None
     block: tuple[str, ...] = ()
+    cli_order: int = 0
     config_allowed: bool = True
     cli_allowed: bool = True
     special_config_merge: bool = False
@@ -112,6 +113,7 @@ OPTION_SPECS = {
         flag="--hosts",
         help="number of hosts",
         block=("common", "linear"),
+        cli_order=10,
     ),
     "switches": OptionSpec(
         "switches",
@@ -121,6 +123,7 @@ OPTION_SPECS = {
         flag="--switches",
         help="number of switches (>= 2)",
         block=("mesh",),
+        cli_order=10,
     ),
     "seed": OptionSpec(
         "seed",
@@ -129,6 +132,7 @@ OPTION_SPECS = {
         flag="--seed",
         help="random seed",
         block=("common",),
+        cli_order=20,
     ),
     "topo_png": OptionSpec(
         "topo_png",
@@ -137,6 +141,7 @@ OPTION_SPECS = {
         flag="--topo-png",
         help="write topology PNG to this path",
         block=("common",),
+        cli_order=30,
     ),
     "topo_layout": OptionSpec(
         "topo_layout",
@@ -147,6 +152,7 @@ OPTION_SPECS = {
         flag="--topo-layout",
         help="topology layout: spring, kamada_kawai, or circular",
         block=("common",),
+        cli_order=40,
     ),
     "k": OptionSpec(
         "k",
@@ -156,6 +162,7 @@ OPTION_SPECS = {
         flag="--k",
         help="number of shortest paths per destination",
         block=("mesh",),
+        cli_order=60,
     ),
     "host_degree_min": OptionSpec(
         "host_degree_min",
@@ -165,6 +172,7 @@ OPTION_SPECS = {
         flag="--host-degree-min",
         help="minimum number of switches per host (>=1)",
         block=("mesh",),
+        cli_order=30,
     ),
     "host_degree_max": OptionSpec(
         "host_degree_max",
@@ -173,6 +181,7 @@ OPTION_SPECS = {
         flag="--host-degree-max",
         help="maximum number of switches per host",
         block=("mesh",),
+        cli_order=40,
     ),
     "node_per_switch": OptionSpec(
         "node_per_switch",
@@ -182,6 +191,7 @@ OPTION_SPECS = {
         flag="--node-per-switch",
         help="max hosts per switch (0=unlimited, 2=one switch per link)",
         block=("mesh",),
+        cli_order=20,
     ),
     "switch_use_all": OptionSpec(
         "switch_use_all",
@@ -191,6 +201,7 @@ OPTION_SPECS = {
         action="store_true",
         help="create switches up to --switches and distribute extra links evenly",
         block=("mesh",),
+        cli_order=50,
     ),
     "num": OptionSpec(
         "num",
@@ -199,6 +210,7 @@ OPTION_SPECS = {
         flag="--num",
         help="experiment number (enables log directory output)",
         block=("common", "linear"),
+        cli_order=50,
     ),
     "output_dir": OptionSpec(
         "output_dir",
@@ -207,6 +219,7 @@ OPTION_SPECS = {
         flag="--output-dir",
         help="base output directory (default: logs)",
         block=("common", "linear"),
+        cli_order=60,
     ),
     "results_json": OptionSpec(
         "results_json",
@@ -216,6 +229,7 @@ OPTION_SPECS = {
         flag="--results-json",
         help="write eval get results to JSON under output directory",
         block=("disaster",),
+        cli_order=150,
     ),
     "timestamp": OptionSpec(
         "timestamp",
@@ -225,6 +239,7 @@ OPTION_SPECS = {
         action="store_true",
         help="add timestamp to output directory name",
         block=("common", "linear"),
+        cli_order=70,
     ),
     "no_cli": OptionSpec(
         "no_cli",
@@ -234,6 +249,7 @@ OPTION_SPECS = {
         action="store_true",
         help="skip interactive CLI (flap output visible on stdout)",
         block=("disaster",),
+        cli_order=120,
     ),
     "no_script_log": OptionSpec(
         "no_script_log",
@@ -243,6 +259,7 @@ OPTION_SPECS = {
         action="store_true",
         help="disable script log output",
         block=("disaster",),
+        cli_order=110,
     ),
     "duration": OptionSpec(
         "duration",
@@ -252,6 +269,7 @@ OPTION_SPECS = {
         flag="--duration",
         help="eval phase duration in seconds for --no-cli (0: single cycle)",
         block=("disaster",),
+        cli_order=130,
     ),
     "cache_default_rct_ms": OptionSpec(
         "cache_default_rct_ms",
@@ -261,6 +279,7 @@ OPTION_SPECS = {
         flag="--cache-default-rct-ms",
         help="override CACHE_DEFAULT_RCT(ms) for cache nodes",
         block=("disaster",),
+        cli_order=160,
     ),
     "publisher_host": OptionSpec(
         "publisher_host",
@@ -269,6 +288,7 @@ OPTION_SPECS = {
         flag="--publisher-host",
         help="explicit publisher host used for publisher-down metric",
         block=("disaster",),
+        cli_order=170,
     ),
     "pubsub_sub_startup_grace": OptionSpec(
         "pubsub_sub_startup_grace",
@@ -279,6 +299,7 @@ OPTION_SPECS = {
         flag="--pubsub-sub-startup-grace",
         help="seconds to wait after starting cefsubfile before launching cefpubfile (default: 1.0)",
         block=("disaster",),
+        cli_order=180,
     ),
     "warmup_get_interval": OptionSpec(
         "warmup_get_interval",
@@ -289,6 +310,7 @@ OPTION_SPECS = {
         flag="--warmup-get-interval",
         help="seconds between warmup gets (0=no delay)",
         block=("disaster",),
+        cli_order=190,
     ),
     "warmup_only_cache_nodes": OptionSpec(
         "warmup_only_cache_nodes",
@@ -298,6 +320,7 @@ OPTION_SPECS = {
         action="BooleanOptionalAction",
         help="restrict warmup gets to cache nodes (default: true)",
         block=("disaster",),
+        cli_order=200,
     ),
     "down_interval": OptionSpec(
         "down_interval",
@@ -307,6 +330,7 @@ OPTION_SPECS = {
         flag="--down-interval",
         help="seconds between down events (0 to disable)",
         block=("disaster",),
+        cli_order=10,
     ),
     "down_duration": OptionSpec(
         "down_duration",
@@ -316,6 +340,7 @@ OPTION_SPECS = {
         flag="--down-duration",
         help="seconds to keep host down",
         block=("disaster",),
+        cli_order=20,
     ),
     "down_exclude": OptionSpec(
         "down_exclude",
@@ -324,6 +349,7 @@ OPTION_SPECS = {
         flag="--down-exclude",
         help="comma-separated host ids to exclude from flapping",
         block=("disaster",),
+        cli_order=30,
     ),
     "down_count": OptionSpec(
         "down_count",
@@ -333,6 +359,7 @@ OPTION_SPECS = {
         flag="--down-count",
         help="number of hosts to keep down per cycle",
         block=("disaster",),
+        cli_order=40,
     ),
     "down_stagger": OptionSpec(
         "down_stagger",
@@ -342,6 +369,7 @@ OPTION_SPECS = {
         flag="--down-stagger",
         help="seconds to stagger down events within a cycle",
         block=("disaster",),
+        cli_order=50,
     ),
     "cache_count": OptionSpec(
         "cache_count",
@@ -351,6 +379,7 @@ OPTION_SPECS = {
         flag="--cache-count",
         help="number of cache nodes (0 = down-count + 1)",
         block=("disaster",),
+        cli_order=60,
     ),
     "bw": OptionSpec(
         "bw",
@@ -360,6 +389,7 @@ OPTION_SPECS = {
         action="append",
         help="set bandwidth: nodeA,nodeB,mbps (repeatable)",
         block=("disaster",),
+        cli_order=70,
     ),
     "ext": OptionSpec(
         "ext",
@@ -369,6 +399,7 @@ OPTION_SPECS = {
         action="append",
         help="attach external intf: host,ifname,ip[,mtu]; ip required in CIDR form (repeatable)",
         block=("disaster",),
+        cli_order=80,
     ),
     "bridge": OptionSpec(
         "bridge",
@@ -378,6 +409,7 @@ OPTION_SPECS = {
         action="append",
         help="root ns bridge: switch,root_ip,local_routes[,ext_routes,gateway] (repeatable)",
         block=("disaster",),
+        cli_order=90,
         config_allowed=False,
     ),
     "bridges": OptionSpec("bridges", "structured", default=[], cli_allowed=False),
@@ -403,6 +435,7 @@ OPTION_SPECS = {
         metavar="PORT",
         help="start live dashboard on this port (disabled by default; recommended: 5080)",
         block=("disaster",),
+        cli_order=210,
     ),
     "script_log": OptionSpec(
         "script_log",
@@ -412,14 +445,17 @@ OPTION_SPECS = {
         flag="--script-log",
         help="log script output to file",
         block=("disaster",),
+        cli_order=100,
     ),
     "debug": OptionSpec(
         "debug",
         "structured",
+        default=False,
         flag="--debug",
         action="store_true",
         help="enable all debug artifact collection (equivalent to all --debug-artifact choices)",
         block=("debug",),
+        cli_order=10,
         special_config_merge=True,
     ),
     "debug_artifact": OptionSpec(
@@ -433,6 +469,7 @@ OPTION_SPECS = {
         metavar="ARTIFACT",
         help="collect a specific debug artifact (repeatable): node_dirs, fib_dump, daemon_logs",
         block=("debug",),
+        cli_order=20,
     ),
     "config": OptionSpec(
         "config",
@@ -442,6 +479,7 @@ OPTION_SPECS = {
         flag="--config",
         help="JSON/YAML config file to override parameters",
         block=("disaster",),
+        cli_order=95,
     ),
 }
 
