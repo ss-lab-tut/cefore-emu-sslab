@@ -293,25 +293,30 @@ ceforeemu-log logs/ex1_seed42/ --stdout | head -20
 
 If not installed, use `uv run ceforeemu-log` instead.
 
-### Supported Log Filename Patterns
+### Log Filename Schema
+
+All content logs use the single canonical pattern owned by `src/core/artifacts.py`
+(2026-07-03 artifact-layout change — the former host+content / disaster / legacy
+patterns are no longer written or parsed):
 
 | Pattern | Example | Extracted Fields |
 |---------|---------|-----------------|
-| host+content | `cefputfile_h13_c10.log` | command, host_id, content_id |
-| host only | `cefputfile_h9.log` | command, host_id |
-| disaster | `cefgetfile_seed42_downhosts0,1_idx16_h4.log` | command, host_id, seed, down_hosts, idx |
-| legacy | `cefgetfile-h0.log` | command, host_id |
+| canonical | `cefgetfile_eval_h4_test_sample.log` | command, phase, host, label |
+
+Operation context beyond the filename (URI, success, down hosts) is joined from
+the same directory's `results.json` via its `log_file` key.
 
 ### CSV Column Structure
 
-**Common metadata columns (from meta.json + filename):**
+**Common metadata columns (from meta.json + filename + results.json):**
 
 | Column | Source |
 |--------|--------|
 | experiment_dir | Directory name |
 | num, hosts, switches, seed, k | meta.json |
 | down_interval, down_duration, down_count, down_stagger, down_exclude, cache_count | meta.json |
-| filename, host_id, content_id, file_seed, down_hosts, get_idx | Filename |
+| filename, host_id, phase, label | Filename |
+| down_hosts, publisher_down | results.json join |
 
 **cefputfile-specific columns:**
 timestamp, uri, file, rate_mbps, block_size_bytes, cache_time_sec, expiration_sec, tx_frames, tx_bytes, duration_sec, throughput_bps, success
@@ -346,6 +351,7 @@ cefore-emu/
 │   │   ├── config/                # Configuration utilities
 │   │   │   ├── loader.py          # JSON/YAML config loader
 │   │   │   └── priority_resolver.py  # Config priority resolution
+│   │   ├── artifacts.py           # Artifact naming (dir / PNG / log names, build+parse)
 │   │   ├── fib.py                 # FIB route computation
 │   │   ├── flap_state.py          # Host flap state tracking
 │   │   ├── graph.py               # Graph algorithms (Dijkstra, k-center)
@@ -353,7 +359,6 @@ cefore-emu/
 │   │   ├── roles.py               # Node role assignment
 │   │   └── tee.py                 # Tee stdout/stderr to file
 │   ├── log/                       # Log parsing and CSV summarization
-│   │   ├── filename.py            # Filename pattern → metadata extraction
 │   │   ├── parser.py              # Log text → dict parser
 │   │   ├── plotter.py             # Log data plotting
 │   │   ├── summarizer.py          # Directory walk + CSV output

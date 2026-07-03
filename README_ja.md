@@ -298,6 +298,7 @@ cefore-emu/
 │   │   ├── config/                # 設定ユーティリティ
 │   │   │   ├── loader.py          # JSON/YAML 設定ローダ
 │   │   │   └── priority_resolver.py  # 設定優先度解決
+│   │   ├── artifacts.py           # 成果物命名（dir / PNG / log 名の build+parse）
 │   │   ├── fib.py                 # FIB ルート計算
 │   │   ├── flap_state.py          # ホストフラップ状態追跡
 │   │   ├── graph.py               # グラフアルゴリズム（Dijkstra、k-center）
@@ -305,7 +306,6 @@ cefore-emu/
 │   │   ├── roles.py               # ノードロール割り当て
 │   │   └── tee.py                 # stdout/stderr をファイルに tee
 │   ├── log/                       # ログ解析と CSV 集計
-│   │   ├── filename.py            # ファイル名パターン → メタデータ抽出
 │   │   ├── parser.py              # ログテキスト → dict パーサ
 │   │   ├── plotter.py             # ログデータのプロット
 │   │   ├── summarizer.py          # ディレクトリ走査 + CSV 出力
