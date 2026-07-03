@@ -30,9 +30,9 @@ from .bridge import (
     attach_external_interface,
     BridgeManager,
     cleanup_external_bridges,
-    parse_ext_args,
     setup_bridges,
 )
+from .bridge_args import parse_ext_args
 from .cache_strategy import CacheContext, CacheStrategy
 from .cefore import run_cefstatus_all
 from .command_runner import MininetCommandRunner

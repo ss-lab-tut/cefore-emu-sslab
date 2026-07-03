@@ -15,9 +15,9 @@ from ..core.events import extract_publications
 from ..core.flap_state import FlapState
 from ..core.paths import resolve_run_path
 
+from ..runtime.bridge_args import parse_bridge_args
 from ..runtime.bridge import (
     BridgeManager,
-    parse_bridge_args,
 )
 from ..runtime.cache_strategy import KCentersStrategy, RandomCSModeStrategy
 from ..runtime.command_runner import MininetCommandRunner

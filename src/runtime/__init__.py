@@ -4,8 +4,8 @@ from .bridge import (
     attach_external_interface,
     attach_external_via_bridge,
     cleanup_external_bridges,
-    parse_ext_args,
 )
+from .bridge_args import parse_ext_args
 from .bandwidth import parse_bw_args, set_link_bandwidth
 from .cleanup import cleanup_all, kill_cef_processes
 from .debug import archive_node_dirs

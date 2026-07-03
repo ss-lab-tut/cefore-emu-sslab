@@ -14,6 +14,7 @@ from mininet.node import Node
 
 from ..core.addressing import AddressingScheme
 from ..core.topology import TopologyModel
+from .bridge_args import validate_static_ip as _validate_static_ip
 from .command_runner import ROOT_SENTINEL, MininetCommandRunner
 
 
@@ -35,6 +36,7 @@ class CleanupAction:
             2-tuple form (via ``_result_to_rc_detail``) so ``cleanup()`` can
             unpack uniformly.
     """
+
     description: str
     category: str
     mandatory: bool
@@ -47,6 +49,7 @@ class TeardownError(RuntimeError):
     Attributes:
         failures: List of (description, exit_code, error_detail) tuples.
     """
+
     def __init__(self, failures: list[tuple[str, int, str]]):
         self.failures = failures
         msgs = [f"{desc} (rc={rc}): {detail}" for desc, rc, detail in failures]
@@ -74,6 +77,7 @@ class ExternalBridgeError(RuntimeError):
         setup_failure: Original setup failure message (if any).
         rollback_failures: List of (action, error) from rollback attempts.
     """
+
     def __init__(
         self,
         setup_failure: str | None = None,
@@ -135,6 +139,7 @@ def _inspect_link(phy_intf: str) -> tuple[bool, dict | None, str]:
         return False, None, f"ip link show {phy_intf} failed (rc={rc}): {err.strip()}"
     try:
         import json as _json
+
         data = _json.loads(out)
         if not isinstance(data, list) or not data:
             return False, None, f"ip link show {phy_intf} returned empty result"
@@ -150,6 +155,7 @@ def _inspect_addresses(phy_intf: str) -> tuple[bool, list[dict] | None, str]:
         return False, None, f"ip addr show {phy_intf} failed (rc={rc}): {err.strip()}"
     try:
         import json as _json
+
         data = _json.loads(out)
         if not isinstance(data, list) or not data:
             return True, [], ""
@@ -161,31 +167,6 @@ def _inspect_addresses(phy_intf: str) -> tuple[bool, list[dict] | None, str]:
 # ---------------------------------------------------------------------------
 # External bridge attachment with transactional safety
 # ---------------------------------------------------------------------------
-
-
-def _validate_static_ip(ip_str: str) -> None:
-    """Validate static IP string under the strict-CIDR contract.
-
-    Requires address + prefix length in CIDR form (e.g., '10.0.0.2/24').
-    Rejects bare addresses, empty strings, and malformed input.
-    """
-    import ipaddress as _ipaddress
-    if not ip_str or not isinstance(ip_str, str):
-        raise RuntimeError(
-            "static IP must be a non-empty CIDR string (e.g., '10.0.0.2/24')"
-        )
-    # Strict-CIDR policy: explicit prefix length is required. A bare IP
-    # would be silently treated as /32 by ipaddress.ip_interface(); the
-    # published `--ext host,ifname,ip[,mtu] (ip required in CIDR form)`
-    # contract forbids that.
-    if "/" not in ip_str:
-        raise RuntimeError(
-            f"static IP must be CIDR form, e.g. '10.0.0.2/24'; got '{ip_str}'"
-        )
-    try:
-        _ipaddress.ip_interface(ip_str)
-    except (ValueError, TypeError) as exc:
-        raise RuntimeError(f"invalid static IP '{ip_str}': {exc}")
 
 
 def _get_admin_up(link_data: dict) -> bool | None:
@@ -260,14 +241,13 @@ def attach_external_via_bridge(
     master = link_data.get("master") or link_data.get("bridge")
     if master:
         raise RuntimeError(
-            f"{phy_intf} already enslaved to {master}; "
-            f"cannot reassign to new bridge"
+            f"{phy_intf} already enslaved to {master}; cannot reassign to new bridge"
         )
 
     addr_success, addrs, addr_err = _inspect_addresses(phy_intf)
     if not addr_success:
         raise RuntimeError(f"cannot inspect addresses on {phy_intf}: {addr_err}")
-    for addr_info in (addrs or []):
+    for addr_info in addrs or []:
         addr = addr_info.get("local", "")
         if addr and not addr.startswith("169.254."):
             raise RuntimeError(
@@ -321,11 +301,13 @@ def attach_external_via_bridge(
         _created_bridges.pop(host_name, None)
         raise RuntimeError(f"bridge creation failed (rc={rc}): {err.strip()}")
     record["bridge_created"] = True
-    rollback_actions.append(_RollbackAction(
-        "delete bridge",
-        lambda: _rollback_del_link(bridge_name),
-        ("bridge_created", "bridge_up"),
-    ))
+    rollback_actions.append(
+        _RollbackAction(
+            "delete bridge",
+            lambda: _rollback_del_link(bridge_name),
+            ("bridge_created", "bridge_up"),
+        )
+    )
 
     rc, _, err = _run_root_cmd_vec(["ip", "link", "set", bridge_name, "up"])
     if rc != 0:
@@ -342,38 +324,55 @@ def attach_external_via_bridge(
         # Register restore-DOWN immediately after phy-up succeeds, BEFORE the
         # enslave attempt, so an enslave failure still triggers DOWN
         # restoration via rollback. (Defect 2.)
-        rollback_actions.append(_RollbackAction(
-            "restore phy DOWN",
-            lambda: _rollback_set_link(phy_intf, "down"),
-            ("phy_up_changed",),
-        ))
+        rollback_actions.append(
+            _RollbackAction(
+                "restore phy DOWN",
+                lambda: _rollback_set_link(phy_intf, "down"),
+                ("phy_up_changed",),
+            )
+        )
 
-    rc, _, err = _run_root_cmd_vec(["ip", "link", "set", phy_intf, "master", bridge_name])
+    rc, _, err = _run_root_cmd_vec(
+        ["ip", "link", "set", phy_intf, "master", bridge_name]
+    )
     if rc != 0:
         rb_failures = _abort("phy-enslave failure")
         raise ExternalBridgeError("phy-enslave failure", rb_failures)
     record["phy_enslaved"] = True
-    rollback_actions.append(_RollbackAction(
-        "unmaster phy",
-        lambda: _rollback_unmaster(phy_intf),
-        ("phy_enslaved",),
-    ))
+    rollback_actions.append(
+        _RollbackAction(
+            "unmaster phy",
+            lambda: _rollback_unmaster(phy_intf),
+            ("phy_enslaved",),
+        )
+    )
 
-    rc, _, err = _run_root_cmd_vec([
-        "ip", "link", "add", veth_root, "type", "veth", "peer", "name", veth_host
-    ])
+    rc, _, err = _run_root_cmd_vec(
+        ["ip", "link", "add", veth_root, "type", "veth", "peer", "name", veth_host]
+    )
     if rc != 0:
         rb_failures = _abort("veth creation failure")
         raise ExternalBridgeError("veth creation failure", rb_failures)
     record["veth_created"] = True
-    rollback_actions.append(_RollbackAction(
-        "delete veth",
-        lambda: _rollback_del_link(veth_root),
-        ("veth_created", "veth_root_mastered", "veth_root_up",
-         "veth_host_ns_moved", "veth_host_up", "mtu_set", "ip_assigned"),
-    ))
+    rollback_actions.append(
+        _RollbackAction(
+            "delete veth",
+            lambda: _rollback_del_link(veth_root),
+            (
+                "veth_created",
+                "veth_root_mastered",
+                "veth_root_up",
+                "veth_host_ns_moved",
+                "veth_host_up",
+                "mtu_set",
+                "ip_assigned",
+            ),
+        )
+    )
 
-    rc, _, err = _run_root_cmd_vec(["ip", "link", "set", veth_root, "master", bridge_name])
+    rc, _, err = _run_root_cmd_vec(
+        ["ip", "link", "set", veth_root, "master", bridge_name]
+    )
     if rc != 0:
         rb_failures = _abort("veth-root-master failure")
         raise ExternalBridgeError("veth-root-master failure", rb_failures)
@@ -391,7 +390,9 @@ def attach_external_via_bridge(
         raise ExternalBridgeError("veth-host-up failure", rb_failures)
 
     host_pid = host.pid
-    rc, _, err = _run_root_cmd_vec(["ip", "link", "set", veth_host, "netns", str(host_pid)])
+    rc, _, err = _run_root_cmd_vec(
+        ["ip", "link", "set", veth_host, "netns", str(host_pid)]
+    )
     if rc != 0:
         rb_failures = _abort("veth-host-ns-move failure")
         raise ExternalBridgeError("veth-host-ns-move failure", rb_failures)
@@ -407,11 +408,15 @@ def attach_external_via_bridge(
     record["veth_host_up"] = True
 
     if mtu:
-        rc, _, err = _run_root_cmd_vec(["ip", "link", "set", bridge_name, "mtu", str(mtu)])
+        rc, _, err = _run_root_cmd_vec(
+            ["ip", "link", "set", bridge_name, "mtu", str(mtu)]
+        )
         if rc != 0:
             rb_failures = _abort("bridge-mtu failure")
             raise ExternalBridgeError("bridge-mtu failure", rb_failures)
-        rc, _, err = _run_root_cmd_vec(["ip", "link", "set", veth_root, "mtu", str(mtu)])
+        rc, _, err = _run_root_cmd_vec(
+            ["ip", "link", "set", veth_root, "mtu", str(mtu)]
+        )
         if rc != 0:
             rb_failures = _abort("veth-root-mtu failure")
             raise ExternalBridgeError("veth-root-mtu failure", rb_failures)
@@ -463,9 +468,15 @@ def cleanup_external_bridges() -> None:
             if rc != 0:
                 failures.append((f"del {veth_root}", err.strip()))
             else:
-                for flag in ("veth_created", "veth_root_mastered",
-                             "veth_root_up", "veth_host_ns_moved",
-                             "veth_host_up", "mtu_set", "ip_assigned"):
+                for flag in (
+                    "veth_created",
+                    "veth_root_mastered",
+                    "veth_root_up",
+                    "veth_host_ns_moved",
+                    "veth_host_up",
+                    "mtu_set",
+                    "ip_assigned",
+                ):
                     record[flag] = False
 
         # unmaster — clears only phy_enslaved
@@ -529,14 +540,18 @@ def _rollback_unmaster(phy_intf: str) -> None:
     """Remove physical interface from bridge master."""
     rc, _, err = _run_root_cmd_vec(["ip", "link", "set", phy_intf, "nomaster"])
     if rc != 0:
-        raise RuntimeError(f"rollback unmaster {phy_intf} failed (rc={rc}): {err.strip()}")
+        raise RuntimeError(
+            f"rollback unmaster {phy_intf} failed (rc={rc}): {err.strip()}"
+        )
 
 
 def _rollback_set_link(name: str, state: str) -> None:
     """Set link administrative state."""
     rc, _, err = _run_root_cmd_vec(["ip", "link", "set", name, state])
     if rc != 0:
-        raise RuntimeError(f"rollback set {name} {state} failed (rc={rc}): {err.strip()}")
+        raise RuntimeError(
+            f"rollback set {name} {state} failed (rc={rc}): {err.strip()}"
+        )
 
 
 # Outstanding-state flags for _created_bridges records. The record is retained
@@ -576,6 +591,7 @@ class _RollbackAction:
     the corresponding outstanding-state flag(s) set, and the record is
     retained for retry via `_record_has_outstanding_state(record)`.
     """
+
     description: str
     run: Callable[[], None]
     clear_flags: tuple[str, ...]
@@ -604,41 +620,6 @@ def _rollback(
     if rollback_failures:
         info(f"[bridge] rollback for {reason} had failures: {rollback_failures}\n")
     return rollback_failures
-
-
-def parse_ext_args(values):
-    """Parse external interface arguments.
-
-    Static IP is required in CIDR form. DHCP mode is not supported.
-
-    Args:
-        values: List of "host,ifname,ip[,mtu]" strings.
-
-    Returns:
-        List of (host_name, intf_name, ip, mtu) tuples.
-
-    Raises:
-        ValueError: If IP is missing or format is invalid.
-    """
-    entries = []
-    for value in values or []:
-        parts = [part.strip() for part in value.split(",")]
-        if len(parts) not in (3, 4):
-            raise ValueError(
-                "ext format is host,ifname,ip[,mtu]; "
-                "static IP is required in CIDR form (DHCP unsupported)"
-            )
-        host_name = parts[0]
-        intf_name = parts[1]
-        ip = parts[2]
-        if not ip:
-            raise ValueError(
-                f"static IP required for {host_name},{intf_name}; "
-                "DHCP mode is not supported"
-            )
-        mtu = int(parts[3]) if len(parts) == 4 and parts[3] else None
-        entries.append((host_name, intf_name, ip, mtu))
-    return entries
 
 
 # ---------------------------------------------------------------------------
@@ -711,14 +692,16 @@ class BridgeManager:
         info(f"*** Adding route in root ns: {add_argv}\n")
         runner.run(ROOT_SENTINEL, add_argv, capture_stderr=True)
         del_argv = ["route", "del", "-net", local_routes]
-        self.cleanup_actions.append(CleanupAction(
-            description=f"remove route: {' '.join(del_argv)}",
-            category="route",
-            mandatory=False,
-            execute=lambda r=runner, a=del_argv: _result_to_rc_detail(
-                r.run(ROOT_SENTINEL, a, capture_stderr=True)
-            ),
-        ))
+        self.cleanup_actions.append(
+            CleanupAction(
+                description=f"remove route: {' '.join(del_argv)}",
+                category="route",
+                mandatory=False,
+                execute=lambda r=runner, a=del_argv: _result_to_rc_detail(
+                    r.run(ROOT_SENTINEL, a, capture_stderr=True)
+                ),
+            )
+        )
 
     def add_host_route(
         self,
@@ -737,21 +720,37 @@ class BridgeManager:
         runner = self._host_runner(net)
         dev_clause = ["dev", dev] if dev else []
         if dest_network in ("default", "0.0.0.0/0"):
-            add_argv = ["ip", "route", "replace", "default", "via", gateway] + dev_clause
+            add_argv = [
+                "ip",
+                "route",
+                "replace",
+                "default",
+                "via",
+                gateway,
+            ] + dev_clause
             del_argv = ["ip", "route", "del", "default"]
         else:
-            add_argv = ["route", "add", "-net", dest_network, "gw", gateway] + dev_clause
+            add_argv = [
+                "route",
+                "add",
+                "-net",
+                dest_network,
+                "gw",
+                gateway,
+            ] + dev_clause
             del_argv = ["route", "del", "-net", dest_network]
         info(f"*** Adding route in {host_name}: {add_argv}\n")
         runner.run(host_name, add_argv, capture_stderr=True)
-        self.cleanup_actions.append(CleanupAction(
-            description=f"remove host route: {' '.join(del_argv)}",
-            category="route",
-            mandatory=False,
-            execute=lambda r=runner, name=host_name, a=del_argv: _result_to_rc_detail(
-                r.run(name, a, capture_stderr=True)
-            ),
-        ))
+        self.cleanup_actions.append(
+            CleanupAction(
+                description=f"remove host route: {' '.join(del_argv)}",
+                category="route",
+                mandatory=False,
+                execute=lambda r=runner, name=host_name, a=del_argv: (
+                    _result_to_rc_detail(r.run(name, a, capture_stderr=True))
+                ),
+            )
+        )
 
     def add_root_route(self, dest_network: str, gateway: str) -> None:
         """Add route from root namespace to external network."""
@@ -761,14 +760,16 @@ class BridgeManager:
         info(f"*** Adding route in root ns: {add_argv}\n")
         runner.run(ROOT_SENTINEL, add_argv, capture_stderr=True)
         del_argv = ["route", "del", "-net", dest_network]
-        self.cleanup_actions.append(CleanupAction(
-            description=f"remove root route: {' '.join(del_argv)}",
-            category="route",
-            mandatory=False,
-            execute=lambda r=runner, a=del_argv: _result_to_rc_detail(
-                r.run(ROOT_SENTINEL, a, capture_stderr=True)
-            ),
-        ))
+        self.cleanup_actions.append(
+            CleanupAction(
+                description=f"remove root route: {' '.join(del_argv)}",
+                category="route",
+                mandatory=False,
+                execute=lambda r=runner, a=del_argv: _result_to_rc_detail(
+                    r.run(ROOT_SENTINEL, a, capture_stderr=True)
+                ),
+            )
+        )
 
     def enable_ip_forwarding(self) -> None:
         """Enable IP forwarding on root namespace node.
@@ -792,7 +793,9 @@ class BridgeManager:
             raise RuntimeError(f"invalid ip_forward value '{prior}'")
 
         write = runner.run(
-            ROOT_SENTINEL, ["sysctl", "-w", "net.ipv4.ip_forward=1"], capture_stderr=True
+            ROOT_SENTINEL,
+            ["sysctl", "-w", "net.ipv4.ip_forward=1"],
+            capture_stderr=True,
         )
         if write.returncode != 0:
             raise RuntimeError(
@@ -800,18 +803,20 @@ class BridgeManager:
                 f"{(write.stderr or '').strip()}"
             )
 
-        self.cleanup_actions.append(CleanupAction(
-            description=f"restore ip_forward to {prior}",
-            category="sysctl",
-            mandatory=True,
-            execute=lambda r=runner, pv=prior: _result_to_rc_detail(
-                r.run(
-                    ROOT_SENTINEL,
-                    ["sysctl", "-w", f"net.ipv4.ip_forward={pv}"],
-                    capture_stderr=True,
-                )
-            ),
-        ))
+        self.cleanup_actions.append(
+            CleanupAction(
+                description=f"restore ip_forward to {prior}",
+                category="sysctl",
+                mandatory=True,
+                execute=lambda r=runner, pv=prior: _result_to_rc_detail(
+                    r.run(
+                        ROOT_SENTINEL,
+                        ["sysctl", "-w", f"net.ipv4.ip_forward={pv}"],
+                        capture_stderr=True,
+                    )
+                ),
+            )
+        )
 
     def enable_nat(self, local_routes: str, out_intf: str = None) -> None:
         """Enable NAT (masquerade) for local routes via outbound interface.
@@ -836,13 +841,49 @@ class BridgeManager:
 
         root_intf_name = str(self.root_intf)
         add_argvs = [
-            ["iptables", "-t", "nat", "-A", "POSTROUTING", "-s", local_routes,
-             "-o", out_intf, "-j", "MASQUERADE"],
-            ["iptables", "-A", "FORWARD", "-i", root_intf_name, "-o", out_intf,
-             "-s", local_routes, "-j", "ACCEPT"],
-            ["iptables", "-A", "FORWARD", "-i", out_intf, "-o", root_intf_name,
-             "-d", local_routes, "-m", "state", "--state",
-             "RELATED,ESTABLISHED", "-j", "ACCEPT"],
+            [
+                "iptables",
+                "-t",
+                "nat",
+                "-A",
+                "POSTROUTING",
+                "-s",
+                local_routes,
+                "-o",
+                out_intf,
+                "-j",
+                "MASQUERADE",
+            ],
+            [
+                "iptables",
+                "-A",
+                "FORWARD",
+                "-i",
+                root_intf_name,
+                "-o",
+                out_intf,
+                "-s",
+                local_routes,
+                "-j",
+                "ACCEPT",
+            ],
+            [
+                "iptables",
+                "-A",
+                "FORWARD",
+                "-i",
+                out_intf,
+                "-o",
+                root_intf_name,
+                "-d",
+                local_routes,
+                "-m",
+                "state",
+                "--state",
+                "RELATED,ESTABLISHED",
+                "-j",
+                "ACCEPT",
+            ],
         ]
 
         def _to_del(argv):
@@ -872,14 +913,16 @@ class BridgeManager:
 
         for add_argv in owned_rules:
             del_argv = _to_del(add_argv)
-            self.cleanup_actions.append(CleanupAction(
-                description=f"delete NAT rule: {' '.join(del_argv)}",
-                category="nat",
-                mandatory=True,
-                execute=lambda r=runner, a=del_argv: _result_to_rc_detail(
-                    r.run(ROOT_SENTINEL, a, capture_stderr=True)
-                ),
-            ))
+            self.cleanup_actions.append(
+                CleanupAction(
+                    description=f"delete NAT rule: {' '.join(del_argv)}",
+                    category="nat",
+                    mandatory=True,
+                    execute=lambda r=runner, a=del_argv: _result_to_rc_detail(
+                        r.run(ROOT_SENTINEL, a, capture_stderr=True)
+                    ),
+                )
+            )
 
     def enable_normal_flow(self, net: Mininet, switch_name: str) -> None:
         """Add NORMAL action flow to OVS switch for L2 learning bridge behavior."""
@@ -888,14 +931,16 @@ class BridgeManager:
         add_argv = ["ovs-ofctl", "add-flow", switch_name, "priority=0,actions=NORMAL"]
         runner.run(ROOT_SENTINEL, add_argv, capture_stderr=True)
         del_argv = ["ovs-ofctl", "del-flows", switch_name, "--strict", "priority=0"]
-        self.cleanup_actions.append(CleanupAction(
-            description=f"remove OVS flow: {' '.join(del_argv)}",
-            category="flow",
-            mandatory=False,
-            execute=lambda r=runner, a=del_argv: _result_to_rc_detail(
-                r.run(ROOT_SENTINEL, a, capture_stderr=True)
-            ),
-        ))
+        self.cleanup_actions.append(
+            CleanupAction(
+                description=f"remove OVS flow: {' '.join(del_argv)}",
+                category="flow",
+                mandatory=False,
+                execute=lambda r=runner, a=del_argv: _result_to_rc_detail(
+                    r.run(ROOT_SENTINEL, a, capture_stderr=True)
+                ),
+            )
+        )
 
     def enable_proxy_arp(self) -> None:
         """Enable Proxy ARP on root namespace interface (retryable restoration).
@@ -1016,18 +1061,20 @@ class BridgeManager:
         # `iface_restore` then `all_restore`; cleanup() iterates
         # `reversed(cleanup_actions)`, so teardown runs all first, then iface
         # (LIFO matching setup).
-        self.cleanup_actions.append(CleanupAction(
-            description=f"restore proxy_arp all to {prior_all}",
-            category="proxy_arp",
-            mandatory=True,
-            execute=lambda r=runner, pv=prior_all: _result_to_rc_detail(
-                r.run(
-                    ROOT_SENTINEL,
-                    ["sysctl", "-w", f"net.ipv4.conf.all.proxy_arp={pv}"],
-                    capture_stderr=True,
-                )
-            ),
-        ))
+        self.cleanup_actions.append(
+            CleanupAction(
+                description=f"restore proxy_arp all to {prior_all}",
+                category="proxy_arp",
+                mandatory=True,
+                execute=lambda r=runner, pv=prior_all: _result_to_rc_detail(
+                    r.run(
+                        ROOT_SENTINEL,
+                        ["sysctl", "-w", f"net.ipv4.conf.all.proxy_arp={pv}"],
+                        capture_stderr=True,
+                    )
+                ),
+            )
+        )
 
     def cleanup(self) -> None:
         """Execute all registered cleanup actions in reverse order.
@@ -1085,36 +1132,6 @@ def extract_gateway_from_ip(ip_with_prefix: str) -> str:
     return ip_with_prefix.split("/")[0]
 
 
-def parse_bridge_args(values: list[str] | None) -> list[dict[str, Any]]:
-    """Parse --bridge CLI arguments.
-
-    Format: switch,root_ip,local_routes[,external_routes,gateway]
-
-    Args:
-        values: List of bridge argument strings.
-
-    Returns:
-        List of bridge configuration dictionaries.
-    """
-    entries = []
-    for value in values or []:
-        parts = [part.strip() for part in value.split(",")]
-        if len(parts) < 3:
-            raise ValueError(
-                "bridge format is switch,root_ip,local_routes[,external_routes,gateway]"
-            )
-        entry = {
-            "switch": parts[0],
-            "root_ip": parts[1],
-            "local_routes": parts[2],
-        }
-        if len(parts) >= 5:
-            entry["external_routes"] = parts[3]
-            entry["gateway"] = parts[4]
-        entries.append(entry)
-    return entries
-
-
 def _resolve_root_ip(
     switch_name: str,
     root_ip: str | None,
@@ -1168,7 +1185,9 @@ def setup_bridges(
     """
     for config in bridge_configs:
         switch = config["switch"]
-        root_ip = _resolve_root_ip(config["switch"], config.get("root_ip"), mesh_links, scheme=scheme)
+        root_ip = _resolve_root_ip(
+            config["switch"], config.get("root_ip"), mesh_links, scheme=scheme
+        )
         if not root_ip:
             info(f"*** Warning: root_ip not set for switch {switch}\n")
             continue
