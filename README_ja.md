@@ -312,7 +312,9 @@ cefore-emu/
 │   │   └── cli.py                 # argparse CLI
 │   ├── runtime/                   # ランタイム操作
 │   │   ├── bandwidth.py           # リンク帯域制御
-│   │   ├── bridge.py              # Linux ブリッジ & ルート NS ブリッジング
+│   │   ├── bridge_args.py         # ブリッジ CLI 引数解析
+│   │   ├── bridge_external.py     # 外部 NIC ブリッジ接続
+│   │   ├── bridge_root.py         # ルート NS ブリッジ構成
 │   │   ├── cache_manager.py       # キャッシュマネージャ操作
 │   │   ├── cef_argv.py            # Cefore コマンド argv ビルダ
 │   │   ├── cefore.py              # Cefore デーモンの起動/停止/待機

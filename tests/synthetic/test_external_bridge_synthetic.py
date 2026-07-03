@@ -23,7 +23,7 @@ import subprocess
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 import pytest
 
@@ -114,8 +114,7 @@ def _derive_names(case_no: str, token_len: int) -> dict[str, str]:
     }
     for k, v in names.items():
         assert len(v) <= 15, (
-            f"derived name {k}={v!r} exceeds Linux IFNAMSIZ-1=15 limit "
-            f"(len={len(v)})"
+            f"derived name {k}={v!r} exceeds Linux IFNAMSIZ-1=15 limit (len={len(v)})"
         )
     return names
 
@@ -140,6 +139,7 @@ class InjectionEntry:
     command. After firing, the entry is decremented (`remaining`) or
     removed if `remaining` reaches zero. If `remaining` is None, the entry
     persists indefinitely."""
+
     rc: int
     stderr: str
     remaining: int | None = 1
@@ -169,8 +169,15 @@ class TracedWrapper:
         except Exception:
             pass
 
-    def _write_trace(self, source: str, args: tuple, executed: bool,
-                     injected: bool, rc: int, stderr: str) -> None:
+    def _write_trace(
+        self,
+        source: str,
+        args: tuple,
+        executed: bool,
+        injected: bool,
+        rc: int,
+        stderr: str,
+    ) -> None:
         record = {
             "ts": time.monotonic(),
             "source": source,
@@ -183,11 +190,11 @@ class TracedWrapper:
         self._trace_fp.write(json.dumps(record) + "\n")
         self._trace_fp.flush()
 
-    def inject(self, args: list[str], rc: int, stderr: str,
-               times: int | None = 1) -> None:
+    def inject(
+        self, args: list[str], rc: int, stderr: str, times: int | None = 1
+    ) -> None:
         key = tuple(args)
-        self.injections[key] = InjectionEntry(rc=rc, stderr=stderr,
-                                              remaining=times)
+        self.injections[key] = InjectionEntry(rc=rc, stderr=stderr, remaining=times)
 
     def clear_injections(self) -> None:
         self.injections.clear()
@@ -198,19 +205,29 @@ class TracedWrapper:
         self.last_calls.append(key)
         entry = self.injections.get(key)
         if entry is not None:
-            self._write_trace("root", key, executed=False, injected=True,
-                              rc=entry.rc, stderr=entry.stderr)
+            self._write_trace(
+                "root",
+                key,
+                executed=False,
+                injected=True,
+                rc=entry.rc,
+                stderr=entry.stderr,
+            )
             if entry.remaining is not None:
                 entry.remaining -= 1
                 if entry.remaining <= 0:
                     self.injections.pop(key, None)
             return entry.rc, "", entry.stderr
         # Delegate to the real implementation.
-        result = subprocess.run(args, shell=False, capture_output=True,
-                                text=True)
-        self._write_trace("root", key, executed=True, injected=False,
-                          rc=result.returncode,
-                          stderr=(result.stderr or "").strip())
+        result = subprocess.run(args, shell=False, capture_output=True, text=True)
+        self._write_trace(
+            "root",
+            key,
+            executed=True,
+            injected=False,
+            rc=result.returncode,
+            stderr=(result.stderr or "").strip(),
+        )
         return result.returncode, result.stdout, result.stderr
 
 
@@ -226,6 +243,7 @@ class SyntheticHost:
     Exposes `pid` and `pexec(cmd) -> (stdout, stderr, rc)` like a Mininet
     `Node`. Commands run inside the namespace via `ip netns exec`.
     """
+
     ns: str
     pid: int
     wrapper: TracedWrapper
@@ -236,8 +254,10 @@ class SyntheticHost:
         # We still trace the call.
         result = subprocess.run(full, capture_output=True, text=True)
         self.wrapper._write_trace(
-            "host", tuple(full),
-            executed=True, injected=False,
+            "host",
+            tuple(full),
+            executed=True,
+            injected=False,
             rc=result.returncode,
             stderr=(result.stderr or "").strip(),
         )
@@ -253,7 +273,12 @@ class SyntheticHost:
         """
         full = ["ip", "netns", "exec", self.ns, *[str(a) for a in argv]]
         self.wrapper._write_trace(
-            "host", tuple(full), executed=True, injected=False, rc=None, stderr="",
+            "host",
+            tuple(full),
+            executed=True,
+            injected=False,
+            rc=None,
+            stderr="",
         )
         return subprocess.Popen(full, **kwargs)
 
@@ -275,14 +300,13 @@ def _create_netns_holder(ns_name: str) -> int:
     """Create a network namespace `ns_name` and start a `sleep infinity`
     holder inside it. Returns the holder PID. The holder keeps the netns
     alive even if `ip netns exec` exits."""
-    rc = subprocess.run(["ip", "netns", "add", ns_name],
-                        capture_output=True).returncode
+    rc = subprocess.run(["ip", "netns", "add", ns_name], capture_output=True).returncode
     assert rc == 0, f"ip netns add {ns_name} failed (rc={rc})"
     # Spawn the holder. `nsenter` is too coupled; use `ip netns exec` + sh.
     proc = subprocess.Popen(
-        ["ip", "netns", "exec", ns_name, "sh", "-c",
-         "echo $$; exec sleep infinity"],
-        stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+        ["ip", "netns", "exec", ns_name, "sh", "-c", "echo $$; exec sleep infinity"],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
     )
     # The first line of stdout is the PID inside the namespace as seen from
     # the host (Linux 3.8+: PID is the same in the host PID namespace).
@@ -296,7 +320,7 @@ def _create_netns_holder(ns_name: str) -> int:
     proc_inum: int | None = None
     if link_target.startswith("net:[") and link_target.endswith("]"):
         try:
-            proc_inum = int(link_target[len("net:["):-1])
+            proc_inum = int(link_target[len("net:[") : -1])
         except ValueError:
             proc_inum = None
     netns_inum = os.stat(f"/var/run/netns/{ns_name}").st_ino
@@ -322,8 +346,7 @@ def _cleanup_case(ns: str, holder_pid: int | None, *links: str) -> None:
         except ProcessLookupError:
             pass
     for link in links:
-        subprocess.run(["ip", "link", "del", link],
-                       capture_output=True)
+        subprocess.run(["ip", "link", "del", link], capture_output=True)
     subprocess.run(["ip", "netns", "del", ns], capture_output=True)
 
 
@@ -343,8 +366,7 @@ def _setup_case(case_no: str, token_len: int = 3) -> dict[str, Any]:
     phy = names["phy"]
     peer = names["peer"]
     # All names must not already exist
-    for n in (names["bridge"], names["veth_root"], names["veth_host"],
-              phy, peer):
+    for n in (names["bridge"], names["veth_root"], names["veth_host"], phy, peer):
         assert not _interface_exists(n), (
             f"pre-existing interface {n!r} would collide with the synthetic "
             "case; rerun the test"
@@ -366,8 +388,9 @@ def _setup_case(case_no: str, token_len: int = 3) -> dict[str, Any]:
 
 def _link_admin_state(name: str) -> str:
     """Return the administrative flag set (text) for `name` via `ip -j link`."""
-    proc = subprocess.run(["ip", "-j", "link", "show", "dev", name],
-                          capture_output=True, text=True)
+    proc = subprocess.run(
+        ["ip", "-j", "link", "show", "dev", name], capture_output=True, text=True
+    )
     if proc.returncode != 0:
         return ""
     arr = json.loads(proc.stdout) if proc.stdout.strip() else []
@@ -377,8 +400,9 @@ def _link_admin_state(name: str) -> str:
 
 
 def _snapshot_link(name: str) -> dict[str, Any]:
-    proc = subprocess.run(["ip", "-j", "link", "show", "dev", name],
-                          capture_output=True, text=True)
+    proc = subprocess.run(
+        ["ip", "-j", "link", "show", "dev", name], capture_output=True, text=True
+    )
     if proc.returncode != 0:
         return {"exists": False}
     arr = json.loads(proc.stdout) if proc.stdout.strip() else []
@@ -386,8 +410,7 @@ def _snapshot_link(name: str) -> dict[str, Any]:
 
 
 def _write_json(path: Path, data: Any) -> None:
-    path.write_text(json.dumps(data, indent=2, sort_keys=True,
-                               default=repr))
+    path.write_text(json.dumps(data, indent=2, sort_keys=True, default=repr))
 
 
 # ---------------------------------------------------------------------------
@@ -399,30 +422,33 @@ class TestExternalBridgeSynthetic:
     """E1, E2, E3, E4a, E4b — synthetic verification of the remediation
     contract against real disposable veth + netns resources."""
 
-    def _attach_full(self, ctx: dict[str, Any], wrapper: TracedWrapper,
-                     monkeypatch) -> None:
+    def _attach_full(
+        self, ctx: dict[str, Any], wrapper: TracedWrapper, monkeypatch
+    ) -> None:
         """Run attach_external_via_bridge() to a fully-attached state."""
-        from src.runtime import bridge as bridge_mod
-        monkeypatch.setattr(bridge_mod, "_run_root_cmd_vec",
-                            wrapper.run_root_cmd_vec)
+        from src.runtime import bridge_external as bridge_mod
+
+        monkeypatch.setattr(bridge_mod, "_run_root_cmd_vec", wrapper.run_root_cmd_vec)
         names = ctx["names"]
         net = SyntheticNet()
-        host = SyntheticHost(ns=names["ns"], pid=ctx["holder_pid"],
-                             wrapper=wrapper)
+        host = SyntheticHost(ns=names["ns"], pid=ctx["holder_pid"], wrapper=wrapper)
         net.add(host)
         ctx["net"] = net
         ctx["host"] = host
         bridge_mod.attach_external_via_bridge(
-            net, names["host_name"], names["phy"], ip="10.0.0.2/24",
+            net,
+            names["host_name"],
+            names["phy"],
+            ip="10.0.0.2/24",
         )
 
-    def test_E1_partial_cleanup_unmaster_fails_then_retry(
-            self, tmp_path, monkeypatch):
+    def test_E1_partial_cleanup_unmaster_fails_then_retry(self, tmp_path, monkeypatch):
         """E1: full attach; FIRST nomaster cleanup is injected to fail.
         Retry runs only the outstanding nomaster command."""
-        from src.runtime import bridge as bridge_mod
-        from src.runtime.bridge import (
-            cleanup_external_bridges, _created_bridges, ExternalBridgeError,
+        from src.runtime.bridge_external import (
+            cleanup_external_bridges,
+            _created_bridges,
+            ExternalBridgeError,
         )
 
         ctx = _setup_case("1")
@@ -440,7 +466,9 @@ class TestExternalBridgeSynthetic:
             # subsequent calls to delegate (so retry succeeds).
             wrapper.inject(
                 ["ip", "link", "set", names["phy"], "nomaster"],
-                rc=1, stderr="injected nomaster failure", times=1,
+                rc=1,
+                stderr="injected nomaster failure",
+                times=1,
             )
 
             # First cleanup pass — must raise
@@ -461,7 +489,9 @@ class TestExternalBridgeSynthetic:
 
             second_calls = [c for c in wrapper.last_calls]
             # Only one mutating retry: nomaster
-            assert tuple(["ip", "link", "set", names["phy"], "nomaster"]) in second_calls
+            assert (
+                tuple(["ip", "link", "set", names["phy"], "nomaster"]) in second_calls
+            )
             # No re-call of already-discharged actions
             assert tuple(["ip", "link", "del", names["veth_root"]]) not in second_calls
             assert tuple(["ip", "link", "del", names["bridge"]]) not in second_calls
@@ -471,34 +501,46 @@ class TestExternalBridgeSynthetic:
             registry_after_cleanup = dict(_created_bridges)
 
             _write_json(tmp_path / "E1.snapshot-before.json", snap_before)
-            _write_json(tmp_path / "E1.snapshot-after-attach.json",
-                        snap_after_attach)
-            _write_json(tmp_path / "E1.snapshot-after-cleanup.json",
-                        snap_after_cleanup)
-            _write_json(tmp_path / "E1.registry.json", {
-                "after_attach": registry_after_attach,
-                "after_first": registry_after_first,
-                "after_cleanup": registry_after_cleanup,
-            })
-            _write_json(tmp_path / "E1.namespace.json", {
-                "ns": names["ns"], "holder_pid": ctx["holder_pid"],
-                "names": names,
-            })
+            _write_json(tmp_path / "E1.snapshot-after-attach.json", snap_after_attach)
+            _write_json(tmp_path / "E1.snapshot-after-cleanup.json", snap_after_cleanup)
+            _write_json(
+                tmp_path / "E1.registry.json",
+                {
+                    "after_attach": registry_after_attach,
+                    "after_first": registry_after_first,
+                    "after_cleanup": registry_after_cleanup,
+                },
+            )
+            _write_json(
+                tmp_path / "E1.namespace.json",
+                {
+                    "ns": names["ns"],
+                    "holder_pid": ctx["holder_pid"],
+                    "names": names,
+                },
+            )
         finally:
             wrapper.close()
-            _cleanup_case(names["ns"], ctx.get("holder_pid"),
-                          names["veth_root"], names["bridge"],
-                          names["phy"], names["peer"])
+            _cleanup_case(
+                names["ns"],
+                ctx.get("holder_pid"),
+                names["veth_root"],
+                names["bridge"],
+                names["phy"],
+                names["peer"],
+            )
             _created_bridges.clear()
             _export_evidence(tmp_path)
 
     def test_E2_partial_cleanup_bridge_del_fails_then_retry(
-            self, tmp_path, monkeypatch):
+        self, tmp_path, monkeypatch
+    ):
         """E2: full attach; FIRST bridge-del cleanup is injected to fail.
         Retry runs only the outstanding bridge-del command."""
-        from src.runtime import bridge as bridge_mod
-        from src.runtime.bridge import (
-            cleanup_external_bridges, _created_bridges, ExternalBridgeError,
+        from src.runtime.bridge_external import (
+            cleanup_external_bridges,
+            _created_bridges,
+            ExternalBridgeError,
         )
 
         ctx = _setup_case("2")
@@ -513,7 +555,9 @@ class TestExternalBridgeSynthetic:
 
             wrapper.inject(
                 ["ip", "link", "del", names["bridge"]],
-                rc=1, stderr="injected bridge-del failure", times=1,
+                rc=1,
+                stderr="injected bridge-del failure",
+                times=1,
             )
 
             with pytest.raises(ExternalBridgeError):
@@ -533,40 +577,60 @@ class TestExternalBridgeSynthetic:
             assert tuple(["ip", "link", "del", names["bridge"]]) in second_calls
             # No re-call
             assert tuple(["ip", "link", "del", names["veth_root"]]) not in second_calls
-            assert tuple(["ip", "link", "set", names["phy"], "nomaster"]) not in second_calls
-            assert tuple(["ip", "link", "set", names["phy"], "down"]) not in second_calls
-            assert tuple(["ip", "link", "set", names["bridge"], "down"]) not in second_calls
+            assert (
+                tuple(["ip", "link", "set", names["phy"], "nomaster"])
+                not in second_calls
+            )
+            assert (
+                tuple(["ip", "link", "set", names["phy"], "down"]) not in second_calls
+            )
+            assert (
+                tuple(["ip", "link", "set", names["bridge"], "down"])
+                not in second_calls
+            )
 
             assert names["host_name"] not in _created_bridges
             snap_after_cleanup = _snapshot_link(names["phy"])
 
             _write_json(tmp_path / "E2.snapshot-before.json", snap_before)
-            _write_json(tmp_path / "E2.snapshot-after-cleanup.json",
-                        snap_after_cleanup)
-            _write_json(tmp_path / "E2.registry.json", {
-                "after_attach": registry_after_attach,
-                "after_first": registry_after_first,
-                "after_cleanup": dict(_created_bridges),
-            })
-            _write_json(tmp_path / "E2.namespace.json", {
-                "ns": names["ns"], "holder_pid": ctx["holder_pid"],
-                "names": names,
-            })
+            _write_json(tmp_path / "E2.snapshot-after-cleanup.json", snap_after_cleanup)
+            _write_json(
+                tmp_path / "E2.registry.json",
+                {
+                    "after_attach": registry_after_attach,
+                    "after_first": registry_after_first,
+                    "after_cleanup": dict(_created_bridges),
+                },
+            )
+            _write_json(
+                tmp_path / "E2.namespace.json",
+                {
+                    "ns": names["ns"],
+                    "holder_pid": ctx["holder_pid"],
+                    "names": names,
+                },
+            )
         finally:
             wrapper.close()
-            _cleanup_case(names["ns"], ctx.get("holder_pid"),
-                          names["veth_root"], names["bridge"],
-                          names["phy"], names["peer"])
+            _cleanup_case(
+                names["ns"],
+                ctx.get("holder_pid"),
+                names["veth_root"],
+                names["bridge"],
+                names["phy"],
+                names["peer"],
+            )
             _created_bridges.clear()
             _export_evidence(tmp_path)
 
-    def test_E3_phy_up_then_enslave_failure_restores_down(
-            self, tmp_path, monkeypatch):
+    def test_E3_phy_up_then_enslave_failure_restores_down(self, tmp_path, monkeypatch):
         """E3: phy DOWN; bridge-add/up + phy-up delegated; enslave injected
         to fail. After raise: phy admin-state DOWN, bridge gone, no record."""
-        from src.runtime import bridge as bridge_mod
-        from src.runtime.bridge import (
-            attach_external_via_bridge, _created_bridges, ExternalBridgeError,
+        from src.runtime import bridge_external as bridge_mod
+        from src.runtime.bridge_external import (
+            attach_external_via_bridge,
+            _created_bridges,
+            ExternalBridgeError,
         )
 
         ctx = _setup_case("3")
@@ -576,8 +640,9 @@ class TestExternalBridgeSynthetic:
         try:
             # Ensure phy is DOWN before the call (it is by default after `ip
             # link add ... type veth`; assert and force just in case).
-            subprocess.run(["ip", "link", "set", names["phy"], "down"],
-                           capture_output=True)
+            subprocess.run(
+                ["ip", "link", "set", names["phy"], "down"], capture_output=True
+            )
             flags = _link_admin_state(names["phy"])
             assert "UP" not in flags, (
                 f"synthetic phy {names['phy']} must start DOWN; got flags={flags}"
@@ -585,23 +650,28 @@ class TestExternalBridgeSynthetic:
             snap_before = _snapshot_link(names["phy"])
 
             _created_bridges.clear()
-            monkeypatch.setattr(bridge_mod, "_run_root_cmd_vec",
-                                wrapper.run_root_cmd_vec)
+            monkeypatch.setattr(
+                bridge_mod, "_run_root_cmd_vec", wrapper.run_root_cmd_vec
+            )
 
             # Inject failure ONLY for enslave; do NOT pre-enslave.
             wrapper.inject(
                 ["ip", "link", "set", names["phy"], "master", names["bridge"]],
-                rc=1, stderr="injected enslave failure", times=1,
+                rc=1,
+                stderr="injected enslave failure",
+                times=1,
             )
 
             net = SyntheticNet()
-            host = SyntheticHost(ns=names["ns"], pid=ctx["holder_pid"],
-                                 wrapper=wrapper)
+            host = SyntheticHost(ns=names["ns"], pid=ctx["holder_pid"], wrapper=wrapper)
             net.add(host)
 
             with pytest.raises(ExternalBridgeError, match="phy-enslave failure"):
                 attach_external_via_bridge(
-                    net, names["host_name"], names["phy"], ip="10.0.0.2/24",
+                    net,
+                    names["host_name"],
+                    names["phy"],
+                    ip="10.0.0.2/24",
                 )
 
             flags_after = _link_admin_state(names["phy"])
@@ -614,27 +684,38 @@ class TestExternalBridgeSynthetic:
             assert names["host_name"] not in _created_bridges
 
             _write_json(tmp_path / "E3.snapshot-before.json", snap_before)
-            _write_json(tmp_path / "E3.snapshot-after.json",
-                        _snapshot_link(names["phy"]))
-            _write_json(tmp_path / "E3.namespace.json", {
-                "ns": names["ns"], "holder_pid": ctx["holder_pid"],
-                "names": names,
-            })
+            _write_json(
+                tmp_path / "E3.snapshot-after.json", _snapshot_link(names["phy"])
+            )
+            _write_json(
+                tmp_path / "E3.namespace.json",
+                {
+                    "ns": names["ns"],
+                    "holder_pid": ctx["holder_pid"],
+                    "names": names,
+                },
+            )
         finally:
             wrapper.close()
-            _cleanup_case(names["ns"], ctx.get("holder_pid"),
-                          names["veth_root"], names["bridge"],
-                          names["phy"], names["peer"])
+            _cleanup_case(
+                names["ns"],
+                ctx.get("holder_pid"),
+                names["veth_root"],
+                names["bridge"],
+                names["phy"],
+                names["peer"],
+            )
             _created_bridges.clear()
             _export_evidence(tmp_path)
 
     def test_E4a_duplicate_phy_intf_vs_successful_active_record_rejected(
-            self, tmp_path, monkeypatch):
+        self, tmp_path, monkeypatch
+    ):
         """E4a: real attach for host_name_1; second attach with same phy
         but different host_name_2 is rejected pre-mutation."""
-        from src.runtime import bridge as bridge_mod
-        from src.runtime.bridge import (
-            attach_external_via_bridge, _created_bridges,
+        from src.runtime.bridge_external import (
+            attach_external_via_bridge,
+            _created_bridges,
         )
 
         ctx = _setup_case("4a", token_len=1)  # tight budget for veth-...-root
@@ -652,10 +733,14 @@ class TestExternalBridgeSynthetic:
             self._attach_full(ctx, wrapper, monkeypatch)
 
             calls_before = len(wrapper.last_calls)
-            with pytest.raises(RuntimeError,
-                               match=rf"(?i){names['phy']}.*already.*attached"):
+            with pytest.raises(
+                RuntimeError, match=rf"(?i){names['phy']}.*already.*attached"
+            ):
                 attach_external_via_bridge(
-                    ctx["net"], host2, names["phy"], ip="10.0.0.3/24",
+                    ctx["net"],
+                    host2,
+                    names["phy"],
+                    ip="10.0.0.3/24",
                 )
 
             # No mutating commands issued by the second attach.
@@ -671,27 +756,38 @@ class TestExternalBridgeSynthetic:
             # The original record must still be there.
             assert names["host_name"] in _created_bridges
 
-            _write_json(tmp_path / "E4a.trace-tail.json",
-                        [list(c) for c in new_calls])
-            _write_json(tmp_path / "E4a.namespace.json", {
-                "ns": names["ns"], "holder_pid": ctx["holder_pid"],
-                "names": names, "second_host_name": host2,
-            })
+            _write_json(tmp_path / "E4a.trace-tail.json", [list(c) for c in new_calls])
+            _write_json(
+                tmp_path / "E4a.namespace.json",
+                {
+                    "ns": names["ns"],
+                    "holder_pid": ctx["holder_pid"],
+                    "names": names,
+                    "second_host_name": host2,
+                },
+            )
         finally:
             wrapper.close()
-            _cleanup_case(names["ns"], ctx.get("holder_pid"),
-                          names["veth_root"], names["bridge"],
-                          names["phy"], names["peer"])
+            _cleanup_case(
+                names["ns"],
+                ctx.get("holder_pid"),
+                names["veth_root"],
+                names["bridge"],
+                names["phy"],
+                names["peer"],
+            )
             _created_bridges.clear()
             _export_evidence(tmp_path)
 
     def test_E4b_duplicate_phy_intf_vs_rollback_failed_retained_rejected(
-            self, tmp_path, monkeypatch):
+        self, tmp_path, monkeypatch
+    ):
         """E4b: fabricated rollback-failed retained record for h1 owning phy;
         second attach reusing the same phy is rejected pre-mutation."""
-        from src.runtime import bridge as bridge_mod
-        from src.runtime.bridge import (
-            attach_external_via_bridge, _created_bridges,
+        from src.runtime import bridge_external as bridge_mod
+        from src.runtime.bridge_external import (
+            attach_external_via_bridge,
+            _created_bridges,
         )
 
         ctx = _setup_case("4b", token_len=1)
@@ -725,18 +821,22 @@ class TestExternalBridgeSynthetic:
                 "ip_assigned": False,
             }
 
-            monkeypatch.setattr(bridge_mod, "_run_root_cmd_vec",
-                                wrapper.run_root_cmd_vec)
+            monkeypatch.setattr(
+                bridge_mod, "_run_root_cmd_vec", wrapper.run_root_cmd_vec
+            )
 
             net = SyntheticNet()
-            host = SyntheticHost(ns=names["ns"], pid=ctx["holder_pid"],
-                                 wrapper=wrapper)
+            host = SyntheticHost(ns=names["ns"], pid=ctx["holder_pid"], wrapper=wrapper)
             net.add(host)
 
-            with pytest.raises(RuntimeError,
-                               match=rf"(?i){names['phy']}.*already.*attached"):
+            with pytest.raises(
+                RuntimeError, match=rf"(?i){names['phy']}.*already.*attached"
+            ):
                 attach_external_via_bridge(
-                    net, host2, names["phy"], ip="10.0.0.3/24",
+                    net,
+                    host2,
+                    names["phy"],
+                    ip="10.0.0.3/24",
                 )
 
             # No mutating commands at all (rejection fires before any).
@@ -749,16 +849,27 @@ class TestExternalBridgeSynthetic:
             assert host2 not in _created_bridges
             assert names["host_name"] in _created_bridges
 
-            _write_json(tmp_path / "E4b.trace-tail.json",
-                        [list(c) for c in wrapper.last_calls])
-            _write_json(tmp_path / "E4b.namespace.json", {
-                "ns": names["ns"], "holder_pid": ctx["holder_pid"],
-                "names": names, "second_host_name": host2,
-            })
+            _write_json(
+                tmp_path / "E4b.trace-tail.json", [list(c) for c in wrapper.last_calls]
+            )
+            _write_json(
+                tmp_path / "E4b.namespace.json",
+                {
+                    "ns": names["ns"],
+                    "holder_pid": ctx["holder_pid"],
+                    "names": names,
+                    "second_host_name": host2,
+                },
+            )
         finally:
             wrapper.close()
-            _cleanup_case(names["ns"], ctx.get("holder_pid"),
-                          names["veth_root"], names["bridge"],
-                          names["phy"], names["peer"])
+            _cleanup_case(
+                names["ns"],
+                ctx.get("holder_pid"),
+                names["veth_root"],
+                names["bridge"],
+                names["phy"],
+                names["peer"],
+            )
             _created_bridges.clear()
             _export_evidence(tmp_path)

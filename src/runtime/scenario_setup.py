@@ -26,7 +26,7 @@ from typing import Any
 from mininet.log import info
 
 from .bandwidth import parse_bw_args, set_link_bandwidth
-from .bridge import (
+from .bridge_external import (
     attach_external_interface,
     cleanup_external_bridges,
 )

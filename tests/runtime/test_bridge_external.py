@@ -47,7 +47,7 @@ class TestExternalBridgeSafety:
 
     def test_dhcp_mode_rejected(self):
         """B2: External bridge attachment without static IP is rejected."""
-        from src.runtime.bridge import attach_external_via_bridge
+        from src.runtime.bridge_external import attach_external_via_bridge
 
         net = self._make_net()
 
@@ -56,7 +56,10 @@ class TestExternalBridgeSafety:
 
     def test_duplicate_attachment_rejected(self):
         """B1.5: Duplicate active attachment is rejected."""
-        from src.runtime.bridge import attach_external_via_bridge, _created_bridges
+        from src.runtime.bridge_external import (
+            attach_external_via_bridge,
+            _created_bridges,
+        )
 
         # Simulate existing attachment
         _created_bridges["h0"] = {
@@ -76,7 +79,7 @@ class TestExternalBridgeSafety:
 
     def test_interface_name_overflow_rejected(self):
         """B1.4: Interface names exceeding 15 characters are rejected."""
-        from src.runtime.bridge import attach_external_via_bridge
+        from src.runtime.bridge_external import attach_external_via_bridge
 
         net = self._make_net()
         long_host = "h" + "x" * 20  # 21 chars
@@ -86,19 +89,20 @@ class TestExternalBridgeSafety:
 
     def test_inspect_failure_aborts(self):
         """B1.1: Physical interface inspection failure aborts before mutation."""
-        from src.runtime.bridge import attach_external_via_bridge
+        from src.runtime.bridge_external import attach_external_via_bridge
 
         net = self._make_net()
 
         with patch(
-            "src.runtime.bridge._run_root_cmd_vec", return_value=(1, "", "not found")
+            "src.runtime.bridge_external._run_root_cmd_vec",
+            return_value=(1, "", "not found"),
         ):
             with pytest.raises(RuntimeError, match="cannot inspect"):
                 attach_external_via_bridge(net, "h0", "eth0", ip="10.0.0.2/24")
 
     def test_existing_master_rejected(self):
         """B1.2: Interface with existing master is rejected."""
-        from src.runtime.bridge import attach_external_via_bridge
+        from src.runtime.bridge_external import attach_external_via_bridge
 
         net = self._make_net()
 
@@ -109,13 +113,15 @@ class TestExternalBridgeSafety:
                 return 0, "[]", ""
             return 0, _json.dumps([mock_result]), ""
 
-        with patch("src.runtime.bridge._run_root_cmd_vec", side_effect=mock_cmd):
+        with patch(
+            "src.runtime.bridge_external._run_root_cmd_vec", side_effect=mock_cmd
+        ):
             with pytest.raises(RuntimeError, match="already enslaved"):
                 attach_external_via_bridge(net, "h0", "eth0", ip="10.0.0.2/24")
 
     def test_existing_l3_address_rejected(self):
         """B1.3: Interface with non-link-local L3 address is rejected."""
-        from src.runtime.bridge import attach_external_via_bridge
+        from src.runtime.bridge_external import attach_external_via_bridge
 
         net = self._make_net()
 
@@ -127,13 +133,18 @@ class TestExternalBridgeSafety:
                 return 0, _json.dumps(mock_addrs), ""
             return 0, _json.dumps([mock_link]), ""
 
-        with patch("src.runtime.bridge._run_root_cmd_vec", side_effect=mock_cmd):
+        with patch(
+            "src.runtime.bridge_external._run_root_cmd_vec", side_effect=mock_cmd
+        ):
             with pytest.raises(RuntimeError, match="configured address"):
                 attach_external_via_bridge(net, "h0", "eth0", ip="10.0.0.2/24")
 
     def test_bridge_creation_failure_no_cleanup_record(self):
         """Bridge creation failure issues no delete and creates no record."""
-        from src.runtime.bridge import attach_external_via_bridge, _created_bridges
+        from src.runtime.bridge_external import (
+            attach_external_via_bridge,
+            _created_bridges,
+        )
 
         _created_bridges.clear()
         net = self._make_net()
@@ -155,7 +166,9 @@ class TestExternalBridgeSafety:
                 )
             return 1, "", "bridge exists"
 
-        with patch("src.runtime.bridge._run_root_cmd_vec", side_effect=mock_cmd):
+        with patch(
+            "src.runtime.bridge_external._run_root_cmd_vec", side_effect=mock_cmd
+        ):
             with pytest.raises(RuntimeError, match="bridge creation failed"):
                 attach_external_via_bridge(net, "h0", "eth0", ip="10.0.0.2/24")
 
@@ -164,7 +177,10 @@ class TestExternalBridgeSafety:
 
     def test_successful_attachment_creates_record(self):
         """Successful attachment records all owned resources."""
-        from src.runtime.bridge import attach_external_via_bridge, _created_bridges
+        from src.runtime.bridge_external import (
+            attach_external_via_bridge,
+            _created_bridges,
+        )
 
         _created_bridges.clear()
         net = self._make_net()
@@ -195,9 +211,11 @@ class TestExternalBridgeSafety:
         host.pexec = mock_pexec
 
         with (
-            patch("src.runtime.bridge._run_root_cmd_vec", side_effect=mock_cmd),
             patch(
-                "src.runtime.bridge.MininetCommandRunner",
+                "src.runtime.bridge_external._run_root_cmd_vec", side_effect=mock_cmd
+            ),
+            patch(
+                "src.runtime.bridge_external.MininetCommandRunner",
                 return_value=_pexec_runner(host),
             ),
         ):
@@ -217,7 +235,7 @@ class TestExternalBridgeSafety:
 
     def test_cleanup_attempts_all_records(self):
         """Cleanup attempts all records even when one fails."""
-        from src.runtime.bridge import (
+        from src.runtime.bridge_external import (
             cleanup_external_bridges,
             _created_bridges,
             ExternalBridgeError,
@@ -254,7 +272,9 @@ class TestExternalBridgeSafety:
             "phy_up_changed": False,
         }
 
-        with patch("src.runtime.bridge._run_root_cmd_vec", side_effect=mock_cmd):
+        with patch(
+            "src.runtime.bridge_external._run_root_cmd_vec", side_effect=mock_cmd
+        ):
             with pytest.raises(ExternalBridgeError):
                 cleanup_external_bridges()
 
@@ -266,7 +286,7 @@ class TestExternalBridgeSafety:
 
     def test_cleanup_failure_retains_record(self):
         """Cleanup failure retains the failed record for retry."""
-        from src.runtime.bridge import (
+        from src.runtime.bridge_external import (
             cleanup_external_bridges,
             _created_bridges,
             ExternalBridgeError,
@@ -288,7 +308,9 @@ class TestExternalBridgeSafety:
         def mock_cmd(args):
             return 1, "", "failed"
 
-        with patch("src.runtime.bridge._run_root_cmd_vec", side_effect=mock_cmd):
+        with patch(
+            "src.runtime.bridge_external._run_root_cmd_vec", side_effect=mock_cmd
+        ):
             with pytest.raises(ExternalBridgeError):
                 cleanup_external_bridges()
 
@@ -299,7 +321,10 @@ class TestExternalBridgeSafety:
 
     def test_cleanup_restores_phy_down(self):
         """Successful cleanup restores physical interface DOWN if it was raised."""
-        from src.runtime.bridge import cleanup_external_bridges, _created_bridges
+        from src.runtime.bridge_external import (
+            cleanup_external_bridges,
+            _created_bridges,
+        )
 
         _created_bridges.clear()
         calls = []
@@ -319,7 +344,9 @@ class TestExternalBridgeSafety:
             "phy_up_changed": True,  # This run raised it from DOWN
         }
 
-        with patch("src.runtime.bridge._run_root_cmd_vec", side_effect=mock_cmd):
+        with patch(
+            "src.runtime.bridge_external._run_root_cmd_vec", side_effect=mock_cmd
+        ):
             cleanup_external_bridges()
 
         # Verify DOWN restoration was called
@@ -330,7 +357,10 @@ class TestExternalBridgeSafety:
 
     def test_link_local_address_not_rejected(self):
         """Link-local address (169.254.x.x) does not block attachment."""
-        from src.runtime.bridge import attach_external_via_bridge, _created_bridges
+        from src.runtime.bridge_external import (
+            attach_external_via_bridge,
+            _created_bridges,
+        )
 
         _created_bridges.clear()
         net = self._make_net()
@@ -351,9 +381,11 @@ class TestExternalBridgeSafety:
 
         # Link-local address should NOT be rejected
         with (
-            patch("src.runtime.bridge._run_root_cmd_vec", side_effect=mock_cmd),
             patch(
-                "src.runtime.bridge.MininetCommandRunner",
+                "src.runtime.bridge_external._run_root_cmd_vec", side_effect=mock_cmd
+            ),
+            patch(
+                "src.runtime.bridge_external.MininetCommandRunner",
                 return_value=_pexec_runner(host),
             ),
         ):
@@ -382,7 +414,10 @@ class TestExternalBridgeRollbackOrder:
 
     def test_rollback_order_after_veth_creation(self):
         """After veth creation, rollback deletes veth before unmastering."""
-        from src.runtime.bridge import attach_external_via_bridge, _created_bridges
+        from src.runtime.bridge_external import (
+            attach_external_via_bridge,
+            _created_bridges,
+        )
 
         _created_bridges.clear()
         net = self._make_net()
@@ -408,7 +443,9 @@ class TestExternalBridgeRollbackOrder:
 
         host.pexec = lambda cmd: ("", "", 0)
 
-        with patch("src.runtime.bridge._run_root_cmd_vec", side_effect=mock_cmd):
+        with patch(
+            "src.runtime.bridge_external._run_root_cmd_vec", side_effect=mock_cmd
+        ):
             with pytest.raises(RuntimeError, match="veth creation failure"):
                 attach_external_via_bridge(net, "h0", "eth0", ip="10.0.0.2/24")
 
@@ -419,7 +456,10 @@ class TestExternalBridgeRollbackOrder:
 
     def test_rollback_failure_preserves_record(self):
         """Setup failure + rollback failure → residual record for retry."""
-        from src.runtime.bridge import attach_external_via_bridge, _created_bridges
+        from src.runtime.bridge_external import (
+            attach_external_via_bridge,
+            _created_bridges,
+        )
 
         _created_bridges.clear()
         net = self._make_net()
@@ -446,7 +486,9 @@ class TestExternalBridgeRollbackOrder:
 
         host.pexec = lambda cmd: ("", "", 0)
 
-        with patch("src.runtime.bridge._run_root_cmd_vec", side_effect=mock_cmd):
+        with patch(
+            "src.runtime.bridge_external._run_root_cmd_vec", side_effect=mock_cmd
+        ):
             with pytest.raises(Exception):
                 attach_external_via_bridge(net, "h0", "eth0", ip="10.0.0.2/24")
 
@@ -471,10 +513,10 @@ class TestInspectionDefects:
         After fix: function returns structured failure (success=False) instead
         of raising NameError from undefined `json` name.
         """
-        from src.runtime.bridge import _inspect_addresses
+        from src.runtime.bridge_external import _inspect_addresses
 
         with patch(
-            "src.runtime.bridge._run_root_cmd_vec",
+            "src.runtime.bridge_external._run_root_cmd_vec",
             return_value=(0, "not valid json{{", ""),
         ):
             success, data, err = _inspect_addresses("eth0")
@@ -486,10 +528,10 @@ class TestInspectionDefects:
 
     def test_inspect_addresses_rc_nonzero_returns_failure(self):
         """_inspect_addresses() non-zero exit code returns structured failure."""
-        from src.runtime.bridge import _inspect_addresses
+        from src.runtime.bridge_external import _inspect_addresses
 
         with patch(
-            "src.runtime.bridge._run_root_cmd_vec",
+            "src.runtime.bridge_external._run_root_cmd_vec",
             return_value=(1, "", "no such device"),
         ):
             success, data, err = _inspect_addresses("eth0")
@@ -511,7 +553,7 @@ class TestDefectRollbackRetention:
 
     def test_rollback_failure_preserves_record(self):
         """D2: Setup failure + rollback failure retains retryable record."""
-        from src.runtime.bridge import (
+        from src.runtime.bridge_external import (
             attach_external_via_bridge,
             _created_bridges,
             ExternalBridgeError,
@@ -543,7 +585,9 @@ class TestDefectRollbackRetention:
             # Rollback: also fail
             return 1, "", "rollback del failed"
 
-        with patch("src.runtime.bridge._run_root_cmd_vec", side_effect=mock_cmd):
+        with patch(
+            "src.runtime.bridge_external._run_root_cmd_vec", side_effect=mock_cmd
+        ):
             with pytest.raises(ExternalBridgeError) as exc_info:
                 attach_external_via_bridge(net, "h0", "eth0", ip="10.0.0.2/24")
 
@@ -561,7 +605,10 @@ class TestDefectRollbackRetention:
 
     def test_successful_cleanup_retry_clears_retained_record(self):
         """D3: Cleanup retry on retained setup-failure record clears the record."""
-        from src.runtime.bridge import cleanup_external_bridges, _created_bridges
+        from src.runtime.bridge_external import (
+            cleanup_external_bridges,
+            _created_bridges,
+        )
 
         _created_bridges.clear()
 
@@ -579,14 +626,16 @@ class TestDefectRollbackRetention:
             "veth_created": False,
         }
 
-        with patch("src.runtime.bridge._run_root_cmd_vec", return_value=(0, "", "")):
+        with patch(
+            "src.runtime.bridge_external._run_root_cmd_vec", return_value=(0, "", "")
+        ):
             cleanup_external_bridges()
 
         assert "h0" not in _created_bridges
 
     def test_setup_failure_rollback_success_removes_record(self):
         """Setup failure with successful rollback removes the record."""
-        from src.runtime.bridge import (
+        from src.runtime.bridge_external import (
             attach_external_via_bridge,
             _created_bridges,
             ExternalBridgeError,
@@ -618,7 +667,9 @@ class TestDefectRollbackRetention:
             # Rollback: succeed
             return 0, "", ""
 
-        with patch("src.runtime.bridge._run_root_cmd_vec", side_effect=mock_cmd):
+        with patch(
+            "src.runtime.bridge_external._run_root_cmd_vec", side_effect=mock_cmd
+        ):
             with pytest.raises(ExternalBridgeError):
                 attach_external_via_bridge(net, "h0", "eth0", ip="10.0.0.2/24")
 
@@ -650,7 +701,7 @@ class TestExternalBridgePreconditions:
         Uses an input that passes the strict-CIDR check (`/` present) so the
         deeper `ipaddress.ip_interface()` rejection path is exercised.
         """
-        from src.runtime.bridge import attach_external_via_bridge
+        from src.runtime.bridge_external import attach_external_via_bridge
 
         net = _make_net_helper()
 
@@ -664,17 +715,20 @@ class TestExternalBridgePreconditions:
         contract requires an explicit prefix length. Bare addresses must be
         rejected before any mutation.
         """
-        from src.runtime.bridge import _validate_static_ip
+        from src.runtime.bridge_args import validate_static_ip
 
         with pytest.raises(RuntimeError, match="CIDR"):
-            _validate_static_ip("10.0.0.2")
+            validate_static_ip("10.0.0.2")
 
         with pytest.raises(RuntimeError, match="CIDR"):
-            _validate_static_ip("")
+            validate_static_ip("")
 
     def test_missing_flags_aborts_before_mutation(self):
         """Missing/invalid flags field aborts before mutation."""
-        from src.runtime.bridge import attach_external_via_bridge, _created_bridges
+        from src.runtime.bridge_external import (
+            attach_external_via_bridge,
+            _created_bridges,
+        )
 
         _created_bridges.clear()
         net = _make_net_helper()
@@ -685,7 +739,9 @@ class TestExternalBridgePreconditions:
                 return 0, _json.dumps([{"ifname": "eth0", "addr_info": []}]), ""
             return 0, _json.dumps([{"ifname": "eth0"}]), ""
 
-        with patch("src.runtime.bridge._run_root_cmd_vec", side_effect=mock_cmd):
+        with patch(
+            "src.runtime.bridge_external._run_root_cmd_vec", side_effect=mock_cmd
+        ):
             with pytest.raises(
                 RuntimeError, match="cannot determine administrative state"
             ):
@@ -700,7 +756,7 @@ class TestExternalBridgeSetupRollback:
 
     def test_bridge_up_failure_deletes_owned_bridge(self):
         """Bridge-up failure triggers rollback that deletes the owned bridge."""
-        from src.runtime.bridge import (
+        from src.runtime.bridge_external import (
             attach_external_via_bridge,
             _created_bridges,
             ExternalBridgeError,
@@ -734,7 +790,9 @@ class TestExternalBridgeSetupRollback:
             # Rollback: bridge deletion succeeds
             return 0, "", ""
 
-        with patch("src.runtime.bridge._run_root_cmd_vec", side_effect=mock_cmd):
+        with patch(
+            "src.runtime.bridge_external._run_root_cmd_vec", side_effect=mock_cmd
+        ):
             with pytest.raises(ExternalBridgeError):
                 attach_external_via_bridge(net, "h0", "eth0", ip="10.0.0.2/24")
 
@@ -748,7 +806,7 @@ class TestExternalBridgeSetupRollback:
 
     def test_enslave_failure_rolls_back(self):
         """Enslave failure restores owned prior state and deletes bridge."""
-        from src.runtime.bridge import (
+        from src.runtime.bridge_external import (
             attach_external_via_bridge,
             _created_bridges,
             ExternalBridgeError,
@@ -778,7 +836,9 @@ class TestExternalBridgeSetupRollback:
                 return 1, "", "enslave failed"
             return 0, "", ""
 
-        with patch("src.runtime.bridge._run_root_cmd_vec", side_effect=mock_cmd):
+        with patch(
+            "src.runtime.bridge_external._run_root_cmd_vec", side_effect=mock_cmd
+        ):
             with pytest.raises(ExternalBridgeError):
                 attach_external_via_bridge(net, "h0", "eth0", ip="10.0.0.2/24")
 
@@ -787,7 +847,7 @@ class TestExternalBridgeSetupRollback:
 
     def test_veth_attach_failure_rolls_back(self):
         """Veth-to-bridge attachment failure rolls back completed mutations."""
-        from src.runtime.bridge import (
+        from src.runtime.bridge_external import (
             attach_external_via_bridge,
             _created_bridges,
             ExternalBridgeError,
@@ -818,7 +878,9 @@ class TestExternalBridgeSetupRollback:
                 return 1, "", "veth-master failed"
             return 0, "", ""
 
-        with patch("src.runtime.bridge._run_root_cmd_vec", side_effect=mock_cmd):
+        with patch(
+            "src.runtime.bridge_external._run_root_cmd_vec", side_effect=mock_cmd
+        ):
             with pytest.raises(ExternalBridgeError):
                 attach_external_via_bridge(net, "h0", "eth0", ip="10.0.0.2/24")
 
@@ -827,7 +889,7 @@ class TestExternalBridgeSetupRollback:
 
     def test_namespace_move_failure_rolls_back(self):
         """Namespace move failure rolls back completed mutations."""
-        from src.runtime.bridge import (
+        from src.runtime.bridge_external import (
             attach_external_via_bridge,
             _created_bridges,
             ExternalBridgeError,
@@ -858,7 +920,9 @@ class TestExternalBridgeSetupRollback:
                 return 1, "", "netns failed"
             return 0, "", ""
 
-        with patch("src.runtime.bridge._run_root_cmd_vec", side_effect=mock_cmd):
+        with patch(
+            "src.runtime.bridge_external._run_root_cmd_vec", side_effect=mock_cmd
+        ):
             with pytest.raises(ExternalBridgeError):
                 attach_external_via_bridge(net, "h0", "eth0", ip="10.0.0.2/24")
 
@@ -867,7 +931,7 @@ class TestExternalBridgeSetupRollback:
 
     def test_static_ip_assignment_failure_rolls_back(self):
         """Static-IP assignment failure rolls back completed mutations."""
-        from src.runtime.bridge import (
+        from src.runtime.bridge_external import (
             attach_external_via_bridge,
             _created_bridges,
             ExternalBridgeError,
@@ -896,9 +960,11 @@ class TestExternalBridgeSetupRollback:
             return 0, "", ""
 
         with (
-            patch("src.runtime.bridge._run_root_cmd_vec", side_effect=mock_cmd),
             patch(
-                "src.runtime.bridge.MininetCommandRunner",
+                "src.runtime.bridge_external._run_root_cmd_vec", side_effect=mock_cmd
+            ),
+            patch(
+                "src.runtime.bridge_external.MininetCommandRunner",
                 return_value=_pexec_runner(host),
             ),
         ):
@@ -909,7 +975,7 @@ class TestExternalBridgeSetupRollback:
 
     def test_mtu_failure_rolls_back(self):
         """MTU failure is fatal and rolls back completed mutations."""
-        from src.runtime.bridge import (
+        from src.runtime.bridge_external import (
             attach_external_via_bridge,
             _created_bridges,
             ExternalBridgeError,
@@ -942,9 +1008,11 @@ class TestExternalBridgeSetupRollback:
             return 0, "", ""
 
         with (
-            patch("src.runtime.bridge._run_root_cmd_vec", side_effect=mock_cmd),
             patch(
-                "src.runtime.bridge.MininetCommandRunner",
+                "src.runtime.bridge_external._run_root_cmd_vec", side_effect=mock_cmd
+            ),
+            patch(
+                "src.runtime.bridge_external.MininetCommandRunner",
                 return_value=_pexec_runner(host),
             ),
         ):
@@ -962,7 +1030,7 @@ class TestExternalBridgeRollbackFailureReporting:
 
     def test_setup_failure_plus_rollback_failure_reports_both(self):
         """Setup failure + rollback failure: ExternalBridgeError contains both."""
-        from src.runtime.bridge import (
+        from src.runtime.bridge_external import (
             attach_external_via_bridge,
             _created_bridges,
             ExternalBridgeError,
@@ -994,7 +1062,9 @@ class TestExternalBridgeRollbackFailureReporting:
             # Rollback fails
             return 1, "", "rollback failed"
 
-        with patch("src.runtime.bridge._run_root_cmd_vec", side_effect=mock_cmd):
+        with patch(
+            "src.runtime.bridge_external._run_root_cmd_vec", side_effect=mock_cmd
+        ):
             with pytest.raises(ExternalBridgeError) as exc_info:
                 attach_external_via_bridge(net, "h0", "eth0", ip="10.0.0.2/24")
 
@@ -1009,7 +1079,10 @@ class TestExternalBridgeAdminState:
 
     def test_prior_admin_down_restored_to_down(self):
         """Prior administratively-DOWN interface restored to DOWN during cleanup."""
-        from src.runtime.bridge import cleanup_external_bridges, _created_bridges
+        from src.runtime.bridge_external import (
+            cleanup_external_bridges,
+            _created_bridges,
+        )
 
         _created_bridges.clear()
         calls = []
@@ -1030,7 +1103,9 @@ class TestExternalBridgeAdminState:
             "phy_up_changed": True,
         }
 
-        with patch("src.runtime.bridge._run_root_cmd_vec", side_effect=mock_cmd):
+        with patch(
+            "src.runtime.bridge_external._run_root_cmd_vec", side_effect=mock_cmd
+        ):
             cleanup_external_bridges()
 
         down_calls = [c for c in calls if "down" in str(c) and "eth0" in str(c)]
@@ -1040,7 +1115,10 @@ class TestExternalBridgeAdminState:
 
     def test_prior_admin_up_not_forced_down(self):
         """Prior administratively-UP interface is not forced DOWN during cleanup."""
-        from src.runtime.bridge import cleanup_external_bridges, _created_bridges
+        from src.runtime.bridge_external import (
+            cleanup_external_bridges,
+            _created_bridges,
+        )
 
         _created_bridges.clear()
         calls = []
@@ -1061,7 +1139,9 @@ class TestExternalBridgeAdminState:
             "phy_up_changed": False,  # This run did NOT raise it
         }
 
-        with patch("src.runtime.bridge._run_root_cmd_vec", side_effect=mock_cmd):
+        with patch(
+            "src.runtime.bridge_external._run_root_cmd_vec", side_effect=mock_cmd
+        ):
             cleanup_external_bridges()
 
         # No DOWN command for eth0 (it was already UP)
@@ -1076,7 +1156,10 @@ class TestExternalBridgeCleanupOrder:
 
     def test_cleanup_command_order(self):
         """Explicit cleanup order assertion: veth→unmaster→DOWN→bridge."""
-        from src.runtime.bridge import cleanup_external_bridges, _created_bridges
+        from src.runtime.bridge_external import (
+            cleanup_external_bridges,
+            _created_bridges,
+        )
 
         _created_bridges.clear()
         calls = []
@@ -1100,7 +1183,9 @@ class TestExternalBridgeCleanupOrder:
             "phy_up_changed": True,
         }
 
-        with patch("src.runtime.bridge._run_root_cmd_vec", side_effect=mock_cmd):
+        with patch(
+            "src.runtime.bridge_external._run_root_cmd_vec", side_effect=mock_cmd
+        ):
             cleanup_external_bridges()
 
         # Find indices of key operations
@@ -1138,7 +1223,7 @@ class TestExternalBridgeCleanupOrder:
 
     def test_cleanup_failure_externally_observable(self):
         """Cleanup failure raises ExternalBridgeError with failure details."""
-        from src.runtime.bridge import (
+        from src.runtime.bridge_external import (
             cleanup_external_bridges,
             _created_bridges,
             ExternalBridgeError,
@@ -1160,7 +1245,9 @@ class TestExternalBridgeCleanupOrder:
         def mock_cmd(args):
             return 1, "", "cleanup failed"
 
-        with patch("src.runtime.bridge._run_root_cmd_vec", side_effect=mock_cmd):
+        with patch(
+            "src.runtime.bridge_external._run_root_cmd_vec", side_effect=mock_cmd
+        ):
             with pytest.raises(ExternalBridgeError) as exc_info:
                 cleanup_external_bridges()
 
@@ -1183,7 +1270,7 @@ class TestExternalBridgeCleanupOrder:
 
 def _populate_full_record(host_name: str = "h0", phy: str = "eth0") -> None:
     """Pre-populate _created_bridges with a fully-attached record for tests."""
-    from src.runtime.bridge import _created_bridges
+    from src.runtime.bridge_external import _created_bridges
 
     _created_bridges[host_name] = {
         "bridge": f"br-{host_name}",
@@ -1214,7 +1301,7 @@ class TestDefect1CleanupPartialSuccess:
         After first cleanup: only phy_enslaved=True remains. Second cleanup with
         all-success mocks must execute ONLY the nomaster command.
         """
-        from src.runtime.bridge import (
+        from src.runtime.bridge_external import (
             cleanup_external_bridges,
             _created_bridges,
             ExternalBridgeError,
@@ -1233,7 +1320,8 @@ class TestDefect1CleanupPartialSuccess:
                 return 0, "", ""
 
             with patch(
-                "src.runtime.bridge._run_root_cmd_vec", side_effect=mock_first_pass
+                "src.runtime.bridge_external._run_root_cmd_vec",
+                side_effect=mock_first_pass,
             ):
                 with pytest.raises(ExternalBridgeError):
                     cleanup_external_bridges()
@@ -1266,7 +1354,8 @@ class TestDefect1CleanupPartialSuccess:
                 return 0, "", ""
 
             with patch(
-                "src.runtime.bridge._run_root_cmd_vec", side_effect=mock_second_pass
+                "src.runtime.bridge_external._run_root_cmd_vec",
+                side_effect=mock_second_pass,
             ):
                 cleanup_external_bridges()
 
@@ -1291,7 +1380,7 @@ class TestDefect1CleanupPartialSuccess:
         After first cleanup: only bridge_created=True remains. Second cleanup
         must execute ONLY the bridge-del command.
         """
-        from src.runtime.bridge import (
+        from src.runtime.bridge_external import (
             cleanup_external_bridges,
             _created_bridges,
             ExternalBridgeError,
@@ -1310,7 +1399,8 @@ class TestDefect1CleanupPartialSuccess:
                 return 0, "", ""
 
             with patch(
-                "src.runtime.bridge._run_root_cmd_vec", side_effect=mock_first_pass
+                "src.runtime.bridge_external._run_root_cmd_vec",
+                side_effect=mock_first_pass,
             ):
                 with pytest.raises(ExternalBridgeError):
                     cleanup_external_bridges()
@@ -1333,7 +1423,8 @@ class TestDefect1CleanupPartialSuccess:
                 return 0, "", ""
 
             with patch(
-                "src.runtime.bridge._run_root_cmd_vec", side_effect=mock_second_pass
+                "src.runtime.bridge_external._run_root_cmd_vec",
+                side_effect=mock_second_pass,
             ):
                 cleanup_external_bridges()
 
@@ -1361,7 +1452,7 @@ class TestDefect1SetupRollbackPartialFlagClear:
         succeed. After raise: record retains ONLY bridge_created=True and
         bridge_up=True; subsequent cleanup runs ONLY bridge-down + bridge-del.
         """
-        from src.runtime.bridge import (
+        from src.runtime.bridge_external import (
             attach_external_via_bridge,
             cleanup_external_bridges,
             _created_bridges,
@@ -1409,7 +1500,8 @@ class TestDefect1SetupRollbackPartialFlagClear:
                 return 0, "", ""
 
             with patch(
-                "src.runtime.bridge._run_root_cmd_vec", side_effect=combined_mock
+                "src.runtime.bridge_external._run_root_cmd_vec",
+                side_effect=combined_mock,
             ):
                 with pytest.raises(ExternalBridgeError):
                     attach_external_via_bridge(net, "h0", "eth0", ip="10.0.0.2/24")
@@ -1437,7 +1529,9 @@ class TestDefect1SetupRollbackPartialFlagClear:
                 retry_calls.append(tuple(args))
                 return 0, "", ""
 
-            with patch("src.runtime.bridge._run_root_cmd_vec", side_effect=retry_mock):
+            with patch(
+                "src.runtime.bridge_external._run_root_cmd_vec", side_effect=retry_mock
+            ):
                 cleanup_external_bridges()
 
             assert "h0" not in _created_bridges
@@ -1460,7 +1554,7 @@ class TestDefect2PhyDownRestoreOnEnslaveFailure:
     subsequently fails, the rollback must restore phy DOWN before exiting."""
 
     def test_T2_enslave_failure_restores_phy_down(self):
-        from src.runtime.bridge import (
+        from src.runtime.bridge_external import (
             attach_external_via_bridge,
             _created_bridges,
             ExternalBridgeError,
@@ -1497,7 +1591,9 @@ class TestDefect2PhyDownRestoreOnEnslaveFailure:
                     return 1, "", "enslave injected failure"
                 return 0, "", ""
 
-            with patch("src.runtime.bridge._run_root_cmd_vec", side_effect=mock_cmd):
+            with patch(
+                "src.runtime.bridge_external._run_root_cmd_vec", side_effect=mock_cmd
+            ):
                 with pytest.raises(ExternalBridgeError, match="phy-enslave failure"):
                     attach_external_via_bridge(net, "h0", "eth0", ip="10.0.0.2/24")
 
@@ -1522,7 +1618,10 @@ class TestDefect5DuplicatePhyIntfRejection:
     def test_T7_duplicate_phy_intf_vs_successful_active_record_rejected(self):
         """T7: a fully-attached record for h1 owns eth0; attaching h0 to the
         same eth0 must raise RuntimeError before any mutation."""
-        from src.runtime.bridge import attach_external_via_bridge, _created_bridges
+        from src.runtime.bridge_external import (
+            attach_external_via_bridge,
+            _created_bridges,
+        )
 
         _created_bridges.clear()
         try:
@@ -1543,7 +1642,9 @@ class TestDefect5DuplicatePhyIntfRejection:
                     )
                 return 0, "", ""
 
-            with patch("src.runtime.bridge._run_root_cmd_vec", side_effect=mock_cmd):
+            with patch(
+                "src.runtime.bridge_external._run_root_cmd_vec", side_effect=mock_cmd
+            ):
                 with pytest.raises(RuntimeError, match=r"(?i)eth0.*already.*attached"):
                     attach_external_via_bridge(net, "h0", "eth0", ip="10.0.0.2/24")
 
@@ -1560,7 +1661,10 @@ class TestDefect5DuplicatePhyIntfRejection:
         """T8: a partial outstanding record for h1 owns eth0 (simulating a
         rollback-failed retained record); attaching h0 to eth0 must raise
         before any mutation."""
-        from src.runtime.bridge import attach_external_via_bridge, _created_bridges
+        from src.runtime.bridge_external import (
+            attach_external_via_bridge,
+            _created_bridges,
+        )
 
         _created_bridges.clear()
         try:
@@ -1597,7 +1701,9 @@ class TestDefect5DuplicatePhyIntfRejection:
                     )
                 return 0, "", ""
 
-            with patch("src.runtime.bridge._run_root_cmd_vec", side_effect=mock_cmd):
+            with patch(
+                "src.runtime.bridge_external._run_root_cmd_vec", side_effect=mock_cmd
+            ):
                 with pytest.raises(RuntimeError, match=r"(?i)eth0.*already.*attached"):
                     attach_external_via_bridge(net, "h0", "eth0", ip="10.0.0.2/24")
 

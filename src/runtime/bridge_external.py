@@ -11,7 +11,7 @@ from typing import Callable
 from mininet.log import info
 from mininet.net import Mininet
 
-from .bridge_args import validate_static_ip as _validate_static_ip
+from .bridge_args import validate_static_ip
 from .command_runner import ROOT_SENTINEL, MininetCommandRunner
 
 
@@ -151,7 +151,7 @@ def attach_external_via_bridge(
             "DHCP mode is not supported"
         )
 
-    _validate_static_ip(ip)
+    validate_static_ip(ip)
 
     bridge_name = f"br-{host_name}"
     veth_root = f"veth-{host_name}-root"

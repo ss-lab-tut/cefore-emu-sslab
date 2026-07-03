@@ -365,7 +365,9 @@ cefore-emu/
 │   │   └── cli.py                 # argparse CLI
 │   ├── runtime/                   # Runtime operations
 │   │   ├── bandwidth.py           # Link bandwidth control
-│   │   ├── bridge.py              # Linux bridge & root NS bridging
+│   │   ├── bridge_args.py         # Bridge CLI argument parsing
+│   │   ├── bridge_external.py     # External NIC bridge attachment
+│   │   ├── bridge_root.py         # Root namespace bridge orchestration
 │   │   ├── cache_manager.py       # Cache manager operations
 │   │   ├── cef_argv.py            # Cefore command argv builder
 │   │   ├── cefore.py              # Cefore daemon start/stop/wait

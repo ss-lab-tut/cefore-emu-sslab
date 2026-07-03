@@ -1,6 +1,6 @@
 """Runtime layer (Mininet/Cefore integration)."""
 
-from .bridge import (
+from .bridge_external import (
     attach_external_interface,
     attach_external_via_bridge,
     cleanup_external_bridges,
