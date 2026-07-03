@@ -4,6 +4,8 @@
 from __future__ import annotations
 
 import argparse
+import csv
+import io
 import json
 import os
 import shutil
@@ -15,9 +17,18 @@ from pathlib import Path
 
 PYTEST_TARGETS = ("tests",)
 SMOKE_CONFIGS = (
-    "min_putget", "min_putget_class_a", "min_pubsub", "min_pubsub_verify",
-    "min_empty", "min_mixed", "min_event_putget", "min_event_pubsub",
-    "min_failure", "min_event_link", "min_monitoring", "connect",
+    "min_putget",
+    "min_putget_class_a",
+    "min_pubsub",
+    "min_pubsub_verify",
+    "min_empty",
+    "min_mixed",
+    "min_event_putget",
+    "min_event_pubsub",
+    "min_failure",
+    "min_event_link",
+    "min_monitoring",
+    "connect",
 )
 
 
@@ -184,7 +195,9 @@ def mn_cleanup(repo_root: Path) -> None:
         stderr=subprocess.DEVNULL,
     )
     if result.returncode != 0:
-        print(f"[WARN] best-effort Mininet cleanup failed with exit code {result.returncode}")
+        print(
+            f"[WARN] best-effort Mininet cleanup failed with exit code {result.returncode}"
+        )
 
 
 # Verdict Factor expectations shared by several configs. Values: True means
@@ -217,7 +230,7 @@ def build_smoke_cases() -> list[SmokeCase]:
         SmokeCase(
             "min_putget",
             config_relpath="config/examples/min_putget.yaml",
-            expect=PUTGET_EXPECT,
+            expect={**PUTGET_EXPECT, "summarizer_min_rows": 2},
         ),
         SmokeCase(
             # Same as min_putget but on a Class A (10.0.0.0/16) network, where
@@ -237,7 +250,7 @@ def build_smoke_cases() -> list[SmokeCase]:
         SmokeCase(
             "min_pubsub_verify",
             config_relpath="config/examples/min_pubsub_verify.yaml",
-            expect=PUBSUB_EXPECT,
+            expect={**PUBSUB_EXPECT, "summarizer_min_rows": 2},
         ),
         SmokeCase(
             "min_empty",
@@ -309,7 +322,9 @@ def find_results_json(output_dir: Path) -> Path:
     if not matches:
         raise FileNotFoundError(f"No results.json found under {output_dir}")
     if len(matches) > 1:
-        raise RuntimeError(f"Expected one results.json under {output_dir}, found {len(matches)}")
+        raise RuntimeError(
+            f"Expected one results.json under {output_dir}, found {len(matches)}"
+        )
     return matches[0]
 
 
@@ -336,6 +351,8 @@ def validate_results(
     - ``all_events_success``: every event record must have truthy ``success``.
     - ``monitor_json``: a monitor.json with at least ``min_entries`` entries
       must exist under the case output directory.
+    - ``summarizer_min_rows``: ceforeemu-log module-form stdout must produce at
+      least this many canonical-parse CSV rows.
     """
 
     def fail(msg: str) -> None:
@@ -380,6 +397,102 @@ def validate_results(
         min_entries = monitor_spec.get("min_entries", 1)
         if len(entries) < min_entries:
             fail(f"monitor.json has {len(entries)} entries, expected >= {min_entries}")
+
+
+def validate_summarizer_stdout(
+    case_name: str,
+    stdout: str,
+    data: list[dict],
+    min_rows: int,
+) -> None:
+    """Validate ceforeemu-log stdout sections against results.json op types."""
+
+    def fail(msg: str) -> None:
+        raise RuntimeError(f"{case_name}: summarizer {msg}")
+
+    if not stdout.strip():
+        fail("stdout is empty")
+
+    command_to_op_type = {
+        "cefputfile": "put",
+        "cefgetfile": "get",
+        "cefpubfile": "pub",
+        "cefsubfile": "sub",
+    }
+    result_op_types = {
+        str(row.get("op_type"))
+        for row in data
+        if row.get("op_type") and row.get("op_type") != "event"
+    }
+
+    total_rows = 0
+    matching_rows = 0
+    current_command: str | None = None
+    csv_lines: list[str] = []
+
+    def flush_section() -> None:
+        nonlocal total_rows, matching_rows, csv_lines, current_command
+        if current_command is None or not csv_lines:
+            csv_lines = []
+            return
+        try:
+            rows = list(csv.DictReader(io.StringIO("\n".join(csv_lines))))
+        except csv.Error as exc:
+            fail(f"{current_command} CSV is not parseable: {exc}")
+        if not rows:
+            fail(f"{current_command} section has no data rows")
+        missing = {"label", "success"} - set(rows[0])
+        if missing:
+            fail(f"{current_command} CSV missing columns {sorted(missing)}")
+        total_rows += len(rows)
+        if command_to_op_type.get(current_command) in result_op_types:
+            matching_rows += len(rows)
+        csv_lines = []
+
+    for line in stdout.splitlines():
+        if line.startswith("# "):
+            flush_section()
+            current_command = line[2:].split(" ", 1)[0]
+            continue
+        if not line.strip():
+            flush_section()
+            current_command = None
+            continue
+        if current_command is not None:
+            csv_lines.append(line)
+    flush_section()
+
+    if total_rows < min_rows:
+        fail(f"expected at least {min_rows} CSV rows, got {total_rows}")
+    if matching_rows == 0:
+        fail(
+            "no CSV data row belonged to a command section matching a results.json op_type"
+        )
+
+
+def validate_summarizer(
+    repo_root: Path,
+    python_bin: Path,
+    case_name: str,
+    run_dir: Path,
+    data: list[dict],
+    min_rows: int,
+) -> None:
+    """Run ceforeemu-log in module form and validate canonical CSV output."""
+    cmd = [str(python_bin), "-m", "src.log.cli", str(run_dir), "--stdout"]
+    print(f"$ {' '.join(cmd)}")
+    result = subprocess.run(
+        cmd,
+        cwd=repo_root,
+        check=False,
+        text=True,
+        capture_output=True,
+    )
+    if result.returncode != 0:
+        raise RuntimeError(
+            f"{case_name}: summarizer exited {result.returncode}: {result.stderr.strip()}"
+        )
+    validate_summarizer_stdout(case_name, result.stdout, data, min_rows)
 
 
 def validate_connect(case_output_dir: Path) -> None:
@@ -466,6 +579,16 @@ def run_single_smoke(
         results_path = find_results_json(case_output_dir)
         data = load_results(results_path)
         validate_results(case.name, data, case.expect or {}, case_output_dir)
+        summarizer_min_rows = (case.expect or {}).get("summarizer_min_rows")
+        if summarizer_min_rows is not None:
+            validate_summarizer(
+                repo_root,
+                python_bin,
+                case.name,
+                results_path.parent,
+                data,
+                summarizer_min_rows,
+            )
         print(f"[OK] {case.name}: {results_path}")
         return case_output_dir
     finally:
@@ -512,7 +635,9 @@ def main() -> int:
     python_bin = venv_python(repo_root)
 
     smoke_outputs: list[Path] = []
-    output_base = args.output_base.resolve() if args.output_base else default_output_base()
+    output_base = (
+        args.output_base.resolve() if args.output_base else default_output_base()
+    )
     output_base.mkdir(parents=True, exist_ok=True)
     tmp_dir = args.tmpdir.resolve() if args.tmpdir else output_base / "_tmp"
     tmp_dir.mkdir(parents=True, exist_ok=True)

@@ -20,6 +20,7 @@
   - every row has `success == true`
   - every `op_type == "get"` row has `has_completed_log == true`
   - every `op_type == "get"` row has `has_output_file == true`
+  - `python -m src.log.cli <run_dir> --stdout` emits at least 2 canonical CSV rows with `label` and `success` columns, and at least one command section matches an `op_type` present in `results.json`
 
 ### `min_putget_class_a`
 
@@ -31,7 +32,7 @@
   interface onto one flat `10.0.0.0/8` and breaking per-link routing so get
   times out with `Rx Frames = 0`. `min_putget` (192.168) cannot catch this
   because class C defaults to `/24`.
-- Required checks: identical to `min_putget` (`PUTGET_EXPECT`).
+- Required checks: identical to the `min_putget` results.json checks (`PUTGET_EXPECT`).
 
 ### `min_pubsub`
 
@@ -53,6 +54,7 @@
   - every `op_type == "sub"` row has `has_output_file == true`
   - every `op_type == "sub"` row keeps `has_completed_log` falsy (`null`: the marker Factor is not applicable to sub)
   - every `op_type == "sub"` `out_file` points at a discovered `RNP0x*.out` artifact
+  - `python -m src.log.cli <run_dir> --stdout` emits at least 2 canonical CSV rows with `label` and `success` columns, and at least one command section matches an `op_type` present in `results.json`
 
 ### `min_empty`
 
