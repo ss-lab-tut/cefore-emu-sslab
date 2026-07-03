@@ -89,6 +89,36 @@ def test_validation_error_exits_with_config_error_lines(tmp_path, capsys):
     assert "config error:" in capsys.readouterr().err
 
 
+@pytest.mark.parametrize(
+    ("debug_yaml", "expected_error"),
+    [
+        ("debug:\n  artifacts: fib_dump\n", "debug.artifacts must be a list"),
+        (
+            "debug:\n  artifacts: [node_dirs, bad]\n",
+            "debug.artifacts contains unknown artifact: 'bad'",
+        ),
+        (
+            "debug:\n  output_subdir: 123\n",
+            "debug.output_subdir must be a string",
+        ),
+    ],
+)
+def test_malformed_debug_config_exits_with_raw_debug_error(
+    tmp_path, capsys, debug_yaml, expected_error
+):
+    args = _parse_disaster_args(
+        tmp_path,
+        f"hosts: 3\nswitches: 4\n{debug_yaml}",
+        ["--output-dir", str(tmp_path / "out"), "--no-script-log"],
+    )
+
+    with pytest.raises(SystemExit) as exc_info:
+        _run_bootstrap(args)
+
+    assert exc_info.value.code == 1
+    assert f"config error: {expected_error}\n" in capsys.readouterr().err
+
+
 def test_meta_json_written_with_exact_disaster_keys(tmp_path):
     args = _parse_disaster_args(
         tmp_path,

@@ -11,6 +11,7 @@ from mininet.log import setLogLevel
 from ..core.config.loader import (
     load_config,
     merge_cli_and_config,
+    validate_config,
     validate_merged_args,
     warn_ignored_legacy_content_keys,
 )
@@ -66,6 +67,11 @@ def bootstrap_scenario(
     cli_parser = _build_cli_precedence_parser(blocks)
     merge_cli_and_config(args, config_data, cli_parser)
     errors = validate_merged_args(args)
+    # Debug is special_config_merge and never lands on args, so merged-args
+    # validation is blind to it. Validate the raw block to keep connect's
+    # existing strict debug contract and apply the same guard to disaster.
+    if "debug" in config_data:
+        errors.extend(validate_config({"debug": config_data["debug"]}))
     if errors:
         for error in errors:
             print(f"config error: {error}", file=sys.stderr)
