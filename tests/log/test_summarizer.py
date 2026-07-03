@@ -40,12 +40,12 @@ def _create_log_dir(tmp_path, name="exp1"):
     d = tmp_path / name
     d.mkdir()
     (d / "meta.json").write_text(json.dumps({"hosts": 4, "seed": 42}))
-    (d / "cefputfile_h9.log").write_text(
+    (d / "cefputfile_eval_h9_test_ex1.log").write_text(
         "[cefputfile] URI = ccnx:/test/ex1\n"
         "[cefputfile] Tx Frames = 10\n"
         "[cefputfile] Tx Bytes = 5120 Bytes\n"
     )
-    (d / "cefgetfile_h0.log").write_text(
+    (d / "cefgetfile_eval_h0_test_ex1.log").write_text(
         "[cefgetfile] URI = ccnx:/test/ex1\n[cefgetfile] Rx Frames (All) = 12\n"
     )
     (d / "random.log").write_text("not a cefore log")
@@ -182,11 +182,15 @@ def test_collect_records_keeps_text_parser_values_over_results_join(tmp_path):
     assert row["uri"] == "ccnx:/from-log"
 
 
-def test_collect_records_legacy_filename_still_uses_fallback(tmp_path):
-    d = _create_log_dir(tmp_path)
-    row = collect_records([d])["cefputfile"][0]
-    assert row["filename"] == "cefputfile_h9.log"
-    assert row["host_id"] == 9
+def test_collect_records_skips_legacy_content_log_names(tmp_path):
+    d = tmp_path / "exp1"
+    d.mkdir()
+    # 2026-07-03 artifact-layout contract: legacy content log names are no
+    # longer parsed once all writers emit canonical command_phase_hN_label.log.
+    (d / "cefputfile_h9.log").write_text("[cefputfile] URI = ccnx:/test/ex1\n")
+    (d / "cefgetfile-h0.log").write_text("[cefgetfile] URI = ccnx:/test/ex1\n")
+
+    assert collect_records([d]) == {}
 
 
 def test_collect_records_missing_results_json_leaves_join_columns_empty(tmp_path):

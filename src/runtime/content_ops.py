@@ -7,6 +7,7 @@ from pathlib import Path
 
 from mininet.log import info
 
+from ..core.artifacts import content_log_name, safe_uri_label
 from ..core.events import content_event_types
 from .cefore import (
     run_cefgetfile,
@@ -22,11 +23,6 @@ from .result_detect import (
     detect_put_success,
     detect_sub_success,
 )
-
-
-def _safe_uri_label(uri):
-    """Convert URI to a filesystem-safe label."""
-    return uri.replace("ccnx:/", "").replace("/", "_")
 
 
 class ContentOperationRunner:
@@ -185,10 +181,8 @@ class ContentOperationRunner:
             return
         getattr(self, handler_name)(event)
 
-    def _log_path(self, cmd, host, uri, suffix=""):
-        label = _safe_uri_label(uri)
-        fname = f"{cmd}_{self._phase}_h{host}_{label}{suffix}.log"
-        return self._run_dir / fname
+    def _log_path(self, cmd, host, uri):
+        return self._run_dir / content_log_name(cmd, self._phase, host, uri)
 
     # ------------------------------------------------------------------
     # put
@@ -236,7 +230,7 @@ class ContentOperationRunner:
     def _do_get(self, event):
         host = int(event["host"])
         uri = event["uri"]
-        label = _safe_uri_label(uri)
+        label = safe_uri_label(uri)
         out_path = self._run_dir / f"{self._phase}_recvfile_h{host}_{label}"
         log_path = self._log_path("cefgetfile", host, uri)
         down_hosts = self._flap_state.snapshot()
@@ -284,7 +278,7 @@ class ContentOperationRunner:
             wait_sec = float(self._pub_lifetime_by_uri[uri]) + 5.0
         else:
             wait_sec = 30.0
-        label = _safe_uri_label(uri)
+        label = safe_uri_label(uri)
         output_dir = self._run_dir / f"{self._phase}_recvdir_h{host}_{label}"
         output_dir.mkdir(parents=True, exist_ok=True)
         removed = clear_sub_output_artifacts(output_dir)
@@ -445,6 +439,7 @@ class ContentOperationRunner:
             publisher_host=publisher_host,
         )
 
+
 # Keep the runtime dispatch table locked to the EventSchema-derived content set.
 # If EVENT_SCHEMA gains or loses a content operation, importing this module should
 # fail loudly instead of letting scheduler/content dispatch drift apart.
@@ -452,4 +447,3 @@ assert set(ContentOperationRunner._HANDLERS) == content_event_types(), (
     "ContentOperationRunner._HANDLERS must match content_event_types() -- "
     "update _HANDLERS when EVENT_SCHEMA changes"
 )
-

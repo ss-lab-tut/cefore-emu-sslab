@@ -2,6 +2,8 @@
 
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 import src.runtime.cefore as cefore_mod
 from src.runtime.cefore import (
     run_cefgetfile,
@@ -21,6 +23,7 @@ def _argv_str(argv):
 # run_cefputfile — now argv + CommandRunner based
 # ---------------------------------------------------------------------------
 
+
 class TestRunCefputfile:
     def test_log_path_owns_redirect_not_argv(self):
         fake = FakeCommandRunner()
@@ -34,26 +37,37 @@ class TestRunCefputfile:
 
     def test_builds_expected_argv(self):
         fake = FakeCommandRunner()
-        run_cefputfile(fake, 2, "ccnx:/test/sample", "/data/in.bin")
+        run_cefputfile(
+            fake, 2, "ccnx:/test/sample", "/data/in.bin", log_name="/tmp/put.log"
+        )
         argv = fake.runs[0]["argv"]
         assert argv[:4] == ["cefputfile", "ccnx:/test/sample", "-f", "/data/in.bin"]
         assert argv[-2:] == ["-d", "./h2"]
 
-    def test_default_log_name(self):
+    def test_log_name_is_required(self):
         fake = FakeCommandRunner()
-        run_cefputfile(fake, 2, "ccnx:/test/sample")
-        assert fake.runs[0]["log_path"] == "cefputfile-h2.log"
+        # 2026-07-03 artifact-layout contract: callers must provide canonical
+        # content_log_name paths; cefore no longer invents legacy fallbacks.
+        with pytest.raises(TypeError):
+            run_cefputfile(fake, 2, "ccnx:/test/sample")
 
     def test_returns_returncode(self):
         fake = FakeCommandRunner()
         fake.script_run(returncode=-15, cancelled=True)
-        assert run_cefputfile(fake, 2, "ccnx:/test/sample") == -15
+        assert (
+            run_cefputfile(fake, 2, "ccnx:/test/sample", log_name="/tmp/put.log") == -15
+        )
 
     def test_passes_timeout_and_cancel_event(self):
         fake = FakeCommandRunner()
         sentinel = object()
         run_cefputfile(
-            fake, 2, "ccnx:/test/sample", timeout=7, cancel_event=sentinel
+            fake,
+            2,
+            "ccnx:/test/sample",
+            log_name="/tmp/put.log",
+            timeout=7,
+            cancel_event=sentinel,
         )
         assert fake.runs[0]["timeout"] == 7
         assert fake.runs[0]["cancel_event"] is sentinel
@@ -62,6 +76,7 @@ class TestRunCefputfile:
 # ---------------------------------------------------------------------------
 # run_cefgetfile
 # ---------------------------------------------------------------------------
+
 
 class TestRunCefgetfile:
     def test_builds_expected_argv_and_log(self):
@@ -75,17 +90,25 @@ class TestRunCefgetfile:
         assert rec["log_path"] == "/tmp/get.log"
         assert "2>&1" not in _argv_str(rec["argv"])
 
-    def test_default_log_name(self):
+    def test_log_name_is_required(self):
         fake = FakeCommandRunner()
-        run_cefgetfile(fake, 0, "ccnx:/test/sample", "/tmp/recv")
-        assert fake.runs[0]["log_path"] == "cefgetfile-h0.log"
+        with pytest.raises(TypeError):
+            run_cefgetfile(fake, 0, "ccnx:/test/sample", "/tmp/recv")
 
     def test_timeout_returncode(self):
         fake = FakeCommandRunner()
         fake.script_run(returncode=-15, timed_out=True)
-        assert run_cefgetfile(
-            fake, 0, "ccnx:/test/sample", "/tmp/recv", timeout=0
-        ) == -15
+        assert (
+            run_cefgetfile(
+                fake,
+                0,
+                "ccnx:/test/sample",
+                "/tmp/recv",
+                log_name="/tmp/get.log",
+                timeout=0,
+            )
+            == -15
+        )
         assert fake.runs[0]["timeout"] == 0
 
 
@@ -93,27 +116,32 @@ class TestRunCefgetfile:
 # start_cefsubfile — non-blocking, returns a CommandHandle
 # ---------------------------------------------------------------------------
 
+
 class TestStartCefsubfile:
     def test_starts_and_records_handle(self):
         fake = FakeCommandRunner()
         handle = start_cefsubfile(
-            fake, 0, "ccnx:/test/stream",
-            output_path="/tmp/recvdir", log_name="/tmp/sub.log",
+            fake,
+            0,
+            "ccnx:/test/stream",
+            output_path="/tmp/recvdir",
+            log_name="/tmp/sub.log",
         )
         assert handle is fake.starts[0]
         assert handle.node == "h0"
         assert handle.log_path == "/tmp/sub.log"
         assert "2>&1" not in _argv_str(handle.argv)
 
-    def test_default_log_name(self):
+    def test_log_name_is_required(self):
         fake = FakeCommandRunner()
-        start_cefsubfile(fake, 0, "ccnx:/test/stream")
-        assert fake.starts[0].log_path == "cefsubfile-h0.log"
+        with pytest.raises(TypeError):
+            start_cefsubfile(fake, 0, "ccnx:/test/stream")
 
 
 # ---------------------------------------------------------------------------
 # run_cefpubfile — non-blocking, returns a CommandHandle
 # ---------------------------------------------------------------------------
+
 
 class TestRunCefpubfile:
     def test_starts_and_records_handle(self):
@@ -123,25 +151,33 @@ class TestRunCefpubfile:
         )
         assert handle is fake.starts[0]
         assert handle.node == "h2"
-        assert handle.argv[:4] == ["cefpubfile", "ccnx:/test/stream", "-f", "/tmp/pub.bin"]
+        assert handle.argv[:4] == [
+            "cefpubfile",
+            "ccnx:/test/stream",
+            "-f",
+            "/tmp/pub.bin",
+        ]
         assert handle.log_path == "/tmp/pub.log"
 
-    def test_default_log_name(self):
+    def test_log_name_is_required(self):
         fake = FakeCommandRunner()
-        run_cefpubfile(fake, 2, "ccnx:/test/stream", "/tmp/pub.bin")
-        assert fake.starts[0].log_path == "cefpubfile-h2.log"
+        with pytest.raises(TypeError):
+            run_cefpubfile(fake, 2, "ccnx:/test/stream", "/tmp/pub.bin")
 
 
 # ---------------------------------------------------------------------------
 # run_csmgrstatus — now argv + CommandRunner based
 # ---------------------------------------------------------------------------
 
+
 class TestRunCsmgrstatus:
     def test_default_runs_argv_and_emits_output(self):
         fake = FakeCommandRunner()
         fake.script_run(stdout="status output")
-        with patch.object(cefore_mod, "MininetCommandRunner", return_value=fake), \
-                patch.object(cefore_mod, "info") as mock_info:
+        with (
+            patch.object(cefore_mod, "MininetCommandRunner", return_value=fake),
+            patch.object(cefore_mod, "info") as mock_info,
+        ):
             out = run_csmgrstatus(MagicMock(), 1, uri="ccnx:/", host="127.0.0.1")
         assert out == "status output"
         rec = fake.runs[0]
@@ -155,8 +191,10 @@ class TestRunCsmgrstatus:
     def test_quiet_suppresses_print_and_info(self, capsys):
         fake = FakeCommandRunner()
         fake.script_run(stdout="status output")
-        with patch.object(cefore_mod, "MininetCommandRunner", return_value=fake), \
-                patch.object(cefore_mod, "info") as mock_info:
+        with (
+            patch.object(cefore_mod, "MininetCommandRunner", return_value=fake),
+            patch.object(cefore_mod, "info") as mock_info,
+        ):
             out = run_csmgrstatus(
                 MagicMock(), 1, uri="ccnx:/", host="127.0.0.1", quiet=True
             )

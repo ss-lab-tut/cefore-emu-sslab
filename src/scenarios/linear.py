@@ -8,6 +8,7 @@ from pathlib import Path
 from mininet.log import info
 from mininet.util import irange
 
+from ..core.artifacts import content_log_name
 from ..core.addressing import AddressingScheme, LINK_NETMASK
 from ..core.roles import assign_roles
 from ..runtime.command_runner import MininetCommandRunner
@@ -62,10 +63,16 @@ class LinearScenario(BaseScenario):
     def run_experiment(self, net):
         runner = MininetCommandRunner(net)
         publisher = self.host_num - 1
-        put_log = str(self.run_dir / "cefputfile.log")
+        uri = "ccnx:/test"
+        put_log = str(
+            self.run_dir / content_log_name("cefputfile", "eval", publisher, uri)
+        )
         exit_code = run_cefputfile(
-            runner, publisher, "ccnx:/test",
-            cache_time=3000, expiry=3000,
+            runner,
+            publisher,
+            uri,
+            cache_time=3000,
+            expiry=3000,
             log_name=put_log,
         )
         if exit_code != 0:
@@ -73,9 +80,9 @@ class LinearScenario(BaseScenario):
             sys.exit(1)
         time.sleep(5)
 
-        get_log = str(self.run_dir / "cefgetfile.log")
+        get_log = str(self.run_dir / content_log_name("cefgetfile", "eval", 0, uri))
         recvfile = str(self.run_dir / "recvfile_at_h0")
-        exit_code = run_cefgetfile(runner, 0, "ccnx:/test", recvfile, log_name=get_log)
+        exit_code = run_cefgetfile(runner, 0, uri, recvfile, log_name=get_log)
         if exit_code != 0:
             info(f"[ERROR] cefgetfile failed on h0 (exit_code={exit_code})\n")
             sys.exit(1)
@@ -93,7 +100,8 @@ class LinearScenario(BaseScenario):
 
     def _csmgrd_host_ids(self):
         return {
-            idx for idx in range(self.host_num)
+            idx
+            for idx in range(self.host_num)
             if self.roles.get(idx) and self.roles[idx].runs_csmgrd
         }
 
@@ -107,13 +115,25 @@ class LinearScenario(BaseScenario):
             node_name = f"h{idx}"
             if idx > 0:
                 left_ip = self.scheme.host_ip(idx - 1, idx)
-                argv = ["ifconfig", f"{node_name}-eth0", str(left_ip), "netmask", LINK_NETMASK]
+                argv = [
+                    "ifconfig",
+                    f"{node_name}-eth0",
+                    str(left_ip),
+                    "netmask",
+                    LINK_NETMASK,
+                ]
                 print(node_name, "command:", argv)
                 runner.run(node_name, argv)
             if idx < self.host_num - 1:
                 right_ip = self.scheme.host_ip(idx, idx)
                 eth_name = "eth1" if idx > 0 else "eth0"
-                argv = ["ifconfig", f"{node_name}-{eth_name}", str(right_ip), "netmask", LINK_NETMASK]
+                argv = [
+                    "ifconfig",
+                    f"{node_name}-{eth_name}",
+                    str(right_ip),
+                    "netmask",
+                    LINK_NETMASK,
+                ]
                 print(node_name, "command:", argv)
                 runner.run(node_name, argv)
 

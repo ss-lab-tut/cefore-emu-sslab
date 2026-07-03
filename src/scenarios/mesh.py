@@ -7,6 +7,10 @@ from pathlib import Path
 
 from mininet.log import info
 
+from ..core.artifacts import content_log_name
+from ..core.addressing import AddressingScheme
+from ..core.roles import assign_roles
+from ..core.topology import TopologyModel
 from ..runtime.command_runner import MininetCommandRunner
 from ..runtime.cefore import run_cefgetfile, run_cefputfile
 from ..runtime.cache_strategy import RolesCacheStrategy
@@ -16,9 +20,6 @@ from ..runtime.scenario_setup import (
     setup_scenario,
     teardown_scenario,
 )
-from ..core.addressing import AddressingScheme
-from ..core.roles import assign_roles
-from ..core.topology import TopologyModel
 from ..runtime.template import provision_node_dirs
 from ..runtime.topo import MeshTopo, max_possible_links, min_required_links
 
@@ -117,7 +118,10 @@ class MeshScenario(BaseScenario):
         consumer = TopologyModel(self.topo.mesh_links).peer_of(publisher)
 
         runner = MininetCommandRunner(net)
-        put_log = str(self.run_dir / f"cefputfile_h{publisher}.log")
+        put_log = str(
+            self.run_dir
+            / content_log_name("cefputfile", "eval", publisher, publish_uri)
+        )
         exit_code = run_cefputfile(runner, publisher, publish_uri, log_name=put_log)
         if exit_code != 0:
             info(f"[ERROR] cefputfile failed on h{publisher} (exit_code={exit_code})\n")
@@ -125,8 +129,12 @@ class MeshScenario(BaseScenario):
         time.sleep(5)
 
         recvfile_path = str(self.run_dir / f"recvfile_at_h{consumer}")
-        get_log = str(self.run_dir / f"cefgetfile_h{consumer}.log")
-        exit_code = run_cefgetfile(runner, consumer, publish_uri, recvfile_path, log_name=get_log)
+        get_log = str(
+            self.run_dir / content_log_name("cefgetfile", "eval", consumer, publish_uri)
+        )
+        exit_code = run_cefgetfile(
+            runner, consumer, publish_uri, recvfile_path, log_name=get_log
+        )
         if exit_code != 0:
             info(f"[ERROR] cefgetfile failed on h{consumer} (exit_code={exit_code})\n")
             sys.exit(1)
@@ -144,7 +152,8 @@ class MeshScenario(BaseScenario):
 
     def _csmgrd_host_ids(self):
         return {
-            idx for idx in range(self.host_num)
+            idx
+            for idx in range(self.host_num)
             if self.roles.get(idx) and self.roles[idx].runs_csmgrd
         }
 

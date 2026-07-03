@@ -187,7 +187,8 @@ def run_cefputfile(
     cache_time=None,
     valid_algo=None,
     port_num=None,
-    log_name=None,
+    *,
+    log_name,
     timeout=None,
     cancel_event=None,
 ):
@@ -223,8 +224,6 @@ def run_cefputfile(
         valid_algo=valid_algo,
         port_num=port_num,
     )
-    if not log_name:
-        log_name = f"cefputfile-h{host_idx}.log"
     info(f"{node_name} command: {argv}\n")
     result = runner.run(
         node_name,
@@ -247,7 +246,8 @@ def run_cefgetfile(
     valid_algo=None,
     port_num=None,
     sg: bool = False,
-    log_name=None,
+    *,
+    log_name,
     timeout=None,
     cancel_event=None,
 ):
@@ -283,8 +283,6 @@ def run_cefgetfile(
         port_num=port_num,
         sg=sg,
     )
-    if not log_name:
-        log_name = f"cefgetfile-h{host_idx}.log"
     info(f"{node_name} command: {argv}\n")
     result = runner.run(
         node_name,
@@ -330,7 +328,8 @@ def start_cefsubfile(
     ri_valid_algo=None,
     td_valid_algo=None,
     port_num=None,
-    log_name=None,
+    *,
+    log_name,
 ):
     """Start cefsubfile in the background (non-blocking).
 
@@ -362,8 +361,6 @@ def start_cefsubfile(
         td_valid_algo=td_valid_algo,
         port_num=port_num,
     )
-    if not log_name:
-        log_name = f"cefsubfile-h{host_idx}.log"
     info(f"{node_name} command: {argv}\n")
     return runner.start(node_name, argv, log_path=log_name)
 
@@ -383,7 +380,8 @@ def run_cefpubfile(
     ti_valid_algo=None,
     rd_valid_algo=None,
     port_num=None,
-    log_name=None,
+    *,
+    log_name,
 ):
     """Start cefpubfile in the background (non-blocking).
 
@@ -426,8 +424,6 @@ def run_cefpubfile(
         rd_valid_algo=rd_valid_algo,
         port_num=port_num,
     )
-    if not log_name:
-        log_name = f"cefpubfile-h{host_idx}.log"
     info(f"{node_name} command: {argv}\n")
     return runner.start(node_name, argv, log_path=log_name)
 

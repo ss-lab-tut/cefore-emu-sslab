@@ -8,7 +8,6 @@ from pathlib import Path
 from typing import Any
 
 from ..core.artifacts import parse_content_log_name
-from .filename import parse_filename
 from .parser import PARSERS
 
 # Metadata columns from meta.json
@@ -137,19 +136,11 @@ def collect_records(
 
         for logfile in sorted(dirpath.glob("*.log")):
             cmeta = parse_content_log_name(logfile)
-            # 2026-07-03 temporary bridge: canonical names are preferred while
-            # the legacy parser/fallback stays until writers flip in Slice3.
-            fmeta = None if cmeta is not None else parse_filename(logfile)
             if cmeta is not None:
                 command = cmeta.command
                 host_id = cmeta.host
                 phase = cmeta.phase
                 label = cmeta.label
-            elif fmeta is not None:
-                command = fmeta.command
-                host_id = fmeta.host_id
-                phase = fmeta.phase
-                label = None
             else:
                 continue
 
