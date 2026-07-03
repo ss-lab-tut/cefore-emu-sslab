@@ -9,11 +9,11 @@ the execute() finally block) to capture real fail-before behavior.
 
 from pathlib import Path
 from types import SimpleNamespace
-from unittest.mock import patch, MagicMock, call
+from unittest.mock import patch, MagicMock
 
 import pytest
 
-from src.runtime.bridge import TeardownError
+from src.runtime.bridge_root import TeardownError
 
 
 def _make_scenario(tmp_path):
@@ -66,6 +66,7 @@ def _make_scenario(tmp_path):
 # L1. Debug pre-teardown containment failure still permits operational cleanup
 # ---------------------------------------------------------------------------
 
+
 class TestL1DebugPreTeardown:
     """If collect_debug_pre_teardown() raises, teardown and cleanup_all
     must still be attempted."""
@@ -85,16 +86,13 @@ class TestL1DebugPreTeardown:
 
         # Patch collect_debug_pre_teardown to raise ValueError
         # This will be called from execute()'s finally block
-        orig_pre = scenario.collect_debug_pre_teardown
         with patch.object(
             scenario,
             "collect_debug_pre_teardown",
             side_effect=ValueError("path escapes run directory"),
         ):
             with patch.object(scenario, "teardown") as mock_teardown:
-                with patch(
-                    "src.scenarios.base.cleanup_all"
-                ) as mock_cleanup_all:
+                with patch("src.scenarios.base.cleanup_all") as mock_cleanup_all:
                     net = MagicMock()
 
                     # Call execute() — the finally block exercises the real control flow
@@ -116,6 +114,7 @@ class TestL1DebugPreTeardown:
 # ---------------------------------------------------------------------------
 # L2. Debug post-teardown containment failure still permits generic cleanup
 # ---------------------------------------------------------------------------
+
 
 class TestL2DebugPostTeardown:
     """If collect_debug_post_teardown() raises, cleanup_all must still run."""
@@ -158,6 +157,7 @@ class TestL2DebugPostTeardown:
 # L3. Daemon-stop exception does not skip BridgeManager/external cleanup
 # ---------------------------------------------------------------------------
 
+
 class TestL3DaemonStop:
     """If stop_cefnetd() raises, bridge cleanup must still run."""
 
@@ -199,6 +199,7 @@ class TestL3DaemonStop:
 # ---------------------------------------------------------------------------
 # L4. BridgeManager and external cleanup failures are both preserved
 # ---------------------------------------------------------------------------
+
 
 class TestL4DualCleanupFailure:
     """Multiple cleanup failures must be preserved together."""
@@ -243,6 +244,7 @@ class TestL4DualCleanupFailure:
 # L5. Primary execution failure plus debug/cleanup failures preserves all causes
 # ---------------------------------------------------------------------------
 
+
 class TestL5PrimaryAndCleanupFailure:
     """Primary and cleanup failures must both be preserved."""
 
@@ -269,19 +271,27 @@ class TestL5PrimaryAndCleanupFailure:
 
                     # Simulate: primary failure during configure
                     with patch.object(
-                        scenario, "configure", side_effect=RuntimeError("primary failure")
+                        scenario,
+                        "configure",
+                        side_effect=RuntimeError("primary failure"),
                     ):
                         with patch.object(scenario, "build_topology"):
-                            with patch.object(scenario, "create_mininet", return_value=net):
+                            with patch.object(
+                                scenario, "create_mininet", return_value=net
+                            ):
                                 with patch.object(scenario, "run_experiment"):
                                     try:
                                         scenario.execute()
                                     except Exception as exc:
                                         # After fix: both primary and cleanup in exception tree
-                                        assert _exception_tree_contains(exc, "primary failure"), (
+                                        assert _exception_tree_contains(
+                                            exc, "primary failure"
+                                        ), (
                                             f"primary failure not in: {_collect_exception_messages(exc)}"
                                         )
-                                        assert _exception_tree_contains(exc, "cleanup failure"), (
+                                        assert _exception_tree_contains(
+                                            exc, "cleanup failure"
+                                        ), (
                                             f"cleanup failure not in: {_collect_exception_messages(exc)}"
                                         )
                                         return
@@ -292,6 +302,7 @@ class TestL5PrimaryAndCleanupFailure:
 # ---------------------------------------------------------------------------
 # L6. Results write happens only after operational cleanup attempt
 # ---------------------------------------------------------------------------
+
 
 class TestL6ResultsWriteOrdering:
     """Results write must occur after cleanup, not before."""
@@ -331,7 +342,9 @@ class TestL6ResultsWriteOrdering:
                         net = MagicMock()
 
                         with patch.object(scenario, "build_topology"):
-                            with patch.object(scenario, "create_mininet", return_value=net):
+                            with patch.object(
+                                scenario, "create_mininet", return_value=net
+                            ):
                                 with patch.object(scenario, "configure"):
                                     with patch.object(scenario, "run_experiment"):
                                         try:
@@ -344,13 +357,18 @@ class TestL6ResultsWriteOrdering:
                     assert "teardown" in call_order
                     assert "cleanup_all" in call_order
                     assert "results_write" in call_order
-                    assert call_order.index("teardown") < call_order.index("cleanup_all")
-                    assert call_order.index("cleanup_all") < call_order.index("results_write")
+                    assert call_order.index("teardown") < call_order.index(
+                        "cleanup_all"
+                    )
+                    assert call_order.index("cleanup_all") < call_order.index(
+                        "results_write"
+                    )
 
 
 # ---------------------------------------------------------------------------
 # Helper: collect all messages from an exception tree
 # ---------------------------------------------------------------------------
+
 
 def _collect_exception_messages(exc):
     """Collect all exception messages from an exception tree."""
@@ -397,6 +415,7 @@ def _find_exception_by_type(exc, exc_type):
 # P0.1 SystemExit aggregation must retain both failures
 # ---------------------------------------------------------------------------
 
+
 class TestP01SystemExitAggregationStrong:
     """Stronger S6: SystemExit + cleanup failure → both preserved in BaseExceptionGroup."""
 
@@ -423,16 +442,22 @@ class TestP01SystemExitAggregationStrong:
                         net = MagicMock()
 
                         with patch.object(scenario, "build_topology"):
-                            with patch.object(scenario, "create_mininet", return_value=net):
+                            with patch.object(
+                                scenario, "create_mininet", return_value=net
+                            ):
                                 with patch.object(
                                     scenario, "configure", side_effect=SystemExit(2)
                                 ):
                                     with patch.object(scenario, "run_experiment"):
-                                        with pytest.raises(BaseExceptionGroup) as exc_info:
+                                        with pytest.raises(
+                                            BaseExceptionGroup
+                                        ) as exc_info:
                                             scenario.execute()
 
                                         # Must be BaseExceptionGroup
-                                        assert isinstance(exc_info.value, BaseExceptionGroup)
+                                        assert isinstance(
+                                            exc_info.value, BaseExceptionGroup
+                                        )
 
                                         # Must contain SystemExit with code 2
                                         system_exit = _find_exception_by_type(
@@ -454,6 +479,7 @@ class TestP01SystemExitAggregationStrong:
 # ---------------------------------------------------------------------------
 # P0.2 Interrupt during shutdown stages must not skip cleanup
 # ---------------------------------------------------------------------------
+
 
 class TestP02InterruptDuringShutdown:
     """Interrupt during shutdown must not skip operational cleanup."""
@@ -536,6 +562,7 @@ class TestP02InterruptDuringShutdown:
 #     (guards the BaseScenario.execute() try/except around the hook calls).
 # ---------------------------------------------------------------------------
 
+
 class TestH1HookRaises:
     """If shutdown_runtime_resources()/write_results() raise directly (rather
     than returning failures), teardown + cleanup_all must still run and the
@@ -606,6 +633,7 @@ class TestH1HookRaises:
 # S1. monitor.stop failure does not skip operational cleanup
 # ---------------------------------------------------------------------------
 
+
 class TestS1MonitorStop:
     """If monitor.stop() raises, teardown and cleanup_all must still run."""
 
@@ -622,7 +650,9 @@ class TestS1MonitorStop:
         scenario.results = {}
 
         mock_monitor = MagicMock()
-        mock_monitor.stop = MagicMock(side_effect=RuntimeError("monitor shutdown failed"))
+        mock_monitor.stop = MagicMock(
+            side_effect=RuntimeError("monitor shutdown failed")
+        )
         scenario.monitor = mock_monitor
 
         with patch.object(scenario, "teardown") as mock_teardown:
@@ -646,6 +676,7 @@ class TestS1MonitorStop:
 # ---------------------------------------------------------------------------
 # S2. webui.stop failure does not skip operational cleanup
 # ---------------------------------------------------------------------------
+
 
 class TestS2WebuiStop:
     """If webui.stop() raises, teardown and cleanup_all must still run."""
@@ -687,6 +718,7 @@ class TestS2WebuiStop:
 # S3. event_scheduler.stop failure does not skip operational cleanup
 # ---------------------------------------------------------------------------
 
+
 class TestS3SchedulerStop:
     """If event_scheduler.stop() raises, teardown and cleanup_all must still run."""
 
@@ -703,7 +735,9 @@ class TestS3SchedulerStop:
         scenario.results = {}
 
         mock_scheduler = MagicMock()
-        mock_scheduler.stop = MagicMock(side_effect=RuntimeError("scheduler shutdown failed"))
+        mock_scheduler.stop = MagicMock(
+            side_effect=RuntimeError("scheduler shutdown failed")
+        )
         scenario.event_scheduler = mock_scheduler
 
         with patch.object(scenario, "teardown") as mock_teardown:
@@ -727,6 +761,7 @@ class TestS3SchedulerStop:
 # S4. content_runner stop failure does not skip operational cleanup
 # ---------------------------------------------------------------------------
 
+
 class TestS4ContentRunnerStop:
     """If content_runner.stop() raises, teardown and cleanup_all must still run."""
 
@@ -744,7 +779,9 @@ class TestS4ContentRunnerStop:
 
         mock_runner = MagicMock()
         mock_runner.wait_all = MagicMock(return_value=True)
-        mock_runner.stop = MagicMock(side_effect=RuntimeError("content runner stop failed"))
+        mock_runner.stop = MagicMock(
+            side_effect=RuntimeError("content runner stop failed")
+        )
         scenario.content_runner = mock_runner
 
         with patch.object(scenario, "teardown") as mock_teardown:
@@ -767,6 +804,7 @@ class TestS4ContentRunnerStop:
 # ---------------------------------------------------------------------------
 # S5. Multiple front-end shutdown failures plus teardown failure all preserved
 # ---------------------------------------------------------------------------
+
 
 class TestS5MultipleShutdownFailures:
     """Multiple front-end + teardown failures must all be observable."""
@@ -798,17 +836,23 @@ class TestS5MultipleShutdownFailures:
                         net = MagicMock()
 
                         with patch.object(scenario, "build_topology"):
-                            with patch.object(scenario, "create_mininet", return_value=net):
+                            with patch.object(
+                                scenario, "create_mininet", return_value=net
+                            ):
                                 with patch.object(scenario, "configure"):
                                     with patch.object(scenario, "run_experiment"):
                                         try:
                                             scenario.execute()
                                         except Exception as exc:
                                             # After fix: both failures in exception tree
-                                            assert _exception_tree_contains(exc, "monitor failed"), (
+                                            assert _exception_tree_contains(
+                                                exc, "monitor failed"
+                                            ), (
                                                 f"monitor failure not in: {_collect_exception_messages(exc)}"
                                             )
-                                            assert _exception_tree_contains(exc, "nat restore"), (
+                                            assert _exception_tree_contains(
+                                                exc, "nat restore"
+                                            ), (
                                                 f"teardown failure not in: {_collect_exception_messages(exc)}"
                                             )
                                             return
@@ -819,6 +863,7 @@ class TestS5MultipleShutdownFailures:
 # ---------------------------------------------------------------------------
 # S6. SystemExit primary plus cleanup failure does not become TypeError
 # ---------------------------------------------------------------------------
+
 
 class TestS6SystemExitAggregation:
     """SystemExit + cleanup failure must not produce TypeError."""
@@ -849,7 +894,9 @@ class TestS6SystemExitAggregation:
                         # SystemExit is not caught by except KeyboardInterrupt,
                         # so it propagates to the finally block.
                         with patch.object(scenario, "build_topology"):
-                            with patch.object(scenario, "create_mininet", return_value=net):
+                            with patch.object(
+                                scenario, "create_mininet", return_value=net
+                            ):
                                 # Raise SystemExit during configure
                                 with patch.object(
                                     scenario, "configure", side_effect=SystemExit(2)
@@ -859,7 +906,7 @@ class TestS6SystemExitAggregation:
                                         got_valid = False
                                         try:
                                             scenario.execute()
-                                        except TypeError as te:
+                                        except TypeError:
                                             got_typeerror = True
                                         except (SystemExit, BaseExceptionGroup):
                                             got_valid = True
@@ -871,12 +918,15 @@ class TestS6SystemExitAggregation:
                                             "SystemExit fed into ExceptionGroup caused TypeError"
                                         )
                                         # We expect either BaseExceptionGroup or cleanup failure
-                                        assert got_valid or got_typeerror  # always true, but explicit
+                                        assert (
+                                            got_valid or got_typeerror
+                                        )  # always true, but explicit
 
 
 # ---------------------------------------------------------------------------
 # S7. KeyboardInterrupt behavior is explicit
 # ---------------------------------------------------------------------------
+
 
 class TestS7KeyboardInterrupt:
     """KeyboardInterrupt is intentionally consumed; cleanup runs."""
@@ -908,9 +958,7 @@ class TestS7KeyboardInterrupt:
                                 try:
                                     scenario.execute()
                                 except KeyboardInterrupt:
-                                    pytest.fail(
-                                        "KeyboardInterrupt should be consumed"
-                                    )
+                                    pytest.fail("KeyboardInterrupt should be consumed")
                                 # If we get here, no exception — correct behavior
 
                             mock_teardown.assert_called()
@@ -937,13 +985,17 @@ class TestS7KeyboardInterrupt:
                             with patch.object(
                                 scenario, "configure", side_effect=KeyboardInterrupt()
                             ):
-                                with patch.object(scenario, "create_mininet", return_value=net):
+                                with patch.object(
+                                    scenario, "create_mininet", return_value=net
+                                ):
                                     with patch.object(scenario, "run_experiment"):
                                         with pytest.raises(Exception) as exc_info:
                                             scenario.execute()
 
                                         # Should be TeardownError, not KeyboardInterrupt
-                                        assert not isinstance(exc_info.value, KeyboardInterrupt)
+                                        assert not isinstance(
+                                            exc_info.value, KeyboardInterrupt
+                                        )
 
 
 # ---------------------------------------------------------------------------
@@ -1083,8 +1135,7 @@ class TestT6ContentRunnerWaitAllRaises:
         assert observed is not None, "execute() must have propagated some exception"
         collected = _collect_exceptions(observed)
         assert any(
-            isinstance(e, RuntimeError) and "wait failed" in str(e)
-            for e in collected
+            isinstance(e, RuntimeError) and "wait failed" in str(e) for e in collected
         ), (
             f"wait_all failure must remain observable; collected={[repr(e) for e in collected]}"
         )

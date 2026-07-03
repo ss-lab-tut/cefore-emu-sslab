@@ -28,11 +28,10 @@ from mininet.log import info
 from .bandwidth import parse_bw_args, set_link_bandwidth
 from .bridge import (
     attach_external_interface,
-    BridgeManager,
     cleanup_external_bridges,
-    setup_bridges,
 )
 from .bridge_args import parse_ext_args
+from .bridge_root import BridgeManager, setup_bridges
 from .cache_strategy import CacheContext, CacheStrategy
 from .cefore import run_cefstatus_all
 from .command_runner import MininetCommandRunner

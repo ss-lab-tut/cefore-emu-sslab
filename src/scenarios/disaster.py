@@ -16,9 +16,7 @@ from ..core.flap_state import FlapState
 from ..core.paths import resolve_run_path
 
 from ..runtime.bridge_args import parse_bridge_args
-from ..runtime.bridge import (
-    BridgeManager,
-)
+from ..runtime.bridge_root import BridgeManager
 from ..runtime.cache_strategy import KCentersStrategy, RandomCSModeStrategy
 from ..runtime.command_runner import MininetCommandRunner
 from ..runtime.content_ops import ContentOperationRunner

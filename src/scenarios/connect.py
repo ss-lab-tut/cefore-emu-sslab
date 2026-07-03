@@ -17,8 +17,8 @@ from ..core.artifacts import topo_png_default_name
 from ..core.events import extract_publications
 from ..core.flap_state import FlapState
 from ..core.paths import resolve_run_path
-from ..runtime.bridge import BridgeManager
 from ..runtime.bridge_args import parse_bridge_args
+from ..runtime.bridge_root import BridgeManager
 from ..runtime.cache_strategy import KCentersStrategy
 from ..runtime.event_batch import EventBatchSpec, run_event_batch
 from ..runtime.results_sink import RecordingSink
