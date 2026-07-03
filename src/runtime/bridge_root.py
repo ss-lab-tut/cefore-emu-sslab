@@ -2,7 +2,7 @@
 
 This module owns BridgeManager, root namespace route/NAT/proxy-ARP cleanup,
 and bridge setup orchestration. External-NIC attach and its rollback ledger
-remain in bridge.py until the external split slice.
+live in bridge_external.py; argument parsing/validation in bridge_args.py.
 """
 
 from dataclasses import dataclass
