@@ -1,13 +1,29 @@
 """Single owner of experiment artifact naming schema.
 
-This module owns directory names and topology PNG defaults. Log-name
-build/parse belongs to a later slice, and this file intentionally stays
-stdlib-only without importing other ``src`` modules so artifact naming cannot
-create configuration/path import cycles.
+This module owns directory names, topology PNG defaults, and canonical content
+log names. It intentionally stays stdlib-only without importing other ``src``
+modules so artifact naming cannot create configuration/path import cycles.
 """
 
 from datetime import datetime
+from dataclasses import dataclass
+from pathlib import Path
+import re
 from typing import Any
+
+_CONTENT_LOG_RE = re.compile(
+    r"^(cefputfile|cefgetfile|cefpubfile|cefsubfile)_([a-z]+)_h(\d+)_(.+)\.log$"
+)
+
+
+@dataclass(frozen=True)
+class ContentLogMeta:
+    """Canonical metadata encoded in a content operation log filename."""
+
+    command: str
+    phase: str
+    host: int
+    label: str
 
 
 def experiment_dir_name(num: int | None, seed: Any, *, timestamp: bool = False) -> str:
@@ -37,3 +53,30 @@ def topo_png_default_name(num: int | None, seed: Any, hosts: int) -> str:
     default now records experiment identity first and host count as ``_h``.
     """
     return f"{experiment_dir_name(num, seed)}_h{hosts}.png"
+
+
+def safe_uri_label(uri: str) -> str:
+    """Convert a Cefore URI into the canonical filesystem-safe log label."""
+    return uri.replace("ccnx:/", "").replace("/", "_")
+
+
+def content_log_name(cmd: str, phase: str, host: int, uri: str) -> str:
+    """Return the canonical content-operation log filename.
+
+    Content logs are the join key between text logs and results.json records,
+    so command, phase, host, and URI label live in one parseable filename.
+    """
+    return f"{cmd}_{phase}_h{host}_{safe_uri_label(uri)}.log"
+
+
+def parse_content_log_name(name: str | Path) -> ContentLogMeta | None:
+    """Parse a canonical content log name, returning None for legacy shapes."""
+    match = _CONTENT_LOG_RE.match(Path(name).name)
+    if match is None:
+        return None
+    return ContentLogMeta(
+        command=match.group(1),
+        phase=match.group(2),
+        host=int(match.group(3)),
+        label=match.group(4),
+    )

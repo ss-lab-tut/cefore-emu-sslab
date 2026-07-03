@@ -1,10 +1,8 @@
 """Tests for src.log.summarizer."""
 
 import json
-from pathlib import Path
 
 from src.log.summarizer import (
-    COMMAND_COLS,
     _build_fieldnames,
     _load_meta,
     collect_records,
@@ -48,8 +46,7 @@ def _create_log_dir(tmp_path, name="exp1"):
         "[cefputfile] Tx Bytes = 5120 Bytes\n"
     )
     (d / "cefgetfile_h0.log").write_text(
-        "[cefgetfile] URI = ccnx:/test/ex1\n"
-        "[cefgetfile] Rx Frames (All) = 12\n"
+        "[cefgetfile] URI = ccnx:/test/ex1\n[cefgetfile] Rx Frames (All) = 12\n"
     )
     (d / "random.log").write_text("not a cefore log")
     return d
@@ -81,6 +78,135 @@ def test_collect_records_non_directory(tmp_path, capsys):
     assert grouped == {}
     captured = capsys.readouterr()
     assert "skipping" in captured.err
+
+
+def test_collect_records_reads_canonical_names_and_enriches_from_results(tmp_path):
+    d = tmp_path / "exp1"
+    d.mkdir()
+    log_name = "cefpubfile_eval_h2_test_example.log"
+    (d / log_name).write_text("[cefpubfile] Tx Frames = 12\n")
+    (d / "results.json").write_text(
+        json.dumps(
+            [
+                {
+                    "op_type": "pub",
+                    "ts": "2026-07-03T00:00:00Z",
+                    "phase": "eval",
+                    "host": 2,
+                    "uri": "ccnx:/test/example",
+                    "out_file": None,
+                    "log_file": f"/tmp/{log_name}",
+                    "exit_code": 0,
+                    "down_hosts": [1, 3],
+                    "publisher_host": 1,
+                    "publisher_down": True,
+                    "success": True,
+                    "has_completed_log": True,
+                    "has_output_file": None,
+                }
+            ]
+        )
+    )
+
+    row = collect_records([d])["cefpubfile"][0]
+    assert row["host_id"] == 2
+    assert row["phase"] == "eval"
+    assert row["label"] == "test_example"
+    assert row["uri"] == "ccnx:/test/example"
+    assert row["success"] is True
+    assert row["down_hosts"] == [1, 3]
+    assert row["publisher_down"] is True
+
+
+def test_collect_records_results_join_uses_last_duplicate_log_file(tmp_path):
+    d = tmp_path / "exp1"
+    d.mkdir()
+    log_name = "cefpubfile_eval_h2_test_example.log"
+    (d / log_name).write_text("[cefpubfile] Tx Frames = 12\n")
+    records = []
+    for uri, success in (("ccnx:/first", False), ("ccnx:/last", True)):
+        records.append(
+            {
+                "op_type": "pub",
+                "ts": "2026-07-03T00:00:00Z",
+                "phase": "eval",
+                "host": 2,
+                "uri": uri,
+                "out_file": None,
+                "log_file": log_name,
+                "exit_code": 0,
+                "down_hosts": [],
+                "publisher_host": None,
+                "publisher_down": False,
+                "success": success,
+                "has_completed_log": True,
+                "has_output_file": None,
+            }
+        )
+    (d / "results.json").write_text(json.dumps(records))
+
+    row = collect_records([d])["cefpubfile"][0]
+    assert row["uri"] == "ccnx:/last"
+    assert row["success"] is True
+
+
+def test_collect_records_keeps_text_parser_values_over_results_join(tmp_path):
+    d = tmp_path / "exp1"
+    d.mkdir()
+    log_name = "cefgetfile_eval_h2_test_example.log"
+    (d / log_name).write_text("[cefgetfile] URI = ccnx:/from-log\n")
+    (d / "results.json").write_text(
+        json.dumps(
+            [
+                {
+                    "op_type": "get",
+                    "ts": "2026-07-03T00:00:00Z",
+                    "phase": "eval",
+                    "host": 2,
+                    "uri": "ccnx:/from-results",
+                    "out_file": None,
+                    "log_file": log_name,
+                    "exit_code": 0,
+                    "down_hosts": [],
+                    "publisher_host": None,
+                    "publisher_down": False,
+                    "success": True,
+                    "has_completed_log": True,
+                    "has_output_file": None,
+                }
+            ]
+        )
+    )
+
+    row = collect_records([d])["cefgetfile"][0]
+    assert row["uri"] == "ccnx:/from-log"
+
+
+def test_collect_records_legacy_filename_still_uses_fallback(tmp_path):
+    d = _create_log_dir(tmp_path)
+    row = collect_records([d])["cefputfile"][0]
+    assert row["filename"] == "cefputfile_h9.log"
+    assert row["host_id"] == 9
+
+
+def test_collect_records_missing_results_json_leaves_join_columns_empty(tmp_path):
+    d = tmp_path / "exp1"
+    d.mkdir()
+    (d / "cefsubfile_eval_h3_test_topic.log").write_text("[cefsubfile] Topic = x\n")
+
+    row = collect_records([d])["cefsubfile"][0]
+    assert row["down_hosts"] is None
+    assert row["publisher_down"] is None
+
+
+def test_build_fieldnames_drops_legacy_filename_metadata_columns():
+    fields = _build_fieldnames("cefgetfile", [])
+    # 2026-07-03 artifact-layout fix: these filename-derived fields belonged
+    # to legacy log names and are intentionally removed from the CSV schema.
+    assert "content_id" not in fields
+    assert "file_seed" not in fields
+    assert "get_idx" not in fields
+    assert "cycle" not in fields
 
 
 # ── _build_fieldnames ──
