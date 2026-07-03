@@ -1,8 +1,9 @@
 """Common path constants."""
 
-from datetime import datetime
 from pathlib import Path
 from typing import Any
+
+from .artifacts import experiment_dir_name
 
 ROOT_DIR = Path(__file__).resolve().parent.parent.parent
 TEMPLATE_ROOT = ROOT_DIR / "config" / "templates"
@@ -25,18 +26,12 @@ def resolve_run_dir(args: Any) -> Path:
     if num is None and not output_dir:
         return Path(".")
 
-    seed = getattr(args, "seed", None)
-    seed_label = "none" if seed is None else str(seed)
-
     base = output_dir or "logs"
-
-    if num is not None:
-        dir_name = f"ex{num}_seed{seed_label}"
-    else:
-        dir_name = f"seed{seed_label}"
-
-    if getattr(args, "timestamp", False):
-        dir_name += f"_{datetime.now().strftime('%Y%m%d-%H%M')}"
+    dir_name = experiment_dir_name(
+        num,
+        getattr(args, "seed", None),
+        timestamp=getattr(args, "timestamp", False),
+    )
 
     run_dir = Path(base) / dir_name
     run_dir.mkdir(parents=True, exist_ok=True)

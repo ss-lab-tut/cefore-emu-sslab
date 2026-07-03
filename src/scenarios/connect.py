@@ -13,6 +13,7 @@ from mininet.link import TCLink
 from mininet.log import info
 
 from ..core.addressing import AddressingScheme, DEFAULT_NETWORK_CIDR
+from ..core.artifacts import topo_png_default_name
 from ..core.events import extract_publications
 from ..core.flap_state import FlapState
 from ..core.paths import resolve_run_path
@@ -111,7 +112,9 @@ class ConnectScenario(BaseScenario):
             resolve_run_path(
                 self.run_dir,
                 args.topo_png,
-                f"ex{args.hosts}_seed{self.seed_label}.png",
+                topo_png_default_name(
+                    getattr(args, "num", None), args.seed, args.hosts
+                ),
             )
         )
         spec = ScenarioSetupSpec(

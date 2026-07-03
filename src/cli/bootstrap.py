@@ -15,6 +15,7 @@ from ..core.config.loader import (
     validate_merged_args,
     warn_ignored_legacy_content_keys,
 )
+from ..core.artifacts import topo_png_default_name
 from ..core.debug import build_debug_config
 from ..core.paths import resolve_run_dir, resolve_run_path
 from ..core.tee import Tee
@@ -79,9 +80,10 @@ def bootstrap_scenario(
 
     run_dir = resolve_run_dir(args)
 
-    seed_label = "none" if args.seed is None else str(args.seed)
     if args.topo_png is None:
-        args.topo_png = f"ex{args.hosts}_seed{seed_label}.png"
+        args.topo_png = topo_png_default_name(
+            getattr(args, "num", None), args.seed, args.hosts
+        )
 
     if run_dir != Path("."):
         meta_data = {

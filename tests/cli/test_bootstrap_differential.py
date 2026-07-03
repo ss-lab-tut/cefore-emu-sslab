@@ -19,6 +19,10 @@ from src.cli.args import (
 )
 from src.cli.main import cmd_disaster
 
+# 2026-07-03 artifact-layout fix: topo_png defaults deliberately changed from
+# ex{hosts}_seed{seed}.png to {experiment_dir}_h{hosts}.png because host count
+# was being displayed in the experiment-number position.
+
 
 def _parse_args(tmp_path: Path, config_text: str, argv: list[str]):
     config_path = tmp_path / "config.yaml"
@@ -48,7 +52,7 @@ def _parse_args(tmp_path: Path, config_text: str, argv: list[str]):
                     "switches": 9,
                     "seed": 123,
                     "k": 4,
-                    "topo_png": "ex7_seed123.png",
+                    "topo_png": "seed123_h7.png",
                     "down_interval": 25,
                     "down_duration": 15,
                     "down_count": 3,
@@ -100,7 +104,7 @@ def _parse_args(tmp_path: Path, config_text: str, argv: list[str]):
                     "switches": 9,
                     "seed": 99,
                     "k": 6,
-                    "topo_png": "ex11_seed99.png",
+                    "topo_png": "seed99_h11.png",
                     "down_interval": 30,
                     "down_duration": 10,
                     "down_count": 8,
@@ -149,7 +153,7 @@ def _parse_args(tmp_path: Path, config_text: str, argv: list[str]):
                     "switches": 4,
                     "seed": None,
                     "k": 2,
-                    "topo_png": "ex3_seednone.png",
+                    "topo_png": "seednone_h3.png",
                     "down_interval": 30,
                     "down_duration": 10,
                     "down_count": 5,
@@ -189,7 +193,7 @@ def _parse_args(tmp_path: Path, config_text: str, argv: list[str]):
                     "switches": 4,
                     "seed": None,
                     "k": 2,
-                    "topo_png": "ex3_seednone.png",
+                    "topo_png": "seednone_h3.png",
                     "down_interval": 30,
                     "down_duration": 10,
                     "down_count": 5,
