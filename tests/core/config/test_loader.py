@@ -316,22 +316,7 @@ def _make_args(**kwargs):
     return SimpleNamespace(**defaults)
 
 
-def test_merge_applies_config_values():
-    args = _make_args()
-    merge_cli_and_config(args, {"hosts": 10, "seed": 42})
-    assert args.hosts == 10
-    assert args.seed == 42
-
-
-def test_merge_cli_precedence():
-    args = _make_args(hosts=5)
-    merge_cli_and_config(args, {"hosts": 10})
-    # Without parser, config always overwrites
-    assert args.hosts == 10
-
-
-def test_merge_cli_precedence_with_parser():
-    """When parser is provided, CLI values override config values."""
+def _make_merge_parser():
     import argparse
 
     parser = argparse.ArgumentParser()
@@ -339,8 +324,31 @@ def test_merge_cli_precedence_with_parser():
     parser.add_argument("--seed", type=int, default=None)
     parser.add_argument("--switches", type=int, default=None)
     parser.add_argument("--k", type=int, default=None)
+    parser.add_argument("--results_json", default=None)
+    parser.add_argument("--topo_png", default="default.png")
     parser.add_argument("--bw", default="")
     parser.add_argument("--ext", default="")
+    return parser
+
+
+def test_merge_applies_config_values():
+    parser = _make_merge_parser()
+    args = parser.parse_args([])
+    merge_cli_and_config(args, {"hosts": 10, "seed": 42}, parser)
+    assert args.hosts == 10
+    assert args.seed == 42
+
+
+def test_merge_cli_precedence():
+    parser = _make_merge_parser()
+    args = parser.parse_args(["--hosts", "5"])
+    merge_cli_and_config(args, {"hosts": 10}, parser)
+    assert args.hosts == 5
+
+
+def test_merge_cli_precedence_with_parser():
+    """When parser is provided, CLI values override config values."""
+    parser = _make_merge_parser()
 
     # CLI sets hosts=5, config has hosts=10 -> CLI wins
     args = parser.parse_args(["--hosts", "5"])
@@ -351,13 +359,7 @@ def test_merge_cli_precedence_with_parser():
 
 def test_merge_null_means_default():
     """_NULL_MEANS_DEFAULT keys: config null should not override."""
-    import argparse
-
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--seed", type=int, default=None)
-    parser.add_argument("--results_json", default=None)
-    parser.add_argument("--bw", default="")
-    parser.add_argument("--ext", default="")
+    parser = _make_merge_parser()
 
     args = parser.parse_args([])
     merge_cli_and_config(args, {"seed": None, "results_json": None}, parser=parser)
@@ -367,12 +369,7 @@ def test_merge_null_means_default():
 
 def test_merge_null_means_default_includes_topo_png_from_spec():
     """Nullable OptionSpec entries drive config-null-as-default behavior."""
-    import argparse
-
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--topo_png", default="default.png")
-    parser.add_argument("--bw", default="")
-    parser.add_argument("--ext", default="")
+    parser = _make_merge_parser()
 
     args = parser.parse_args([])
     merge_cli_and_config(args, {"topo_png": None}, parser=parser)
@@ -380,20 +377,23 @@ def test_merge_null_means_default_includes_topo_png_from_spec():
 
 
 def test_merge_bw_string_to_list():
+    parser = _make_merge_parser()
     args = _make_args(bw="1,2,10")
-    merge_cli_and_config(args, {})
+    merge_cli_and_config(args, {}, parser)
     assert args.bw == ["1,2,10"]
 
 
 def test_merge_ext_string_to_list():
+    parser = _make_merge_parser()
     args = _make_args(ext="h0,eth1")
-    merge_cli_and_config(args, {})
+    merge_cli_and_config(args, {}, parser)
     assert args.ext == ["h0,eth1"]
 
 
 def test_merge_cache_config_applied():
+    parser = _make_merge_parser()
     args = _make_args()
-    merge_cli_and_config(args, {"cache_config": {"strategy": "manual"}})
+    merge_cli_and_config(args, {"cache_config": {"strategy": "manual"}}, parser)
     assert args.cache_config == {"strategy": "manual"}
 
 

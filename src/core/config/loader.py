@@ -71,33 +71,28 @@ def load_config(path: str | Path | None) -> dict[str, Any]:
             sys.exit(f"failed to parse JSON config: {exc}")
 
 
-def merge_cli_and_config(args: Any, config: dict[str, Any], parser=None) -> None:
+def merge_cli_and_config(args: Any, config: dict[str, Any], parser) -> None:
     """Merge config file values into argparse args, respecting CLI precedence.
 
-    When parser is provided, config values are applied only if the
-    corresponding CLI arg still holds its default value (i.e., the user
-    did not explicitly set it on the command line).
+    parser is mandatory because config values must never override explicit CLI
+    flags. 2026-07-03 precedence bug fix: the old parser-less merge mode caused
+    ceforeemu-connect config values to overwrite user-provided CLI flags.
     The args object is modified in place.
     """
     config_keys = config_option_keys()
     _NULL_MEANS_DEFAULT = nullable_option_keys()
 
-    # Compute defaults for CLI-precedence check
-    defaults = {}
-    if parser is not None:
-        defaults = vars(parser.parse_args([]))
+    defaults = vars(parser.parse_args([]))
 
     for key in config_keys:
         if key not in config:
             continue
-        # If parser provided, only apply config when CLI value equals default
-        if parser is not None:
-            cli_val = getattr(args, key, None)
-            default_val = defaults.get(key)
-            if cli_val != default_val:
-                continue
-            if config[key] is None and key in _NULL_MEANS_DEFAULT:
-                continue
+        cli_val = getattr(args, key, None)
+        default_val = defaults.get(key)
+        if cli_val != default_val:
+            continue
+        if config[key] is None and key in _NULL_MEANS_DEFAULT:
+            continue
         setattr(args, key, config[key])
 
     if "cache_config" in config:
