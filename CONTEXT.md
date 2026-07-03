@@ -108,6 +108,16 @@ _Avoid_: per-scenario IP/bridge/cache/fleet/FIB sequencing, ordering knobs
 Polymorphic decision module for "which hosts run csmgrd as cache nodes". One protocol `place(ctx: CacheContext) -> set[int]` with three real adapters in `src/runtime/cache_strategy.py`: `KCentersStrategy` (graph/manual/degree_based via CachePlacement; disaster + connect use it, connect with `exclude_publishers=False`), `RandomCSModeStrategy` (per-host random CS_MODE 0/1/2 with `apply_cs_modes` side effect; disaster's `cache_config.strategy="random"`), `RolesCacheStrategy` (csmgrd hosts from `assign_roles`; mesh). The scenario picks one; setup_scenario calls `.place()` polymorphically. `CacheContext` is the immutable snapshot (`host_count`, `host_graph`, `publisher_ids`) every adapter reads from.
 _Avoid_: cache strategy branching in scenarios, `_configure_cache_nodes`, inline `assign_random_cs_modes` calls
 
+## External connectivity
+
+**Bridge modules (`bridge_args` / `bridge_external` / `bridge_root`)**:
+The former `runtime/bridge.py` god-module (1240 LOC, three unrelated interfaces) split by concern (2026-07-03, R7-4, behavior-preserving move):
+`bridge_args.py` — pure parsing/validation leaf (`parse_bridge_args`, `parse_ext_args`, `validate_static_ip`); stdlib-only, imported by both siblings, the only code they share. Note `parse_ext_args` does not validate CIDR — `validate_static_ip` owns strictness and is called at attach/connect time.
+`bridge_external.py` — the external-NIC attach state machine: `attach_external_via_bridge` / `cleanup_external_bridges` / `attach_external_interface` with the module-level `_created_bridges` ledger and `_RollbackAction` transactional rollback (setup-side) plus the flag-gated teardown cascade. Proven by unit tests and the root-gated synthetic suite (`CEFEMU_SYNTHETIC_ROOT=1`, real veth/netns).
+`bridge_root.py` — root-namespace bridging: `BridgeManager` (NAT / proxy-ARP / IP forwarding, per-instance `cleanup_actions` `CleanupAction` ledger, `TeardownError`) and the `setup_bridges` orchestration, which only ever drives the root side.
+The two cleanup ledgers are deliberately separate — the attach side's 7-flag veth-deletion cascade cannot be expressed as a flat `CleanupAction` list (pinned decision; do not unify).
+_Avoid_: `runtime/bridge.py` (deleted), importing attach machinery from the root module or vice versa, ledger unification, adding CIDR validation to `parse_ext_args`
+
 ## Scenario run
 
 **EventBatchSpec / EventBatchResult / run_event_batch**:
@@ -135,10 +145,6 @@ _Avoid_: per-entry-point bootstrap コピー, parser 無し merge_cli_and_config
 
 このセクションは domain glossary ではなく、未着手の deepening candidate を次のセッションで再提案されないよう pin する backlog。`/tmp/architecture-review-20260626-165236.html` のレポート由来。完了したら該当エントリを削除し、上の domain section に正式名を追記すること。
 
-**候補2 — `runtime/bridge.py` を3 module に split**:
-1240 LOC の god-module が3つの独立 interface (external-NIC attach + 取消し用 state machine / `BridgeManager` root-namespace + NAT/proxy-ARP / `parse_bridge_args` 純 data) を同居させている。`bridge_external.py` / `bridge_root.py` / `bridge_args.py` に分割。Strong。memory `gate-bug-discovery` の候補3 (cleanup 二台帳統合) とは別角度 — こちらは「split-by-concern」、候補3 は「ledger 統一」。
-_Avoid_: cleanup-only 統一に絞ること (interface 3つ同居問題が残る)
-
 **候補6 — `runtime/result_detect.py` を Verdict に吸収**:
 74 LOC の薄い adapter。`detect_*` 5 関数は `from_runtime_*` Verdict factory の evidence-unpacking wrapper で、CONTEXT.md の Verdict `_Avoid_` リスト ("detect result") に名前が抵触。5 関数を `src/core/verdict.py` の runtime-adapter section に移管 + `timestamp_utc` は `src/core/paths.py` 等に分離 → `result_detect.py` 削除。Worth exploring。
 _Avoid_: 名前を `result_detect` のまま残すこと、Verdict factory と別モジュールに散らすこと
@@ -150,3 +156,6 @@ _Avoid_: OptionSpec 系 refactor と混ぜて differential gate を殺すこと�
 **候補7 — `runtime/topo.py` を `runtime/mesh_topo.py` にリネーム**:
 `runtime/topo.py` (Mininet Topo subclasses) と `core/topology.py` (TopologyModel pure query) の名前近接 (4文字+1ディレクトリ差) が読者を混乱させる純 housekeeping。Speculative — 上記候補が片付いた後の cleanup pass で。
 _Avoid_: 単独でこのリネームに取り掛かること (他の deepening が optimal の後でまとめて)
+
+**ユーザーからの提案 - 途中から/tdd で開発を進めているのでテストがないモジュール，関数が存在する**
+具体的な問題のあるコードの調査をしていないが，direct testがないコードが一部存在していそう．大規模な調査を並列で走らせてtestがないコードを特定し，適切なtestを追加することで`cefore-run-tests`の実用性を高める

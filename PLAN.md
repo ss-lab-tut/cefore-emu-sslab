@@ -1,5 +1,9 @@
 # PLAN: R7-4 — bridge.py 3分割（split-by-concern）
 
+**Status: 完了（2026-07-04）** — S1=2d99557 / S2=cdc511d / S3=11ecde7 / S4=本 commit。
+全 gate green: pytest 895 + synthetic root 5/5（実 veth/netns）+ smoke min_putget/connect。
+CONTEXT.md に Bridge modules glossary entry 追加済み（backlog 候補2 は削除）。
+
 Date: 2026-07-03
 Branch: feature/seam（base: bd04ef5）
 Lead: claude-main → codex-main (実装) → codex-review (per-slice レビュー)
