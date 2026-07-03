@@ -1,13 +1,11 @@
 """Tests for path containment in CLI and scenario code."""
 
-from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
 import pytest
 
 from src.core.debug import DebugConfig
-from src.core.paths import ensure_within_run_dir
 from src.runtime.monitoring import Monitor
 from src.scenarios.base import BaseScenario
 
@@ -289,3 +287,15 @@ def test_base_node_dirs_escape_rejected(tmp_path):
         with pytest.raises(ValueError, match="escapes run directory"):
             scenario.collect_debug_post_teardown()
         mock_archive.assert_not_called()
+
+
+def test_base_fib_debug_without_args_namespace_is_noop(tmp_path):
+    """Scenarios without args.hosts opt out of host-count debug collectors."""
+    scenario = _TestScenario()
+    scenario.run_dir = tmp_path
+    scenario.debug_config = DebugConfig(fib_dump=True)
+
+    with patch("src.runtime.debug.dump_fib") as mock_dump:
+        scenario.collect_debug_pre_teardown(Mock())
+
+    mock_dump.assert_not_called()

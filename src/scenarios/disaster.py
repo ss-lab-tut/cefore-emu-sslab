@@ -12,7 +12,7 @@ from mininet.log import info
 from ..core.addressing import AddressingScheme, DEFAULT_NETWORK_CIDR
 from ..core.events import extract_publications
 from ..core.flap_state import FlapState
-from ..core.paths import ensure_within_run_dir, resolve_run_path
+from ..core.paths import resolve_run_path
 
 from ..runtime.bridge import (
     BridgeManager,
@@ -592,25 +592,6 @@ class DisasterScenario(BaseScenario):
         except BaseException as exc:
             return [("results_write", exc)]
         return []
-
-    def collect_debug_pre_teardown(self, net):
-        if self.debug_config is None or not self.debug_config.fib_dump:
-            return
-        from ..runtime.debug import dump_fib
-
-        dest = self.run_dir / self.debug_config.output_subdir / "fib"
-        ensure_within_run_dir(self.run_dir, dest)
-        dump_fib(net, list(range(self.args.hosts)), dest)
-
-    def collect_debug_post_teardown(self):
-        super().collect_debug_post_teardown()
-        if self.debug_config is None or not self.debug_config.daemon_logs:
-            return
-        from ..runtime.debug import archive_daemon_logs
-
-        dest = self.run_dir / self.debug_config.output_subdir / "daemon_logs"
-        ensure_within_run_dir(self.run_dir, dest)
-        archive_daemon_logs(self.args.hosts, dest)
 
     def teardown(self, net):
         """Stop daemons and clean up bridges via the teardown seam."""

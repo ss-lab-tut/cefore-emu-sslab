@@ -7,6 +7,7 @@ import pytest
 
 from src.runtime.daemon_fleet import DaemonFleet
 from src.runtime.event_batch import EventBatchResult
+from src.core.debug import DebugConfig
 from src.scenarios.connect import ConnectScenario
 
 
@@ -27,6 +28,50 @@ def _make_scenario(tmp_path, **overrides):
 def test_should_run_cli_reflects_no_cli(tmp_path):
     assert _make_scenario(tmp_path).should_run_cli() is True
     assert _make_scenario(tmp_path, no_cli=True).should_run_cli() is False
+
+
+def test_debug_config_defaults_to_none(tmp_path):
+    assert _make_scenario(tmp_path).debug_config is None
+
+
+def test_debug_config_is_stored(tmp_path):
+    debug_config = DebugConfig(node_dirs=True)
+
+    scenario = ConnectScenario(
+        _make_scenario(tmp_path).args,
+        run_dir=tmp_path,
+        debug_config=debug_config,
+    )
+
+    assert scenario.debug_config is debug_config
+
+
+def test_fib_debug_collection_uses_connect_host_count(tmp_path):
+    scenario = _make_scenario(tmp_path)
+    scenario.debug_config = DebugConfig(fib_dump=True, output_subdir="debug-out")
+    net = MagicMock()
+
+    with patch("src.runtime.debug.dump_fib") as dump_fib:
+        scenario.collect_debug_pre_teardown(net)
+
+    dump_fib.assert_called_once_with(
+        net,
+        [0, 1, 2],
+        tmp_path / "debug-out" / "fib",
+    )
+
+
+def test_daemon_log_debug_collection_uses_connect_host_count(tmp_path):
+    scenario = _make_scenario(tmp_path)
+    scenario.debug_config = DebugConfig(daemon_logs=True, output_subdir="debug-out")
+
+    with patch("src.runtime.debug.archive_daemon_logs") as archive_daemon_logs:
+        scenario.collect_debug_post_teardown()
+
+    archive_daemon_logs.assert_called_once_with(
+        3,
+        tmp_path / "debug-out" / "daemon_logs",
+    )
 
 
 def test_run_experiment_without_events_is_noop(tmp_path):

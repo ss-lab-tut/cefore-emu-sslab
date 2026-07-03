@@ -40,12 +40,14 @@ class ConnectScenario(BaseScenario):
     publishers (unlike DisasterScenario).
     """
 
-    def __init__(self, args, run_dir: Path | None = None, log_context=None):
+    def __init__(
+        self, args, run_dir: Path | None = None, log_context=None, debug_config=None
+    ):
         self.args = args
         self.run_dir = (run_dir or Path("logs")).resolve()
         self.run_dir.mkdir(parents=True, exist_ok=True)
         self.log_context = log_context
-        self.debug_config = None
+        self.debug_config = debug_config
 
         self.rng = random.Random(args.seed) if args.seed is not None else None
         self.seed_label = "none" if args.seed is None else str(args.seed)

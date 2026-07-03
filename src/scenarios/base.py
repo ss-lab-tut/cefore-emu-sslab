@@ -74,6 +74,7 @@ class BaseScenario(ABC):
     def create_mininet(self, topo, **kwargs):
         """Create Mininet instance. Override for custom options (e.g., TCLink)."""
         from mininet.net import Mininet
+
         return Mininet(topo=topo, waitConnected=True, **kwargs)
 
     def run_main(self, net):
@@ -122,28 +123,58 @@ class BaseScenario(ABC):
     def collect_debug_pre_teardown(self, net):
         """Collect debug artifacts while the network and daemons are alive.
 
-        Override in subclasses to add pre-teardown collectors (e.g. fib_dump).
         Called before teardown(); net is still running.
         """
+        debug_config = getattr(self, "debug_config", None)
+        if debug_config is None or not debug_config.fib_dump:
+            return
+        args = getattr(self, "args", None)
+        host_count = getattr(args, "hosts", None)
+        # Scenarios without an args namespace opt out of host-count debug
+        # collectors; this preserves their accepted no-op behavior.
+        if host_count is None:
+            return
+        from ..core.paths import ensure_within_run_dir
+        from ..runtime.debug import dump_fib
+
+        run_dir = getattr(self, "run_dir", Path("."))
+        dest = run_dir / debug_config.output_subdir / "fib"
+        ensure_within_run_dir(run_dir, dest)
+        dump_fib(net, list(range(host_count)), dest)
 
     def collect_debug_post_teardown(self):
         """Collect debug artifacts after daemons stop but before hN cleanup.
 
         Default implementation archives node_dirs if debug_config requests it.
-        Override to add post-teardown collectors.
         """
         debug_config = getattr(self, "debug_config", None)
-        if debug_config is None or not debug_config.node_dirs:
-            return
-        generated = getattr(self, "generated_node_dirs", [])
-        if not generated:
+        if debug_config is None:
             return
         run_dir = getattr(self, "run_dir", Path("."))
+        if debug_config.node_dirs:
+            generated = getattr(self, "generated_node_dirs", [])
+            if generated:
+                from ..core.paths import ensure_within_run_dir
+                from ..runtime.debug import archive_node_dirs
+
+                dest = run_dir / debug_config.output_subdir / "node_dirs"
+                ensure_within_run_dir(run_dir, dest)
+                archive_node_dirs(generated, dest)
+
+        if not debug_config.daemon_logs:
+            return
+        args = getattr(self, "args", None)
+        host_count = getattr(args, "hosts", None)
+        # Scenarios without an args namespace opt out of host-count debug
+        # collectors; this preserves their accepted no-op behavior.
+        if host_count is None:
+            return
         from ..core.paths import ensure_within_run_dir
-        from ..runtime.debug import archive_node_dirs
-        dest = run_dir / debug_config.output_subdir / "node_dirs"
+        from ..runtime.debug import archive_daemon_logs
+
+        dest = run_dir / debug_config.output_subdir / "daemon_logs"
         ensure_within_run_dir(run_dir, dest)
-        archive_node_dirs(generated, dest)
+        archive_daemon_logs(host_count, dest)
 
     def execute(self):
         """Run the full scenario lifecycle with guaranteed teardown.
@@ -152,6 +183,7 @@ class BaseScenario(ABC):
         are accumulated and re-raised after all cleanup completes.
         """
         import sys
+
         net = None
         try:
             topo = self.build_topology()

@@ -20,10 +20,11 @@ def _run_connect_main(monkeypatch, tmp_path, config_text, argv):
     output_dir = tmp_path / "out"
     record = {}
 
-    def fake_run_connect(args, run_dir=None, log_context=None):
+    def fake_run_connect(args, run_dir=None, log_context=None, debug_config=None):
         record["args"] = args
         record["run_dir"] = run_dir
         record["log_context"] = log_context
+        record["debug_config"] = debug_config
 
     monkeypatch.setattr(external_net, "run_connect", fake_run_connect)
     monkeypatch.setattr(
@@ -115,7 +116,7 @@ def test_connect_main_skips_meta_json_when_run_dir_is_current_directory(
     config_path = _write_config(tmp_path, "hosts: 5\nswitches: 6\n")
     record = {}
 
-    def fake_run_connect(args, run_dir=None, log_context=None):
+    def fake_run_connect(args, run_dir=None, log_context=None, debug_config=None):
         record["run_dir"] = run_dir
 
     monkeypatch.chdir(tmp_path)
@@ -191,23 +192,50 @@ def test_connect_main_cli_override_can_make_invalid_config_valid(monkeypatch, tm
     assert record["args"].hosts == 20
 
 
-def test_connect_main_adapter_drops_debug_config(monkeypatch, tmp_path):
+def test_connect_main_passes_cli_debug_config_to_run_connect(monkeypatch, tmp_path):
+    record = _run_connect_main(
+        monkeypatch,
+        tmp_path,
+        "hosts: 5\nswitches: 6\n",
+        ["--debug-artifact", "fib_dump"],
+    )
+
+    assert record["debug_config"].fib_dump is True
+    assert record["debug_config"].node_dirs is False
+
+
+def test_connect_main_passes_config_debug_config_to_run_connect(monkeypatch, tmp_path):
+    record = _run_connect_main(
+        monkeypatch,
+        tmp_path,
+        "hosts: 5\nswitches: 6\ndebug:\n  artifacts: [node_dirs]\n",
+        [],
+    )
+
+    assert record["debug_config"].node_dirs is True
+    assert record["debug_config"].fib_dump is False
+
+
+def test_connect_main_adapter_passes_debug_config(monkeypatch, tmp_path):
     calls = {}
 
-    def fake_run_connect(args, run_dir=None, log_context=None):
+    def fake_run_connect(args, run_dir=None, log_context=None, debug_config=None):
         calls["received"] = {
             "args": args,
             "run_dir": run_dir,
             "log_context": log_context,
+            "debug_config": debug_config,
         }
 
+    debug_config = DebugConfig(node_dirs=True)
     monkeypatch.setattr(external_net, "run_connect", fake_run_connect)
     external_net._run_connect_adapter(
         object(),
         tmp_path,
         log_context={"tee": True},
-        debug_config=DebugConfig(node_dirs=True),
+        debug_config=debug_config,
     )
 
     assert calls["received"]["run_dir"] == tmp_path
     assert calls["received"]["log_context"] == {"tee": True}
+    assert calls["received"]["debug_config"] is debug_config
