@@ -157,5 +157,6 @@ _Avoid_: OptionSpec 系 refactor と混ぜて differential gate を殺すこと�
 `runtime/topo.py` (Mininet Topo subclasses) と `core/topology.py` (TopologyModel pure query) の名前近接 (4文字+1ディレクトリ差) が読者を混乱させる純 housekeeping。Speculative — 上記候補が片付いた後の cleanup pass で。
 _Avoid_: 単独でこのリネームに取り掛かること (他の deepening が optimal の後でまとめて)
 
-**ユーザーからの提案 - 途中から/tdd で開発を進めているのでテストがないモジュール，関数が存在する**
-具体的な問題のあるコードの調査をしていないが，direct testがないコードが一部存在していそう．大規模な調査を並列で走らせてtestがないコードを特定し，適切なtestを追加することで`cefore-run-tests`の実用性を高める
+**完了 (2026-07-06) — test-gap 解消 (途中 /tdd 移行で direct test が無かったコード)**:
+11 slice / 11 commit (fc6abe8..c8687e0) で +212 tests、全体 76%→89%。ゼロカバレッジだった plotter/log-cli/parsing/tee/links/topo と「spy 化で本体未実行」だった bandwidth/viz/cleanup、および monitoring lifecycle / webui state・server / CLI dispatch / base hooks / mesh・linear init 検証を direct test 化。到達不能分岐は file:line 根拠付きでテスト対象外として各テストファイルと commit message に明文化。残る意図的低カバレッジ: disaster.py 59% 等の Mininet-live 経路 (cefore-run-tests smoke が integration gate)。
+_Avoid_: 到達不能と記録済みの分岐に fake-rng/import-hook で無理にテストを足すこと、Mininet-live 経路の unit test 化
