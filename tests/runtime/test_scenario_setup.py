@@ -517,7 +517,11 @@ def test_build_mesh_scenario_empty_publishers_match_assign_roles_none(
 def test_build_mesh_scenario_accepts_missing_rng(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
 
-    result = build_mesh_scenario(_mesh_spec(seed=None))
+    # rng=None draws degrees from a fresh unseeded Random. With degree range
+    # 1..2 and 3 hosts, all-ones (probability 1/8) exhausts the spanning-tree
+    # degree budget and raises ValueError, so pin degree_min=2: the budget is
+    # then 6 >= 4 for every draw and the emergent switch count is always 3.
+    result = build_mesh_scenario(_mesh_spec(seed=None, host_degree_min=2))
 
     assert set(result.roles) == {0, 1, 2}
     assert result.topo.mesh_links
