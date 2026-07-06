@@ -100,10 +100,7 @@ def test_parse_cefgetfile_failure():
 
 def test_parse_cefgetfile_partial_without_marker_is_failure():
     # Fields parsed but no completed marker: the definitive Factor decides.
-    text = (
-        "[cefgetfile] URI = ccnx:/test/partial\n"
-        "[cefgetfile] Duration = 1.234 sec\n"
-    )
+    text = "[cefgetfile] URI = ccnx:/test/partial\n[cefgetfile] Duration = 1.234 sec\n"
     result = parse_cefgetfile(text)
     assert result["success"] is False
     assert result["duration_sec"] == 1.234
@@ -164,8 +161,7 @@ def test_parse_cefsubfile_uses_canonical_unit_fields():
 
 def test_parse_pubsub_unknown_fields_are_kept_with_warning(capsys):
     text = (
-        "[cefpubfile] URI = ccnx:/test/pub1\n"
-        "[cefpubfile] Surprise Value = 12 Bytes\n"
+        "[cefpubfile] URI = ccnx:/test/pub1\n[cefpubfile] Surprise Value = 12 Bytes\n"
     )
     result = parse_cefpubfile(text)
     assert result["surprise_value"] == 12

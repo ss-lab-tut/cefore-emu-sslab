@@ -15,7 +15,9 @@ def test_schema_log_labels_round_trip_through_public_parsers():
         for field in schema.fields:
             line = f"[{command}] {field.log_label} = 123\n"
             record = PARSERS[command](line)
-            assert record[field.name] == ("123" if field.kind is FieldKind.TEXT else 123)
+            assert record[field.name] == (
+                "123" if field.kind is FieldKind.TEXT else 123
+            )
 
 
 def test_put_schema_preserves_existing_parser_field_order():

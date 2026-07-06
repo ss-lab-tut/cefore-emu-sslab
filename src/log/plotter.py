@@ -21,6 +21,7 @@ PREFIX_COLORS: dict[str, str] = {
 }
 DEFAULT_COLOR = "#BBBBBB"
 
+
 def _require_schema_field(command: str, name: str) -> str:
     """Return a canonical metric key only if the command schema owns it.
 
@@ -93,7 +94,8 @@ def _known_success(records: list[dict[str, Any]]) -> list[str]:
 def _filter_eval(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
     # Records without a phase field (linear/mesh logs) are treated as eval records.
     return [
-        record for record in records
+        record
+        for record in records
         if record.get("phase") is None or str(record["phase"]).lower() == "eval"
     ]
 
@@ -177,7 +179,8 @@ def _grouped_bar_by_cycle(
         values: list[float] = []
         for cycle in cycles:
             cycle_records = [
-                record for record in by_prefix[prefix]
+                record
+                for record in by_prefix[prefix]
                 if (_safe_int(record.get("cycle")) or 0) == cycle
             ]
             if is_success_rate:
@@ -196,7 +199,9 @@ def _grouped_bar_by_cycle(
     axis.set_xlabel("Cycle")
     axis.set_ylabel(ylabel)
     axis.set_title(_build_title(records, chart_name))
-    axis.set_xticks([pos + bar_width * (prefix_count - 1) / 2 for pos in range(len(cycles))])
+    axis.set_xticks(
+        [pos + bar_width * (prefix_count - 1) / 2 for pos in range(len(cycles))]
+    )
     axis.set_xticklabels([str(cycle) for cycle in cycles])
     axis.legend()
     axis.yaxis.set_major_formatter(ticker.ScalarFormatter(useOffset=False))
@@ -357,9 +362,7 @@ def plot_cefpubfile(records: list[dict[str, Any]], output_dir: Path) -> list[Pat
         rates.append(sum(rate_values) / len(rate_values) if rate_values else 0.0)
 
         known = _known_success(records_for_uri)
-        success_pcts.append(
-            (known.count("true") / len(known) * 100) if known else 0.0
-        )
+        success_pcts.append((known.count("true") / len(known) * 100) if known else 0.0)
 
     fig, (ax_rate, ax_success) = plt.subplots(1, 2, figsize=(max(8, len(uris) * 2), 5))
 

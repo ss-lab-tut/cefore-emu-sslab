@@ -10,9 +10,7 @@ from .schema import COMMAND_SCHEMAS, FieldKind
 
 # ---------- timestamp extraction ----------
 
-_RE_TIMESTAMP = re.compile(
-    r"^(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}\.\d+)\s+\[cef"
-)
+_RE_TIMESTAMP = re.compile(r"^(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}\.\d+)\s+\[cef")
 
 
 def _extract_timestamp(text: str) -> str | None:
@@ -21,6 +19,7 @@ def _extract_timestamp(text: str) -> str | None:
 
 
 # ---------- value helpers ----------
+
 
 def _parse_numeric(raw: str) -> int | float:
     """Convert a numeric string to int or float."""
@@ -74,7 +73,9 @@ def parse_cefputfile(text: str) -> dict[str, Any]:
     fields_present = any(
         v is not None for k, v in record.items() if k not in ("timestamp", "success")
     )
-    record["success"] = from_log("cefputfile", text, fields_present=fields_present).success
+    record["success"] = from_log(
+        "cefputfile", text, fields_present=fields_present
+    ).success
     return record
 
 
