@@ -19,6 +19,14 @@ output_dir: "logs"
 no_cli: true
 duration: 60
 results_json: "results.json"
+# 2026-07-07 fix: down_* キーは省略すると default が down_interval=30/down_count=5
+# で host flapping が有効になる（smoke 実測: [flap] down h1 が発生し get が失敗）。
+# 「failure なし」を意図する config は必ず明示的にゼロを指定すること。
+down_interval: 0
+down_duration: 0
+down_count: 0
+# 実証済み min_event_pubsub.yaml と同じ grace（sub 起動から pub 送信までの猶予）
+pubsub_sub_startup_grace: 2.0
 
 # No failure_scenarios / down_interval: smoke gate isolates seed/topology
 # noise, same as m1_repro.
@@ -29,20 +37,6 @@ events:
     host: 0
     uri: "ccnx:/m1/data"
     file: "./sample-putfile"
-
-  - at: 1
-    type: pubsub_sub
-    host: 4
-    uri: "ccnx:/m1/stream"
-    sub_opts:
-      wait: 12
-  - at: 1
-    type: pubsub_pub               # same `at` as sub above -> sub starts first
-    host: 0
-    uri: "ccnx:/m1/stream"
-    file: "./sample-putfile"
-    pub_opts:
-      lifetime: 5
 
   # 3 eval gets from distinct non-publisher hosts (1,2,3), compressed timing.
   - at: 8
@@ -67,3 +61,24 @@ events:
     repeat:
       interval: 5
       count: 3
+
+  # 2026-07-07 fix: pubsub は全 get の後ろに配置する。at=1 発火では pub がログ
+  # 0B のまま SIGTERM（smoke 実測）。さらに pub は grace+sub 待ちで content
+  # worker を ~20s 占有するため、get の前に置くと repeat get の間隔が崩れる
+  # （5s 間隔のはずが 1s 連発になるのを実測）。実証済み min_event_pubsub.yaml の
+  # パラメータ（grace 2.0 / wait 20 / lifetime 8）を維持しつつ末尾へ。
+  # host は変更しない: publisher_ids が assign_roles -> topology fingerprint に
+  # 影響するため、時刻のみの変更で事前スクリーニング結果を有効に保つ。
+  - at: 35
+    type: pubsub_sub
+    host: 4
+    uri: "ccnx:/m1/stream"
+    sub_opts:
+      wait: 20
+  - at: 35
+    type: pubsub_pub               # same `at` as sub above -> sub starts first
+    host: 0
+    uri: "ccnx:/m1/stream"
+    file: "./sample-putfile"
+    pub_opts:
+      lifetime: 8

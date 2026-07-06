@@ -28,6 +28,12 @@ output_dir: "logs"
 no_cli: true
 duration: 60
 results_json: "results.json"
+# 2026-07-07 fix: down_* キーは省略すると default が down_interval=30/down_count=5
+# で host flapping が有効になる（smoke 実測: [flap] down h1 が発生し get が失敗）。
+# 「failure なし」を意図する config は必ず明示的にゼロを指定すること。
+down_interval: 0
+down_duration: 0
+down_count: 0
 
 events:
   - at: 0

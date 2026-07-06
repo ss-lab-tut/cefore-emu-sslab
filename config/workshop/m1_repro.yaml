@@ -31,6 +31,14 @@ output_dir: "logs"
 no_cli: true            # required for unattended overnight batch runs
 duration: 90            # eval-phase seconds after events finish (no_cli path)
 results_json: "results.json"   # required: without it the success-rate analyzer sees no data
+# 2026-07-07 fix: down_* キーは省略すると default が down_interval=30/down_count=5
+# で host flapping が有効になる（smoke 実測: [flap] down h1 が発生し get が失敗）。
+# 「failure なし」を意図する config は必ず明示的にゼロを指定すること。
+down_interval: 0
+down_duration: 0
+down_count: 0
+# 実証済み min_event_pubsub.yaml と同じ grace（sub 起動から pub 送信までの猶予）
+pubsub_sub_startup_grace: 2.0
 
 # Intentionally NO failure_scenarios / down_interval here: M1's purpose is to
 # isolate seed-reproducibility noise from disaster-flap noise, so the network
@@ -48,22 +56,6 @@ events:
     host: 0
     uri: "ccnx:/m1/data"
     file: "./sample-putfile"        # ~423KB repo test asset, reused from existing configs
-
-  # pubsub stream publish shortly after, so subscribers below have something
-  # to listen for once their cefsubfile process is up.
-  - at: 2
-    type: pubsub_sub
-    host: 5
-    uri: "ccnx:/m1/stream"
-    sub_opts:
-      wait: 20                      # cefsubfile listens this long for the Trigger Interest
-  - at: 2
-    type: pubsub_pub                # same `at` as the sub above -> sub is guaranteed to start first
-    host: 0
-    uri: "ccnx:/m1/stream"
-    file: "./sample-putfile"
-    pub_opts:
-      lifetime: 8
 
   # Eval gets: 3 distinct non-publisher hosts, staggered so results.json
   # captures independent get attempts spread across the run.
@@ -91,3 +83,23 @@ events:
     repeat:
       interval: 10
       count: 3
+
+  # 2026-07-07 fix: pubsub は全 get の後ろ（最終 repeat get t=70 の後）に配置。
+  # 早期発火 (at<=2) では pub がログ 0B のまま SIGTERM する失敗を smoke で確認。
+  # また pub は grace+sub 待ちで content worker を ~20s 占有し、get の前に置くと
+  # repeat get の間隔が崩れる（実測）。sub は t=72+2(grace)+20(wait)=~94 で完了
+  # するため、campaign manifest はこの config に duration>=110 を渡すこと。
+  # host は変更しない（publisher_ids が topology fingerprint に影響するため）。
+  - at: 72
+    type: pubsub_sub
+    host: 5
+    uri: "ccnx:/m1/stream"
+    sub_opts:
+      wait: 20                      # cefsubfile listens this long for the Trigger Interest
+  - at: 72
+    type: pubsub_pub                # same `at` as the sub above -> sub is guaranteed to start first
+    host: 0
+    uri: "ccnx:/m1/stream"
+    file: "./sample-putfile"
+    pub_opts:
+      lifetime: 8

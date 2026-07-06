@@ -40,13 +40,13 @@ events:
     uri: "ccnx:/m2/disaster/data"
     file: "./sample-putfile"
 
-  - at: 5
+  - at: 10  # 2026-07-07: t=5 は未実証スロットのため実証済み t=10 に統一
     type: pubsub_sub
     host: 1
     uri: "ccnx:/m2/disaster/stream"
     sub_opts:
       wait: 20
-  - at: 5
+  - at: 10  # 2026-07-07: t=5 は未実証スロットのため実証済み t=10 に統一
     type: pubsub_pub               # same `at` as sub above -> sub starts first
     host: 0
     uri: "ccnx:/m2/disaster/stream"

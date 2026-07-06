@@ -178,3 +178,7 @@ _Avoid_: 単独でこのリネームに取り掛かること (他の deepening �
 **完了 (2026-07-06) — test-gap 解消 (途中 /tdd 移行で direct test が無かったコード)**:
 11 slice / 11 commit (fc6abe8..c8687e0) で +212 tests、全体 76%→89%。ゼロカバレッジだった plotter/log-cli/parsing/tee/links/topo と「spy 化で本体未実行」だった bandwidth/viz/cleanup、および monitoring lifecycle / webui state・server / CLI dispatch / base hooks / mesh・linear init 検証を direct test 化。到達不能分岐は file:line 根拠付きでテスト対象外として各テストファイルと commit message に明文化。残る意図的低カバレッジ: disaster.py 59% 等の Mininet-live 経路 (cefore-run-tests smoke が integration gate)。
 _Avoid_: 到達不能と記録済みの分岐に fake-rng/import-hook で無理にテストを足すこと、Mininet-live 経路の unit test 化
+
+**修正すべき点 (2026-07-07 workshop 計測で実測) — down_\* default が「暗黙の flap 有効」**:
+`down_interval`/`down_count`/`down_duration` の OptionSpec default は 30/5/10 で、キー省略の config は**意図せず host flapping が有効**になる（workshop smoke 実測: no-failure のつもりの m1_smoke で `[flap] down h1` が発生し eval get が exit 1、repeat get の 5s 間隔も flap 由来の scheduler 遅延で 1s 連発に崩れた）。「failure なし」の実験 config は down_interval/down_duration/down_count を明示的に 0 にする必要がある。恒久対応は R8候補 (legacy down_\* 廃止) と同時に default を 0/災害系 config での明示必須に変えるのが筋。また関連の罠として、repeat 付き get は同一 host+uri だと content log が同名で上書きされ、失敗した実行のログが後続成功で消える（判定比較は results.json を使うこと）。
+_Avoid_: default 変更を workshop branch でやること（本線の differential gate を通すこと）

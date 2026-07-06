@@ -19,6 +19,14 @@ output_dir: "logs"
 no_cli: true
 duration: 90
 results_json: "results.json"
+# 2026-07-07 fix: down_* キーは省略すると default が down_interval=30/down_count=5
+# で host flapping が有効になる（smoke 実測: [flap] down h1 が発生し get が失敗）。
+# 「failure なし」を意図する config は必ず明示的にゼロを指定すること。
+down_interval: 0
+down_duration: 0
+down_count: 0
+# 実証済み min_event_pubsub.yaml と同じ grace（sub 起動から pub 送信までの猶予）
+pubsub_sub_startup_grace: 2.0
 
 # No failure_scenarios / down_interval: healthy-network pub/sub baseline,
 # counterpart to m2_mesh_putget.yaml.
@@ -28,25 +36,25 @@ events:
   # they are already blocked on cefsubfile when the Trigger Interest lands
   # (same `at` as the pubsub_pub -> sub is guaranteed to start first, per
   # scheduler priority: pubsub_sub=0, pubsub_pub=2).
-  - at: 2
+  - at: 10
     type: pubsub_sub
     host: 1
     uri: "ccnx:/m2/pubsub/stream1"
     sub_opts:
       wait: 20
-  - at: 2
+  - at: 10
     type: pubsub_sub
     host: 2
     uri: "ccnx:/m2/pubsub/stream1"
     sub_opts:
       wait: 20
-  - at: 2
+  - at: 10
     type: pubsub_sub
     host: 3
     uri: "ccnx:/m2/pubsub/stream1"
     sub_opts:
       wait: 20
-  - at: 2
+  - at: 10
     type: pubsub_pub
     host: 0
     uri: "ccnx:/m2/pubsub/stream1"
