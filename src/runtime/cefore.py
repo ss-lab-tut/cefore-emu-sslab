@@ -13,6 +13,7 @@ from .cef_argv import (
 )
 from .command_runner import MininetCommandRunner
 from .cefore_conf import read_port_num
+from .daemon_logs import cleanup_stale_cefnetd_log, cleanup_stale_csmgrd_log
 
 
 def cleanup_cefnetd_socket(node_dir, idx):
@@ -90,6 +91,7 @@ def start_csmgrd(net, idx, log_dir=None, runner=None):
         runner: Optional CommandRunner (defaults to a Mininet-backed one).
     """
     node_name = f"h{idx}"
+    cleanup_stale_csmgrd_log(node_name, idx)
     runner = runner or MininetCommandRunner(net)
     if log_dir is not None:
         abs_node_dir = os.path.abspath(f"./{node_name}")
@@ -130,6 +132,7 @@ def start_cefnetd(net, idx, log_dir=None, runner=None):
     """
     node_name = f"h{idx}"
     cleanup_cefnetd_socket(node_name, idx)
+    cleanup_stale_cefnetd_log(node_name, idx)
     runner = runner or MininetCommandRunner(net)
     if log_dir is not None:
         abs_node_dir = os.path.abspath(f"./{node_name}")

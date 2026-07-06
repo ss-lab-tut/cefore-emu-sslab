@@ -33,6 +33,7 @@ from ..runtime.scenario_setup import (
 )
 from ..runtime.cefore import run_csmgrstatus, wait_for_cefnetd
 from ..core.parsing import parse_int_list
+from ..runtime.daemon_logs import HostLogScope
 from ..runtime.failure_manager import FlexibleFailureManager, periodic_host_flap
 from ..runtime.net_config import apply_fib_routes
 
@@ -64,6 +65,9 @@ class DisasterScenario(BaseScenario):
 
     def __init__(self, args, run_dir: Path = None, log_context=None, debug_config=None):
         self.args = args
+        self.daemon_log_collection_enabled = run_dir is not None and Path(
+            run_dir
+        ) != Path(".")
         self.run_dir = (run_dir or Path("logs")).resolve()
         self.run_dir.mkdir(parents=True, exist_ok=True)
         self.log_context = log_context
@@ -152,6 +156,18 @@ class DisasterScenario(BaseScenario):
     def create_mininet(self, topo, **kwargs):
         """Create Mininet with TCLink."""
         return create_tclink_mininet(topo, **kwargs)
+
+    def daemon_log_collection_scope(self):
+        """Describe daemon logs from generated hN directories for this run."""
+        return [
+            HostLogScope(
+                idx=i,
+                node_dir=self.generated_node_dirs[i],
+                has_csmgrd=i in self.cache_node_set,
+            )
+            for i in range(self.args.hosts)
+            if i < len(self.generated_node_dirs)
+        ]
 
     def configure(self, net):
         """Configure network: IP, bridges, bandwidth, daemons, FIB."""

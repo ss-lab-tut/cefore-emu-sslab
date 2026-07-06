@@ -1,6 +1,7 @@
 """Unit tests for event-only disaster operation metadata."""
 
 from argparse import Namespace
+from pathlib import Path
 import time
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
@@ -31,6 +32,29 @@ def test_no_events_yields_no_publishers(tmp_path):
     scenario = DisasterScenario(_make_args(), run_dir=tmp_path)
     assert scenario.publisher_ids == set()
     assert scenario.uri_publishers == {}
+
+
+@pytest.mark.parametrize(
+    ("run_dir", "expected"),
+    [(Path("logs"), True), (Path("."), False), (None, False)],
+)
+def test_daemon_log_collection_enabled_uses_unresolved_run_dir(run_dir, expected):
+    scenario = DisasterScenario(_make_args(), run_dir=run_dir)
+
+    assert scenario.daemon_log_collection_enabled is expected
+
+
+def test_daemon_log_collection_scope_uses_generated_dirs_and_cache_nodes(tmp_path):
+    scenario = DisasterScenario(_make_args(hosts=3), run_dir=tmp_path)
+    scenario.generated_node_dirs = [tmp_path / "h0", tmp_path / "h1"]
+    scenario.cache_node_set = {1}
+
+    scopes = scenario.daemon_log_collection_scope()
+
+    assert [(s.idx, s.node_dir, s.has_csmgrd) for s in scopes] == [
+        (0, tmp_path / "h0", False),
+        (1, tmp_path / "h1", True),
+    ]
 
 
 def test_event_publishers_drive_uri_metadata(tmp_path):

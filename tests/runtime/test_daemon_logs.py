@@ -4,6 +4,8 @@ from pathlib import Path
 
 from src.runtime.daemon_logs import (
     HostLogScope,
+    cleanup_stale_cefnetd_log,
+    cleanup_stale_csmgrd_log,
     cleanup_stale_daemon_logs,
     collect_daemon_logs,
     read_csmgr_port_num,
@@ -383,3 +385,37 @@ def test_cleanup_stale_daemon_logs_ignores_unlink_oserror(
     monkeypatch.setattr(Path, "unlink", fail_unlink)
 
     cleanup_stale_daemon_logs(HostLogScope(0, node_dir, False))
+
+
+def test_stale_cleanup_helpers_target_each_daemon_independently(
+    tmp_path: Path, monkeypatch
+) -> None:
+    tmp_dir = tmp_path / "tmp"
+    tmp_dir.mkdir()
+    node_dir = tmp_path / "h0"
+    node_dir.mkdir()
+    (node_dir / "cefnetd.conf").write_text(
+        "PORT_NUM=6000\nLOCAL_SOCK_ID=0\n", encoding="utf-8"
+    )
+    (node_dir / "csmgrd.conf").write_text(
+        "PORT_NUM=8000\nLOCAL_SOCK_ID=cache0\n", encoding="utf-8"
+    )
+    cefnetd_log = tmp_dir / "cefnetd_6000_0.log"
+    csmgrd_default_log = tmp_dir / "csmgrd_9799_cache0.log"
+    csmgrd_configured_log = tmp_dir / "csmgrd_8000_cache0.log"
+    for log in (cefnetd_log, csmgrd_default_log, csmgrd_configured_log):
+        log.write_text("old\n", encoding="utf-8")
+    monkeypatch.setattr("src.runtime.daemon_logs._TMP_DIR", tmp_dir)
+
+    cleanup_stale_cefnetd_log(node_dir, 0)
+
+    assert not cefnetd_log.exists()
+    assert csmgrd_default_log.exists()
+    assert csmgrd_configured_log.exists()
+
+    cefnetd_log.write_text("old\n", encoding="utf-8")
+    cleanup_stale_csmgrd_log(node_dir, 0)
+
+    assert cefnetd_log.exists()
+    assert not csmgrd_default_log.exists()
+    assert not csmgrd_configured_log.exists()

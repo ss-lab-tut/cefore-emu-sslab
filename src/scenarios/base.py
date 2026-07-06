@@ -176,6 +176,14 @@ class BaseScenario(ABC):
         ensure_within_run_dir(run_dir, dest)
         archive_daemon_logs(host_count, dest)
 
+    def daemon_log_collection_scope(self):
+        """Return per-host daemon log collection scopes for this scenario.
+
+        Scenarios without generated node directories or daemon knowledge opt out
+        by returning an empty list.
+        """
+        return []
+
     def execute(self):
         """Run the full scenario lifecycle with guaranteed teardown.
 
@@ -225,6 +233,18 @@ class BaseScenario(ABC):
                     self.collect_debug_post_teardown()
                 except BaseException as exc:
                     cleanup_failures.append(("debug_post_teardown", exc))
+
+                if getattr(self, "daemon_log_collection_enabled", True):
+                    try:
+                        from ..runtime.daemon_logs import collect_daemon_logs
+
+                        scopes = self.daemon_log_collection_scope()
+                        if scopes:
+                            warnings = collect_daemon_logs(self.run_dir, scopes)
+                            for warning in warnings:
+                                info(f"daemon_logs: {warning}\n")
+                    except BaseException as exc:
+                        cleanup_failures.append(("collect_daemon_logs", exc))
 
                 try:
                     cleanup_all(net, getattr(self, "generated_node_dirs", []))

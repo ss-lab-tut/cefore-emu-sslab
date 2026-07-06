@@ -13,6 +13,7 @@ from ..core.topology import TopologyModel
 from ..runtime.command_runner import MininetCommandRunner
 from ..runtime.cefore import run_cefgetfile, run_cefputfile
 from ..runtime.cache_strategy import RolesCacheStrategy
+from ..runtime.daemon_logs import HostLogScope
 from ..runtime.scenario_setup import (
     MeshBuildSpec,
     ScenarioSetupSpec,
@@ -55,6 +56,9 @@ class MeshScenario(BaseScenario):
         self.host_degree_min = host_degree_min
         self.host_degree_max = host_degree_max
         self.switch_use_all = switch_use_all
+        self.daemon_log_collection_enabled = run_dir is not None and Path(
+            run_dir
+        ) != Path(".")
         self.run_dir = run_dir or Path(".")
         self.run_dir.mkdir(parents=True, exist_ok=True)
         self.debug_config = debug_config
@@ -151,6 +155,18 @@ class MeshScenario(BaseScenario):
         result = teardown_scenario(net, spec)
         if result.failures:
             _propagate_failures(None, result.failures)
+
+    def daemon_log_collection_scope(self):
+        """Describe daemon logs from generated hN directories for this run."""
+        return [
+            HostLogScope(
+                idx=i,
+                node_dir=self.generated_node_dirs[i],
+                has_csmgrd=bool(getattr(self.roles.get(i), "runs_csmgrd", False)),
+            )
+            for i in range(self.host_num)
+            if i < len(self.generated_node_dirs)
+        ]
 
     def _csmgrd_host_ids(self):
         return {

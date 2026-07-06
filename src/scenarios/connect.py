@@ -20,6 +20,7 @@ from ..runtime.bridge_args import parse_bridge_args
 from ..runtime.bridge_root import BridgeManager
 from ..runtime.cache_strategy import KCentersStrategy
 from ..runtime.event_batch import EventBatchSpec, run_event_batch
+from ..runtime.daemon_logs import HostLogScope
 from ..runtime.results_sink import RecordingSink
 from ..runtime.scenario_setup import (
     MeshBuildSpec,
@@ -45,6 +46,9 @@ class ConnectScenario(BaseScenario):
         self, args, run_dir: Path | None = None, log_context=None, debug_config=None
     ):
         self.args = args
+        self.daemon_log_collection_enabled = run_dir is not None and Path(
+            run_dir
+        ) != Path(".")
         self.run_dir = (run_dir or Path("logs")).resolve()
         self.run_dir.mkdir(parents=True, exist_ok=True)
         self.log_context = log_context
@@ -103,6 +107,18 @@ class ConnectScenario(BaseScenario):
 
     def create_mininet(self, topo, **kwargs):
         return create_tclink_mininet(topo, **kwargs)
+
+    def daemon_log_collection_scope(self):
+        """Describe daemon logs from generated hN directories for this run."""
+        return [
+            HostLogScope(
+                idx=i,
+                node_dir=self.generated_node_dirs[i],
+                has_csmgrd=i in self.cache_node_set,
+            )
+            for i in range(self.args.hosts)
+            if i < len(self.generated_node_dirs)
+        ]
 
     def configure(self, net):
         args = self.args

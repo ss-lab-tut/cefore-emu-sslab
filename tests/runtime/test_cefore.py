@@ -219,6 +219,43 @@ class TestRunCsmgrstatus:
             run_csmgrstatus(MagicMock(), 1, host="127.0.0.1", quiet=True, timeout=10)
         assert fake.runs[0]["timeout"] == 10
 
+
+def test_start_cefnetd_removes_stale_socket_and_cefnetd_log_before_start():
+    fake = FakeCommandRunner()
+    calls = []
+
+    def cleanup_socket(node_dir, idx):
+        calls.append(("socket", node_dir, idx))
+
+    def cleanup_log(node_dir, idx):
+        calls.append(("cefnetd_log", node_dir, idx))
+
+    with (
+        patch.object(cefore_mod, "cleanup_cefnetd_socket", side_effect=cleanup_socket),
+        patch.object(cefore_mod, "cleanup_stale_cefnetd_log", side_effect=cleanup_log),
+        patch.object(cefore_mod.time, "sleep"),
+    ):
+        cefore_mod.start_cefnetd(MagicMock(), 2, runner=fake)
+
+    assert ("socket", "h2", 2) in calls
+    assert ("cefnetd_log", "h2", 2) in calls
+    assert fake.runs[0]["node"] == "h2"
+
+
+def test_start_csmgrd_removes_only_stale_csmgrd_log_before_start():
+    fake = FakeCommandRunner()
+
+    with (
+        patch.object(cefore_mod, "cleanup_stale_csmgrd_log") as cleanup_csmgrd_log,
+        patch.object(cefore_mod, "cleanup_stale_cefnetd_log") as cleanup_cefnetd_log,
+        patch.object(cefore_mod, "wait_for_csmgrd"),
+    ):
+        cefore_mod.start_csmgrd(MagicMock(), 1, runner=fake)
+
+    cleanup_csmgrd_log.assert_called_once_with("h1", 1)
+    cleanup_cefnetd_log.assert_not_called()
+    assert fake.runs[0]["node"] == "h1"
+
     def test_port_num_builds_two_token_argv(self):
         fake = FakeCommandRunner()
         with patch.object(cefore_mod, "MininetCommandRunner", return_value=fake):

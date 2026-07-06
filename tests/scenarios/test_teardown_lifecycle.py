@@ -14,6 +14,8 @@ from unittest.mock import patch, MagicMock
 import pytest
 
 from src.runtime.bridge_root import TeardownError
+from src.runtime.daemon_logs import HostLogScope
+from src.scenarios.base import BaseScenario
 
 
 def _make_scenario(tmp_path):
@@ -60,6 +62,205 @@ def _make_scenario(tmp_path):
         run_dir=Path(tmp_path),
         debug_config=None,
     )
+
+
+class _LifecycleProbeScenario(BaseScenario):
+    """Small scenario that exposes BaseScenario.execute() cleanup ordering."""
+
+    def __init__(
+        self,
+        tmp_path,
+        call_order,
+        *,
+        daemon_enabled=True,
+        scopes=None,
+        fail_build=False,
+        fail_teardown=False,
+    ):
+        self.run_dir = Path(tmp_path)
+        self.generated_node_dirs = []
+        self.debug_config = None
+        self.call_order = call_order
+        self.daemon_log_collection_enabled = daemon_enabled
+        self._daemon_scopes = list(scopes or [])
+        self._fail_build = fail_build
+        self._fail_teardown = fail_teardown
+
+    def build_topology(self):
+        if self._fail_build:
+            raise RuntimeError("build failed")
+        return object()
+
+    def create_mininet(self, topo, **kwargs):
+        net = MagicMock()
+        net.start.side_effect = lambda: None
+        return net
+
+    def configure(self, net):
+        return None
+
+    def run_experiment(self, net):
+        return None
+
+    def run_main(self, net):
+        return None
+
+    def shutdown_runtime_resources(self):
+        self.call_order.append("shutdown")
+        return []
+
+    def collect_debug_pre_teardown(self, net):
+        self.call_order.append("pre_teardown")
+
+    def teardown(self, net):
+        self.call_order.append("teardown")
+        if self._fail_teardown:
+            raise RuntimeError("teardown failed")
+
+    def collect_debug_post_teardown(self):
+        self.call_order.append("post_teardown")
+
+    def daemon_log_collection_scope(self):
+        self.call_order.append("daemon_scope")
+        return self._daemon_scopes
+
+    def write_results(self):
+        self.call_order.append("write_results")
+        return []
+
+
+def test_daemon_log_collection_runs_between_post_teardown_and_cleanup_all(tmp_path):
+    call_order = []
+    scope = HostLogScope(0, tmp_path / "h0", False)
+    scenario = _LifecycleProbeScenario(tmp_path, call_order, scopes=[scope])
+
+    def collect_daemon_logs(run_dir, scopes):
+        call_order.append("collect_daemon_logs")
+        assert run_dir == tmp_path
+        assert scopes == [scope]
+        return []
+
+    def cleanup_all(net, node_dirs):
+        call_order.append("cleanup_all")
+
+    with (
+        patch("src.runtime.daemon_logs.collect_daemon_logs", collect_daemon_logs),
+        patch("src.scenarios.base.cleanup_all", cleanup_all),
+    ):
+        scenario.execute()
+
+    assert call_order == [
+        "shutdown",
+        "pre_teardown",
+        "teardown",
+        "post_teardown",
+        "daemon_scope",
+        "collect_daemon_logs",
+        "cleanup_all",
+        "write_results",
+    ]
+
+
+def test_daemon_log_collection_failure_does_not_skip_cleanup_all(tmp_path):
+    call_order = []
+    scenario = _LifecycleProbeScenario(
+        tmp_path,
+        call_order,
+        scopes=[HostLogScope(0, tmp_path / "h0", False)],
+    )
+
+    def collect_daemon_logs(run_dir, scopes):
+        call_order.append("collect_daemon_logs")
+        raise RuntimeError("collect failed")
+
+    def cleanup_all(net, node_dirs):
+        call_order.append("cleanup_all")
+
+    with (
+        patch("src.runtime.daemon_logs.collect_daemon_logs", collect_daemon_logs),
+        patch("src.scenarios.base.cleanup_all", cleanup_all),
+    ):
+        with pytest.raises(RuntimeError, match="collect failed"):
+            scenario.execute()
+
+    assert "collect_daemon_logs" in call_order
+    assert "cleanup_all" in call_order
+    assert call_order.index("collect_daemon_logs") < call_order.index("cleanup_all")
+
+
+def test_daemon_log_collection_disabled_skips_scope_hook(tmp_path):
+    call_order = []
+    scenario = _LifecycleProbeScenario(
+        tmp_path,
+        call_order,
+        daemon_enabled=False,
+        scopes=[HostLogScope(0, tmp_path / "h0", False)],
+    )
+
+    with patch("src.scenarios.base.cleanup_all"):
+        scenario.execute()
+
+    assert "daemon_scope" not in call_order
+
+
+def test_daemon_log_collection_empty_scope_skips_collector(tmp_path):
+    call_order = []
+    scenario = _LifecycleProbeScenario(tmp_path, call_order, scopes=[])
+
+    with (
+        patch("src.runtime.daemon_logs.collect_daemon_logs") as collect_daemon_logs,
+        patch("src.scenarios.base.cleanup_all"),
+    ):
+        scenario.execute()
+
+    assert "daemon_scope" in call_order
+    collect_daemon_logs.assert_not_called()
+
+
+def test_daemon_log_collection_skips_when_net_was_never_created(tmp_path):
+    call_order = []
+    scenario = _LifecycleProbeScenario(
+        tmp_path,
+        call_order,
+        scopes=[HostLogScope(0, tmp_path / "h0", False)],
+        fail_build=True,
+    )
+
+    with (
+        patch("src.runtime.daemon_logs.collect_daemon_logs") as collect_daemon_logs,
+        patch("src.scenarios.base.cleanup_node_dirs") as cleanup_node_dirs,
+    ):
+        with pytest.raises(RuntimeError, match="build failed"):
+            scenario.execute()
+
+    assert "daemon_scope" not in call_order
+    collect_daemon_logs.assert_not_called()
+    cleanup_node_dirs.assert_called_once()
+
+
+def test_daemon_log_collection_runs_after_teardown_failure_when_net_exists(tmp_path):
+    call_order = []
+    scenario = _LifecycleProbeScenario(
+        tmp_path,
+        call_order,
+        scopes=[HostLogScope(0, tmp_path / "h0", False)],
+        fail_teardown=True,
+    )
+
+    def collect_daemon_logs(run_dir, scopes):
+        call_order.append("collect_daemon_logs")
+        return []
+
+    with (
+        patch("src.runtime.daemon_logs.collect_daemon_logs", collect_daemon_logs),
+        patch("src.scenarios.base.cleanup_all"),
+    ):
+        with pytest.raises(RuntimeError, match="teardown failed"):
+            scenario.execute()
+
+    assert "teardown" in call_order
+    assert "collect_daemon_logs" in call_order
+    assert call_order.index("teardown") < call_order.index("collect_daemon_logs")
 
 
 # ---------------------------------------------------------------------------

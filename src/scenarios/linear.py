@@ -14,6 +14,7 @@ from ..core.roles import assign_roles
 from ..runtime.command_runner import MininetCommandRunner
 from ..runtime.cefore import run_cefgetfile, run_cefputfile
 from ..runtime.daemon_fleet import build_fleet
+from ..runtime.daemon_logs import HostLogScope
 from ..runtime.net_config import cefroute_add
 from ..runtime.scenario_setup import TeardownSpec, teardown_scenario
 from ..runtime.template import provision_node_dirs
@@ -29,6 +30,9 @@ class LinearScenario(BaseScenario):
         if host_num < 2:
             sys.exit("host count must be at least 2")
         self.host_num = host_num
+        self.daemon_log_collection_enabled = run_dir is not None and Path(
+            run_dir
+        ) != Path(".")
         self.run_dir = run_dir or Path(".")
         self.run_dir.mkdir(parents=True, exist_ok=True)
         self.debug_config = debug_config
@@ -97,6 +101,19 @@ class LinearScenario(BaseScenario):
         result = teardown_scenario(net, spec)
         if result.failures:
             _propagate_failures(None, result.failures)
+
+    def daemon_log_collection_scope(self):
+        """Describe daemon logs from generated hN directories for this run."""
+        csmgrd_ids = set(self._csmgrd_host_ids())
+        return [
+            HostLogScope(
+                idx=i,
+                node_dir=self.generated_node_dirs[i],
+                has_csmgrd=i in csmgrd_ids,
+            )
+            for i in range(self.host_num)
+            if i < len(self.generated_node_dirs)
+        ]
 
     def _csmgrd_host_ids(self):
         return {

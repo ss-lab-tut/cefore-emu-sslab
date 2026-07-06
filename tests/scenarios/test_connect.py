@@ -1,5 +1,6 @@
 """Unit tests for ConnectScenario lifecycle (ceforeemu-connect)."""
 
+from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
@@ -44,6 +45,29 @@ def test_debug_config_is_stored(tmp_path):
     )
 
     assert scenario.debug_config is debug_config
+
+
+@pytest.mark.parametrize(
+    ("run_dir", "expected"),
+    [(Path("logs"), True), (Path("."), False), (None, False)],
+)
+def test_daemon_log_collection_enabled_uses_unresolved_run_dir(run_dir, expected):
+    scenario = ConnectScenario(_make_scenario(Path(".")).args, run_dir=run_dir)
+
+    assert scenario.daemon_log_collection_enabled is expected
+
+
+def test_daemon_log_collection_scope_uses_generated_dirs_and_cache_nodes(tmp_path):
+    scenario = _make_scenario(tmp_path)
+    scenario.generated_node_dirs = [tmp_path / "h0", tmp_path / "h1"]
+    scenario.cache_node_set = {1}
+
+    scopes = scenario.daemon_log_collection_scope()
+
+    assert [(s.idx, s.node_dir, s.has_csmgrd) for s in scopes] == [
+        (0, tmp_path / "h0", False),
+        (1, tmp_path / "h1", True),
+    ]
 
 
 def test_fib_debug_collection_uses_connect_host_count(tmp_path):

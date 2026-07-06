@@ -88,12 +88,34 @@ def collect_daemon_logs(run_dir: Path, scopes: list[HostLogScope]) -> list[str]:
 
 def cleanup_stale_daemon_logs(scope: HostLogScope) -> None:
     """Remove old /tmp daemon logs that Cefore would otherwise append to."""
-    stale_paths = tmp_daemon_log_paths(scope)
+    cleanup_stale_cefnetd_log(scope.node_dir, scope.idx)
     if scope.has_csmgrd:
-        csmgr_sockid = read_local_sock_id(scope.node_dir, "csmgrd.conf")
-        stale_paths.append(_TMP_DIR / f"csmgrd_9799_{csmgr_sockid}.log")
+        cleanup_stale_csmgrd_log(scope.node_dir, scope.idx)
 
-    for path in set(stale_paths):
+
+def cleanup_stale_cefnetd_log(node_dir: str | Path, idx: int) -> None:
+    """Remove the stale cefnetd /tmp log for a host before cefnetd starts."""
+    node_path = Path(node_dir)
+    port = read_port_num(node_path)
+    sockid = read_local_sock_id(node_path, "cefnetd.conf")
+    _unlink_stale_paths([_TMP_DIR / f"cefnetd_{port}_{sockid}.log"])
+
+
+def cleanup_stale_csmgrd_log(node_dir: str | Path, idx: int) -> None:
+    """Remove stale csmgrd /tmp logs for both bootstrap and configured ports."""
+    node_path = Path(node_dir)
+    sockid = read_local_sock_id(node_path, "csmgrd.conf")
+    port = read_csmgr_port_num(node_path)
+    _unlink_stale_paths(
+        [
+            _TMP_DIR / f"csmgrd_9799_{sockid}.log",
+            _TMP_DIR / f"csmgrd_{port}_{sockid}.log",
+        ]
+    )
+
+
+def _unlink_stale_paths(paths: list[Path]) -> None:
+    for path in set(paths):
         try:
             path.unlink(missing_ok=True)
         except OSError:
