@@ -21,16 +21,6 @@ PREFIX_COLORS: dict[str, str] = {
 }
 DEFAULT_COLOR = "#BBBBBB"
 
-CEFPUT_THROUGHPUT = "throughput_bps"
-CEFGET_THROUGHPUT = "throughput_bps"
-CEFGET_GOODPUT = "goodput_bps"
-CEFGET_JITTER_AVE = "jitter_ave_us"
-CEFSUB_THROUGHPUT = "throughput_bps"
-CEFSUB_GOODPUT = "goodput_bps"
-CEFSUB_JITTER_AVE = "jitter_ave_us"
-CEFPUB_RATE = "rate_mbps"
-
-
 def _require_schema_field(command: str, name: str) -> str:
     """Return a canonical metric key only if the command schema owns it.
 
@@ -43,14 +33,14 @@ def _require_schema_field(command: str, name: str) -> str:
     return name
 
 
-CEFPUT_THROUGHPUT = _require_schema_field("cefputfile", CEFPUT_THROUGHPUT)
-CEFGET_THROUGHPUT = _require_schema_field("cefgetfile", CEFGET_THROUGHPUT)
-CEFGET_GOODPUT = _require_schema_field("cefgetfile", CEFGET_GOODPUT)
-CEFGET_JITTER_AVE = _require_schema_field("cefgetfile", CEFGET_JITTER_AVE)
-CEFSUB_THROUGHPUT = _require_schema_field("cefsubfile", CEFSUB_THROUGHPUT)
-CEFSUB_GOODPUT = _require_schema_field("cefsubfile", CEFSUB_GOODPUT)
-CEFSUB_JITTER_AVE = _require_schema_field("cefsubfile", CEFSUB_JITTER_AVE)
-CEFPUB_RATE = _require_schema_field("cefpubfile", CEFPUB_RATE)
+CEFPUT_THROUGHPUT = _require_schema_field("cefputfile", "throughput_bps")
+CEFGET_THROUGHPUT = _require_schema_field("cefgetfile", "throughput_bps")
+CEFGET_GOODPUT = _require_schema_field("cefgetfile", "goodput_bps")
+CEFGET_JITTER_AVE = _require_schema_field("cefgetfile", "jitter_ave_us")
+CEFSUB_THROUGHPUT = _require_schema_field("cefsubfile", "throughput_bps")
+CEFSUB_GOODPUT = _require_schema_field("cefsubfile", "goodput_bps")
+CEFSUB_JITTER_AVE = _require_schema_field("cefsubfile", "jitter_ave_us")
+CEFPUB_RATE = _require_schema_field("cefpubfile", "rate_mbps")
 
 
 def _color_for(prefix: str) -> str:

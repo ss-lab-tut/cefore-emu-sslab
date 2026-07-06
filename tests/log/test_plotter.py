@@ -109,16 +109,15 @@ class TestPureHelpers:
     def test_safe_int_returns_none_for_empty_string(self):
         assert _safe_int("") is None
 
-    def test_get_metric_returns_first_present_key_in_fallback_chain(self):
-        # cefsubfile records may carry either the generic "throughput" key
-        # or the "throughput_bps" alias depending on the log's unit label;
-        # _get_metric tries keys left-to-right and returns the first hit.
-        record = {"throughput": None, "throughput_bps": "5000000"}
-        assert _get_metric(record, "throughput", "throughput_bps") == 5000000.0
+    def test_get_metric_returns_schema_key_value(self):
+        # Plotters pass canonical schema keys; _get_metric stays small and only
+        # converts the selected record value to a float.
+        record = {"throughput_bps": "5000000"}
+        assert _get_metric(record, "throughput_bps") == 5000000.0
 
     def test_get_metric_returns_none_when_no_key_present(self):
         record = {"other_field": "1"}
-        assert _get_metric(record, "throughput", "throughput_bps") is None
+        assert _get_metric(record, "throughput_bps") is None
 
     def test_known_success_lowercases_and_keeps_true_false_only(self):
         records = [
