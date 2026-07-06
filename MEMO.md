@@ -23,11 +23,18 @@ Plan: ~/.claude/plans/icn-plan-plan-goal-vectorized-sloth.md
    pub は grace+wait で content worker を ~20s 占有 → get の後ろに配置。
 4. **switches: N は上限で実現数ではない** (M1 実測: 48 指定で realized 24-38)。
 
-## 実行中/残り
-- [ ] probe 完了 → M3 の実行上限確定 (RAM 80% guard は campaign.py 内蔵)
-- [ ] main campaign 165 jobs 起動 (M1 30 → M2 35 → M5 60 → M3 25 → M4 15)
-  - 見積 ~10h。優先順で並べてあるので途中でも M1/M2/M5 から成立する
-- [ ] plots.py / report.py 作成（campaign 並走中に subagent へ委譲）
-- [ ] 06:30 頃に部分データで一次レポート生成 → 完了後に最終版
-- [ ] M1 検証: fingerprint 10/10 一致 + results.json 射影一致 + CV
-- [ ] m5a gate: eval_pubdown_total > 0 (smoke では 14, 全部成功=cache 効果)
+## 実行中/残り (03:55 更新)
+- [x] probe 完了: h20〜h60 全部 OK、h60 ピーク 10.9GB — メモリは制約にならず。M3 は h60 まで完走可
+- [x] 追加 smoke (m5b/m5d/m4/m2d) 全部 ok — m5b link_down/up 成功+get 15/15、m5d get 6/6
+- [x] plots.py / report.py 完成 (smoke データで 4 図の実レンダリング検証済み)
+- [x] **main campaign 150 jobs 起動 (03:52)** — M1 30 → M2 35 → M5 60 → M3 25
+  - detached supervisor (tools/workshop/supervise.sh, setsid root) が journal-resume で守る
+  - 進捗: logs/workshop_20260707/main/campaign_state.jsonl (1 job = 1 行)
+- [ ] **M4 は設計不良を発見して作り直し中**: bw_set(t=1) は warmup 後で、eval get は
+  cache 命中のため帯域制限が実測に出ない (10Mbps 設定で 45-87Mbps を実測)。
+  → per-seed 静的 bw: 全 switch 一律制限 + warmup get(初回取得)を計測点に変更。
+  eval get は「キャッシュ加速」系列として同じ図に載せる。subagent が生成中、
+  完成後 manifest に m4st_* 15 jobs を追記 (supervisor が拾う)
+- [ ] M1 30 jobs 完了時 (~05:30 見込): 3層検証を即実行 (fingerprint 一致 / 射影一致 / CV)
+- [ ] m5a 完了時: eval_pubdown_total > 0 gate + cache/nocache 対比確認
+- [ ] ~06:30: 部分データで一次 report.html 生成 → campaign 完了後に最終版 + コミット

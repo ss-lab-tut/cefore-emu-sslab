@@ -944,49 +944,105 @@ def fig_m3_scale(jobs: dict[str, Job], analysis_dir: Path, out_dir: Path) -> Non
 # =============================================================================
 
 
+# Matches both the legacy bw_set-event family (m4_bw{BW}_s{SEED}) and the
+# 2026-07-07 static-bw redesign family (m4st_bw{BW}_s{SEED}) -- job ids
+# encode the configured Mbps directly (group 1), so the figure reads it from
+# the id instead of keeping a fixed bw-values list per family.
+_M4_JOB_RE = re.compile(r"m4(?:st)?_bw(\d+)_s\d+")
+
+
 def fig_m4_bw_fidelity(jobs: dict[str, Job], analysis_dir: Path, out_dir: Path) -> None:
     name = "m4_bw_fidelity"
-    bw_values = [5, 10, 20, 50, 100]
-    by_bw: dict[int, list[Job]] = {}
-    for bw in bw_values:
-        matched = _match(jobs, rf"m4_bw{bw}_s\d+")
-        if matched:
-            by_bw[bw] = matched
-    if not by_bw:
+
+    matched = sorted(
+        (j for j in jobs.values() if _M4_JOB_RE.fullmatch(j.job_id)),
+        key=lambda j: j.job_id,
+    )
+    if not matched:
         _skip(name, "no m4-family jobs found")
         return
 
-    points: list[tuple[int, float]] = []
-    for bw, job_list in by_bw.items():
-        for job in job_list:
-            if job.run_dir is None:
+    # Two series, not one: the 2026-07-07 M4 redesign applies the bandwidth
+    # cap statically from network-creation time (see config/workshop/
+    # m4_static/*.yaml headers), so the WARMUP-phase cefgetfile logs
+    # (cefgetfile_warmup_h{N}_*.log -- src/scenarios/disaster.py's
+    # _run_warmup, which runs before the eval-phase event scheduler) are now
+    # the network-bound "first fetch" measurement, while the EVAL-phase logs
+    # (the t=20/35/50 get events, phase="eval") are a cache-hit REPEAT fetch
+    # of content warmup already pulled onto that host's cache. Plotting both
+    # against the same configured-bw x-axis visualizes the caching
+    # acceleration the M4 story is about, instead of just fidelity.
+    warmup_points: list[tuple[int, float]] = []
+    eval_points: list[tuple[int, float]] = []
+    for job in matched:
+        bw = int(_M4_JOB_RE.fullmatch(job.job_id).group(1))
+        if job.run_dir is None:
+            continue
+        grouped = collect_records([job.run_dir])
+        for row in grouped.get("cefgetfile", []):
+            throughput = row.get("throughput_bps")
+            if not isinstance(throughput, (int, float)):
                 continue
-            grouped = collect_records([job.run_dir])
-            for row in grouped.get("cefgetfile", []):
-                throughput = row.get("throughput_bps")
-                if isinstance(throughput, (int, float)):
-                    points.append((bw, throughput / 1e6))  # bps -> Mbps
+            mbps = throughput / 1e6  # bps -> Mbps
+            if row.get("phase") == "warmup":
+                warmup_points.append((bw, mbps))
+            elif row.get("phase") == "eval":
+                eval_points.append((bw, mbps))
 
-    if not points:
+    if not warmup_points and not eval_points:
         _skip(name, "no parsed cefgetfile throughput in m4 runs")
         return
 
     _write_json(
         analysis_dir,
         name,
-        {"configured_mbps": [p[0] for p in points], "measured_mbps": [p[1] for p in points]},
+        {
+            "warmup_configured_mbps": [p[0] for p in warmup_points],
+            "warmup_measured_mbps": [p[1] for p in warmup_points],
+            "eval_configured_mbps": [p[0] for p in eval_points],
+            "eval_measured_mbps": [p[1] for p in eval_points],
+        },
     )
 
     fig, ax = _new_figure((6.5, 6.5))
-    ax.scatter([p[0] for p in points], [p[1] for p in points], color=CATEGORICAL[0], s=40, alpha=0.8, zorder=3)
-    axis_max = max(max(bw_values), max(p[1] for p in points)) * 1.1
+    all_values = (
+        [p[0] for p in warmup_points]
+        + [p[1] for p in warmup_points]
+        + [p[0] for p in eval_points]
+        + [p[1] for p in eval_points]
+    )
+    axis_max = max(all_values) * 1.1 if all_values else 100
+
+    if warmup_points:
+        ax.scatter(
+            [p[0] for p in warmup_points],
+            [p[1] for p in warmup_points],
+            color=CATEGORICAL[0],
+            s=40,
+            alpha=0.8,
+            zorder=3,
+            marker="o",
+            label="warmup (network-bound first fetch)",
+        )
+    if eval_points:
+        ax.scatter(
+            [p[0] for p in eval_points],
+            [p[1] for p in eval_points],
+            color=CATEGORICAL[5],
+            s=40,
+            alpha=0.8,
+            zorder=3,
+            marker="^",
+            label="eval (cache-hit repeat fetch)",
+        )
     ax.plot([0, axis_max], [0, axis_max], color=BASELINE, linewidth=1.5, linestyle="-", zorder=1)
-    ax.text(axis_max * 0.6, axis_max * 0.63, "y = x (perfect fidelity)", color=TEXT_MUTED, fontsize=8)
+    ax.text(axis_max * 0.55, axis_max * 0.6, "y = x (perfect fidelity)", color=TEXT_MUTED, fontsize=8)
     ax.set_xlim(0, axis_max)
     ax.set_ylim(0, axis_max)
     ax.set_xlabel("Configured bandwidth (Mbps)")
     ax.set_ylabel("Measured cefgetfile throughput (Mbps)")
-    ax.set_title("M4: bandwidth-cap fidelity")
+    ax.set_title("M4: bandwidth-cap fidelity vs cache acceleration")
+    ax.legend(loc="upper left", fontsize=8, frameon=False)
     _style_axes(ax)
     _save(fig, out_dir, name)
 
