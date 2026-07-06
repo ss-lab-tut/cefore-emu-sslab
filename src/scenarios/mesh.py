@@ -9,19 +9,19 @@ from mininet.log import info
 
 from ..core.artifacts import content_log_name
 from ..core.addressing import AddressingScheme
-from ..core.roles import assign_roles
 from ..core.topology import TopologyModel
 from ..runtime.command_runner import MininetCommandRunner
 from ..runtime.cefore import run_cefgetfile, run_cefputfile
 from ..runtime.cache_strategy import RolesCacheStrategy
 from ..runtime.scenario_setup import (
+    MeshBuildSpec,
     ScenarioSetupSpec,
     TeardownSpec,
+    build_mesh_scenario,
     setup_scenario,
     teardown_scenario,
 )
-from ..runtime.template import provision_node_dirs
-from ..runtime.topo import MeshTopo, max_possible_links, min_required_links
+from ..runtime.topo import max_possible_links, min_required_links
 
 from .base import BaseScenario, _propagate_failures
 
@@ -80,17 +80,19 @@ class MeshScenario(BaseScenario):
         self.daemon_fleet = None
 
     def build_topology(self):
-        self.roles = assign_roles(self.host_num, self.rng)
-        self.generated_node_dirs = provision_node_dirs(self.roles)
-        self.topo = MeshTopo(
-            hosts=self.host_num,
-            swhich_num=self.swhich_num,
-            rng=self.rng,
+        spec = MeshBuildSpec(
+            host_count=self.host_num,
+            switch_limit=self.swhich_num,
             node_per_switch=self.node_per_switch,
             host_degree_min=self.host_degree_min,
             host_degree_max=self.host_degree_max,
             switch_use_all=self.switch_use_all,
+            rng=self.rng,
         )
+        result = build_mesh_scenario(spec)
+        self.roles = result.roles
+        self.generated_node_dirs = result.node_dirs
+        self.topo = result.topo
         return self.topo
 
     def configure(self, net):

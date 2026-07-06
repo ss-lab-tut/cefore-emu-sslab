@@ -9,7 +9,6 @@ import random
 import sys
 from pathlib import Path
 
-from mininet.link import TCLink
 from mininet.log import info
 
 from ..core.addressing import AddressingScheme, DEFAULT_NETWORK_CIDR
@@ -23,14 +22,14 @@ from ..runtime.cache_strategy import KCentersStrategy
 from ..runtime.event_batch import EventBatchSpec, run_event_batch
 from ..runtime.results_sink import RecordingSink
 from ..runtime.scenario_setup import (
+    MeshBuildSpec,
     ScenarioSetupSpec,
     TeardownSpec,
+    build_mesh_scenario,
+    create_tclink_mininet,
     setup_scenario,
     teardown_scenario,
 )
-from ..core.roles import assign_roles
-from ..runtime.template import provision_node_dirs
-from ..runtime.topo import MeshTopo
 from .base import BaseScenario, _propagate_failures
 
 
@@ -87,25 +86,23 @@ class ConnectScenario(BaseScenario):
 
     def build_topology(self):
         args = self.args
-        roles = assign_roles(
-            args.hosts, self.rng or random.Random(), self.publisher_ids
-        )
-        self.generated_node_dirs = provision_node_dirs(roles)
-        self.topo = MeshTopo(
-            hosts=args.hosts,
-            swhich_num=args.switches,
-            rng=self.rng,
+        spec = MeshBuildSpec(
+            host_count=args.hosts,
+            switch_limit=args.switches,
             node_per_switch=args.node_per_switch,
             host_degree_min=args.host_degree_min,
             host_degree_max=args.host_degree_max,
             switch_use_all=args.switch_use_all,
+            rng=self.rng,
+            publisher_ids=frozenset(self.publisher_ids),
         )
+        result = build_mesh_scenario(spec)
+        self.generated_node_dirs = result.node_dirs
+        self.topo = result.topo
         return self.topo
 
     def create_mininet(self, topo, **kwargs):
-        from mininet.net import Mininet
-
-        return Mininet(topo=topo, link=TCLink, waitConnected=True, **kwargs)
+        return create_tclink_mininet(topo, **kwargs)
 
     def configure(self, net):
         args = self.args

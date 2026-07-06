@@ -6,7 +6,6 @@ import threading
 import time
 from pathlib import Path
 
-from mininet.link import TCLink
 from mininet.log import info
 
 from ..core.addressing import AddressingScheme, DEFAULT_NETWORK_CIDR
@@ -24,8 +23,11 @@ from ..runtime.event_batch import EventBatchSpec, run_event_batch
 from ..runtime.monitoring import Monitor
 from ..runtime.results_sink import ResultsSink
 from ..runtime.scenario_setup import (
+    MeshBuildSpec,
     ScenarioSetupSpec,
     TeardownSpec,
+    build_mesh_scenario,
+    create_tclink_mininet,
     setup_scenario,
     teardown_scenario,
 )
@@ -33,9 +35,6 @@ from ..runtime.cefore import run_csmgrstatus, wait_for_cefnetd
 from ..core.parsing import parse_int_list
 from ..runtime.failure_manager import FlexibleFailureManager, periodic_host_flap
 from ..runtime.net_config import apply_fib_routes
-from ..core.roles import assign_roles
-from ..runtime.template import provision_node_dirs
-from ..runtime.topo import MeshTopo
 
 from .base import BaseScenario, _propagate_failures
 
@@ -135,25 +134,24 @@ class DisasterScenario(BaseScenario):
     def build_topology(self):
         """Create mesh topology."""
         args = self.args
-        roles = assign_roles(args.hosts, self.rng, self.publisher_ids)
-        self.generated_node_dirs = provision_node_dirs(roles)
-
-        self.topo = MeshTopo(
-            hosts=args.hosts,
-            swhich_num=args.switches,
-            rng=self.rng,
+        spec = MeshBuildSpec(
+            host_count=args.hosts,
+            switch_limit=args.switches,
             node_per_switch=args.node_per_switch,
             host_degree_min=args.host_degree_min,
             host_degree_max=args.host_degree_max,
             switch_use_all=args.switch_use_all,
+            rng=self.rng,
+            publisher_ids=frozenset(self.publisher_ids),
         )
+        result = build_mesh_scenario(spec)
+        self.generated_node_dirs = result.node_dirs
+        self.topo = result.topo
         return self.topo
 
     def create_mininet(self, topo, **kwargs):
         """Create Mininet with TCLink."""
-        from mininet.net import Mininet
-
-        return Mininet(topo=topo, link=TCLink, waitConnected=True, **kwargs)
+        return create_tclink_mininet(topo, **kwargs)
 
     def configure(self, net):
         """Configure network: IP, bridges, bandwidth, daemons, FIB."""
