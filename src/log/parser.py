@@ -1,9 +1,11 @@
 """Parse cefputfile / cefgetfile / cefpubfile / cefsubfile log text."""
 
 import re
+import sys
 from typing import Any
 
 from ..core.verdict import from_log
+from .schema import COMMAND_SCHEMAS, FieldKind
 
 
 # ---------- timestamp extraction ----------
@@ -38,37 +40,36 @@ def _strip_unit(raw: str) -> str:
 # (exit code, output artifacts) stay unknown, so success can be None.
 
 
-# ---------- cefputfile ----------
+def _parse_schema_fields(text: str, command: str) -> dict[str, Any]:
+    """Parse all schema-owned fields for a command.
 
-_PUT_FIELDS = {
-    "uri": (r"\[cefputfile\]\s+URI\s*=\s*(.+)", str),
-    "file": (r"\[cefputfile\]\s+File\s*=\s*(.+)", str),
-    "rate_mbps": (r"\[cefputfile\]\s+Rate\s*=\s*(.+)", None),
-    "block_size_bytes": (r"\[cefputfile\]\s+Block Size\s*=\s*(.+)", None),
-    "cache_time_sec": (r"\[cefputfile\]\s+Cache Time\s*=\s*(.+)", None),
-    "expiration_sec": (r"\[cefputfile\]\s+Expiration\s*=\s*(.+)", None),
-    "tx_frames": (r"\[cefputfile\]\s+Tx Frames\s*=\s*(.+)", None),
-    "tx_bytes": (r"\[cefputfile\]\s+Tx Bytes\s*=\s*(.+)", None),
-    "duration_sec": (r"\[cefputfile\]\s+Duration\s*=\s*(.+)", None),
-    "throughput_bps": (r"\[cefputfile\]\s+Throughput\s*=\s*(.+)", None),
-}
+    Missing schema fields are represented as ``None`` so CSV output remains
+    rectangular even when a command log is partial or failed before printing
+    its statistics block.
+    """
+    record: dict[str, Any] = {}
+    record["timestamp"] = _extract_timestamp(text)
+
+    for field in COMMAND_SCHEMAS[command].fields:
+        m = re.search(field.pattern(command), text)
+        if m:
+            raw = m.group(1).strip()
+            if field.kind is FieldKind.TEXT:
+                record[field.name] = raw
+            else:
+                record[field.name] = _parse_numeric(_strip_unit(raw))
+        else:
+            record[field.name] = None
+
+    return record
+
+
+# ---------- cefputfile ----------
 
 
 def parse_cefputfile(text: str) -> dict[str, Any]:
     """Parse a cefputfile log and return a flat dict."""
-    record: dict[str, Any] = {}
-    record["timestamp"] = _extract_timestamp(text)
-
-    for key, (pattern, conv) in _PUT_FIELDS.items():
-        m = re.search(pattern, text)
-        if m:
-            raw = m.group(1).strip()
-            if conv is str:
-                record[key] = raw
-            else:
-                record[key] = _parse_numeric(_strip_unit(raw))
-        else:
-            record[key] = None
+    record = _parse_schema_fields(text, "cefputfile")
 
     fields_present = any(
         v is not None for k, v in record.items() if k not in ("timestamp", "success")
@@ -77,50 +78,14 @@ def parse_cefputfile(text: str) -> dict[str, Any]:
     return record
 
 
-# ---------- cefgetfile ----------
-
-_GET_FIELDS = {
-    "uri": (r"\[cefgetfile\]\s+URI\s*=\s*(.+)", str),
-    "rx_frames_all": (r"\[cefgetfile\]\s+Rx Frames \(All\)\s*=\s*(.+)", None),
-    "rx_frames_content": (
-        r"\[cefgetfile\]\s+Rx Frames \(ContentObject\)\s*=\s*(.+)",
-        None,
-    ),
-    "rx_bytes_all": (r"\[cefgetfile\]\s+Rx Bytes \(All\)\s*=\s*(.+)", None),
-    "rx_bytes_content": (
-        r"\[cefgetfile\]\s+Rx Bytes \(ContentObject\)\s*=\s*(.+)",
-        None,
-    ),
-    "duration_sec": (r"\[cefgetfile\]\s+Duration\s*=\s*(.+)", None),
-    "throughput_bps": (r"\[cefgetfile\]\s+Throughput\s*=\s*(.+)", None),
-    "goodput_bps": (r"\[cefgetfile\]\s+Goodput\s*=\s*(.+)", None),
-    "jitter_ave_us": (r"\[cefgetfile\]\s+Jitter \(Ave\)\s*=\s*(.+)", None),
-    "jitter_max_us": (r"\[cefgetfile\]\s+Jitter \(Max\)\s*=\s*(.+)", None),
-    "jitter_var_us": (r"\[cefgetfile\]\s+Jitter \(Var\)\s*=\s*(.+)", None),
-}
-
-
 def parse_cefgetfile(text: str) -> dict[str, Any]:
     """Parse a cefgetfile log and return a flat dict."""
-    record: dict[str, Any] = {}
-    record["timestamp"] = _extract_timestamp(text)
-
-    for key, (pattern, conv) in _GET_FIELDS.items():
-        m = re.search(pattern, text)
-        if m:
-            raw = m.group(1).strip()
-            if conv is str:
-                record[key] = raw
-            else:
-                record[key] = _parse_numeric(_strip_unit(raw))
-        else:
-            record[key] = None
-
+    record = _parse_schema_fields(text, "cefgetfile")
     record["success"] = from_log("cefgetfile", text).success
     return record
 
 
-# ---------- generic cefpubfile / cefsubfile ----------
+# ---------- cefpubfile / cefsubfile ----------
 
 _RE_GENERIC_KV = re.compile(
     r"\[(cef(?:pub|sub)file)\]\s+([A-Za-z][A-Za-z0-9 ()]+?)\s*=\s*(.+)"
@@ -133,34 +98,37 @@ def _normalise_key(raw: str) -> str:
 
 
 def parse_cefpubfile(text: str) -> dict[str, Any]:
-    """Parse a cefpubfile log dynamically."""
-    return _parse_generic(text, "cefpubfile")
+    """Parse a cefpubfile log and preserve schema-unknown fields."""
+    return _parse_pubsub(text, "cefpubfile")
 
 
 def parse_cefsubfile(text: str) -> dict[str, Any]:
-    """Parse a cefsubfile log dynamically."""
-    return _parse_generic(text, "cefsubfile")
+    """Parse a cefsubfile log and preserve schema-unknown fields."""
+    return _parse_pubsub(text, "cefsubfile")
 
 
-def _parse_generic(text: str, command: str) -> dict[str, Any]:
-    record: dict[str, Any] = {}
-    record["timestamp"] = _extract_timestamp(text)
-
-    uri_m = re.search(rf"\[{command}\]\s+URI\s*=\s*(.+)", text)
-    record["uri"] = uri_m.group(1).strip() if uri_m else None
+def _parse_pubsub(text: str, command: str) -> dict[str, Any]:
+    record = _parse_schema_fields(text, command)
+    known_labels = {field.log_label for field in COMMAND_SCHEMAS[command].fields}
 
     for m in _RE_GENERIC_KV.finditer(text):
         if m.group(1) != command:
             continue
-        key = _normalise_key(m.group(2))
-        if key == "uri":
+        raw_label = m.group(2)
+        if raw_label in known_labels:
             continue
+        key = _normalise_key(raw_label)
         raw = m.group(3).strip()
         stripped = _strip_unit(raw)
         try:
             record[key] = _parse_numeric(stripped)
         except ValueError:
             record[key] = raw
+        print(
+            f"warning: {command}: unknown log field '{raw_label}' "
+            "(add to src/log/schema.py)",
+            file=sys.stderr,
+        )
 
     record["success"] = from_log(command, text).success
     return record
