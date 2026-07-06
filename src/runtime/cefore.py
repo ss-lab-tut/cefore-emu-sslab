@@ -12,25 +12,7 @@ from .cef_argv import (
     build_cefsubfile_argv,
 )
 from .command_runner import MininetCommandRunner
-
-
-def read_port_num(node_dir, default=9695):
-    """Read PORT_NUM from cefnetd.conf."""
-    conf_path = os.path.join(node_dir, "cefnetd.conf")
-    if not os.path.isfile(conf_path):
-        return default
-    with open(conf_path, "r", encoding="utf-8") as conf_file:
-        for line in conf_file:
-            stripped = line.strip()
-            if not stripped or stripped.startswith("#"):
-                continue
-            if stripped.startswith("PORT_NUM="):
-                value = stripped.split("=", 1)[1].strip().split()[0]
-                try:
-                    return int(value)
-                except ValueError:
-                    break
-    return default
+from .cefore_conf import read_port_num
 
 
 def cleanup_cefnetd_socket(node_dir, idx):
