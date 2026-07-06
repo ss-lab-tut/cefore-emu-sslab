@@ -607,7 +607,7 @@ def fig_m5a_pubdown(jobs: dict[str, Job], analysis_dir: Path, out_dir: Path) -> 
                 color=TEXT_PRIMARY,
             )
     ax.set_xticks(list(x))
-    ax.set_xticklabels(["Cache" if b == "cache" else "No cache" for b in buckets])
+    ax.set_xticklabels(["csmgrd x3 (k_centers)" if b == "cache" else "csmgrd x1 (minimum)" for b in buckets])  # 2026-07-07: local CS confound -> honest labels
     ax.set_ylim(0, 1.2)
     ax.set_ylabel("Get eval success rate")
     ax.set_title("M5a: get success while the publisher is up vs down")

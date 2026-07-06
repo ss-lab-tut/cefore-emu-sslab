@@ -58,3 +58,11 @@ sub(h5)→pub(h0) hop 距離 vs pubsub 成否: **hop=1: 5/5 OK / hop=2: 5/7 OK /
 → 「pubsub Trigger 到達性は hop 距離で急減、3 hop で全滅」。seed 制御 + オフライン
 fingerprint により 20 topology の相関分析が root 権限なしで即完了 — エミュレータの
 分析力の実証例としてレポートに載せる。(cefnetd は FwdStr:flooding、k=2 ECMP)
+
+## M5a 結果 (08:25) — 読み替えあり
+- cache(k_centers×3): pub-DOWN中 82/96 (85%) / UP中 290/294 (99%)
+- nocache(最小1node):  pub-DOWN中 149/156 (96%) / UP中 233/234 (100%)
+- **ヘッドライン**: publisher down 中でも get 85〜96% 成功 (自動 down/up は本家に無い機能)
+- **caveat**: cefnetd local CS (capacity 32768) が全ホストで有効なため、csmgrd 配置
+  (cache/nocache) の対比は交絡して分離不能。アーム間の pubdown 母数差 (96 vs 156) は
+  down window タイミングのドリフト。レポートに正直に記載
