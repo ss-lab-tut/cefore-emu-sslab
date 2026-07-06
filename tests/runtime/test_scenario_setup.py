@@ -8,20 +8,28 @@ behavior-preserving extraction slice proved by /cefore-run-tests smoke
 that those variations carried no real semantic load.
 """
 
+import random
+import sys
 from pathlib import Path
+from types import ModuleType
 from unittest.mock import patch, MagicMock
 
 import pytest
 
-from src.runtime.cache_strategy import CacheContext, KCentersStrategy
+from src.core.roles import PUBLISHER, assign_roles
+from src.runtime.cache_strategy import CacheContext
 from src.runtime.scenario_setup import (
+    MeshBuildSpec,
     ScenarioSetupSpec,
     SetupResult,
     TeardownResult,
     TeardownSpec,
+    build_mesh_scenario,
+    create_tclink_mininet,
     setup_scenario,
     teardown_scenario,
 )
+from src.runtime.topo import MeshTopo
 
 
 class _FakeCacheStrategy:
@@ -53,8 +61,12 @@ def patched_seam():
             calls.append(name)
             if name == "build_fleet":
                 fleet = MagicMock(name="daemon_fleet")
-                fleet.start_all.side_effect = lambda *a, **k: calls.append("fleet.start_all")
-                fleet.wait_ready.side_effect = lambda *a, **k: calls.append("fleet.wait_ready")
+                fleet.start_all.side_effect = lambda *a, **k: calls.append(
+                    "fleet.start_all"
+                )
+                fleet.wait_ready.side_effect = lambda *a, **k: calls.append(
+                    "fleet.wait_ready"
+                )
                 return fleet
             if name == "apply_fib":
                 return [("route", "stub")]
@@ -93,7 +105,10 @@ def patched_seam():
         mocks[name] = m
         if name == "MininetCommandRunner":
             m.return_value = runner_instance
-            m.side_effect = lambda *a, **k: (calls.append("MininetCommandRunner"), runner_instance)[1]
+            m.side_effect = lambda *a, **k: (
+                calls.append("MininetCommandRunner"),
+                runner_instance,
+            )[1]
         else:
             m.side_effect = record(name)
 
@@ -112,6 +127,7 @@ def patched_seam():
 
 
 # -- canonical order ---------------------------------------------------------
+
 
 def test_seam_walks_canonical_setup_order(patched_seam):
     calls, mocks, _ = patched_seam
@@ -144,7 +160,9 @@ def test_seam_walks_canonical_setup_order(patched_seam):
         "apply_ip_addr",
         "setup_bridges",
         "MininetCommandRunner",
-        "runner.run(h0)", "runner.run(h1)", "runner.run(h2)",
+        "runner.run(h0)",
+        "runner.run(h1)",
+        "runner.run(h2)",
         "parse_bw_args",
         "set_link_bandwidth",
         "parse_ext_args",
@@ -190,6 +208,7 @@ def test_seam_with_empty_bw_ext_still_calls_parsers(patched_seam):
 
 
 # -- defaults & flow-back ----------------------------------------------------
+
 
 def test_setup_scenario_skips_bridges_when_no_configs(patched_seam):
     calls, _, _ = patched_seam
@@ -248,7 +267,9 @@ def test_fleet_options_forwarded_to_build_fleet(patched_seam):
     args, _ = bf.call_args
     assert {1} == set(args[2])
 
+
 # -- teardown seam ----------------------------------------------------------
+
 
 def test_teardown_uses_supplied_daemon_fleet_without_building():
     fleet = MagicMock(name="daemon_fleet")
@@ -420,3 +441,138 @@ def test_teardown_all_success_returns_empty_result():
 
     assert result == TeardownResult(failures=[])
 
+
+# -- mesh construction seam -------------------------------------------------
+
+
+def _mesh_spec(seed: int | None = 42, **overrides) -> MeshBuildSpec:
+    values = {
+        "host_count": 3,
+        "switch_limit": 3,
+        "node_per_switch": 2,
+        "host_degree_min": 1,
+        "host_degree_max": 2,
+        "switch_use_all": False,
+        "rng": random.Random(seed) if seed is not None else None,
+        "publisher_ids": frozenset(),
+    }
+    values.update(overrides)
+    return MeshBuildSpec(**values)
+
+
+def test_build_mesh_scenario_same_seed_repeats_roles_and_links(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+
+    first = build_mesh_scenario(_mesh_spec(seed=123))
+    second = build_mesh_scenario(_mesh_spec(seed=123))
+
+    assert first.roles == second.roles
+    assert first.topo.mesh_links == second.topo.mesh_links
+
+
+def test_build_mesh_scenario_matches_inline_shared_rng_sequence(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+
+    seed = 77
+    spec = _mesh_spec(seed=seed)
+    expected_rng = random.Random(seed)
+    expected_roles = assign_roles(spec.host_count, expected_rng, spec.publisher_ids)
+    expected_topo = MeshTopo(
+        hosts=spec.host_count,
+        swhich_num=spec.switch_limit,
+        rng=expected_rng,
+        node_per_switch=spec.node_per_switch,
+        host_degree_min=spec.host_degree_min,
+        host_degree_max=spec.host_degree_max,
+        switch_use_all=spec.switch_use_all,
+    )
+
+    result = build_mesh_scenario(spec)
+
+    assert result.roles == expected_roles
+    assert result.topo.mesh_links == expected_topo.mesh_links
+
+
+def test_build_mesh_scenario_honors_explicit_publisher_ids(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+
+    result = build_mesh_scenario(_mesh_spec(seed=5, publisher_ids=frozenset({1})))
+
+    assert result.roles[1] is PUBLISHER
+
+
+def test_build_mesh_scenario_empty_publishers_match_assign_roles_none(
+    tmp_path, monkeypatch
+):
+    monkeypatch.chdir(tmp_path)
+
+    seed = 17
+    expected_roles = assign_roles(3, random.Random(seed), publishers=None)
+
+    result = build_mesh_scenario(_mesh_spec(seed=seed, publisher_ids=frozenset()))
+
+    assert result.roles == expected_roles
+
+
+def test_build_mesh_scenario_accepts_missing_rng(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+
+    result = build_mesh_scenario(_mesh_spec(seed=None))
+
+    assert set(result.roles) == {0, 1, 2}
+    assert result.topo.mesh_links
+
+
+def test_build_mesh_scenario_provisions_node_dirs_from_roles(monkeypatch):
+    calls = []
+    node_dirs = [Path("h0"), Path("h1"), Path("h2")]
+
+    def fake_provision(roles):
+        calls.append(roles)
+        return node_dirs
+
+    monkeypatch.setattr(
+        "src.runtime.scenario_setup.provision_node_dirs", fake_provision
+    )
+
+    result = build_mesh_scenario(_mesh_spec(seed=9))
+
+    assert calls == [result.roles]
+    assert result.node_dirs is node_dirs
+
+
+def test_create_tclink_mininet_uses_lazy_mininet_import(monkeypatch):
+    mininet_pkg = ModuleType("mininet")
+    mininet_net = ModuleType("mininet.net")
+    mininet_link = ModuleType("mininet.link")
+    mininet_pkg.net = mininet_net
+    mininet_pkg.link = mininet_link
+
+    class FakeTCLink:
+        pass
+
+    class FakeMininet:
+        calls = []
+
+        def __init__(self, **kwargs):
+            self.kwargs = kwargs
+            self.calls.append(kwargs)
+
+    mininet_net.Mininet = FakeMininet
+    mininet_link.TCLink = FakeTCLink
+    monkeypatch.setitem(sys.modules, "mininet", mininet_pkg)
+    monkeypatch.setitem(sys.modules, "mininet.net", mininet_net)
+    monkeypatch.setitem(sys.modules, "mininet.link", mininet_link)
+
+    topo = MagicMock(name="topo")
+    result = create_tclink_mininet(topo, autoSetMacs=True)
+
+    assert isinstance(result, FakeMininet)
+    assert FakeMininet.calls == [
+        {
+            "topo": topo,
+            "link": FakeTCLink,
+            "waitConnected": True,
+            "autoSetMacs": True,
+        }
+    ]

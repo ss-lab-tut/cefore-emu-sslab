@@ -19,10 +19,12 @@ behavior-preserving extraction, then verified harmless by /cefore-run-tests
 smoke 12/12, then removed.
 """
 
+import random
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from ..core.roles import NodeRole, assign_roles
 from mininet.log import info
 
 from .bandwidth import parse_bw_args, set_link_bandwidth
@@ -37,6 +39,8 @@ from .cefore import run_cefstatus_all
 from .command_runner import MininetCommandRunner
 from .daemon_fleet import build_fleet, DaemonFleet
 from .net_config import apply_fib, apply_ip_addr
+from .template import provision_node_dirs
+from .topo import MeshTopo
 from .viz import build_host_graph, print_mesh_links, render_topology_png
 
 
@@ -112,6 +116,65 @@ class TeardownResult:
     """Failures collected from independent teardown stages."""
 
     failures: list[tuple[str, BaseException]]
+
+
+@dataclass(frozen=True)
+class MeshBuildSpec:
+    """Inputs for the shared roles -> templates -> MeshTopo construction seam.
+
+    The seam exists to preserve one RNG stream across role assignment and mesh
+    topology construction. Splitting those random decisions would keep tests
+    green locally while changing seeded experiment topology in scenarios.
+    """
+
+    host_count: int
+    switch_limit: int
+    node_per_switch: int = 2
+    host_degree_min: int = 1
+    host_degree_max: int = 2
+    switch_use_all: bool = False
+    rng: random.Random | None = None
+    publisher_ids: frozenset[int] = frozenset()
+
+
+@dataclass
+class MeshBuildResult:
+    """Artifacts that scenarios currently assign to their instance state."""
+
+    roles: dict[int, NodeRole]
+    node_dirs: list[Path]
+    topo: MeshTopo
+
+
+def build_mesh_scenario(spec: MeshBuildSpec) -> MeshBuildResult:
+    """Build roles, template directories, and MeshTopo in the legacy order."""
+    rng = spec.rng or random.Random()
+    roles = assign_roles(spec.host_count, rng, spec.publisher_ids)
+    node_dirs = provision_node_dirs(roles)
+    topo = MeshTopo(
+        hosts=spec.host_count,
+        # MeshTopo's historical kwarg is misspelled; the new seam exposes its
+        # actual meaning: an upper bound on the emergent switch count.
+        swhich_num=spec.switch_limit,
+        rng=rng,
+        node_per_switch=spec.node_per_switch,
+        host_degree_min=spec.host_degree_min,
+        host_degree_max=spec.host_degree_max,
+        switch_use_all=spec.switch_use_all,
+    )
+    return MeshBuildResult(roles=roles, node_dirs=node_dirs, topo=topo)
+
+
+def create_tclink_mininet(topo, **kwargs):
+    """Create a Mininet with TCLink without importing Mininet at module import.
+
+    The lazy import keeps non-root unit tests and pure setup helpers from
+    paying Mininet's import cost until a scenario is actually creating a net.
+    """
+    from mininet.link import TCLink
+    from mininet.net import Mininet
+
+    return Mininet(topo=topo, link=TCLink, waitConnected=True, **kwargs)
 
 
 def teardown_scenario(net, spec: TeardownSpec) -> TeardownResult:
