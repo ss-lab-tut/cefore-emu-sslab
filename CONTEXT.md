@@ -39,6 +39,10 @@ The single seam through which the Cefore daemons (csmgrd + cefnetd) of one exper
 Constructed through `build_fleet(net, host_num, csmgrd_host_ids, run_dir, *, cefnetd_timeout, readiness_policy)` (same module): the single place that derives node names, the `csmgrd_nodes` set, and `log_dir`. Every scenario's `configure` and its `teardown` fallback go through it, so the fallback no longer drops `csmgrd_nodes`. A constructor for the seam above, not a separate seam.
 _Avoid_: daemon loops, start/stop loops, started_csmgrd_hosts, inline fleet construction
 
+**Daemon log collection**:
+Real cefnetd/csmgrd binaries write their operational log to `/tmp/<proc>_<port>_<sockid>.log` (proven against upstream `cef_log.c:204`), never to the `hN-*-log` names older docs mentioned. `src/runtime/daemon_logs.py` — a Mininet-free helper module — copies those files into `run_dir` between `collect_debug_post_teardown` and `cleanup_all` (mn_cleanup deletes `/tmp/*.log`, so the window is fixed). `BaseScenario.daemon_log_collection_enabled` is decided in each scenario's `__init__` before `run_dir.resolve()`, so `run_dir is None or Path(".")` disables collection while an explicit output_dir enables it — this survives Disaster/Connect's absolute-path normalization. `daemon_log_collection_scope() -> list[HostLogScope]` per scenario supplies the (idx, node_dir, has_csmgrd) triples from its own knowledge (`cache_node_set` / `roles` / `_csmgrd_host_ids()`), not from `args.hosts`. Stale-log defence: `start_cefnetd`/`start_csmgrd` each call the daemon-specific `cleanup_stale_*_log` helper so a stale `/tmp` log from a crashed prior run cannot be prepended into the next collection (proven 2026-07-07: 74-byte stale marker did not appear in collected output). `csmgrd.conf` templates set `CEF_LOG_LEVEL=2`, otherwise csmgrd's log stays 0 bytes.
+_Avoid_: inline `/tmp/cefnetd_*.log` handling, hN-*-log naming, opt-in debug-artifact daemon_logs (removed — was a no-op), scope hooks reading `args.hosts` instead of scenario-owned state
+
 ## Cache placement
 
 **CachePlacement**:
