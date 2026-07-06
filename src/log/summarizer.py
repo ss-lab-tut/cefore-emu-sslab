@@ -9,6 +9,7 @@ from typing import Any
 
 from ..core.artifacts import parse_content_log_name
 from .parser import PARSERS
+from .schema import COMMAND_SCHEMAS
 
 # Metadata columns from meta.json
 META_KEYS = (
@@ -35,41 +36,8 @@ FILENAME_KEYS = (
     "publisher_down",
 )
 
-# Command-specific ordered columns
-_PUTFILE_COLS = (
-    "timestamp",
-    "uri",
-    "file",
-    "rate_mbps",
-    "block_size_bytes",
-    "cache_time_sec",
-    "expiration_sec",
-    "tx_frames",
-    "tx_bytes",
-    "duration_sec",
-    "throughput_bps",
-    "success",
-)
-
-_GETFILE_COLS = (
-    "timestamp",
-    "uri",
-    "rx_frames_all",
-    "rx_frames_content",
-    "rx_bytes_all",
-    "rx_bytes_content",
-    "duration_sec",
-    "throughput_bps",
-    "goodput_bps",
-    "jitter_ave_us",
-    "jitter_max_us",
-    "jitter_var_us",
-    "success",
-)
-
 COMMAND_COLS: dict[str, tuple[str, ...]] = {
-    "cefputfile": _PUTFILE_COLS,
-    "cefgetfile": _GETFILE_COLS,
+    command: schema.csv_columns for command, schema in COMMAND_SCHEMAS.items()
 }
 
 
@@ -191,14 +159,16 @@ def _build_fieldnames(command: str, records: list[dict[str, Any]]) -> list[str]:
 
     if command in COMMAND_COLS:
         fields.extend(COMMAND_COLS[command])
-    else:
-        # Dynamic: collect all keys from records
-        seen: set[str] = set(fields)
-        for rec in records:
-            for k in rec:
-                if k not in seen:
-                    fields.append(k)
-                    seen.add(k)
+
+    # Schema-unknown parser fallback fields are intentionally preserved.  This
+    # keeps new Cefore log labels visible in CSV while the warning points the
+    # maintainer at src/log/schema.py for the stable column decision.
+    seen: set[str] = set(fields)
+    for rec in records:
+        for k in rec:
+            if k not in seen:
+                fields.append(k)
+                seen.add(k)
 
     return fields
 

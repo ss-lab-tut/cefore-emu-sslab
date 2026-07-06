@@ -223,11 +223,20 @@ def test_build_fieldnames_putfile():
     assert "throughput_bps" in fields
 
 
-def test_build_fieldnames_dynamic():
+def test_build_fieldnames_pubfile_uses_schema_columns_and_keeps_unknowns():
     records = [{"custom_key": 1, "another": 2}]
     fields = _build_fieldnames("cefpubfile", records)
+    assert "rate_mbps" in fields
+    assert "block_size_bytes" in fields
     assert "custom_key" in fields
     assert "another" in fields
+
+
+def test_build_fieldnames_subfile_uses_schema_columns():
+    fields = _build_fieldnames("cefsubfile", [])
+    assert "throughput_bps" in fields
+    assert "goodput_bps" in fields
+    assert "jitter_ave_us" in fields
 
 
 # ── write_csv ──
