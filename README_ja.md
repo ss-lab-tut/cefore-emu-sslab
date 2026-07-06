@@ -217,11 +217,15 @@ logs/ex{num}_seed{seed}/
 ├── script.log              # スクリプト実行ログ
 ├── topology.png            # トポロジ図
 ├── meta.json               # 設定スナップショット
+├── cefnetd_<port>_<sockid>.log  # /tmp から収集された cefnetd ログ
+├── csmgrd_<port>_<sockid>.log   # /tmp から収集された csmgrd ログ
 ├── cefputfile_*.log        # cefputfile ログ
 ├── cefgetfile_*.log        # cefgetfile ログ
 ├── recvfile_*              # 受信ファイル
 └── results.json            # 取得結果（--results-json 使用時）
 ```
+
+`run_dir` 未指定（カレントディレクトリ実行）の場合、daemon ログは収集されません。
 
 ```bash
 # ログディレクトリ出力を有効化

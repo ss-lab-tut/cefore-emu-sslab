@@ -42,7 +42,9 @@ class TestCmdLinearForwarding:
         args = parser.parse_args(["--hosts", "7"])
 
         with (
-            patch("src.cli.main.resolve_run_dir", return_value=tmp_path) as mock_resolve,
+            patch(
+                "src.cli.main.resolve_run_dir", return_value=tmp_path
+            ) as mock_resolve,
             patch("src.scenarios.linear.run_linear_scenario") as mock_run,
             patch("src.cli.main.setLogLevel") as mock_set_log_level,
         ):
@@ -69,7 +71,6 @@ class TestCmdLinearForwarding:
         assert kwargs["debug_config"].enabled() is True
         assert kwargs["debug_config"].node_dirs is True
         assert kwargs["debug_config"].fib_dump is True
-        assert kwargs["debug_config"].daemon_logs is True
 
 
 class TestCmdMeshForwarding:
@@ -104,7 +105,9 @@ class TestCmdMeshForwarding:
         )
 
         with (
-            patch("src.cli.main.resolve_run_dir", return_value=tmp_path) as mock_resolve,
+            patch(
+                "src.cli.main.resolve_run_dir", return_value=tmp_path
+            ) as mock_resolve,
             patch("src.scenarios.mesh.run_mesh_scenario") as mock_run,
             patch("src.cli.main.setLogLevel") as mock_set_log_level,
         ):
@@ -174,7 +177,9 @@ class TestMainDispatch:
         assert called_args.hosts == 9
         assert called_args.switches == 4
 
-    def test_dispatches_disaster_subcommand_with_parsed_args(self, monkeypatch, tmp_path):
+    def test_dispatches_disaster_subcommand_with_parsed_args(
+        self, monkeypatch, tmp_path
+    ):
         config_path = tmp_path / "config.yaml"
         config_path.write_text("hosts: 3\nswitches: 4\nseed: 1\n")
         monkeypatch.setattr(

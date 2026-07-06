@@ -39,13 +39,3 @@ def dump_fib(net, host_ids: list[int], dest_dir: Path) -> None:
         node_name = f"h{idx}"
         output = runner.run(node_name, ["cefstatus", "-d", f"./{node_name}"]).stdout
         (dest_dir / f"fib_{node_name}.txt").write_text(output, encoding="utf-8")
-
-
-def archive_daemon_logs(host_count: int, dest_dir: Path) -> None:
-    """Copy cefnetd / csmgrd log files to dest_dir/."""
-    dest_dir.mkdir(parents=True, exist_ok=True)
-    for idx in range(host_count):
-        for suffix in ("cefnetd-log", "csmgrd-log"):
-            src = Path(f"h{idx}-{suffix}")
-            if src.exists():
-                shutil.copy2(src, dest_dir / src.name)

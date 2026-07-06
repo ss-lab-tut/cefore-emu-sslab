@@ -85,19 +85,6 @@ def test_fib_debug_collection_uses_connect_host_count(tmp_path):
     )
 
 
-def test_daemon_log_debug_collection_uses_connect_host_count(tmp_path):
-    scenario = _make_scenario(tmp_path)
-    scenario.debug_config = DebugConfig(daemon_logs=True, output_subdir="debug-out")
-
-    with patch("src.runtime.debug.archive_daemon_logs") as archive_daemon_logs:
-        scenario.collect_debug_post_teardown()
-
-    archive_daemon_logs.assert_called_once_with(
-        3,
-        tmp_path / "debug-out" / "daemon_logs",
-    )
-
-
 def test_run_experiment_without_events_is_noop(tmp_path):
     scenario = _make_scenario(tmp_path)
     with patch("src.scenarios.connect.run_event_batch") as run_batch:

@@ -276,7 +276,7 @@ publisher_host: 4                  # パブリッシャーホスト (publisher-d
 # -----------------------------------------------------------------------------
 # debug: false                     # true/dict: デバッグ情報収集
 # debug:
-#   artifacts: [node_dirs, fib_dump, daemon_logs]
+#   artifacts: [node_dirs, fib_dump]
 #   output_subdir: "debug_out"
 
 # -----------------------------------------------------------------------------

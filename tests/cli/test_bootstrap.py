@@ -217,5 +217,4 @@ def test_debug_config_unions_cli_artifacts_with_config_debug_section(tmp_path):
     debug_config = record["debug_config"]
     assert debug_config.node_dirs is True
     assert debug_config.fib_dump is True
-    assert debug_config.daemon_logs is False
     assert debug_config.output_subdir == "cfgdbg"

@@ -78,7 +78,6 @@ def _parse_args(tmp_path: Path, config_text: str, argv: list[str]):
                 "debug": {
                     "node_dirs": False,
                     "fib_dump": False,
-                    "daemon_logs": False,
                     "output_subdir": "debug",
                 },
             },
@@ -130,7 +129,6 @@ def _parse_args(tmp_path: Path, config_text: str, argv: list[str]):
                 "debug": {
                     "node_dirs": False,
                     "fib_dump": False,
-                    "daemon_logs": False,
                     "output_subdir": "debug",
                 },
             },
@@ -179,7 +177,6 @@ def _parse_args(tmp_path: Path, config_text: str, argv: list[str]):
                 "debug": {
                     "node_dirs": True,
                     "fib_dump": True,
-                    "daemon_logs": False,
                     "output_subdir": "cfgdbg",
                 },
             },
@@ -207,7 +204,6 @@ def _parse_args(tmp_path: Path, config_text: str, argv: list[str]):
                 "debug": {
                     "node_dirs": False,
                     "fib_dump": False,
-                    "daemon_logs": False,
                     "output_subdir": "debug",
                 },
             },
@@ -247,7 +243,6 @@ def test_cmd_disaster_matches_captured_bootstrap_behavior(
         record["debug"] = {
             "node_dirs": debug_config.node_dirs,
             "fib_dump": debug_config.fib_dump,
-            "daemon_logs": debug_config.daemon_logs,
             "output_subdir": debug_config.output_subdir,
         }
         record["run_dir"] = run_dir

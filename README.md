@@ -328,10 +328,10 @@ timestamp, uri, rx_frames_all, rx_frames_content, rx_bytes_all, rx_bytes_content
 
 ## Runtime Artifacts
 
-After running scripts, the following files appear in the working directory (or under `logs/ex{num}_seed{seed}/` when `num` is set):
+After running scripts, the following files appear in the working directory (or under `logs/ex{num}_seed{seed}/` when `num` is set). Daemon logs are collected only when a run directory is explicitly selected; current-directory runs leave the `/tmp` daemon logs uncollected.
 
-- `hN-cefnetd-log` — Forwarding daemon logs for host N
-- `hN-csmgrd-log` — Cache manager logs for router hosts
+- `cefnetd_<port>_<sockid>.log` — Forwarding daemon logs collected from `/tmp`
+- `csmgrd_<port>_<sockid>.log` — Cache manager logs collected from `/tmp`
 - `cefputfile-log` / `cefputfile_*.log` — Publisher operation logs
 - `cefgetfile-log` / `cefgetfile_*.log` — Consumer operation logs
 - `recvfile_at_h0` / `recvfile_at_hN` — Retrieved content files

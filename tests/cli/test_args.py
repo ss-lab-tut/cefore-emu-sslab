@@ -90,6 +90,13 @@ def test_debug_builder_matches_option_specs():
     _assert_parser_matches_blocks(_parser_for(add_debug_args), "debug")
 
 
+def test_debug_artifact_rejects_removed_daemon_log_choice():
+    parser = _parser_for(add_debug_args)
+
+    with pytest.raises(SystemExit):
+        parser.parse_args(["--debug-artifact", "daemon" + "_logs"])
+
+
 def test_linear_parser_shape_matches_option_specs():
     _assert_parser_matches_blocks(
         _parser_for(add_linear_args, add_debug_args), "linear", "debug"

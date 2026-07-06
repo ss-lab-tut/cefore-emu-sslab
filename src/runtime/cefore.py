@@ -2,6 +2,7 @@
 
 import os
 import time
+from pathlib import Path
 
 from mininet.log import info
 
@@ -13,7 +14,18 @@ from .cef_argv import (
 )
 from .command_runner import MininetCommandRunner
 from .cefore_conf import read_port_num
-from .daemon_logs import cleanup_stale_cefnetd_log, cleanup_stale_csmgrd_log
+from .daemon_logs import (
+    HostLogScope,
+    cleanup_stale_cefnetd_log,
+    cleanup_stale_csmgrd_log,
+    tmp_daemon_log_paths,
+)
+
+
+def _expected_daemon_log_path(idx: int, *, has_csmgrd: bool) -> Path:
+    """Return the /tmp daemon log path that the Cefore daemon will open."""
+    paths = tmp_daemon_log_paths(HostLogScope(idx, Path(f"h{idx}"), has_csmgrd))
+    return paths[-1]
 
 
 def cleanup_cefnetd_socket(node_dir, idx):
@@ -51,7 +63,8 @@ def wait_for_cefnetd(net, idx, timeout=10, interval=0.25, runner=None):
         if result.returncode == 0:
             return True
         time.sleep(interval)
-    info(f"{node_name} cefnetd not ready; check {node_name}-cefnetd-log\n")
+    log_path = _expected_daemon_log_path(idx, has_csmgrd=False)
+    info(f"{node_name} cefnetd not ready; check {log_path}\n")
     return False
 
 
@@ -76,7 +89,8 @@ def wait_for_csmgrd(net, idx, timeout=10, interval=0.5, runner=None):
         if result.returncode == 0:
             return True
         time.sleep(interval)
-    info(f"{node_name} csmgrd not ready; check {node_name}-csmgrd-log\n")
+    log_path = _expected_daemon_log_path(idx, has_csmgrd=True)
+    info(f"{node_name} csmgrd not ready; check {log_path}\n")
     return False
 
 
@@ -86,8 +100,7 @@ def start_csmgrd(net, idx, log_dir=None, runner=None):
     Args:
         net: Mininet network instance.
         idx: Host index.
-        log_dir: Directory to write daemon log files (hN-csmgrd-log).
-                 If None, logs go to CWD.
+        log_dir: Command working directory. Cefore writes daemon logs under /tmp.
         runner: Optional CommandRunner (defaults to a Mininet-backed one).
     """
     node_name = f"h{idx}"
@@ -126,8 +139,7 @@ def start_cefnetd(net, idx, log_dir=None, runner=None):
     Args:
         net: Mininet network instance.
         idx: Host index.
-        log_dir: Directory to write daemon log files (hN-cefnetd-log).
-                 If None, logs go to CWD.
+        log_dir: Command working directory. Cefore writes daemon logs under /tmp.
         runner: Optional CommandRunner (defaults to a Mininet-backed one).
     """
     node_name = f"h{idx}"

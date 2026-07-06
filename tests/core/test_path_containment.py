@@ -224,28 +224,6 @@ def test_debug_fib_escape_rejected(tmp_path):
         mock_dump.assert_not_called()
 
 
-def test_debug_daemon_logs_escape_rejected(tmp_path):
-    """DisasterScenario.collect_debug_post_teardown() must reject escape paths."""
-    from src.scenarios.disaster import DisasterScenario
-
-    scenario = DisasterScenario(
-        args=_make_disaster_args(),
-        run_dir=tmp_path,
-        debug_config=DebugConfig(
-            daemon_logs=True,
-            node_dirs=False,
-            output_subdir="../escape",
-        ),
-    )
-
-    # super() returns early because node_dirs=False
-    # Mock archive_daemon_logs to catch the call — but ValueError should prevent it
-    with patch("src.runtime.debug.archive_daemon_logs") as mock_archive:
-        with pytest.raises(ValueError, match="escapes run directory"):
-            scenario.collect_debug_post_teardown()
-        mock_archive.assert_not_called()
-
-
 # ---------------------------------------------------------------------------
 # A4. BaseScenario node_dirs containment
 # ---------------------------------------------------------------------------

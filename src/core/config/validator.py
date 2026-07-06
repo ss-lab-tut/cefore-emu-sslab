@@ -465,9 +465,12 @@ OPTION_SPECS = {
         config_allowed=False,
         flag="--debug-artifact",
         action="append",
-        choices=("node_dirs", "fib_dump", "daemon_logs"),
+        choices=("node_dirs", "fib_dump"),
         metavar="ARTIFACT",
-        help="collect a specific debug artifact (repeatable): node_dirs, fib_dump, daemon_logs",
+        help=(
+            "collect a specific debug artifact (repeatable): node_dirs, fib_dump; "
+            "daemon logs are collected automatically when run_dir is specified"
+        ),
         block=("debug",),
         cli_order=20,
     ),
@@ -1231,7 +1234,7 @@ def validate_config(config: dict[str, Any]) -> list[str]:
             if not isinstance(artifacts, list):
                 errors.append("debug.artifacts must be a list")
             else:
-                _valid_artifacts = {"node_dirs", "fib_dump", "daemon_logs"}
+                _valid_artifacts = {"node_dirs", "fib_dump"}
                 for art in artifacts:
                     if art not in _valid_artifacts:
                         errors.append(

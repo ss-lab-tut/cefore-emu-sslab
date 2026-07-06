@@ -161,21 +161,6 @@ class BaseScenario(ABC):
                 ensure_within_run_dir(run_dir, dest)
                 archive_node_dirs(generated, dest)
 
-        if not debug_config.daemon_logs:
-            return
-        args = getattr(self, "args", None)
-        host_count = getattr(args, "hosts", None)
-        # Scenarios without an args namespace opt out of host-count debug
-        # collectors; this preserves their accepted no-op behavior.
-        if host_count is None:
-            return
-        from ..core.paths import ensure_within_run_dir
-        from ..runtime.debug import archive_daemon_logs
-
-        dest = run_dir / debug_config.output_subdir / "daemon_logs"
-        ensure_within_run_dir(run_dir, dest)
-        archive_daemon_logs(host_count, dest)
-
     def daemon_log_collection_scope(self):
         """Return per-host daemon log collection scopes for this scenario.
 

@@ -31,14 +31,12 @@ class TestBuildDebugConfigCliOnly:
         config = build_debug_config(_args(debug=True))
         assert config.node_dirs is True
         assert config.fib_dump is True
-        assert config.daemon_logs is True
         assert config.enabled() is True
 
     def test_debug_artifact_list_enables_only_named_artifacts(self):
         config = build_debug_config(_args(debug_artifact=["fib_dump"]))
         assert config.fib_dump is True
         assert config.node_dirs is False
-        assert config.daemon_logs is False
 
 
 class TestBuildDebugConfigYamlOnly:
@@ -48,7 +46,6 @@ class TestBuildDebugConfigYamlOnly:
         config = build_debug_config(_args(), raw_debug=True)
         assert config.node_dirs is True
         assert config.fib_dump is True
-        assert config.daemon_logs is True
 
     def test_raw_debug_bare_false_leaves_all_disabled(self):
         config = build_debug_config(_args(), raw_debug=False)
@@ -57,10 +54,9 @@ class TestBuildDebugConfigYamlOnly:
     def test_raw_debug_dict_filters_out_non_string_artifacts(self):
         # Malformed config entries (e.g. from a mistyped YAML list) must be
         # silently dropped rather than raising or being treated as valid names.
-        raw_debug = {"artifacts": ["fib_dump", 123, None, "daemon_logs"]}
+        raw_debug = {"artifacts": ["fib_dump", 123, None, "unknown"]}
         config = build_debug_config(_args(), raw_debug=raw_debug)
         assert config.fib_dump is True
-        assert config.daemon_logs is True
         assert config.node_dirs is False
 
     def test_raw_debug_dict_output_subdir_override(self):
@@ -87,7 +83,6 @@ class TestBuildDebugConfigCliYamlUnion:
         )
         assert config.node_dirs is True
         assert config.fib_dump is True
-        assert config.daemon_logs is False
 
     def test_cli_debug_master_flag_unions_with_yaml_subdir_override(self):
         config = build_debug_config(
@@ -109,4 +104,3 @@ class TestDebugConfigEnabled:
     def test_enabled_true_when_any_single_artifact_on(self):
         assert DebugConfig(node_dirs=True).enabled() is True
         assert DebugConfig(fib_dump=True).enabled() is True
-        assert DebugConfig(daemon_logs=True).enabled() is True
