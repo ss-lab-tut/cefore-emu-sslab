@@ -7,12 +7,12 @@
 # leaving a 50s tail.
 # =============================================================================
 
-hosts: 15
-switches: 48
+hosts: 5
+switches: 8
 seed: 42                # placeholder; overridden by run.py
 k: 2
 host_degree_min: 2
-host_degree_max: 6
+host_degree_max: 3
 
 num: 1                  # placeholder; overridden by run.py
 output_dir: "logs"
@@ -31,6 +31,12 @@ pubsub_sub_startup_grace: 2.0
 # No failure_scenarios / down_interval: healthy-network pub/sub baseline,
 # counterpart to m2_mesh_putget.yaml.
 
+# 2026-07-07 SCALE FIX: 15h/48sw では pubsub が系統的に失敗する (pub が
+# Trigger Interest を受けられず deadline 23s で terminate — m1_repro/m2_disaster
+# の 15-host 実測、隣接 sub でも再現)。5h/8sw (m1_smoke と同形状) では成功する
+# ことが実証済みのため、M2 の pubsub 行はこの規模で計測する。15-host での失敗
+# 自体は「エミュレータが Cefore 本体の pubsub スケール問題を再現性つきで検出」
+# として m2_disaster の結果に残る (CONTEXT.md 参照)。
 events:
   # Round 1: publisher h0, three subscribers wake up before the publish so
   # they are already blocked on cefsubfile when the Trigger Interest lands
@@ -72,13 +78,13 @@ events:
       wait: 20
   - at: 40
     type: pubsub_sub
-    host: 5
+    host: 1
     uri: "ccnx:/m2/pubsub/stream2"
     sub_opts:
       wait: 20
   - at: 40
     type: pubsub_sub
-    host: 6
+    host: 2
     uri: "ccnx:/m2/pubsub/stream2"
     sub_opts:
       wait: 20

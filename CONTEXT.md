@@ -182,3 +182,14 @@ _Avoid_: 到達不能と記録済みの分岐に fake-rng/import-hook で無理�
 **修正すべき点 (2026-07-07 workshop 計測で実測) — down_\* default が「暗黙の flap 有効」**:
 `down_interval`/`down_count`/`down_duration` の OptionSpec default は 30/5/10 で、キー省略の config は**意図せず host flapping が有効**になる（workshop smoke 実測: no-failure のつもりの m1_smoke で `[flap] down h1` が発生し eval get が exit 1、repeat get の 5s 間隔も flap 由来の scheduler 遅延で 1s 連発に崩れた）。「failure なし」の実験 config は down_interval/down_duration/down_count を明示的に 0 にする必要がある。恒久対応は R8候補 (legacy down_\* 廃止) と同時に default を 0/災害系 config での明示必須に変えるのが筋。また関連の罠として、repeat 付き get は同一 host+uri だと content log が同名で上書きされ、失敗した実行のログが後続成功で消える（判定比較は results.json を使うこと）。
 _Avoid_: default 変更を workshop branch でやること（本線の differential gate を通すこと）
+
+**発見 (2026-07-07 workshop 計測) — pubsub が 15-host mesh で系統的に失敗**:
+cefpubfile/cefsubfile ペアは 3〜5 host mesh では成功するが、15h/48sw では pub が
+Trigger Interest を受信できないまま deadline (lifetime+15s) で terminate する
+(exit -15, stdout 0B)。sub が publisher に隣接していても再現 (m2_disaster seed401)。
+同一 seed で 10/10 決定的に再現 (m1_repro seed42)。put/get は同一 topology で全成功
+のため FIB/接続性の問題ではなく、pubsub の Trigger 経路固有。cefnetd は
+FwdStr:flooding で起動している点も関連候補。ワークショップ計測では pubsub 行を
+5-host に縮小して測定し、15-host の失敗は「エミュレータによる再現性つき問題検出」
+として報告する。恒久対応は Cefore 側 pubsub の hop/スケール挙動の調査が必要。
+_Avoid_: 実験 config の pubsub を無検証で 10+ hosts に置くこと
