@@ -1,7 +1,6 @@
 """Tests for the command-owned log record schema."""
 
-import re
-
+from src.log.parser import PARSERS
 from src.log.schema import COMMAND_SCHEMAS, FieldKind
 
 
@@ -11,13 +10,12 @@ def test_schema_field_names_are_unique_per_command():
         assert len(names) == len(set(names))
 
 
-def test_schema_regex_round_trips_log_labels_to_canonical_names():
+def test_schema_log_labels_round_trip_through_public_parsers():
     for command, schema in COMMAND_SCHEMAS.items():
         for field in schema.fields:
-            line = f"[{command}] {field.log_label} = 123"
-            match = re.search(field.pattern(command), line)
-            assert match is not None
-            assert {field.name: match.group(1)} == {field.name: "123"}
+            line = f"[{command}] {field.log_label} = 123\n"
+            record = PARSERS[command](line)
+            assert record[field.name] == ("123" if field.kind is FieldKind.TEXT else 123)
 
 
 def test_put_schema_preserves_existing_parser_field_order():
@@ -32,6 +30,17 @@ def test_put_schema_preserves_existing_parser_field_order():
         "tx_bytes",
         "duration_sec",
         "throughput_bps",
+    )
+
+
+def test_pub_schema_preserves_canonical_field_order():
+    assert COMMAND_SCHEMAS["cefpubfile"].field_names == (
+        "uri",
+        "file",
+        "rate_mbps",
+        "block_size_bytes",
+        "cache_time_sec",
+        "expiration_sec",
     )
 
 
