@@ -182,9 +182,9 @@ class TestPlotCefpubfile:
 
     def test_happy_path_writes_png_and_pdf(self, tmp_path):
         records = [
-            {"uri": "ccnx:/video/a", "rate": "10", "success": "true"},
-            {"uri": "ccnx:/video/a", "rate": "20", "success": "false"},
-            {"uri": "ccnx:/test/b", "rate": "5", "success": "true"},
+            {"uri": "ccnx:/video/a", "rate_mbps": "10", "success": "true"},
+            {"uri": "ccnx:/video/a", "rate_mbps": "20", "success": "false"},
+            {"uri": "ccnx:/test/b", "rate_mbps": "5", "success": "true"},
         ]
         paths = plot_cefpubfile(records, tmp_path)
         _assert_saved(paths)
@@ -193,6 +193,25 @@ class TestPlotCefpubfile:
 
     def test_empty_records_returns_no_paths(self, tmp_path):
         assert plot_cefpubfile([], tmp_path) == []
+
+    def test_reads_rate_from_canonical_schema_key(self, tmp_path, monkeypatch):
+        import src.log.plotter as plotter_module
+
+        observed_rate_heights: list[float] = []
+
+        def capture_rates(fig, output_dir, name):
+            observed_rate_heights.extend(
+                patch.get_height() for patch in fig.axes[0].patches
+            )
+            return []
+
+        monkeypatch.setattr(plotter_module, "_save_fig", capture_rates)
+        plotter_module.plot_cefpubfile(
+            [{"uri": "ccnx:/video/a", "rate_mbps": "15", "success": "true"}],
+            tmp_path,
+        )
+
+        assert observed_rate_heights == [15.0]
 
 
 # ===========================================================================
@@ -365,7 +384,7 @@ class TestPlotCefgetfile:
 
 
 class TestPlotCefsubfile:
-    """plot_cefsubfile: same 4-chart shape as cefgetfile, generic key aliases."""
+    """plot_cefsubfile: same 4-chart shape as cefgetfile."""
 
     def test_happy_path_writes_all_four_charts(self, tmp_path):
         records = [
@@ -373,11 +392,9 @@ class TestPlotCefsubfile:
                 "uri": "ccnx:/emergency/a",
                 "cycle": "0",
                 "success": "true",
-                # Generic sub/pub parser normalises "Throughput" -> "throughput"
-                # (no _bps suffix); metric_keys tries both aliases.
-                "throughput": "1000000",
-                "goodput": "900000",
-                "jitter_ave": "150",
+                "throughput_bps": "1000000",
+                "goodput_bps": "900000",
+                "jitter_ave_us": "150",
             },
         ]
         paths = plot_cefsubfile(records, tmp_path)
