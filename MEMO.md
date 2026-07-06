@@ -38,3 +38,23 @@ Plan: ~/.claude/plans/icn-plan-plan-goal-vectorized-sloth.md
 - [ ] M1 30 jobs 完了時 (~05:30 見込): 3層検証を即実行 (fingerprint 一致 / 射影一致 / CV)
 - [ ] m5a 完了時: eval_pubdown_total > 0 gate + cache/nocache 対比確認
 - [ ] ~06:30: 部分データで一次 report.html 生成 → campaign 完了後に最終版 + コミット
+
+## M1 同一seed 10本 検証結果 (04:45)
+- (a) 構造: runtime adjacency matrix 10/10 一致 (オフライン fingerprint 不変とも整合)
+- (b) 判定: 射影 (op_type,host,uri,success) 10/10 一致。pubsub 2 op の失敗まで決定的
+- (c) 性能: eval get throughput CV 14.6〜18.6% (h1:60.8 / h2:82.8 / h3:7.8 / h4:27.5 Mbps)
+- **発見: pubsub は 15-host で系統的失敗** (5-host では成功)。M1 config は不変のまま
+  維持 (比較均質性優先)。m2_mesh_pubsub は 5-host へ縮小済み。CONTEXT.md 記録済み
+
+## M1 異seed 20本 検証結果 (05:40) — Phase 1 完了
+- 多様性: runtime adjacency 20/20 全相異 (オフライン fingerprint 21/21 相異と整合)
+- put/get: 20 topology 全部で 8/8 成功
+- **pubsub の失敗は topology 依存と判明**: 20 seed 中 9 成功 / 11 失敗 (+seed42 失敗)。
+  スケールそのものではなく sub(h5)→pub(h0) の経路/hop 距離依存の可能性が高い。
+  失敗 seed でも同一 seed 内では決定的 (M1 の決定性主張はそのまま成立)
+
+## pubsub × hop 距離の相関 (05:45, M1 の 20 topology から)
+sub(h5)→pub(h0) hop 距離 vs pubsub 成否: **hop=1: 5/5 OK / hop=2: 5/7 OK / hop=3: 0/8 FAIL**
+→ 「pubsub Trigger 到達性は hop 距離で急減、3 hop で全滅」。seed 制御 + オフライン
+fingerprint により 20 topology の相関分析が root 権限なしで即完了 — エミュレータの
+分析力の実証例としてレポートに載せる。(cefnetd は FwdStr:flooding、k=2 ECMP)

@@ -189,7 +189,7 @@ Trigger Interest を受信できないまま deadline (lifetime+15s) で termina
 (exit -15, stdout 0B)。sub が publisher に隣接していても再現 (m2_disaster seed401)。
 同一 seed で 10/10 決定的に再現 (m1_repro seed42)。put/get は同一 topology で全成功
 のため FIB/接続性の問題ではなく、pubsub の Trigger 経路固有。cefnetd は
-FwdStr:flooding で起動している点も関連候補。ワークショップ計測では pubsub 行を
+FwdStr:flooding で起動している点も関連候補。hop距離相関 (M1 20-topology 分析): hop=1で5/5成功, hop=2で5/7, hop=3で0/8 — 距離依存を定量確認。ワークショップ計測では pubsub 行を
 5-host に縮小して測定し、15-host の失敗は「エミュレータによる再現性つき問題検出」
 として報告する。恒久対応は Cefore 側 pubsub の hop/スケール挙動の調査が必要。
 _Avoid_: 実験 config の pubsub を無検証で 10+ hosts に置くこと
