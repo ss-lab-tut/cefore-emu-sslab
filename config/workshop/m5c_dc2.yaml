@@ -1,0 +1,50 @@
+# =============================================================================
+# M5c: failure-intensity sweep, dc2 variant (down_count: 2).
+# Usage: sudo .venv/bin/python3 -m src disaster --config config/workshop/m5c_dc2.yaml --no-cli
+# Driven by tools/autotest/run.py (overrides seed/num); values below are placeholders.
+#
+# Sibling files m5c_dc2/dc3/dc4.yaml are byte-identical to this one except
+# for the `down_count` value -- keep any edits here mirrored there so the
+# sweep stays a clean single-variable comparison.
+#
+# Intended wall-clock duration: 150s. Last scheduled get repeat fires at
+# t=130, leaving a 20s tail.
+# =============================================================================
+
+hosts: 15
+switches: 48
+seed: 42                # placeholder; overridden by run.py
+k: 2
+host_degree_min: 2
+host_degree_max: 6
+
+num: 1                  # placeholder; overridden by run.py
+output_dir: "logs"
+no_cli: true
+duration: 150
+results_json: "results.json"
+
+# Legacy simple periodic flap (same mechanism as m2_disaster.yaml): absence
+# of failure_scenarios means src/scenarios/disaster.py uses periodic_host_flap
+# directly, driven by these flat down_* keys.
+down_interval: 20        # seconds between flap cycles
+down_duration: 10         # seconds a downed host stays down
+down_count: 2             # <-- sweep variable: 2 hosts down per cycle in this file
+down_exclude: "0"         # publisher (host 0) never flaps
+
+events:
+  - at: 0
+    type: put
+    host: 0
+    uri: "ccnx:/m5c/data"
+    file: "./sample-putfile"
+
+  # Repeated eval get: every 15s from t=10 to t=130 (9 occurrences), spanning
+  # the full flap schedule (cycles start at t=20,40,60,...).
+  - at: 10
+    type: get
+    host: 5
+    uri: "ccnx:/m5c/data"
+    repeat:
+      interval: 15
+      count: 9

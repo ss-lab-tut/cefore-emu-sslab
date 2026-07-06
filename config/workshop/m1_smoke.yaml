@@ -1,0 +1,69 @@
+# =============================================================================
+# M1 SMOKE (compressed m1_repro shape for fast CI-style validation)
+# Usage: sudo .venv/bin/python3 -m src disaster --config config/workshop/m1_smoke.yaml --no-cli
+# Driven by tools/autotest/run.py (overrides seed/num); values below are placeholders.
+#
+# Intended wall-clock duration: 60s. Last scheduled event fires at t=30,
+# leaving a 30s tail (well over the >=20s margin the campaign requires).
+# =============================================================================
+
+hosts: 5
+switches: 8            # small mesh; node_per_switch defaults to 2 (~1 switch/edge)
+seed: 42               # placeholder; overridden by run.py
+k: 2
+host_degree_min: 2
+host_degree_max: 3     # keep degree budget comfortably above 2*(hosts-1)=8 for 5 hosts
+
+num: 1                 # placeholder; overridden by run.py
+output_dir: "logs"
+no_cli: true
+duration: 60
+results_json: "results.json"
+
+# No failure_scenarios / down_interval: smoke gate isolates seed/topology
+# noise, same as m1_repro.
+
+events:
+  - at: 0
+    type: put
+    host: 0
+    uri: "ccnx:/m1/data"
+    file: "./sample-putfile"
+
+  - at: 1
+    type: pubsub_sub
+    host: 4
+    uri: "ccnx:/m1/stream"
+    sub_opts:
+      wait: 12
+  - at: 1
+    type: pubsub_pub               # same `at` as sub above -> sub starts first
+    host: 0
+    uri: "ccnx:/m1/stream"
+    file: "./sample-putfile"
+    pub_opts:
+      lifetime: 5
+
+  # 3 eval gets from distinct non-publisher hosts (1,2,3), compressed timing.
+  - at: 8
+    type: get
+    host: 1
+    uri: "ccnx:/m1/data"
+  - at: 12
+    type: get
+    host: 2
+    uri: "ccnx:/m1/data"
+  - at: 16
+    type: get
+    host: 3
+    uri: "ccnx:/m1/data"
+
+  # Repeated get: 3 executions, 5s apart -> t=20,25,30 (matches m1_repro shape
+  # at 1/3 the timescale).
+  - at: 20
+    type: get
+    host: 1
+    uri: "ccnx:/m1/data"
+    repeat:
+      interval: 5
+      count: 3

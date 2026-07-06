@@ -1,0 +1,54 @@
+# =============================================================================
+# M2: mesh topology x put/get command matrix (no failures)
+# Usage: sudo .venv/bin/python3 -m src disaster --config config/workshop/m2_mesh_putget.yaml --no-cli
+# Driven by tools/autotest/run.py (overrides seed/num); values below are placeholders.
+#
+# Intended wall-clock duration: 90s. Last scheduled event fires at t=55,
+# leaving a 35s tail.
+# =============================================================================
+
+hosts: 15
+switches: 48            # same proven ratio as config/examples/example.yaml (15h/48sw)
+seed: 42                # placeholder; overridden by run.py
+k: 2
+host_degree_min: 2
+host_degree_max: 6
+
+num: 1                  # placeholder; overridden by run.py
+output_dir: "logs"
+no_cli: true
+duration: 90
+results_json: "results.json"
+
+# No failure_scenarios / down_interval: this config isolates the "healthy
+# network" baseline for the put/get command matrix; m2_disaster.yaml adds
+# the flap variant separately.
+
+events:
+  - at: 0
+    type: put
+    host: 0
+    uri: "ccnx:/m2/putget/data"
+    file: "./sample-putfile"
+
+  # Several eval gets spread across distinct non-publisher hosts.
+  - at: 15
+    type: get
+    host: 1
+    uri: "ccnx:/m2/putget/data"
+  - at: 25
+    type: get
+    host: 3
+    uri: "ccnx:/m2/putget/data"
+  - at: 35
+    type: get
+    host: 5
+    uri: "ccnx:/m2/putget/data"
+  - at: 45
+    type: get
+    host: 7
+    uri: "ccnx:/m2/putget/data"
+  - at: 55
+    type: get
+    host: 10
+    uri: "ccnx:/m2/putget/data"

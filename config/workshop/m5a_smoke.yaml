@@ -1,0 +1,76 @@
+# =============================================================================
+# M5a SMOKE GATE: compressed m5a_pubdown_cache.yaml shape.
+# Usage: sudo .venv/bin/python3 -m src disaster --config config/workshop/m5a_smoke.yaml --no-cli
+# Driven by tools/autotest/run.py (overrides seed/num); values below are placeholders.
+#
+# Intended wall-clock duration: 60s. Last scheduled get repeat fires at t=35,
+# leaving a 25s tail.
+#
+# Gate condition: tools/autotest/analyze.py's eval_pubdown_total (the
+# denominator of eval_success_rate_when_publisher_down) must end up > 0 --
+# i.e. at least one recorded get must have landed while host 0 was down.
+# =============================================================================
+
+hosts: 5
+switches: 8
+seed: 42                # placeholder; overridden by run.py
+k: 2
+host_degree_min: 2
+host_degree_max: 3
+
+num: 1                  # placeholder; overridden by run.py
+output_dir: "logs"
+no_cli: true
+duration: 60
+results_json: "results.json"
+publisher_host: 0
+
+cache_config:
+  strategy: "k_centers"
+  default:
+    count: 2
+    capacity: 819200
+    default_rct_ms: 900000
+    algorithm: "LRU"
+    type: "memory"
+
+# Manual publisher-down cycle, scaled down from the 15h flagship: down at
+# t=15 for 15s (up again at t=30).
+failure_scenarios:
+  strategy: "manual"
+  cycles:
+    - interval: 15
+      duration: 15
+      target: [0]
+      allow_publishers: true
+
+events:
+  - at: 0
+    type: put
+    host: 0
+    uri: "ccnx:/m5a/data"
+    file: "./sample-putfile"
+
+  # Eval gets every 3s from t=5 to t=35 (11 occurrences per host), straddling
+  # the publisher-down window [15,30].
+  - at: 5
+    type: get
+    host: 1
+    uri: "ccnx:/m5a/data"
+    repeat:
+      interval: 3
+      count: 11
+  - at: 5
+    type: get
+    host: 2
+    uri: "ccnx:/m5a/data"
+    repeat:
+      interval: 3
+      count: 11
+  - at: 5
+    type: get
+    host: 3
+    uri: "ccnx:/m5a/data"
+    repeat:
+      interval: 3
+      count: 11

@@ -1,0 +1,75 @@
+# =============================================================================
+# M2: mesh topology x put/get + pubsub, with failures ENABLED
+# Usage: sudo .venv/bin/python3 -m src disaster --config config/workshop/m2_disaster.yaml --no-cli
+# Driven by tools/autotest/run.py (overrides seed/num); values below are placeholders.
+#
+# Intended wall-clock duration: 150s. Last scheduled event fires at t=120,
+# leaving a 30s tail.
+# =============================================================================
+
+hosts: 15
+switches: 48
+seed: 42                # placeholder; overridden by run.py
+k: 2
+host_degree_min: 2
+host_degree_max: 6
+
+num: 1                  # placeholder; overridden by run.py
+output_dir: "logs"
+no_cli: true
+duration: 150
+results_json: "results.json"
+
+# -----------------------------------------------------------------------------
+# Failures: legacy top-level down_* fields (NOT the failure_scenarios block).
+# src/scenarios/disaster.py only builds a FlexibleFailureManager when
+# `failure_scenarios` is present in config; if it is absent it falls back to
+# the simpler periodic_host_flap() path driven by these flat keys. That
+# simpler path is exactly the "simple periodic flap" the campaign spec asks
+# for here, so failure_scenarios is intentionally omitted.
+# -----------------------------------------------------------------------------
+down_interval: 20        # seconds between flap cycles
+down_duration: 10         # seconds a downed host stays down
+down_count: 2             # hosts downed per cycle
+down_exclude: "0"         # publisher (host 0) never flaps, so put/pubsub_pub stay reachable
+
+events:
+  - at: 0
+    type: put
+    host: 0
+    uri: "ccnx:/m2/disaster/data"
+    file: "./sample-putfile"
+
+  - at: 5
+    type: pubsub_sub
+    host: 1
+    uri: "ccnx:/m2/disaster/stream"
+    sub_opts:
+      wait: 20
+  - at: 5
+    type: pubsub_pub               # same `at` as sub above -> sub starts first
+    host: 0
+    uri: "ccnx:/m2/disaster/stream"
+    file: "./sample-putfile"
+    pub_opts:
+      lifetime: 8
+
+  # Eval gets spread across the flap cycles (cycles start at t=20,40,60,...)
+  # so some gets land while a non-publisher host is mid-flap and some don't --
+  # this is the point of pairing put/get with disaster in the same config.
+  - at: 30
+    type: get
+    host: 2
+    uri: "ccnx:/m2/disaster/data"
+  - at: 60
+    type: get
+    host: 3
+    uri: "ccnx:/m2/disaster/data"
+  - at: 90
+    type: get
+    host: 4
+    uri: "ccnx:/m2/disaster/data"
+  - at: 120
+    type: get
+    host: 5
+    uri: "ccnx:/m2/disaster/data"
