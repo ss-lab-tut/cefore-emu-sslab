@@ -545,6 +545,31 @@ def test_build_mesh_scenario_provisions_node_dirs_from_roles(monkeypatch):
     assert result.node_dirs is node_dirs
 
 
+def test_build_mesh_scenario_cleans_node_dirs_when_topology_build_fails(monkeypatch):
+    node_dirs = [Path("h0"), Path("h1"), Path("h2")]
+    cleanup_calls = []
+    boom = RuntimeError("switch count exceeds limit")
+
+    monkeypatch.setattr(
+        "src.runtime.scenario_setup.provision_node_dirs",
+        lambda roles: node_dirs,
+    )
+    monkeypatch.setattr(
+        "src.runtime.scenario_setup.MeshTopo",
+        MagicMock(side_effect=boom),
+    )
+    monkeypatch.setattr(
+        "src.runtime.scenario_setup.cleanup_node_dirs",
+        lambda dirs: cleanup_calls.append(dirs),
+    )
+
+    with pytest.raises(RuntimeError) as excinfo:
+        build_mesh_scenario(_mesh_spec(seed=9))
+
+    assert excinfo.value is boom
+    assert cleanup_calls == [node_dirs]
+
+
 def test_create_tclink_mininet_uses_lazy_mininet_import(monkeypatch):
     mininet_pkg = ModuleType("mininet")
     mininet_net = ModuleType("mininet.net")

@@ -39,7 +39,7 @@ from .cefore import run_cefstatus_all
 from .command_runner import MininetCommandRunner
 from .daemon_fleet import build_fleet, DaemonFleet
 from .net_config import apply_fib, apply_ip_addr
-from .template import provision_node_dirs
+from .template import cleanup_node_dirs, provision_node_dirs
 from .topo import MeshTopo
 from .viz import build_host_graph, print_mesh_links, render_topology_png
 
@@ -147,21 +147,31 @@ class MeshBuildResult:
 
 
 def build_mesh_scenario(spec: MeshBuildSpec) -> MeshBuildResult:
-    """Build roles, template directories, and MeshTopo in the legacy order."""
+    """Build roles, template directories, and MeshTopo in the legacy order.
+
+    If topology construction fails after provisioning, the seam removes the
+    generated node directories before propagating the original error. The old
+    call sites got that cleanup via assignment order in BaseScenario; now this
+    helper owns the same invariant inside the narrower construction boundary.
+    """
     rng = spec.rng or random.Random()
     roles = assign_roles(spec.host_count, rng, spec.publisher_ids)
     node_dirs = provision_node_dirs(roles)
-    topo = MeshTopo(
-        hosts=spec.host_count,
-        # MeshTopo's historical kwarg is misspelled; the new seam exposes its
-        # actual meaning: an upper bound on the emergent switch count.
-        swhich_num=spec.switch_limit,
-        rng=rng,
-        node_per_switch=spec.node_per_switch,
-        host_degree_min=spec.host_degree_min,
-        host_degree_max=spec.host_degree_max,
-        switch_use_all=spec.switch_use_all,
-    )
+    try:
+        topo = MeshTopo(
+            hosts=spec.host_count,
+            # MeshTopo's historical kwarg is misspelled; the new seam exposes its
+            # actual meaning: an upper bound on the emergent switch count.
+            swhich_num=spec.switch_limit,
+            rng=rng,
+            node_per_switch=spec.node_per_switch,
+            host_degree_min=spec.host_degree_min,
+            host_degree_max=spec.host_degree_max,
+            switch_use_all=spec.switch_use_all,
+        )
+    except BaseException:
+        cleanup_node_dirs(node_dirs)
+        raise
     return MeshBuildResult(roles=roles, node_dirs=node_dirs, topo=topo)
 
 
