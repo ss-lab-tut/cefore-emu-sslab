@@ -26,8 +26,6 @@ topo_layout: "kamada_kawai"    # レイアウト: spring / kamada_kawai / circul
 script_log: "script.log"       # スクリプトログファイル名 (null でデフォルト名)
 no_script_log: false           # true: スクリプトログ出力を無効化
 
-down_interval: 0
-down_count: 0
 output_dir: "logs/verify"
 no_cli: false
 results_json: "results.json"

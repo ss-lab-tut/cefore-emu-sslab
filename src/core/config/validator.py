@@ -325,7 +325,7 @@ OPTION_SPECS = {
     "down_interval": OptionSpec(
         "down_interval",
         "int",
-        default=30,
+        default=0,
         minimum=0,
         flag="--down-interval",
         help="seconds between down events (0 to disable)",
@@ -335,7 +335,7 @@ OPTION_SPECS = {
     "down_duration": OptionSpec(
         "down_duration",
         "int",
-        default=10,
+        default=0,
         minimum=0,
         flag="--down-duration",
         help="seconds to keep host down",
@@ -689,6 +689,11 @@ def _validate_failure_scenarios(errors, config):
                 elif not isinstance(simple, dict):
                     errors.append("failure_scenarios.simple must be a dict")
                 else:
+                    for field in ("interval", "duration"):
+                        if field in simple and simple[field] is None:
+                            errors.append(
+                                f"failure_scenarios.simple.{field} must not be null"
+                            )
                     for field in ("interval", "duration", "count", "stagger"):
                         if (
                             field in simple
@@ -749,6 +754,11 @@ def _validate_failure_scenarios(errors, config):
                                 f"failure_scenarios.cycles[{idx}] must be a dict"
                             )
                             continue
+                        for field in ("interval", "duration"):
+                            if field in cycle and cycle[field] is None:
+                                errors.append(
+                                    f"failure_scenarios.cycles[{idx}].{field} must not be null"
+                                )
                         for field in ("interval", "duration", "count", "stagger"):
                             if (
                                 field in cycle

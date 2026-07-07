@@ -11,8 +11,6 @@ host_degree_min: 2
 host_degree_max: 5
 node_per_switch: 2
 
-down_interval: 0
-down_count: 0
 num: 9905
 output_dir: "logs/verify"
 no_cli: true

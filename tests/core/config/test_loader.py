@@ -732,6 +732,13 @@ def test_validate_failure_scenarios_simple_interval_non_integer():
     assert any("interval" in e for e in errors)
 
 
+def test_validate_failure_scenarios_simple_duration_null():
+    errors = validate_config(
+        {"failure_scenarios": {"strategy": "simple", "simple": {"duration": None}}}
+    )
+    assert any("duration" in e and "must not be null" in e for e in errors)
+
+
 def test_validate_failure_scenarios_cyclic_non_list():
     errors = validate_config(
         {"failure_scenarios": {"strategy": "cyclic", "cycles": "bad"}}
