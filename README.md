@@ -314,7 +314,7 @@ the same directory's `results.json` via its `log_file` key.
 |--------|--------|
 | experiment_dir | Directory name |
 | num, hosts, switches, seed, k | meta.json |
-| down_interval, down_duration, down_count, down_stagger, down_exclude, cache_count | meta.json |
+| down_interval, down_duration, down_count, down_stagger, down_exclude, cache_count, forwarding_default | meta.json |
 | filename, host_id, phase, label | Filename |
 | down_hosts, publisher_down | results.json join |
 

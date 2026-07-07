@@ -423,6 +423,14 @@ OPTION_SPECS = {
     "cache_config": OptionSpec(
         "cache_config", "structured", cli_allowed=False, special_config_merge=True
     ),
+    "forwarding_config": OptionSpec(
+        "forwarding_config",
+        "structured",
+        default={"default": "flooding"},
+        block=("disaster", "connect"),
+        cli_allowed=False,
+        special_config_merge=True,
+    ),
     "cefnetd_timeout": OptionSpec("cefnetd_timeout", "number", cli_allowed=False),
     "warmup_gets": OptionSpec("warmup_gets", "structured", cli_allowed=False),
     "webui_port": OptionSpec(
@@ -569,7 +577,9 @@ def structured_option_keys() -> tuple[str, ...]:
     return tuple(
         spec.key
         for spec in OPTION_SPECS.values()
-        if spec.config_allowed and spec.kind == "structured" and spec.key != "debug"
+        if spec.config_allowed
+        and spec.kind == "structured"
+        and not spec.special_config_merge
     )
 
 
@@ -665,6 +675,50 @@ def _validate_cache_config(errors, config, host_count):
                             errors.append(
                                 f"cache_config.nodes[{node_idx}].type must be one of: {', '.join(valid_types)}"
                             )
+
+
+FORWARDING_STRATEGY_CHOICES = ("default", "flooding", "shortest_path")
+
+
+def _validate_forwarding_config(errors, config):
+    if "forwarding_config" not in config:
+        return
+
+    fc = config["forwarding_config"]
+    if not isinstance(fc, dict):
+        errors.append("forwarding_config must be a dict")
+        return
+    if not fc:
+        errors.append("forwarding_config must not be empty")
+        return
+
+    if "default" in fc and fc["default"] not in FORWARDING_STRATEGY_CHOICES:
+        errors.append(
+            "forwarding_config.default must be one of: "
+            + ", ".join(FORWARDING_STRATEGY_CHOICES)
+        )
+
+    nodes = fc.get("nodes", [])
+    if not isinstance(nodes, list):
+        errors.append("forwarding_config.nodes must be a list")
+        return
+    for node_idx, node_entry in enumerate(nodes):
+        if not isinstance(node_entry, dict):
+            errors.append(f"forwarding_config.nodes[{node_idx}] must be a dict")
+            continue
+        ids = node_entry.get("id", [])
+        if not isinstance(ids, list) or not all(_is_int(i) for i in ids):
+            errors.append(
+                f"forwarding_config.nodes[{node_idx}].id must be a list of integers"
+            )
+        if (
+            "strategy" in node_entry
+            and node_entry["strategy"] not in FORWARDING_STRATEGY_CHOICES
+        ):
+            errors.append(
+                f"forwarding_config.nodes[{node_idx}].strategy must be one of: "
+                + ", ".join(FORWARDING_STRATEGY_CHOICES)
+            )
 
 
 def _validate_failure_scenarios(errors, config):
@@ -1146,6 +1200,7 @@ def validate_config(config: dict[str, Any]) -> list[str]:
             errors.append("cefnetd_timeout must be a positive number")
 
     _validate_cache_config(errors, config, config.get("hosts"))
+    _validate_forwarding_config(errors, config)
 
     _validate_failure_scenarios(errors, config)
 

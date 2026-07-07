@@ -4,8 +4,8 @@ A single ``setup_scenario(net, spec)`` walks the canonical order that
 disaster, connect, and mesh otherwise duplicated with drift:
 
   apply_ip_addr -> (bridges) -> ifconfig log -> bw -> ext -> render_png
-  -> cache_strategy.place -> build_fleet + start + wait_ready -> apply_fib
-  -> cefstatus + print_mesh_links
+  -> cache_strategy.place -> forwarding_config.apply -> build_fleet + start
+  + wait_ready -> apply_fib -> cefstatus + print_mesh_links
 
 Each scenario builds a ``ScenarioSetupSpec`` and reads back a
 ``SetupResult`` (daemon_fleet, cache_node_set, fib_routes). The seam owns
@@ -38,6 +38,7 @@ from .cache_strategy import CacheContext, CacheStrategy
 from .cefore import run_cefstatus_all
 from .command_runner import MininetCommandRunner
 from .daemon_fleet import build_fleet, DaemonFleet
+from .forwarding import ForwardingConfigManager
 from .net_config import apply_fib, apply_ip_addr
 from .template import cleanup_node_dirs, provision_node_dirs
 from .topo import MeshTopo
@@ -74,6 +75,7 @@ class ScenarioSetupSpec:
     fleet_readiness_policy: str = "warn"
     fib_strategy: str = "dijkstra"
     fib_uri_publishers: dict | None = None
+    forwarding_config: dict | None = None
 
 
 @dataclass(frozen=True)
@@ -267,6 +269,8 @@ def setup_scenario(net, spec: ScenarioSetupSpec) -> SetupResult:
         publisher_ids=set(spec.publisher_ids),
     )
     cache_node_set = spec.cache_strategy.place(cache_ctx)
+
+    ForwardingConfigManager(spec.forwarding_config).apply_configs(spec.host_count)
 
     daemon_fleet = build_fleet(
         net,

@@ -24,6 +24,7 @@ META_KEYS = (
     "down_stagger",
     "down_exclude",
     "cache_count",
+    "forwarding_default",
 )
 
 # Filename-derived columns
@@ -81,6 +82,16 @@ def _load_results_by_log_name(directory: Path) -> dict[str, dict[str, Any]]:
     return by_name
 
 
+def _meta_value(meta: dict[str, Any], key: str) -> Any:
+    """Extract flat CSV metadata columns, including nested forwarding fields."""
+    if key == "forwarding_default":
+        forwarding = meta.get("forwarding")
+        if isinstance(forwarding, dict):
+            return forwarding.get("default")
+        return None
+    return meta.get(key)
+
+
 def collect_records(
     directories: list[Path],
 ) -> dict[str, list[dict[str, Any]]]:
@@ -99,7 +110,7 @@ def collect_records(
 
         meta = _load_meta(dirpath)
         results_by_log_name = _load_results_by_log_name(dirpath)
-        meta_row = {k: meta.get(k) for k in META_KEYS}
+        meta_row = {k: _meta_value(meta, k) for k in META_KEYS}
         meta_row["experiment_dir"] = dirpath.name
 
         for logfile in sorted(dirpath.glob("*.log")):

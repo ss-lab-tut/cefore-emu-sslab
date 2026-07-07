@@ -119,6 +119,20 @@ def test_malformed_debug_config_exits_with_raw_debug_error(
     assert f"config error: {expected_error}\n" in capsys.readouterr().err
 
 
+def test_malformed_forwarding_config_exits_with_raw_config_error(tmp_path, capsys):
+    args = _parse_disaster_args(
+        tmp_path,
+        "hosts: 3\nswitches: 4\nforwarding_config: null\n",
+        ["--output-dir", str(tmp_path / "out"), "--no-script-log"],
+    )
+
+    with pytest.raises(SystemExit) as exc_info:
+        _run_bootstrap(args)
+
+    assert exc_info.value.code == 1
+    assert "config error: forwarding_config must be a dict\n" in capsys.readouterr().err
+
+
 def test_meta_json_written_with_exact_disaster_keys(tmp_path):
     args = _parse_disaster_args(
         tmp_path,
@@ -141,6 +155,7 @@ def test_meta_json_written_with_exact_disaster_keys(tmp_path):
         "down_stagger": 2,
         "down_exclude": "",
         "cache_count": 2,
+        "forwarding": {"default": "flooding"},
     }
 
 

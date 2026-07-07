@@ -197,6 +197,7 @@ class DisasterScenario(BaseScenario):
             fleet_readiness_policy="raise",
             fib_strategy=routing_config.get("strategy", "dijkstra"),
             fib_uri_publishers=self.uri_publishers or None,
+            forwarding_config=getattr(args, "forwarding_config", None),
         )
         result = setup_scenario(net, spec)
         self.daemon_fleet = result.daemon_fleet

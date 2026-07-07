@@ -95,8 +95,13 @@ def merge_cli_and_config(args: Any, config: dict[str, Any], parser) -> None:
             continue
         setattr(args, key, config[key])
 
-    if "cache_config" in config:
-        setattr(args, "cache_config", config["cache_config"])
+    for key, spec in OPTION_SPECS.items():
+        if not spec.special_config_merge or key == "debug":
+            continue
+        if key in config:
+            setattr(args, key, config[key])
+        elif spec.default is not None:
+            setattr(args, key, spec.default)
 
     if isinstance(args.bw, str) and args.bw:
         args.bw = [args.bw]

@@ -118,6 +118,22 @@ def test_collect_records_reads_canonical_names_and_enriches_from_results(tmp_pat
     assert row["publisher_down"] is True
 
 
+def test_collect_records_extracts_forwarding_default_from_nested_meta(tmp_path):
+    d = tmp_path / "exp1"
+    d.mkdir()
+    (d / "meta.json").write_text(
+        json.dumps({"forwarding": {"default": "shortest_path"}})
+    )
+    (d / "cefputfile_eval_h2_test_forwarding.log").write_text(
+        "[cefputfile] URI = ccnx:/test/forwarding\n[cefputfile] Tx Frames = 10\n"
+    )
+
+    row = collect_records([d])["cefputfile"][0]
+
+    assert row["forwarding_default"] == "shortest_path"
+    assert "forwarding_default" in _build_fieldnames("cefputfile", [row])
+
+
 def test_collect_records_results_join_uses_last_duplicate_log_file(tmp_path):
     d = tmp_path / "exp1"
     d.mkdir()
