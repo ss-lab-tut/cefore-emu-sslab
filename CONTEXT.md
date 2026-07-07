@@ -159,6 +159,10 @@ _Avoid_: per-entry-point bootstrap コピー, parser 無し merge_cli_and_config
 
 このセクションは domain glossary ではなく、未着手の deepening candidate を次のセッションで再提案されないよう pin する backlog。`/tmp/architecture-review-20260626-165236.html` のレポート由来。完了したら該当エントリを削除し、上の domain section に正式名を追記すること。
 
+**持ち越し (2026-07-07) — `fix/failure-defaults-forwarding-monitor` の最終ゲート → PR**:
+2026-07-07 architecture review 候補1〜3 の実装は完了済み (8 commits: fb0a5d5 gate削除 / 339fbc8 暗黙flap根絶 / fe0fba7 ADR-0002 / 77af9fd cyclic null test / 342439b forwarding_config / 6e5c519 trigger marker schema / 83b7814 from_log pub delivery / 68aa618 MonitorRecord統一+ring buffer削除)。各 commit で full pytest green (最終 1238 passed / 6 skipped)、Phase 1 は codex-review approve 済み。計画原本は session scratchpad の fix-plan-20260707.md (揮発) だが決定事項は ADR-0001/0002 と本エントリに焼き込み済み。**次回セッションでやること**: (1) cefore-run-tests full smoke (sudo, sandbox OFF) — 新 default の無flap経路・forwarding 書込・monitor.json を実機回帰、(2) codex-review にブランチ全体レビュー (Codex quota 回復後; Phase 3〜5 は per-phase レビュー未実施)、(3) 監査 (advisor、不可なら Codex MCP gpt-5.5 fallback)、(4) PR to main。関連して発見した独立負債: repo 全体の `mypy src` 57 errors / 24 files・`ruff check` 38 errors (mininet import-untyped / vendored例・既存 unused import 等、main 由来) — このブランチ起因ではない。housekeeping 候補。
+_Avoid_: smoke なしで merge すること、mypy/ruff 既存負債の解消をこの PR に混ぜること
+
 **候補6 — `runtime/result_detect.py` を Verdict に吸収**:
 74 LOC の薄い adapter。`detect_*` 5 関数は `from_runtime_*` Verdict factory の evidence-unpacking wrapper で、CONTEXT.md の Verdict `_Avoid_` リスト ("detect result") に名前が抵触。5 関数を `src/core/verdict.py` の runtime-adapter section に移管 + `timestamp_utc` は `src/core/paths.py` 等に分離 → `result_detect.py` 削除。Worth exploring。
 _Avoid_: 名前を `result_detect` のまま残すこと、Verdict factory と別モジュールに散らすこと
