@@ -164,8 +164,8 @@ _Avoid_: per-entry-point bootstrap コピー, parser 無し merge_cli_and_config
 _Avoid_: 名前を `result_detect` のまま残すこと、Verdict factory と別モジュールに散らすこと
 
 **R8候補 — legacy 障害サイクル (down_\*) + legacy キャッシュ設定 (cache_count) の廃止**:
-2026-07-02 の R7-1 grilling で user が廃止意向を表明、behavior-preserving な OptionSpec 統合と混ぜると differential gate が無意味になるため分離した。現状の依存: `min_failure.yaml` smoke（gate 自身）が down_\* で host_down/host_up cycle 証拠を生成、smoke の min_\*.yaml 全部が cache_config 無し = legacy k-centers 経路（`cache_count`/`down_count+1`）を通る。廃止するなら (1) min_failure を `failure_scenarios` へ移行 + smoke checker 期待値更新、(2) デフォルトキャッシュ方針の再設計（全 smoke config 書き換え）、(3) disaster.py の cycle code + summarizer キー削除、が同時に要る独立プロジェクト。OptionSpec 完成済みなので option 面は「spec entry 削除 + dead code 削除」に縮み、導出3面と test が機械的に追従する。
-_Avoid_: OptionSpec 系 refactor と混ぜて differential gate を殺すこと、min_failure の gate 証拠を代替なしで消すこと
+2026-07-02 の R7-1 grilling で user が廃止意向を表明、behavior-preserving な OptionSpec 統合と混ぜると differential gate が無意味になるため分離した。2026-07-07 の即時fixで `down_interval`/`down_duration` の省略 default は 0/0 になり、no-failure config は暗黙 flap を起動しなくなった。残るR8決定は [ADR-0002](docs/adr/0002-failure-config-resolves-to-explicit-policy.md): bootstrap 時に `FailurePolicy` へ一度だけ解決し、legacy `down_*` OptionSpec 4つ・`periodic_host_flap`・summarizer legacy metadata・`min_failure.yaml` smoke 証拠・`cache_count`/`down_count+1` fallback を同時に整理する。`down_count=5` は cache fallback の二役が残るため即時fixでは維持した。
+_Avoid_: `down_count` default だけを単独で 0 化すること、legacy down_\* 廃止を cache fallback 再設計なしで進めること、min_failure の gate 証拠を代替なしで消すこと
 
 **修正案 — `swhich_num` typo の是正 (semantic 名 `switch_limit` へ)**:
 `MeshTopo(swhich_num=...)` は typo (`switch_num` が正) であるうえ、意味的には「emergent に生成される switch 数の上限」— 超過すると ValueError (`runtime/topo.py` の `switch count N exceeds limit M`)。つまり名前は綴りと意味の両方で実態とズレている。修正案 (2026-07-06, user 提案 `limit_sw_num` 系 → 採用候補 `switch_limit`): 新規コードは最初から semantic 名を使う — R9-2 の `MeshBuildSpec` は field 名 `switch_limit` を採用し、docstring で legacy kwarg `swhich_num` への対応を記す。既存 chain (config `switches:` → `args.switches` → scenario 属性 `swhich_num` → `MeshTopo(swhich_num=)`) の一括リネームは CLI/config 互換に触るため独立 housekeeping — 候補7 (topo.py リネーム) と同じ pass でまとめて行うのが合理的。
