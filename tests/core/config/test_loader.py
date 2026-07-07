@@ -786,6 +786,22 @@ def test_validate_failure_scenarios_cyclic_entry_fields():
     assert any("allow_publishers" in e for e in errors)
 
 
+def test_validate_failure_scenarios_cyclic_interval_duration_null():
+    errors = validate_config(
+        {
+            "failure_scenarios": {
+                "strategy": "cyclic",
+                "cycles": [{"interval": None, "duration": None}],
+            }
+        }
+    )
+
+    assert errors == [
+        "failure_scenarios.cycles[0].interval must not be null",
+        "failure_scenarios.cycles[0].duration must not be null",
+    ]
+
+
 def test_validate_monitoring_non_dict():
     errors = validate_config({"monitoring": "bad"})
     assert any("monitoring" in e for e in errors)
