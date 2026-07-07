@@ -13,6 +13,25 @@ from ..core.paths import ensure_within_run_dir
 from .cefore import run_csmgrstatus
 from .command_runner import MininetCommandRunner
 
+# Field order for every monitor record, shared by monitor.json, monitor.csv,
+# and the webui live-status feed. Defined once here so a field rename cannot
+# silently drift between the CSV header, the JSON records, and the dashboard.
+MONITOR_FIELDS = ("elapsed_sec", "type", "host", "output")
+
+
+def make_monitor_record(elapsed_sec, type_, host, output) -> dict:
+    """Build a monitor record dict with the single, shared field shape.
+
+    This is the sole owner of the monitor-record shape consumed by
+    monitor.json/monitor.csv (Monitor._collect_once, _write_outputs) and by
+    the webui's live host-status feed (disaster-scenario pre-populate calls
+    into DashboardState.record_monitor). All producers must build records
+    through this factory rather than hand-rolling the dict literal, so that
+    a field rename or reorder is caught at the one definition site instead
+    of silently drifting between callers.
+    """
+    return dict(zip(MONITOR_FIELDS, (elapsed_sec, type_, host, output)))
+
 
 def _resolve_hosts(spec, host_count, cache_nodes=None):
     """Resolve host specification to a list of host indices.
@@ -135,12 +154,9 @@ class Monitor:
                     output = self._collect_target(target_type, host_idx, target)
                 except Exception as exc:
                     output = f"error: {exc}"
-                record = {
-                    "elapsed_sec": round(elapsed, 1),
-                    "type": target_type,
-                    "host": host_idx,
-                    "output": output,
-                }
+                record = make_monitor_record(
+                    round(elapsed, 1), target_type, host_idx, output
+                )
                 self._records.append(record)
                 if self._on_record is not None:
                     try:
@@ -221,7 +237,7 @@ class Monitor:
             info(f"[monitor] wrote {self._output_json_path}\n")
 
         if self._output_csv_path and self._records:
-            fieldnames = ["elapsed_sec", "type", "host", "output"]
+            fieldnames = list(MONITOR_FIELDS)
             with open(self._output_csv_path, "w", newline="", encoding="utf-8") as f:
                 writer = csv.DictWriter(f, fieldnames=fieldnames)
                 writer.writeheader()

@@ -8,7 +8,12 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from src.runtime.command_runner import FakeCommandRunner
-from src.runtime.monitoring import Monitor, _resolve_hosts
+from src.runtime.monitoring import (
+    MONITOR_FIELDS,
+    Monitor,
+    _resolve_hosts,
+    make_monitor_record,
+)
 
 
 def _make_net(host_count=3):
@@ -618,3 +623,48 @@ class TestWriteOutputs:
         with patch("src.runtime.monitoring.info") as mock_info:
             monitor._write_outputs()
         assert mock_info.call_count == 2
+
+
+# ---------------------------------------------------------------------------
+# make_monitor_record — the single owner of the monitor-record dict shape,
+# shared by monitor.json/monitor.csv (via Monitor._collect_once) and by the
+# disaster-scenario webui pre-populate path (DashboardState.record_monitor).
+# ---------------------------------------------------------------------------
+
+class TestMakeMonitorRecord:
+    def test_returns_exactly_monitor_fields_keys_with_given_values(self):
+        record = make_monitor_record(1.5, "cefstatus", 2, "faces: 1")
+        assert set(record.keys()) == set(MONITOR_FIELDS)
+        assert record["elapsed_sec"] == 1.5
+        assert record["type"] == "cefstatus"
+        assert record["host"] == 2
+        assert record["output"] == "faces: 1"
+
+    def test_key_order_matches_monitor_fields(self):
+        # CSV writing relies on fieldnames == list(MONITOR_FIELDS); a record
+        # built out of order would still serialize correctly via
+        # DictWriter (keyed by name, not position), but keeping insertion
+        # order aligned with MONITOR_FIELDS keeps json.dumps output stable.
+        record = make_monitor_record(0.0, "csmgrstatus", 0, "ok")
+        assert tuple(record.keys()) == MONITOR_FIELDS
+
+
+class TestCollectOnceUsesFactory:
+    """_collect_once must build every record through make_monitor_record,
+    not a hand-rolled dict literal, so CSV/JSON output and the webui feed
+    cannot silently drift from MONITOR_FIELDS.
+    """
+
+    def test_collect_once_record_shape_matches_monitor_fields(
+        self, tmp_path, monkeypatch
+    ):
+        monitor = Monitor(
+            _make_net(2),
+            targets=[_cefstatus_target(hosts=[0])],
+            interval=1,
+            output_dir=tmp_path,
+            host_count=2,
+        )
+        monkeypatch.setattr(monitor, "_collect_target", lambda t, h, tgt: "out")
+        monitor._collect_once(0.5)
+        assert tuple(monitor._records[0].keys()) == MONITOR_FIELDS

@@ -20,7 +20,7 @@ from ..runtime.cache_strategy import KCentersStrategy, RandomCSModeStrategy
 from ..runtime.command_runner import MininetCommandRunner
 from ..runtime.content_ops import ContentOperationRunner
 from ..runtime.event_batch import EventBatchSpec, run_event_batch
-from ..runtime.monitoring import Monitor
+from ..runtime.monitoring import Monitor, make_monitor_record
 from ..runtime.results_sink import ResultsSink
 from ..runtime.scenario_setup import (
     MeshBuildSpec,
@@ -229,22 +229,12 @@ class DisasterScenario(BaseScenario):
                     f"h{idx}", ["cefstatus", "-d", f"./h{idx}"]
                 ).stdout
                 self.dashboard.record_monitor(
-                    {
-                        "elapsed_sec": 0.0,
-                        "type": "cefstatus",
-                        "host": idx,
-                        "output": output,
-                    }
+                    make_monitor_record(0.0, "cefstatus", idx, output)
                 )
             for idx in sorted(self.cache_node_set):
                 output = run_csmgrstatus(net, idx, host="127.0.0.1")
                 self.dashboard.record_monitor(
-                    {
-                        "elapsed_sec": 0.0,
-                        "type": "csmgrstatus",
-                        "host": idx,
-                        "output": output,
-                    }
+                    make_monitor_record(0.0, "csmgrstatus", idx, output)
                 )
 
     def _build_cache_strategy(self):
