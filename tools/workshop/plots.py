@@ -898,11 +898,15 @@ def fig_m3_scale(jobs: dict[str, Job], analysis_dir: Path, out_dir: Path) -> Non
         job_list = by_hosts[hosts]
         walls = [j.wall_seconds for j in job_list if j.wall_seconds is not None]
         mems = [j.peak_mem_used_kb for j in job_list if j.peak_mem_used_kb is not None]
+        # 2026-07-07 fix: sub を混ぜると pubsub の hop-distance 既知問題 (CONTEXT.md)
+        # がスケール軸の凹みに見えてしまう。この図の主張は「put/get がどのスケール
+        # でも成立するか」なので get のみに限定する (実測: h5-h60 全て 100%)。
+        # pubsub のスケール挙動は caveats + M2 の行で別途報告する。
         successes = [
             eval_success(r)
             for j in job_list
             for r in j.results
-            if r.get("op_type") in ("get", "sub") and r.get("phase") != "warmup"
+            if r.get("op_type") == "get" and r.get("phase") != "warmup"
         ]
         median_wall.append(_median(walls))
         peak_mem_gb.append(_median([m / 1e6 for m in mems]))
@@ -925,7 +929,7 @@ def fig_m3_scale(jobs: dict[str, Job], analysis_dir: Path, out_dir: Path) -> Non
     fig, axes = plt.subplots(1, 3, figsize=(13, 4.2), dpi=200, sharex=True)
     panels = [
         (axes[0], median_wall, "Median setup wall time (s)"),
-        (axes[1], success_rates, "Eval success rate"),
+        (axes[1], success_rates, "Eval get success rate"),
         (axes[2], peak_mem_gb, "Median peak memory (GB)"),
     ]
     for ax, values, ylabel in panels:

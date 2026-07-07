@@ -66,3 +66,25 @@ fingerprint により 20 topology の相関分析が root 権限なしで即完�
 - **caveat**: cefnetd local CS (capacity 32768) が全ホストで有効なため、csmgrd 配置
   (cache/nocache) の対比は交絡して分離不能。アーム間の pubdown 母数差 (96 vs 156) は
   down window タイミングのドリフト。レポートに正直に記載
+
+## m5c 結果 (10:20): 強度カーブはフラット
+down_count 1/2/3/4 → 97.8/93.3/100/100% — 劣化せず。local CS + k=2 ECMP が
+host 障害を吸収する耐性実証として報告 (「劣化カーブ」ではない)。
+
+## M5 完了 (11:40)
+- m5b: link_down/up 5 seed 全部で outcome 記録成功 (時系列図は plots.py が生成)
+- m5c: フラット (97.8/93.3/100/100%) — 耐性実証として報告
+- m5d: kcenters/degree/manual 全部 30/30 (100%) — 戦略差は出ず、capability 実証として報告
+
+## 🏁 キャンペーン完了 (11:45 JST) — 165/165 jobs 全成功・リトライゼロ
+- 総所要: 03:52〜11:44 (~7h52m)。failed/timeout/skipped_memory = 0
+- 最終成果物: logs/workshop_20260707/main/
+  - report.html (統合レポート、図 base64 埋め込み、caveats 7項目付き)
+  - figures/*.png+pdf (スライド用 10 図)
+  - analysis/*.json (全図の生数値)
+  - campaign_state.jsonl (全 job 実行記録)
+- M4 最終結果: warmup throughput は 5/10/20Mbps 設定に忠実 (~90%)、50Mbps 以上は
+  Cefore デーモン処理律速で ~20Mbps 飽和。eval (cache hit) は帯域制限を超えて加速
+- M3 最終結果: put/get は h5〜h60 全スケール 100%。setup 時間は hosts に線形
+  (165s→343s)、peak memory 5.8→20GB
+- 再現: sudo .venv/bin/python3 tools/workshop/campaign.py --manifest logs/workshop_20260707/manifests/main.json --out <dir>

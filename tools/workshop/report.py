@@ -425,11 +425,15 @@ def _section_m4(jobs: dict, figures_dir: Path, analysis_dir: Path) -> str:
 </section>
 """
 
-    configured = fidelity["configured_mbps"]
-    measured = fidelity["measured_mbps"]
-    n = len(configured)
-    evidence = f"<li>{n} 件の cefgetfile 計測（帯域 5-100Mbps 設定）</li>"
-    families = {bw: plots._match(jobs, rf"m4_bw{bw}_s\d+") for bw in (5, 10, 20, 50, 100)}
+    # 2026-07-07: m4 は静的 bw 再設計後、warmup(ネットワーク律速の初回取得) と
+    # eval(キャッシュ加速の再取得) の 2 系列に分割された (plots.py 参照)
+    n_warm = len(fidelity.get("warmup_configured_mbps", []))
+    n_eval = len(fidelity.get("eval_configured_mbps", []))
+    evidence = (
+        f"<li>warmup(初回取得・ネットワーク律速): {n_warm} 件 / "
+        f"eval(キャッシュ加速): {n_eval} 件 の cefgetfile 計測（帯域 5-100Mbps 静的設定）</li>"
+    )
+    families = {bw: plots._match(jobs, rf"m4(?:st)?_bw{bw}_s\d+") for bw in (5, 10, 20, 50, 100)}
     repro_lines = []
     for bw, group in families.items():
         if group:
