@@ -50,6 +50,14 @@ def _parse_schema_fields(text: str, command: str) -> dict[str, Any]:
     record["timestamp"] = _extract_timestamp(text)
 
     for field in COMMAND_SCHEMAS[command].fields:
+        if field.kind is FieldKind.MARKER:
+            # Marker fields are presence-only (see schema.py): the pattern
+            # has no capture group, so a bool of the search itself is the
+            # whole result. Unlike KV fields, absence is represented as
+            # False rather than None — there is no third "not yet known"
+            # state to preserve, a bare line either occurred or it didn't.
+            record[field.name] = bool(re.search(field.pattern(command), text))
+            continue
         m = re.search(field.pattern(command), text)
         if m:
             raw = m.group(1).strip()

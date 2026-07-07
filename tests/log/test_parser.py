@@ -159,6 +159,30 @@ def test_parse_cefsubfile_uses_canonical_unit_fields():
     assert result["success"] is None
 
 
+def test_parse_cefpubfile_trigger_markers_present_on_success():
+    # 2026-07-07: these two literal lines (copied from archived workshop
+    # campaign logs) are the only in-log evidence a pub round-trip completed;
+    # cefpubfile never prints a retry-count or named completion field.
+    text = (
+        "2024-01-15 10:00:00.000 [cefpubfile] Start\n"
+        "[cefpubfile] URI = ccnx:/test/pub1\n"
+        "[cefpubfile] Send Trigger Interest.\n"
+        "[cefpubfile] Receive Trigger Data, finish application.\n"
+    )
+    result = parse_cefpubfile(text)
+    assert result["trigger_interest_sent"] is True
+    assert result["trigger_data_received"] is True
+
+
+def test_parse_cefpubfile_trigger_markers_absent_on_partial_log():
+    # A partial/failed run's log never reaches the trigger lines; absence is
+    # represented as False, not proof the round-trip failed (see schema.py).
+    text = "[cefpubfile] URI = ccnx:/test/pub1\n"
+    result = parse_cefpubfile(text)
+    assert result["trigger_interest_sent"] is False
+    assert result["trigger_data_received"] is False
+
+
 def test_parse_pubsub_unknown_fields_are_kept_with_warning(capsys):
     text = (
         "[cefpubfile] URI = ccnx:/test/pub1\n[cefpubfile] Surprise Value = 12 Bytes\n"
