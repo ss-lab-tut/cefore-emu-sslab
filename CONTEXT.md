@@ -192,4 +192,12 @@ Trigger Interest を受信できないまま deadline (lifetime+15s) で termina
 FwdStr:flooding で起動している点も関連候補。hop距離相関 (M1 20-topology 分析): hop=1で5/5成功, hop=2で5/7, hop=3で0/8 — 距離依存を定量確認。ワークショップ計測では pubsub 行を
 5-host に縮小して測定し、15-host の失敗は「エミュレータによる再現性つき問題検出」
 として報告する。恒久対応は Cefore 側 pubsub の hop/スケール挙動の調査が必要。
+追記 (2026-07-07 Commit 4): archived campaign artifact 全件を grep しても
+Trigger-Interest retry 回数を示すラベルは存在しない (0-byte FAILURE ログ + SUCCESS
+ログの固定2行のみ)。この2行 (`Send Trigger Interest.` / `Receive Trigger Data,
+finish application.`) を `trigger_interest_sent`/`trigger_data_received` として
+schema 化した (src/log/schema.py)。`from_log` は marker 存在時のみ pub success を
+definitive True と判定するよう更新済み (src/core/verdict.py) — marker 不在側
+(0-byte FAILURE ログ) の log-only 判定は依然 unknown のままで、これはログ欠損と
+区別不能という構造的限界であり today の fix では解消しない。
 _Avoid_: 実験 config の pubsub を無検証で 10+ hosts に置くこと
