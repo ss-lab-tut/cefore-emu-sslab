@@ -7,25 +7,24 @@ from pathlib import Path
 
 from mininet.log import info
 
-from ..runtime.cefore import (
-    run_cefgetfile,
-    run_cefputfile,
-    run_cefstatus_all,
-    start_cefnetd,
-    start_csmgrd,
-    stop_cefnetd,
-    stop_csmgrd,
-    wait_for_cefnetd,
-)
+from ..core.artifacts import content_log_name
 from ..core.addressing import AddressingScheme
-from ..core.roles import assign_roles
-from ..runtime.links import pick_publish_link
-from ..runtime.net_config import apply_fib, apply_ip_addr
-from ..runtime.template import ensure_node_dirs
-from ..runtime.topo import MeshTopo, max_possible_links, min_required_links
-from ..runtime.viz import print_mesh_links, render_topology_png
+from ..core.topology import TopologyModel
+from ..runtime.command_runner import MininetCommandRunner
+from ..runtime.cefore import run_cefgetfile, run_cefputfile
+from ..runtime.cache_strategy import RolesCacheStrategy
+from ..runtime.daemon_logs import HostLogScope
+from ..runtime.scenario_setup import (
+    MeshBuildSpec,
+    ScenarioSetupSpec,
+    TeardownSpec,
+    build_mesh_scenario,
+    setup_scenario,
+    teardown_scenario,
+)
+from ..runtime.topo import max_possible_links, min_required_links
 
-from .base import BaseScenario
+from .base import BaseScenario, _propagate_failures
 
 
 class MeshScenario(BaseScenario):
@@ -57,6 +56,9 @@ class MeshScenario(BaseScenario):
         self.host_degree_min = host_degree_min
         self.host_degree_max = host_degree_max
         self.switch_use_all = switch_use_all
+        self.daemon_log_collection_enabled = run_dir is not None and Path(
+            run_dir
+        ) != Path(".")
         self.run_dir = run_dir or Path(".")
         self.run_dir.mkdir(parents=True, exist_ok=True)
         self.debug_config = debug_config
@@ -79,84 +81,99 @@ class MeshScenario(BaseScenario):
 
         self.rng = random.Random(seed)
         self.topo = None
+        self.daemon_fleet = None
 
     def build_topology(self):
-        rng_state = self.rng.getstate()
-        self.roles = assign_roles(self.host_num, self.rng)
-        self.rng.setstate(rng_state)
-        self.generated_node_dirs = ensure_node_dirs(self.host_num, self.rng)
-        self.topo = MeshTopo(
-            hosts=self.host_num,
-            swhich_num=self.swhich_num,
-            rng=self.rng,
+        spec = MeshBuildSpec(
+            host_count=self.host_num,
+            switch_limit=self.swhich_num,
             node_per_switch=self.node_per_switch,
             host_degree_min=self.host_degree_min,
             host_degree_max=self.host_degree_max,
             switch_use_all=self.switch_use_all,
+            rng=self.rng,
         )
+        result = build_mesh_scenario(spec)
+        self.roles = result.roles
+        self.generated_node_dirs = result.node_dirs
+        self.topo = result.topo
         return self.topo
 
     def configure(self, net):
-        apply_ip_addr(net, self.topo.mesh_links, scheme=self.scheme)
-
-        for idx in range(self.host_num):
-            node_name = f"h{idx}"
-            print(node_name, "command:", "ifconfig")
-            info(net.hosts[idx].cmd("ifconfig"))
-
-        log_dir = str(self.run_dir) if self.run_dir != Path(".") else None
-        for idx in range(self.host_num):
-            if self.roles.get(idx) and self.roles[idx].runs_csmgrd:
-                start_csmgrd(net, idx, log_dir=log_dir)
-        for idx in range(self.host_num):
-            start_cefnetd(net, idx, log_dir=log_dir)
-        for idx in range(self.host_num):
-            if not wait_for_cefnetd(net, idx):
-                info(f"WARNING: h{idx} cefnetd not ready\n")
-
-        apply_fib(net, self.topo.mesh_links, self.k_paths, scheme=self.scheme)
-        run_cefstatus_all(net, self.host_num)
-        print_mesh_links(self.topo.mesh_links)
-
         topo_png_path = self.topo_png
         if topo_png_path:
             topo_png_path = str(self.run_dir / Path(topo_png_path).name)
-        render_topology_png(
-            self.topo.mesh_links, topo_png_path,
-            seed=self.seed, layout=self.topo_layout,
+        spec = ScenarioSetupSpec(
+            mesh_links=self.topo.mesh_links,
+            scheme=self.scheme,
+            host_count=self.host_num,
+            publisher_ids=set(),
+            cache_strategy=RolesCacheStrategy(roles=self.roles),
+            fleet_run_dir=self.run_dir,
+            fib_k=self.k_paths,
+            topo_png_path=topo_png_path,
+            topo_seed=self.seed,
+            topo_layout=self.topo_layout,
         )
-        time.sleep(1)
+        result = setup_scenario(net, spec)
+        self.daemon_fleet = result.daemon_fleet
 
     def run_experiment(self, net):
         publisher = self.host_num - 1
-        publish_link = pick_publish_link(self.topo.mesh_links, publisher)
         publish_uri = f"ccnx:/test/example{publisher + 1}/test.py"
-        consumer = (
-            publish_link["host_b"]
-            if publish_link["host_a"] == publisher
-            else publish_link["host_a"]
-        )
+        consumer = TopologyModel(self.topo.mesh_links).peer_of(publisher)
 
-        put_log = str(self.run_dir / f"cefputfile_h{publisher}.log")
-        exit_code = run_cefputfile(net, publisher, publish_uri, log_name=put_log)
+        runner = MininetCommandRunner(net)
+        put_log = str(
+            self.run_dir
+            / content_log_name("cefputfile", "eval", publisher, publish_uri)
+        )
+        exit_code = run_cefputfile(runner, publisher, publish_uri, log_name=put_log)
         if exit_code != 0:
             info(f"[ERROR] cefputfile failed on h{publisher} (exit_code={exit_code})\n")
             sys.exit(1)
         time.sleep(5)
 
         recvfile_path = str(self.run_dir / f"recvfile_at_h{consumer}")
-        get_log = str(self.run_dir / f"cefgetfile_h{consumer}.log")
-        exit_code = run_cefgetfile(net, consumer, publish_uri, recvfile_path, log_name=get_log)
+        get_log = str(
+            self.run_dir / content_log_name("cefgetfile", "eval", consumer, publish_uri)
+        )
+        exit_code = run_cefgetfile(
+            runner, consumer, publish_uri, recvfile_path, log_name=get_log
+        )
         if exit_code != 0:
             info(f"[ERROR] cefgetfile failed on h{consumer} (exit_code={exit_code})\n")
             sys.exit(1)
 
     def teardown(self, net):
-        for idx in range(self.host_num):
-            stop_cefnetd(net, idx)
-        for idx in range(self.host_num):
-            if self.roles.get(idx) and self.roles[idx].runs_csmgrd:
-                stop_csmgrd(net, idx)
+        spec = TeardownSpec(
+            host_count=self.host_num,
+            csmgrd_host_ids=self._csmgrd_host_ids(),
+            fleet_run_dir=self.run_dir,
+            daemon_fleet=self.daemon_fleet,
+        )
+        result = teardown_scenario(net, spec)
+        if result.failures:
+            _propagate_failures(None, result.failures)
+
+    def daemon_log_collection_scope(self):
+        """Describe daemon logs from generated hN directories for this run."""
+        return [
+            HostLogScope(
+                idx=i,
+                node_dir=self.generated_node_dirs[i],
+                has_csmgrd=bool(getattr(self.roles.get(i), "runs_csmgrd", False)),
+            )
+            for i in range(self.host_num)
+            if i < len(self.generated_node_dirs)
+        ]
+
+    def _csmgrd_host_ids(self):
+        return {
+            idx
+            for idx in range(self.host_num)
+            if self.roles.get(idx) and self.roles[idx].runs_csmgrd
+        }
 
 
 def run_mesh_scenario(

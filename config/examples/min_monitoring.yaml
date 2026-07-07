@@ -1,0 +1,33 @@
+# 最小検証用: monitoring (cefstatus 収集 → monitor.json) の gate 検証
+# Usage: sudo .venv/bin/python3 -m src disaster --config config/examples/min_monitoring.yaml
+hosts: 3
+switches: 3
+seed: 42
+k: 1
+down_interval: 0
+down_count: 0
+num: 9914
+output_dir: "logs/verify"
+no_cli: true
+duration: 8
+results_json: "results.json"
+publisher_host: 2
+
+monitoring:
+  interval: 2
+  output_json: "monitor.json"
+  targets:
+    - {type: cefstatus, hosts: "all"}
+
+events:
+  - at: 0
+    type: put
+    host: 2
+    uri: "ccnx:/test/monitor"
+    file: "./sample-putfile"
+    expiry: 3000
+    cache_time: 3000
+  - at: 3
+    type: get
+    host: 0
+    uri: "ccnx:/test/monitor"

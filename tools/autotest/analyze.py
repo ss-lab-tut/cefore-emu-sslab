@@ -7,7 +7,11 @@ import json
 from collections import defaultdict
 from pathlib import Path
 
-COMPLETED_MARKER = "Completed to get all the chunks."
+from src.core.verdict import failure_reasons, from_record
+
+# Rows whose outcome counts toward eval success rates. put/pub rows are
+# publisher-side evidence and must not inflate the consumer denominators.
+EVAL_OP_TYPES = ("get", "sub")
 
 
 def discover_results(paths: list[Path]) -> list[Path]:
@@ -30,43 +34,20 @@ def discover_results(paths: list[Path]) -> list[Path]:
     return unique
 
 
-def _has_completed_log(record: dict) -> bool:
-    if isinstance(record.get("has_completed_log"), bool):
-        return record["has_completed_log"]
-    log_file = record.get("log_file")
-    if not log_file:
-        return False
-    path = Path(log_file)
-    if not path.exists():
-        return False
-    text = path.read_text(encoding="utf-8", errors="replace")
-    return COMPLETED_MARKER in text
-
-
-def _has_output_file(record: dict) -> bool:
-    if isinstance(record.get("has_output_file"), bool):
-        return record["has_output_file"]
-    out_file = record.get("out_file")
-    if not out_file:
-        return False
-    path = Path(out_file)
-    return path.exists() and path.stat().st_size > 0
-
-
 def classify(record: dict) -> tuple[bool, dict[str, int]]:
-    exit_code = int(record.get("exit_code", 1))
-    has_completed = _has_completed_log(record)
-    has_output = _has_output_file(record)
-    success = (
-        bool(record.get("success"))
-        if "success" in record
-        else (exit_code == 0 and has_completed and has_output)
-    )
-    reasons = {
-        "exit_code_nonzero": 1 if exit_code != 0 else 0,
-        "missing_completed_log": 1 if not has_completed else 0,
-        "missing_output_file": 1 if not has_output else 0,
-    }
+    """Judge a record from its stored Verdict Factors.
+
+    Failure reasons count only for failed records and only for known-False
+    Factors; unknown / not-applicable Factors (``null``) never count. Records
+    that predate stored Factors classify as unknown (never success) — no disk
+    probing happens here.
+    """
+    verdict = from_record(record)
+    success = verdict.success is True
+    if success:
+        reasons = {key: 0 for key in failure_reasons(verdict)}
+    else:
+        reasons = {key: int(flag) for key, flag in failure_reasons(verdict).items()}
     return success, reasons
 
 
@@ -87,6 +68,8 @@ def summarize(records: list[dict]) -> list[dict]:
     for rec in records:
         uri = rec.get("uri", "")
         if not uri:
+            continue
+        if (rec.get("op_type") or "get") not in EVAL_OP_TYPES:
             continue
         row = by_uri[uri]
         row["uri"] = uri

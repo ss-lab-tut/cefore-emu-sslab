@@ -1,0 +1,31 @@
+# 最小検証用: normal put/get を非デフォルト addressing (Class A 10.0.0.0/16) で実行。
+# ifconfig の netmask 抜けによるクラスフル既定 (/8) 回帰を捕捉する。
+# Usage: sudo .venv/bin/python3 -m src disaster --config config/examples/min_putget_class_a.yaml
+hosts: 3
+switches: 3
+seed: 42
+k: 1
+down_interval: 0
+down_count: 0
+num: 9915
+output_dir: "logs/verify"
+no_cli: true
+duration: 20
+results_json: "results.json"
+publisher_host: 2
+
+addressing:
+  network_cidr: "10.0.0.0/16"
+
+events:
+  - at: 5
+    type: put
+    host: 2
+    uri: "ccnx:/test/sample"
+    file: "./sample-putfile"
+    expiry: 3000
+    cache_time: 3000
+  - at: 10
+    type: get
+    host: 0
+    uri: "ccnx:/test/sample"

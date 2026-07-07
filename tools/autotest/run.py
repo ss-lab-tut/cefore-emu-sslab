@@ -17,6 +17,7 @@ from src.core.config.loader import (  # noqa: E402
     load_config,
     warn_ignored_legacy_content_keys,
 )
+from src.core.artifacts import experiment_dir_name  # noqa: E402
 
 
 def _resolve_seed(base_config: dict, seed_base: int | None, index: int) -> int:
@@ -57,7 +58,9 @@ def _run_one(
     cfg["timestamp"] = False
 
     config_path = run_root / "config.used.json"
-    config_path.write_text(json.dumps(cfg, ensure_ascii=False, indent=2), encoding="utf-8")
+    config_path.write_text(
+        json.dumps(cfg, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
 
     run_log_path = run_root / "run.log"
     py = sys.executable
@@ -88,11 +91,14 @@ def _run_one(
     if proc.returncode != 0:
         raise SystemExit(f"run {run_idx} failed. see {run_log_path}")
 
-    exp_dir = logs_root / f"ex{num}_seed{seed}"
+    exp_name = experiment_dir_name(num, seed)
+    exp_dir = logs_root / exp_name
     if not exp_dir.exists():
-        candidates = sorted(logs_root.glob(f"ex{num}_seed{seed}*"))
+        candidates = sorted(logs_root.glob(exp_name + "*"))
         if not candidates:
-            raise SystemExit(f"run {run_idx}: experiment directory not found under {logs_root}")
+            raise SystemExit(
+                f"run {run_idx}: experiment directory not found under {logs_root}"
+            )
         exp_dir = candidates[0]
 
     result_path = exp_dir / "results.json"
@@ -109,9 +115,15 @@ def main() -> None:
     parser.add_argument("--base-config", required=True, help="base config (yaml/json)")
     parser.add_argument("--runs", type=int, required=True, help="number of runs")
     parser.add_argument("--out", required=True, help="output directory root")
-    parser.add_argument("--duration", type=int, required=True, help="duration per run (sec)")
-    parser.add_argument("--start-num", type=int, default=1, help="start experiment number")
-    parser.add_argument("--seed-base", type=int, default=None, help="seed base (optional)")
+    parser.add_argument(
+        "--duration", type=int, required=True, help="duration per run (sec)"
+    )
+    parser.add_argument(
+        "--start-num", type=int, default=1, help="start experiment number"
+    )
+    parser.add_argument(
+        "--seed-base", type=int, default=None, help="seed base (optional)"
+    )
     args = parser.parse_args()
 
     if args.runs < 1:

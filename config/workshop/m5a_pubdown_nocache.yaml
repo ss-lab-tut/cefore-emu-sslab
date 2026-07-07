@@ -1,0 +1,95 @@
+# =============================================================================
+# M5a HEADLINE CONFIG: deterministic publisher downtime, cache DISABLED
+# (counterpart to m5a_pubdown_cache.yaml -- identical topology/failure/get
+# schedule, only the caching layer differs).
+# Usage: sudo .venv/bin/python3 -m src disaster --config config/workshop/m5a_pubdown_nocache.yaml --no-cli
+# Driven by tools/autotest/run.py (overrides seed/num); values below are placeholders.
+#
+# Intended wall-clock duration: 120s. Last scheduled get repeat fires at t=70,
+# leaving a 50s tail.
+# =============================================================================
+
+hosts: 15
+switches: 48
+seed: 42                # placeholder; overridden by run.py
+k: 2
+host_degree_min: 2
+host_degree_max: 6
+
+num: 1                  # placeholder; overridden by run.py
+output_dir: "logs"
+no_cli: true
+duration: 120
+results_json: "results.json"
+publisher_host: 0        # matches the put host below (documentation/metrics convention)
+
+# -----------------------------------------------------------------------------
+# Cache: as close to "disabled" as this codebase allows.
+#
+# SCHEMA SURPRISE (found while auditing src/runtime/cache_manager.py's
+# CachePlacement.decide()): there is NO config that produces zero cache
+# nodes. Both the extended cache_config path (CacheConfigManager) and the
+# legacy cache_count path funnel through:
+#
+#     if not nodes and self._host_count > 0:
+#         nodes = [self._host_count - 1]     # last-host fallback
+#
+# So even an empty selection always ends up with exactly one cache node
+# (the highest-index host). The closest thing to "no cache" is therefore
+# forcing the legacy fallback formula down to its minimum: leaving
+# cache_config unset, setting cache_count: 0 (its default anyway) AND
+# down_count: 0 (its OptionSpec default is 5, NOT 0 -- if left unset here it
+# would silently request cache_count_fallback = down_count+1 = 6 nodes,
+# defeating the "nocache" intent). With both at 0 the fallback formula
+# becomes `0 if cache_count>0 else down_count+1` = 1, so exactly one
+# k_centers-selected node (publisher excluded) ends up caching -- the
+# unavoidable floor, not a deliberate design choice by this config.
+# down_count: 0 is otherwise inert here: failure_scenarios below is present,
+# so src/scenarios/disaster.py's _start_failure_manager() never reaches the
+# legacy periodic_host_flap() branch that would normally read down_count.
+# -----------------------------------------------------------------------------
+cache_count: 0
+down_count: 0
+
+# -----------------------------------------------------------------------------
+# Failures: identical manual publisher-down cycle to m5a_pubdown_cache.yaml.
+# See that file's comment for the allow_publishers/target rationale.
+# -----------------------------------------------------------------------------
+failure_scenarios:
+  strategy: "manual"
+  cycles:
+    - interval: 30              # wait 30s after scenario start, then...
+      duration: 30               # ...take host 0 down for 30s (up again at t=60)
+      target: [0]
+      allow_publishers: true
+
+events:
+  - at: 0
+    type: put
+    host: 0
+    uri: "ccnx:/m5a/data"
+    file: "./sample-putfile"
+
+  # Same repeated-get schedule as m5a_pubdown_cache.yaml, for a like-for-like
+  # cache vs. no-cache comparison.
+  - at: 10
+    type: get
+    host: 1
+    uri: "ccnx:/m5a/data"
+    repeat:
+      interval: 5
+      count: 13
+  - at: 10
+    type: get
+    host: 2
+    uri: "ccnx:/m5a/data"
+    repeat:
+      interval: 5
+      count: 13
+  - at: 10
+    type: get
+    host: 3
+    uri: "ccnx:/m5a/data"
+    repeat:
+      interval: 5
+      count: 13

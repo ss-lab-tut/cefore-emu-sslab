@@ -9,7 +9,9 @@ from typing import Callable
 
 from mininet.log import info
 
-from .cefore import run_cefstatus, run_csmgrstatus
+from ..core.paths import ensure_within_run_dir
+from .cefore import run_csmgrstatus
+from .command_runner import MininetCommandRunner
 
 
 def _resolve_hosts(spec, host_count, cache_nodes=None):
@@ -58,6 +60,12 @@ class Monitor:
             current set of downed host indices. When provided, collection is
             skipped for hosts that are currently down to avoid concurrent
             Mininet shell access conflicts.
+        background: Start in background mode. In background mode collection
+            uses ``popen`` (no shared pexpect shell) and emits no terminal
+            output, so it is safe to keep running during the Mininet CLI.
+            Can also be entered later via ``enter_background()``.
+        command_timeout: Per-command timeout (seconds) for background popen
+            collection.
     """
 
     def __init__(
@@ -73,6 +81,8 @@ class Monitor:
         csmgr_host_resolver: Callable[[int], str] | None = None,
         down_hosts_getter: Callable[[], list] | None = None,
         on_record: Callable[[dict], None] | None = None,
+        background: bool = False,
+        command_timeout: int = 10,
     ):
         self.net = net
         self.targets = targets
@@ -82,12 +92,33 @@ class Monitor:
         self.cache_nodes = cache_nodes or set()
         self.output_json = output_json
         self.output_csv = output_csv
+        self._output_json_path = None
+        self._output_csv_path = None
+        if self.output_json:
+            self._output_json_path = ensure_within_run_dir(
+                self.output_dir, self.output_dir / self.output_json
+            )
+        if self.output_csv:
+            self._output_csv_path = ensure_within_run_dir(
+                self.output_dir, self.output_dir / self.output_csv
+            )
         self._csmgr_host_resolver = csmgr_host_resolver
         self._down_hosts_getter = down_hosts_getter
         self._on_record = on_record
+        self.command_timeout = command_timeout
+        self._background = threading.Event()
+        if background:
+            self._background.set()
         self._stop_event = threading.Event()
         self._thread = None
         self._records = []
+
+    def enter_background(self):
+        """Switch collection to background mode (quiet + popen, no shell contention).
+
+        Idempotent; safe to call from another thread while collecting.
+        """
+        self._background.set()
 
     def _collect_once(self, elapsed):
         """Run one collection cycle."""
@@ -115,20 +146,26 @@ class Monitor:
                     try:
                         self._on_record(record)
                     except Exception as exc:
-                        info(f"[monitor] on_record callback failed: {exc}\n")
+                        if not self._background.is_set():
+                            info(f"[monitor] on_record callback failed: {exc}\n")
 
     def _collect_target(self, target_type, host_idx, target):
         """Collect a single target output."""
+        bg = self._background.is_set()
         if (
             self._down_hosts_getter is not None
             and host_idx in self._down_hosts_getter()
         ):
-            if target_type == "csmgrstatus":
+            if target_type == "csmgrstatus" and not bg:
                 info(f"[monitor] h{host_idx} is down, skipping csmgrstatus\n")
             return "skipped: host down"
         if target_type == "cefstatus":
             node_name = f"h{host_idx}"
-            return self.net.hosts[host_idx].cmd(f"cefstatus -d ./{node_name}")
+            argv = ["cefstatus", "-d", f"./{node_name}"]
+            timeout = self.command_timeout if bg else None
+            return MininetCommandRunner(self.net).run(
+                node_name, argv, timeout=timeout
+            ).stdout
         elif target_type == "csmgrstatus":
             # Use explicit target_host if provided; otherwise use resolver.
             explicit = target.get("target_host")
@@ -144,6 +181,8 @@ class Monitor:
                 uri=target.get("uri"),
                 port_num=target.get("port_num"),
                 host=csmgr_host,
+                quiet=bg,
+                timeout=self.command_timeout if bg else None,
             )
         else:
             return f"unknown monitor type: {target_type}"
@@ -174,19 +213,17 @@ class Monitor:
         """Write collected records to JSON and/or CSV."""
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
-        if self.output_json and self._records:
-            path = self.output_dir / self.output_json
-            path.write_text(
+        if self._output_json_path and self._records:
+            self._output_json_path.write_text(
                 json.dumps(self._records, ensure_ascii=False, indent=2),
                 encoding="utf-8",
             )
-            info(f"[monitor] wrote {path}\n")
+            info(f"[monitor] wrote {self._output_json_path}\n")
 
-        if self.output_csv and self._records:
-            path = self.output_dir / self.output_csv
+        if self._output_csv_path and self._records:
             fieldnames = ["elapsed_sec", "type", "host", "output"]
-            with open(path, "w", newline="", encoding="utf-8") as f:
+            with open(self._output_csv_path, "w", newline="", encoding="utf-8") as f:
                 writer = csv.DictWriter(f, fieldnames=fieldnames)
                 writer.writeheader()
                 writer.writerows(self._records)
-            info(f"[monitor] wrote {path}\n")
+            info(f"[monitor] wrote {self._output_csv_path}\n")

@@ -2,17 +2,12 @@
 
 from mininet.log import info
 
+from ..core.topology import TopologyModel
+
 
 def find_link(mesh_links, host_a, host_b):
-    """Find link definition between two hosts."""
-    for link in mesh_links:
-        if "hosts" in link:
-            if host_a in link["hosts"] and host_b in link["hosts"]:
-                return link
-            continue
-        if {link["host_a"], link["host_b"]} == {host_a, host_b}:
-            return link
-    return None
+    """Find the link between two hosts (a ``core.topology.Link``), or ``None``."""
+    return TopologyModel(mesh_links).find_link(host_a, host_b)
 
 
 def set_link_state(net, mesh_links, host_a, host_b, state):
@@ -20,12 +15,11 @@ def set_link_state(net, mesh_links, host_a, host_b, state):
     link = find_link(mesh_links, host_a, host_b)
     if link is None:
         raise RuntimeError(f"link not found between h{host_a} and h{host_b}")
-    switch_name = link["switch"]
     host_a_name = f"h{host_a}"
     host_b_name = f"h{host_b}"
     info("link", host_a_name, host_b_name, state, "\n")
-    net.configLinkStatus(host_a_name, switch_name, state)
-    net.configLinkStatus(host_b_name, switch_name, state)
+    net.configLinkStatus(host_a_name, link.switch, state)
+    net.configLinkStatus(host_b_name, link.switch, state)
 
 
 def link_down(net, mesh_links, host_a, host_b):
@@ -36,25 +30,6 @@ def link_down(net, mesh_links, host_a, host_b):
 def link_up(net, mesh_links, host_a, host_b):
     """Bring up link between two hosts."""
     set_link_state(net, mesh_links, host_a, host_b, "up")
-
-
-def pick_publish_link(mesh_links, publisher):
-    """Find a link connected to the publisher host."""
-    for link in mesh_links:
-        if "hosts" in link:
-            if publisher in link["hosts"]:
-                for host in link["hosts"]:
-                    if host != publisher:
-                        return {
-                            "host_a": publisher,
-                            "host_b": host,
-                            "switch": link["switch"],
-                            "subnet": link["subnet"],
-                        }
-            continue
-        if publisher in (link["host_a"], link["host_b"]):
-            return link
-    raise RuntimeError(f"publisher h{publisher} has no links")
 
 
 def set_node_links_state(net, node_name, state):

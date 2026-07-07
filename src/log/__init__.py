@@ -1,6 +1,5 @@
 """Log parsing and CSV summarization for Cefore experiments."""
 
-from .filename import FilenameMeta, parse_filename
 from .parser import (
     PARSERS,
     parse_cefgetfile,
@@ -11,8 +10,6 @@ from .parser import (
 from .summarizer import collect_records, summarize, write_csv
 
 __all__ = [
-    "FilenameMeta",
-    "parse_filename",
     "parse_cefputfile",
     "parse_cefgetfile",
     "parse_cefpubfile",

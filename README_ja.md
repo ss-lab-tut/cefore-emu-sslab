@@ -13,6 +13,7 @@ CeforeEmu は、Ubuntu 22.04 上で Cefore（コンテンツ指向ネットワ�
 | `linear` | 線形トポロジ（コンシューマ−ルータ−パブリッシャの連鎖） |
 | `mesh` | マルチパス FIB を持つランダムメッシュトポロジ |
 | `disaster` | 定期的なホスト障害・帯域制御・外部インタフェース接続を持つメッシュトポロジ |
+| `connect` | 物理 Cefore 機器と接続する外部ネットワークメッシュ |
 
 ## 前提条件
 
@@ -110,7 +111,7 @@ sudo .venv/bin/python3 -m src disaster --hosts 10 --switches 15 --seed 42 \
 | `--down-exclude` | 除外するホスト ID（カンマ区切り） |
 | `--cache-count` | キャッシュノード数（0 = down-count + 1） |
 | `--bw nodeA,nodeB,mbps` | リンク帯域を設定（繰り返し指定可） |
-| `--ext host,ifname[,ip][,mtu]` | 外部インタフェースを接続（繰り返し指定可） |
+| `--ext host,ifname,ip[,mtu]` | 外部インタフェースを接続; ipはCIDR形式で必須（DHCPは未サポート、繰り返し指定可） |
 | `--bridge switch,root_ip,local_routes[,ext,gw]` | ルート名前空間ブリッジ（繰り返し指定可） |
 | `--config` | JSON/YAML 設定ファイル |
 | `--no-cli` | 非対話モード |
@@ -177,6 +178,36 @@ monitoring:
     - {type: csmgrstatus, hosts: "cache"}
 ```
 
+**キャッシュ設定 (`cache_config`):**
+`cache_count`/`cache_default_rct_ms` より優先されます。
+```yaml
+cache_config:
+  strategy: "k_centers"    # k_centers / manual / degree_based / random
+  default:
+    count: 3
+    capacity: 819200
+    default_rct_ms: 1800000
+    algorithm: "LRU"       # LRU / LFU / FIFO / None
+    type: "memory"         # memory / filesystem
+```
+
+**障害シナリオ (`failure_scenarios`):**
+`down_interval`/`down_duration` 等より優先されます。
+```yaml
+failure_scenarios:
+  strategy: "cyclic"       # simple / cyclic / random / manual
+  cycles:
+    - {interval: 30, duration: 10, count: 2}
+```
+
+**ルーティング戦略 (`routing`):**
+```yaml
+routing:
+  strategy: "dijkstra"     # dijkstra / shortest_path / ecmp
+```
+
+全パラメータは `config/examples/example.yaml` を参照してください。
+
 ## ログ出力ディレクトリ
 
 `num` を指定した場合（設定ファイルまたは `--num`）、ログは専用ディレクトリに整理されます：
@@ -186,11 +217,15 @@ logs/ex{num}_seed{seed}/
 ├── script.log              # スクリプト実行ログ
 ├── topology.png            # トポロジ図
 ├── meta.json               # 設定スナップショット
+├── cefnetd_<port>_<sockid>.log  # /tmp から収集された cefnetd ログ
+├── csmgrd_<port>_<sockid>.log   # /tmp から収集された csmgrd ログ
 ├── cefputfile_*.log        # cefputfile ログ
 ├── cefgetfile_*.log        # cefgetfile ログ
 ├── recvfile_*              # 受信ファイル
 └── results.json            # 取得結果（--results-json 使用時）
 ```
+
+`run_dir` 未指定（カレントディレクトリ実行）の場合、daemon ログは収集されません。
 
 ```bash
 # ログディレクトリ出力を有効化
@@ -267,6 +302,7 @@ cefore-emu/
 │   │   ├── config/                # 設定ユーティリティ
 │   │   │   ├── loader.py          # JSON/YAML 設定ローダ
 │   │   │   └── priority_resolver.py  # 設定優先度解決
+│   │   ├── artifacts.py           # 成果物命名（dir / PNG / log 名の build+parse）
 │   │   ├── fib.py                 # FIB ルート計算
 │   │   ├── flap_state.py          # ホストフラップ状態追跡
 │   │   ├── graph.py               # グラフアルゴリズム（Dijkstra、k-center）
@@ -274,28 +310,34 @@ cefore-emu/
 │   │   ├── roles.py               # ノードロール割り当て
 │   │   └── tee.py                 # stdout/stderr をファイルに tee
 │   ├── log/                       # ログ解析と CSV 集計
-│   │   ├── filename.py            # ファイル名パターン → メタデータ抽出
 │   │   ├── parser.py              # ログテキスト → dict パーサ
 │   │   ├── plotter.py             # ログデータのプロット
 │   │   ├── summarizer.py          # ディレクトリ走査 + CSV 出力
 │   │   └── cli.py                 # argparse CLI
 │   ├── runtime/                   # ランタイム操作
 │   │   ├── bandwidth.py           # リンク帯域制御
-│   │   ├── base.py                # ベースランタイムユーティリティ
-│   │   ├── bridge.py              # Linux ブリッジ & ルート NS ブリッジング
+│   │   ├── bridge_args.py         # ブリッジ CLI 引数解析
+│   │   ├── bridge_external.py     # 外部 NIC ブリッジ接続
+│   │   ├── bridge_root.py         # ルート NS ブリッジ構成
 │   │   ├── cache_manager.py       # キャッシュマネージャ操作
+│   │   ├── cef_argv.py            # Cefore コマンド argv ビルダ
 │   │   ├── cefore.py              # Cefore デーモンの起動/停止/待機
+│   │   ├── cleanup.py             # クリーンアップユーティリティ
+│   │   ├── command_runner.py      # CommandRunner seam（ホストコマンド実行）
+│   │   ├── content_ops.py         # コンテンツ操作（put/get/pub/sub）
 │   │   ├── external_net.py        # 外部ネットワークメッシュシナリオ
 │   │   ├── failure_manager.py     # ホスト障害シミュレーション
 │   │   ├── links.py               # リンク状態制御（up/down）
 │   │   ├── monitoring.py          # 定期的なステータス収集
 │   │   ├── net_config.py          # IP アドレス & FIB 適用
+│   │   ├── result_detect.py       # 結果/成功検出
 │   │   ├── scheduler.py           # タイムドイベントスケジューラ
 │   │   ├── template.py            # ホストディレクトリテンプレート管理
 │   │   ├── topo.py                # Mininet Topo サブクラス（MeshTopo）
 │   │   └── viz.py                 # トポロジ可視化 & PNG 出力
 │   └── scenarios/                 # シナリオ実装
 │       ├── base.py                # 共通シナリオユーティリティ
+│       ├── connect.py             # 外部ネットワーク接続シナリオ
 │       ├── linear.py              # 線形トポロジシナリオ
 │       ├── mesh.py                # メッシュトポロジシナリオ
 │       └── disaster.py            # ディザスタシミュレーション付きメッシュ
@@ -320,6 +362,9 @@ cefore-emu/
 - [doc/autotest_plan_reviewed.md](doc/autotest_plan_reviewed.md) - 自動テスト実装計画
 - [doc/cefore_emu_autotest_spec.md](doc/cefore_emu_autotest_spec.md) - 自動テスト仕様
 - [doc/branch-retirement-feature-test.md](doc/branch-retirement-feature-test.md) - ブランチ廃止ノート
+- [doc/chatGPT_assumed-Plan.md](doc/chatGPT_assumed-Plan.md) - Bridge レビュー結果（Codex）
+- [ONBOARDING.md](ONBOARDING.md) - チームオンボーディングガイド
+- [CONTEXT.md](CONTEXT.md) - プロジェクト用語辞書
 
 ## ノードロール
 

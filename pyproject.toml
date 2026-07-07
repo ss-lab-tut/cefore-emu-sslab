@@ -32,6 +32,7 @@ pythonpath = ["."]
 addopts = "-ra"
 markers = [
     "integration: requires root/Mininet/Cefore (deselect with '-m not integration')",
+    "synthetic: env-gated external-bridge synthetic product test (root + CEFEMU_SYNTHETIC_ROOT=1)",
 ]
 
 [tool.setuptools.packages.find]

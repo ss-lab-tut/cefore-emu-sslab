@@ -1,32 +1,24 @@
 """Event scheduler for timed network operations."""
 
 import heapq
-import shlex
 import threading
 import time
 
 from mininet.log import info
 
-from ..core.protocols import normalize_route_protocol
+from ..core.events import content_event_types, event_priorities
 from .bandwidth import set_switch_bandwidth
 from .compute_client import check_external_connectivity
 from .compute_client import compute_call as _do_compute_call
 from .links import link_down, link_up
-from .net_config import cefroute_del, cefroute_enable
-
-
-def _cefroute_add(net, host_idx, prefix, protocol, next_hop):
-    """Add a FIB entry via cefroute add."""
-    node_name = f"h{host_idx}"
-    node_dir = f"./{node_name}"
-    protocol_arg = shlex.quote(normalize_route_protocol(protocol))
-    command = f"cefroute add {shlex.quote(prefix)} {protocol_arg} {shlex.quote(next_hop)} -d {node_dir}"
-    print(node_name, "command:", command)
-    info(net.hosts[host_idx].cmd(command))
+from .net_config import cefroute_add, cefroute_del, cefroute_enable
 
 
 def _handle_compute_call(net, event, mesh_links, ctx):
-    """Handle compute_call event with connectivity check."""
+    """Handle compute_call event with connectivity check.
+
+    Returns False on failure so the scheduler records an honest event Verdict.
+    """
     host_idx = event["host"]
     endpoint = event["endpoint"]
 
@@ -35,7 +27,7 @@ def _handle_compute_call(net, event, mesh_links, ctx):
             f"[scheduler] compute_call: h{host_idx} cannot reach {endpoint}. "
             f"Ensure ext/bridges are configured for this host.\n"
         )
-        return
+        return False
 
     exit_code, stdout = _do_compute_call(
         net,
@@ -50,6 +42,8 @@ def _handle_compute_call(net, event, mesh_links, ctx):
     )
     if exit_code != 0:
         info(f"[scheduler] compute_call failed for h{host_idx}: exit={exit_code}\n")
+        return False
+    return True
 
 
 def _handle_content_op(op_type):
@@ -74,9 +68,9 @@ _EVENT_HANDLERS = {
     "link_up": lambda net, ev, ml, ctx: link_up(
         net, ml, ev["nodes"][0], ev["nodes"][1]
     ),
-    "fib_add": lambda net, ev, _, ctx: _cefroute_add(
+    "fib_add": lambda net, ev, _, ctx: cefroute_add(
         net, ev["host"], ev["prefix"], ev.get("protocol"), ev["next_hop"]
-    ),
+    ).returncode == 0,
     "fib_del": lambda net, ev, _, ctx: cefroute_del(
         net, ev["host"], ev["prefix"], ev.get("protocol"), ev["next_hop"]
     ),
@@ -93,14 +87,13 @@ _EVENT_HANDLERS = {
     "pubsub_pub": _handle_content_op("pubsub_pub"),
 }
 
-# Same-time priority: lower value fires first.
-# pubsub_sub must start before pubsub_pub; put before get.
-_EVENT_PRIORITY = {
-    "pubsub_sub": 0,
-    "put": 1,
-    "pubsub_pub": 2,
-    "get": 3,
-}
+# Same-time priority (lower value fires first; pubsub_sub before pubsub_pub,
+# put before get) and content classification are derived from EVENT_SCHEMA so
+# this module and the config validator cannot drift. Content events are recorded
+# by the ContentOperationRunner with their own Verdicts; the scheduler emits
+# outcome records only for the rest.
+_EVENT_PRIORITY = event_priorities()
+_CONTENT_EVENT_TYPES = content_event_types()
 
 
 class EventScheduler:
@@ -133,10 +126,12 @@ class EventScheduler:
         run_dir=None,
         content_runner=None,
         start_time=None,
+        sink=None,
     ):
         self.net = net
         self.mesh_links = mesh_links
         self._context = {"run_dir": run_dir, "content_runner": content_runner}
+        self._sink = sink
         self._stop_event = threading.Event()
         self._thread = None
 
@@ -226,17 +221,38 @@ class EventScheduler:
                     f"({late_by:.1f}s late)\n"
                 )
             info(f"[scheduler] t={elapsed:.1f}s  {event_type} {event}\n")
+            success = True
+            error = None
             try:
-                handler(self.net, event, self.mesh_links, self._context)
+                if handler(self.net, event, self.mesh_links, self._context) is False:
+                    success = False
+                    error = "handler reported failure"
             except Exception as exc:
                 info(f"[scheduler] error handling {event_type}: {exc}\n")
+                success = False
+                error = str(exc)
             except BaseException as exc:
                 info(
                     f"[scheduler] fatal error handling {event_type}: {exc}; stopping\n"
                 )
                 break
 
+            self._record_event_outcome(event, event_type, at_sec, success, error)
             self._handle_repeat(event, at_sec)
+
+    def _record_event_outcome(self, event, event_type, at_sec, success, error):
+        """Emit an outcome record for a non-content event into the ResultsSink."""
+        if self._sink is None or event_type in _CONTENT_EVENT_TYPES:
+            return
+        actual_at = time.monotonic() - self._start_time
+        self._sink.record_event(
+            event_type,
+            success=success,
+            error=error,
+            scheduled_at=at_sec,
+            actual_at=round(actual_at, 3),
+            event={k: v for k, v in event.items() if k != "repeat"},
+        )
 
     def start(self):
         """Start background event execution thread."""

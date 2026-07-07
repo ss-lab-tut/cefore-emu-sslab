@@ -3,7 +3,7 @@
 from dataclasses import dataclass
 from typing import Any
 
-DEBUG_ARTIFACT_CHOICES = ("node_dirs", "fib_dump", "daemon_logs")
+DEBUG_ARTIFACT_CHOICES = ("node_dirs", "fib_dump")
 
 
 @dataclass(frozen=True, slots=True)
@@ -16,12 +16,11 @@ class DebugConfig:
 
     node_dirs: bool = False
     fib_dump: bool = False
-    daemon_logs: bool = False
     output_subdir: str = "debug"
 
     def enabled(self) -> bool:
         """Return True if any artifact collection is enabled."""
-        return self.node_dirs or self.fib_dump or self.daemon_logs
+        return self.node_dirs or self.fib_dump
 
 
 def build_debug_config(args: Any, raw_debug: Any = None) -> DebugConfig:
@@ -48,7 +47,7 @@ def build_debug_config(args: Any, raw_debug: Any = None) -> DebugConfig:
         active.update(DEBUG_ARTIFACT_CHOICES)
 
     # CLI --debug-artifact individual flags
-    for artifact in (getattr(args, "debug_artifact", None) or []):
+    for artifact in getattr(args, "debug_artifact", None) or []:
         active.add(artifact)
 
     # YAML/JSON debug block
@@ -66,6 +65,5 @@ def build_debug_config(args: Any, raw_debug: Any = None) -> DebugConfig:
     return DebugConfig(
         node_dirs="node_dirs" in active,
         fib_dump="fib_dump" in active,
-        daemon_logs="daemon_logs" in active,
         output_subdir=output_subdir,
     )

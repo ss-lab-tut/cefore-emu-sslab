@@ -7,8 +7,9 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Any
 
-from .filename import parse_filename
+from ..core.artifacts import parse_content_log_name
 from .parser import PARSERS
+from .schema import COMMAND_SCHEMAS
 
 # Metadata columns from meta.json
 META_KEYS = (
@@ -29,49 +30,14 @@ META_KEYS = (
 FILENAME_KEYS = (
     "filename",
     "host_id",
-    "content_id",
-    "file_seed",
     "down_hosts",
-    "get_idx",
     "phase",
-    "cycle",
-)
-
-# Command-specific ordered columns
-_PUTFILE_COLS = (
-    "timestamp",
-    "uri",
-    "file",
-    "rate_mbps",
-    "block_size_bytes",
-    "cache_time_sec",
-    "expiration_sec",
-    "tx_frames",
-    "tx_bytes",
-    "duration_sec",
-    "throughput_bps",
-    "success",
-)
-
-_GETFILE_COLS = (
-    "timestamp",
-    "uri",
-    "rx_frames_all",
-    "rx_frames_content",
-    "rx_bytes_all",
-    "rx_bytes_content",
-    "duration_sec",
-    "throughput_bps",
-    "goodput_bps",
-    "jitter_ave_us",
-    "jitter_max_us",
-    "jitter_var_us",
-    "success",
+    "label",
+    "publisher_down",
 )
 
 COMMAND_COLS: dict[str, tuple[str, ...]] = {
-    "cefputfile": _PUTFILE_COLS,
-    "cefgetfile": _GETFILE_COLS,
+    command: schema.csv_columns for command, schema in COMMAND_SCHEMAS.items()
 }
 
 
@@ -84,6 +50,35 @@ def _load_meta(directory: Path) -> dict[str, Any]:
         return json.loads(meta_path.read_text(encoding="utf-8"))
     except (json.JSONDecodeError, OSError):
         return {}
+
+
+def _load_results_by_log_name(directory: Path) -> dict[str, dict[str, Any]]:
+    """Load content result records keyed by basename of their log file.
+
+    2026-07-03 artifact-layout bridge: repeated operations with the same
+    command/phase/host/URI overwrite the same log file today. The map is
+    intentionally last-wins so CSV enrichment describes the surviving log
+    content rather than an earlier record.
+    """
+    results_path = directory / "results.json"
+    if not results_path.exists():
+        return {}
+    try:
+        raw = json.loads(results_path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return {}
+    if not isinstance(raw, list):
+        return {}
+
+    by_name: dict[str, dict[str, Any]] = {}
+    for record in raw:
+        if not isinstance(record, dict) or "op_type" not in record:
+            continue
+        log_file = record.get("log_file")
+        if not log_file:
+            continue
+        by_name[Path(log_file).name] = record
+    return by_name
 
 
 def collect_records(
@@ -103,20 +98,27 @@ def collect_records(
             continue
 
         meta = _load_meta(dirpath)
+        results_by_log_name = _load_results_by_log_name(dirpath)
         meta_row = {k: meta.get(k) for k in META_KEYS}
         meta_row["experiment_dir"] = dirpath.name
 
         for logfile in sorted(dirpath.glob("*.log")):
-            fmeta = parse_filename(logfile)
-            if fmeta is None:
+            cmeta = parse_content_log_name(logfile)
+            if cmeta is not None:
+                command = cmeta.command
+                host_id = cmeta.host
+                phase = cmeta.phase
+                label = cmeta.label
+            else:
                 continue
 
-            parser = PARSERS.get(fmeta.command)
+            parser = PARSERS.get(command)
             if parser is None:
                 continue
 
             text = logfile.read_text(encoding="utf-8", errors="replace")
             record = parser(text)
+            result_record = results_by_log_name.get(logfile.name)
 
             # Prepend metadata columns
             row: dict[str, Any] = {}
@@ -125,16 +127,26 @@ def collect_records(
 
             # Filename-derived columns
             row["filename"] = logfile.name
-            row["host_id"] = fmeta.host_id
-            row["content_id"] = fmeta.content_id
-            row["file_seed"] = fmeta.seed
-            row["down_hosts"] = fmeta.down_hosts
-            row["get_idx"] = fmeta.idx
-            row["phase"] = fmeta.phase
-            row["cycle"] = fmeta.cycle
+            row["host_id"] = host_id
+            row["down_hosts"] = (
+                result_record.get("down_hosts") if result_record is not None else None
+            )
+            row["phase"] = phase
+            row["label"] = label
+            row["publisher_down"] = (
+                result_record.get("publisher_down")
+                if result_record is not None
+                else None
+            )
 
             row.update(record)
-            grouped[fmeta.command].append(row)
+            if result_record is not None:
+                if row.get("uri") is None:
+                    row["uri"] = result_record.get("uri")
+                if row.get("success") is None:
+                    row["success"] = result_record.get("success")
+
+            grouped[command].append(row)
 
     return dict(grouped)
 
@@ -147,14 +159,16 @@ def _build_fieldnames(command: str, records: list[dict[str, Any]]) -> list[str]:
 
     if command in COMMAND_COLS:
         fields.extend(COMMAND_COLS[command])
-    else:
-        # Dynamic: collect all keys from records
-        seen: set[str] = set(fields)
-        for rec in records:
-            for k in rec:
-                if k not in seen:
-                    fields.append(k)
-                    seen.add(k)
+
+    # Schema-unknown parser fallback fields are intentionally preserved.  This
+    # keeps new Cefore log labels visible in CSV while the warning points the
+    # maintainer at src/log/schema.py for the stable column decision.
+    seen: set[str] = set(fields)
+    for rec in records:
+        for k in rec:
+            if k not in seen:
+                fields.append(k)
+                seen.add(k)
 
     return fields
 

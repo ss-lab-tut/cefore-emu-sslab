@@ -1,0 +1,42 @@
+# 最小検証用: link_down/link_up イベントの outcome record + 復旧後 get
+# Usage: sudo .venv/bin/python3 -m src disaster --config config/examples/min_event_link.yaml
+#
+# seed=42 のこの設定では実行時トポロジは h1-h2 (s0) と h0-h2 (s1) になる
+# （assign_roles が先に rng を消費するため、素の MeshTopo プローブとは異なる）。
+# h1-h2 リンク（get 経路 h0→s1→h2 に影響しない側）を down/up し、
+# イベント機構と復旧後の取得を gate で検証する。
+hosts: 3
+switches: 6
+seed: 42
+k: 2
+down_interval: 0
+down_count: 0
+num: 9913
+output_dir: "logs/verify"
+no_cli: true
+duration: 18
+results_json: "results.json"
+publisher_host: 2
+
+events:
+  - at: 0
+    type: put
+    host: 2
+    uri: "ccnx:/test/linkev"
+    file: "./sample-putfile"
+    expiry: 3000
+    cache_time: 3000
+  - at: 4
+    type: get
+    host: 0
+    uri: "ccnx:/test/linkev"
+  - at: 8
+    type: link_down
+    nodes: [1, 2]
+  - at: 10
+    type: link_up
+    nodes: [1, 2]
+  - at: 14
+    type: get
+    host: 0
+    uri: "ccnx:/test/linkev"

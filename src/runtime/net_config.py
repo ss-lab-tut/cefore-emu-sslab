@@ -1,52 +1,91 @@
 """Network configuration application (Mininet-dependent)."""
 
-import shlex
+from dataclasses import dataclass
 
 from mininet.log import info
 
-from ..core.addressing import AddressingScheme
+from ..core.addressing import AddressingScheme, LINK_NETMASK
 from ..core.fib import get_routing_strategy
 from ..core.protocols import normalize_route_protocol
+from ..core.topology import TopologyModel
+from .command_runner import MininetCommandRunner
 
 
-def _route_protocol_arg(protocol: str | None) -> str:
-    """Return a shell-safe route protocol argument."""
-    return shlex.quote(normalize_route_protocol(protocol))
-
-
-def apply_ip_addr(net, mesh_links, scheme=None):
+def apply_ip_addr(net, mesh_links, scheme=None, runner=None):
     """Assign IP addresses to all host interfaces.
+
+    The explicit ``netmask`` is mandatory: ``ifconfig <iface> <ip>`` with no
+    netmask applies the classful default (/8 for 10.x, /16 for 172.x), which
+    collapses every interface onto one flat network and breaks per-link
+    routing. Each Cefore link is a /24 (see AddressingScheme).
 
     Args:
         net: Mininet network instance.
         mesh_links: List of link definitions.
         scheme: AddressingScheme for IP generation (defaults to 192.168.0.0/16).
+        runner: Optional CommandRunner (defaults to a Mininet-backed one).
     """
     if scheme is None:
         scheme = AddressingScheme()
-    for link in mesh_links:
-        subnet = link["subnet"]
-        if "hosts" in link:
-            for host_idx in link["hosts"]:
-                eth_idx = link["host_eth"][host_idx]
-                node_name = f"h{host_idx}"
-                ip = scheme.host_ip(subnet, host_idx)
-                command = f"ifconfig {node_name}-eth{eth_idx} {ip}"
-                print(node_name, "command:", command)
-                net.hosts[host_idx].cmd(command)
-            continue
-        for host_idx, eth_idx in (
-            (link["host_a"], link["host_a_eth"]),
-            (link["host_b"], link["host_b_eth"]),
-        ):
+    runner = runner or MininetCommandRunner(net)
+    for link in TopologyModel(mesh_links).links:
+        for host_idx in link.hosts:
+            eth_idx = link.eth_of(host_idx)
             node_name = f"h{host_idx}"
-            ip = scheme.host_ip(subnet, host_idx)
-            command = f"ifconfig {node_name}-eth{eth_idx} {ip}"
-            print(node_name, "command:", command)
-            net.hosts[host_idx].cmd(command)
+            ip = scheme.host_ip(link.subnet, host_idx)
+            argv = ["ifconfig", f"{node_name}-eth{eth_idx}", str(ip), "netmask", LINK_NETMASK]
+            print(node_name, "command:", argv)
+            runner.run(node_name, argv)
 
 
-def apply_fib_routes(net, routes, source: int | None = None):
+@dataclass(frozen=True)
+class RouteApplyFailure:
+    """One ``cefroute add`` that did not succeed, identified by its Route."""
+
+    source: int
+    prefix: str
+    next_hop_ip: str
+    returncode: int | None
+
+
+def cefroute_add(net, host_idx, prefix, protocol, next_hop, node_dir=None, runner=None):
+    """Add a FIB entry via cefroute add.
+
+    Args:
+        net: Mininet network instance.
+        host_idx: Host index.
+        prefix: Content name prefix (e.g. "ccnx:/test/sample").
+        protocol: Protocol (defaults to udp when None).
+        next_hop: Next hop IP address.
+        node_dir: Node directory (defaults to ./h{host_idx}).
+        runner: Optional CommandRunner (defaults to a Mininet-backed one).
+
+    Returns:
+        The CommandResult. A failed add is logged as a warning here, so
+        callers may ignore the return value without the failure becoming
+        silent.
+    """
+    node_name = f"h{host_idx}"
+    if node_dir is None:
+        node_dir = f"./{node_name}"
+    argv = [
+        "cefroute", "add", prefix, normalize_route_protocol(protocol), next_hop,
+        "-d", node_dir,
+    ]
+    print(node_name, "command:", argv)
+    runner = runner or MininetCommandRunner(net)
+    result = runner.run(node_name, argv)
+    info(result.stdout)
+    if result.returncode != 0:
+        info(
+            f"[fib] warning: cefroute add failed on {node_name} "
+            f"prefix={prefix} next_hop={next_hop} "
+            f"exit={result.returncode}\n"
+        )
+    return result
+
+
+def apply_fib_routes(net, routes, source: int | None = None, runner=None):
     """Apply precomputed FIB route entries.
 
     Args:
@@ -54,18 +93,42 @@ def apply_fib_routes(net, routes, source: int | None = None):
         routes: Iterable of Route objects.
         source: Optional host index filter. When provided, only routes for that
             source host are applied.
+        runner: Optional CommandRunner (defaults to a Mininet-backed one).
+
+    Returns:
+        List of RouteApplyFailure — empty when every route applied cleanly.
+        Failures are also logged as warnings here, so callers may ignore the
+        return value without the failure becoming silent.
     """
+    runner = runner or MininetCommandRunner(net)
+    failures = []
     for route in routes:
         if source is not None and route.source != source:
             continue
-        node_name = f"h{route.source}"
-        command = f"cefroute add {shlex.quote(route.prefix)} udp {shlex.quote(route.next_hop_ip)} -d ./{node_name}"
-        print(node_name, "command:", command)
-        info(net.hosts[route.source].cmd(command))
+        result = cefroute_add(
+            net, route.source, route.prefix, "udp", route.next_hop_ip,
+            runner=runner,
+        )
+        if result.returncode != 0:
+            failures.append(
+                RouteApplyFailure(
+                    source=route.source,
+                    prefix=route.prefix,
+                    next_hop_ip=route.next_hop_ip,
+                    returncode=result.returncode,
+                )
+            )
+    return failures
 
 
 def apply_fib(
-    net, mesh_links, k_paths, strategy="dijkstra", uri_publishers=None, scheme=None
+    net,
+    mesh_links,
+    k_paths,
+    strategy="dijkstra",
+    uri_publishers=None,
+    scheme=None,
+    runner=None,
 ):
     """Apply FIB entries using the specified routing strategy.
 
@@ -76,14 +139,19 @@ def apply_fib(
         strategy: Routing strategy name (dijkstra, shortest_path, ecmp).
         uri_publishers: Optional dict mapping URI prefix to publisher host ID.
         scheme: AddressingScheme for IP generation (defaults to 192.168.0.0/16).
+        runner: Optional CommandRunner (defaults to a Mininet-backed one).
+
+    Returns:
+        The computed routes. Application failures are logged (and surfaced)
+        by apply_fib_routes.
     """
     strat = get_routing_strategy(strategy)
     routes = strat.compute_routes(mesh_links, k_paths, uri_publishers, scheme=scheme)
-    apply_fib_routes(net, routes)
+    apply_fib_routes(net, routes, runner=runner)
     return routes
 
 
-def cefroute_del(net, host_idx, prefix, protocol, next_hop, node_dir=None):
+def cefroute_del(net, host_idx, prefix, protocol, next_hop, node_dir=None, runner=None):
     """Delete a FIB entry via cefroute del.
 
     Args:
@@ -93,19 +161,23 @@ def cefroute_del(net, host_idx, prefix, protocol, next_hop, node_dir=None):
         protocol: Protocol (e.g. "udp").
         next_hop: Next hop IP address.
         node_dir: Node directory (defaults to ./h{host_idx}).
+        runner: Optional CommandRunner (defaults to a Mininet-backed one).
     """
     node_name = f"h{host_idx}"
     if node_dir is None:
         node_dir = f"./{node_name}"
-    command = (
-        f"cefroute del {shlex.quote(prefix)} {_route_protocol_arg(protocol)} "
-        f"{shlex.quote(next_hop)} -d {node_dir}"
-    )
-    print(node_name, "command:", command)
-    info(net.hosts[host_idx].cmd(command))
+    argv = [
+        "cefroute", "del", prefix, normalize_route_protocol(protocol), next_hop,
+        "-d", node_dir,
+    ]
+    print(node_name, "command:", argv)
+    runner = runner or MininetCommandRunner(net)
+    result = runner.run(node_name, argv)
+    info(result.stdout)
+    return result.returncode == 0
 
 
-def cefroute_enable(net, host_idx, prefix, protocol, next_hop, node_dir=None):
+def cefroute_enable(net, host_idx, prefix, protocol, next_hop, node_dir=None, runner=None):
     """Enable a FIB entry via cefroute enable.
 
     Args:
@@ -115,13 +187,17 @@ def cefroute_enable(net, host_idx, prefix, protocol, next_hop, node_dir=None):
         protocol: Protocol (e.g. "udp").
         next_hop: Next hop IP address.
         node_dir: Node directory (defaults to ./h{host_idx}).
+        runner: Optional CommandRunner (defaults to a Mininet-backed one).
     """
     node_name = f"h{host_idx}"
     if node_dir is None:
         node_dir = f"./{node_name}"
-    command = (
-        f"cefroute enable {shlex.quote(prefix)} {_route_protocol_arg(protocol)} "
-        f"{shlex.quote(next_hop)} -d {node_dir}"
-    )
-    print(node_name, "command:", command)
-    info(net.hosts[host_idx].cmd(command))
+    argv = [
+        "cefroute", "enable", prefix, normalize_route_protocol(protocol), next_hop,
+        "-d", node_dir,
+    ]
+    print(node_name, "command:", argv)
+    runner = runner or MininetCommandRunner(net)
+    result = runner.run(node_name, argv)
+    info(result.stdout)
+    return result.returncode == 0

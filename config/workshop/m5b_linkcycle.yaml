@@ -1,0 +1,75 @@
+# =============================================================================
+# M5b: link_down/link_up cycle during sustained eval-get polling (no host
+# failures -- this config isolates link-level disruption from host flapping).
+# Usage: sudo .venv/bin/python3 -m src disaster --config config/workshop/m5b_linkcycle.yaml --no-cli
+# Driven by tools/autotest/run.py (overrides seed/num); values below are placeholders.
+#
+# Intended wall-clock duration: 120s. Last scheduled get repeat fires at t=80,
+# leaving a 40s tail.
+#
+# PROBLEM (topology-dependent event): link_down/link_up take a `nodes: [a, b]`
+# host-index pair that must actually share a switch in the GENERATED topology.
+# That topology depends on the seed, and tools/autotest/run.py overrides the
+# seed on every run, so the pair below cannot be guaranteed to exist for
+# every run in the campaign. We follow config/examples/min_event_link.yaml's
+# precedent and use nodes: [1, 2] (that file's own comment notes this exact
+# pair for its seed=42 topology); for a *different* seed at runtime, h1-h2 may
+# or may not be directly linked.
+#
+# What happens if the pair does NOT share a link (verified in
+# src/runtime/links.py + src/runtime/scheduler.py): set_link_state() raises
+# RuntimeError("link not found between h1 and h2"). EventScheduler._run()
+# catches this with a plain `except Exception`, logs it, records a FAILED
+# link_down outcome event in results.json, and continues the scheduler loop
+# -- it does not crash the run or abort remaining events. So a bad seed
+# degrades this config to "the link_down/link_up outcome records show
+# failure" rather than an experiment-ending exception; campaign analysis
+# should treat those two records as informative (topology had no h1-h2 edge
+# this run) rather than as a broken config.
+# =============================================================================
+
+hosts: 15
+switches: 48
+seed: 42                # placeholder; overridden by run.py
+k: 2
+host_degree_min: 2
+host_degree_max: 6
+
+num: 1                  # placeholder; overridden by run.py
+output_dir: "logs"
+no_cli: true
+duration: 120
+results_json: "results.json"
+# 2026-07-07 fix: down_* キーは省略すると default が down_interval=30/down_count=5
+# で host flapping が有効になる（smoke 実測: [flap] down h1 が発生し get が失敗）。
+# 「failure なし」を意図する config は必ず明示的にゼロを指定すること。
+down_interval: 0
+down_duration: 0
+down_count: 0
+
+# No failure_scenarios / down_interval: isolates link-level disruption from
+# host-level flapping (see m2_disaster.yaml / m5c_dc*.yaml for host flapping).
+
+events:
+  - at: 0
+    type: put
+    host: 0
+    uri: "ccnx:/m5b/data"
+    file: "./sample-putfile"
+
+  - at: 30
+    type: link_down
+    nodes: [1, 2]
+  - at: 50
+    type: link_up
+    nodes: [1, 2]
+
+  # Repeated eval get: every 5s from t=10 to t=80 (15 occurrences), spanning
+  # well before, during, and after the link_down/link_up window [30,50].
+  - at: 10
+    type: get
+    host: 3
+    uri: "ccnx:/m5b/data"
+    repeat:
+      interval: 5
+      count: 15

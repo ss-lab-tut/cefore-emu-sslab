@@ -2,7 +2,6 @@
 
 from src.log.parser import (
     PARSERS,
-    _detect_success,
     _extract_timestamp,
     _parse_numeric,
     _strip_unit,
@@ -43,18 +42,8 @@ def test_strip_unit_no_unit():
     assert _strip_unit("42") == "42"
 
 
-def test_detect_success_empty():
-    assert _detect_success("") is False
-    assert _detect_success("   ") is False
-
-
-def test_detect_success_failure_pattern():
-    assert _detect_success("Could not receive anything") is False
-    assert _detect_success("Received frame ... NG") is False
-
-
-def test_detect_success_normal():
-    assert _detect_success("Transfer completed successfully") is True
+# Success judgment itself is pinned in tests/core/test_verdict.py; the tests
+# below pin how the parsers feed the log-only Verdict adapter.
 
 
 # ── cefputfile ──
@@ -109,31 +98,78 @@ def test_parse_cefgetfile_failure():
     assert result["uri"] == "ccnx:/test/fail"
 
 
+def test_parse_cefgetfile_partial_without_marker_is_failure():
+    # Fields parsed but no completed marker: the definitive Factor decides.
+    text = "[cefgetfile] URI = ccnx:/test/partial\n[cefgetfile] Duration = 1.234 sec\n"
+    result = parse_cefgetfile(text)
+    assert result["success"] is False
+    assert result["duration_sec"] == 1.234
+
+
 # ── cefpubfile / cefsubfile ──
 
 
-def test_parse_cefpubfile_dynamic_keys():
+def test_parse_cefpubfile_uses_schema_fields():
     text = (
         "2024-01-15 10:00:00.000 [cefpubfile] Start\n"
         "[cefpubfile] URI = ccnx:/test/pub1\n"
-        "[cefpubfile] Tx Frames = 50\n"
-        "[cefpubfile] Duration = 2.5 sec\n"
+        "[cefpubfile] File = ./publisher.bin\n"
+        "[cefpubfile] Rate = 10 Mbps\n"
+        "[cefpubfile] Block Size = 1024 Bytes\n"
+        "[cefpubfile] Cache Time = 3000 sec\n"
+        "[cefpubfile] Expiration = 5000 sec\n"
     )
     result = parse_cefpubfile(text)
     assert result["uri"] == "ccnx:/test/pub1"
-    assert result["tx_frames"] == 50
-    assert result["duration"] == 2.5
-    assert result["success"] is True
+    assert result["file"] == "./publisher.bin"
+    assert result["rate_mbps"] == 10
+    assert result["block_size_bytes"] == 1024
+    assert result["cache_time_sec"] == 3000
+    assert result["expiration_sec"] == 5000
+    # pub has no in-log definitive Factor: success stays unknown.
+    assert result["success"] is None
 
 
-def test_parse_cefsubfile_dynamic_keys():
+def test_parse_cefsubfile_uses_canonical_unit_fields():
     text = (
         "[cefsubfile] URI = ccnx:/test/sub1\n"
-        "[cefsubfile] Rx Bytes = 1024 Bytes\n"
+        "[cefsubfile] Rx Frames (All) = 12\n"
+        "[cefsubfile] Rx Frames (ContentObject) = 10\n"
+        "[cefsubfile] Rx Bytes (All) = 6144 Bytes\n"
+        "[cefsubfile] Rx Bytes (ContentObject) = 5120 Bytes\n"
+        "[cefsubfile] Duration = 2.5 sec\n"
+        "[cefsubfile] Throughput = 90000 bps\n"
+        "[cefsubfile] Goodput = 85000 bps\n"
+        "[cefsubfile] Jitter (Ave) = 150 us\n"
+        "[cefsubfile] Jitter (Max) = 500 us\n"
+        "[cefsubfile] Jitter (Var) = 75 us\n"
     )
     result = parse_cefsubfile(text)
     assert result["uri"] == "ccnx:/test/sub1"
-    assert result["rx_bytes"] == 1024
+    assert result["rx_frames_all"] == 12
+    assert result["rx_frames_content"] == 10
+    assert result["rx_bytes_all"] == 6144
+    assert result["rx_bytes_content"] == 5120
+    assert result["duration_sec"] == 2.5
+    assert result["throughput_bps"] == 90000
+    assert result["goodput_bps"] == 85000
+    assert result["jitter_ave_us"] == 150
+    assert result["jitter_max_us"] == 500
+    assert result["jitter_var_us"] == 75
+    assert result["success"] is None
+
+
+def test_parse_pubsub_unknown_fields_are_kept_with_warning(capsys):
+    text = (
+        "[cefpubfile] URI = ccnx:/test/pub1\n[cefpubfile] Surprise Value = 12 Bytes\n"
+    )
+    result = parse_cefpubfile(text)
+    assert result["surprise_value"] == 12
+    captured = capsys.readouterr()
+    assert (
+        "warning: cefpubfile: unknown log field 'Surprise Value' "
+        "(add to src/log/schema.py)"
+    ) in captured.err
 
 
 # ── PARSERS dispatcher ──

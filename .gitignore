@@ -25,3 +25,11 @@ node_modules
 package-lock.json
 package.json
 
+
+# Local Claude Code hooks, settings
+.claude/hooks.json
+.codex/hooks.json
+.agents/hooks.json
+.claude/settings.local.json
+.codex/settings.local.json
+.agents/settings.local.json

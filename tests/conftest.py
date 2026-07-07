@@ -57,10 +57,11 @@ def sample_putfile_log():
 
 @pytest.fixture
 def sample_getfile_log():
-    """Realistic cefgetfile log text."""
+    """Realistic cefgetfile log text for a completed retrieval."""
     return (
         "2024-01-15 10:31:00.654321 [cefgetfile] Start\n"
         "[cefgetfile] URI = ccnx:/test/example1\n"
+        "Completed to get all the chunks.\n"
         "[cefgetfile] Rx Frames (All) = 120\n"
         "[cefgetfile] Rx Frames (ContentObject) = 100\n"
         "[cefgetfile] Rx Bytes (All) = 61440 Bytes\n"

@@ -1,7 +1,7 @@
 """Node role definitions for Cefore hosts."""
 
+import hashlib
 from dataclasses import dataclass
-from random import Random
 
 
 @dataclass(frozen=True)
@@ -53,3 +53,32 @@ def assign_roles(host_num, rng, publishers=None):
         else:
             roles[idx] = rng.choice([CONSUMER, PUBLISHER])
     return roles
+
+
+def derive_seed(base_seed, namespace):
+    """Derive a deterministic sub-seed from a root seed and namespace.
+
+    Keeps RNG streams independent so adding a new randomization domain
+    does not shift existing topology or failure sequences.
+    """
+    if base_seed is None:
+        return None
+    payload = f"ceforeemu:v1:{namespace}:{base_seed}".encode("utf-8")
+    digest = hashlib.sha256(payload).digest()
+    return int.from_bytes(digest, "big")
+
+
+def assign_random_cs_modes(host_ids, publisher_ids, rng):
+    """Assign random CS_MODE to each host.
+
+    Put/pub nodes need at least local cache (mode 1 or 2) so published
+    content remains available. Other nodes may also use mode 0.
+    """
+    publisher_ids = set(publisher_ids or ())
+    cs_modes = {}
+    for idx in sorted(host_ids):
+        if idx in publisher_ids:
+            cs_modes[idx] = rng.choice([1, 2])
+        else:
+            cs_modes[idx] = rng.choice([0, 1, 2])
+    return cs_modes

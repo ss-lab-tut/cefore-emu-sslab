@@ -1,31 +1,28 @@
 """Content operation runner for timed put/get/pubsub events."""
 
 import queue
-import subprocess
 import threading
 import time
 from pathlib import Path
 
 from mininet.log import info
 
+from ..core.artifacts import content_log_name, safe_uri_label
+from ..core.events import content_event_types
 from .cefore import (
     run_cefgetfile,
     run_cefpubfile,
     run_cefputfile,
     start_cefsubfile,
 )
+from .command_runner import MininetCommandRunner
 from .result_detect import (
     clear_sub_output_artifacts,
     detect_get_success,
+    detect_pub_success,
+    detect_put_success,
     detect_sub_success,
-    timestamp_utc,
-    wait_pubsub_process,
 )
-
-
-def _safe_uri_label(uri):
-    """Convert URI to a filesystem-safe label."""
-    return uri.replace("ccnx:/", "").replace("/", "_")
 
 
 class ContentOperationRunner:
@@ -33,30 +30,39 @@ class ContentOperationRunner:
     background worker thread so the EventScheduler timer thread is never blocked.
 
     Pub/sub ordering:
-      - pubsub_sub events spawn cefsubfile immediately and store the pending proc.
+      - pubsub_sub events spawn cefsubfile immediately and store the pending handle.
       - pubsub_pub events apply the startup grace delay, then run cefpubfile,
         then wait for all pending subscriber processes for the same URI and record
-        results via the result_callback.
+        results via the ResultsSink.
 
     get events run cefgetfile and record results.
-    put events run cefputfile (no result recording).
+    put events run cefputfile and record a put Verdict row (exit code only).
     """
+
+    _HANDLERS: dict[str, str] = {
+        "put": "_do_put",
+        "get": "_do_get",
+        "pubsub_sub": "_do_pubsub_sub",
+        "pubsub_pub": "_do_pubsub_pub",
+    }
 
     def __init__(
         self,
         net,
         run_dir,
-        result_callback,
+        sink,
         flap_state,
         seed_label,
         uri_publishers=None,
         startup_grace=1.0,
         pub_lifetime_by_uri=None,
         phase="event",
+        runner=None,
     ):
         self._net = net
+        self._runner = runner or MininetCommandRunner(net)
         self._run_dir = Path(run_dir)
-        self._result_callback = result_callback
+        self._sink = sink
         self._flap_state = flap_state
         self._seed_label = seed_label
         self._uri_publishers = uri_publishers or {}
@@ -109,10 +115,10 @@ class ContentOperationRunner:
             item_deadline = item["deadline"]
             if deadline is not None:
                 item_deadline = min(item_deadline, deadline)
-            exit_code = wait_pubsub_process(
-                item["proc"], item_deadline, cancel_event=self._cancel_event
+            result = self._runner.wait(
+                item["handle"], deadline=item_deadline, cancel_event=self._cancel_event
             )
-            self.record_sub_result(item, exit_code)
+            self.record_sub_result(item, result)
             if deadline is not None and time.monotonic() >= deadline:
                 completed = False
         return completed
@@ -130,10 +136,12 @@ class ContentOperationRunner:
                 leftovers.extend(entries)
             self._pending_subs.clear()
         for item in leftovers:
-            exit_code = wait_pubsub_process(
-                item["proc"], time.monotonic(), cancel_event=self._cancel_event
+            result = self._runner.wait(
+                item["handle"],
+                deadline=time.monotonic(),
+                cancel_event=self._cancel_event,
             )
-            self.record_sub_result(item, exit_code)
+            self.record_sub_result(item, result)
 
     def _discard_queued_items(self):
         """Discard operations that have not started, maintaining queue accounting."""
@@ -167,21 +175,14 @@ class ContentOperationRunner:
                 self._queue.task_done()
 
     def _dispatch(self, op_type, event):
-        if op_type == "put":
-            self._do_put(event)
-        elif op_type == "get":
-            self._do_get(event)
-        elif op_type == "pubsub_sub":
-            self._do_pubsub_sub(event)
-        elif op_type == "pubsub_pub":
-            self._do_pubsub_pub(event)
-        else:
+        handler_name = self._HANDLERS.get(op_type)
+        if handler_name is None:
             info(f"[content_runner] unknown op_type: {op_type}\n")
+            return
+        getattr(self, handler_name)(event)
 
-    def _log_path(self, cmd, host, uri, suffix=""):
-        label = _safe_uri_label(uri)
-        fname = f"{cmd}_{self._phase}_h{host}_{label}{suffix}.log"
-        return self._run_dir / fname
+    def _log_path(self, cmd, host, uri):
+        return self._run_dir / content_log_name(cmd, self._phase, host, uri)
 
     # ------------------------------------------------------------------
     # put
@@ -192,9 +193,10 @@ class ContentOperationRunner:
         uri = event["uri"]
         infile = event.get("file", "./sample-putfile")
         log_path = self._log_path("cefputfile", host, uri)
+        down_hosts = self._flap_state.snapshot()
         info(f"[content_runner] put h{host} uri={uri}\n")
-        run_cefputfile(
-            self._net,
+        exit_code = run_cefputfile(
+            self._runner,
             host,
             uri,
             file_path=infile,
@@ -207,6 +209,19 @@ class ContentOperationRunner:
             log_name=str(log_path),
             cancel_event=self._cancel_event,
         )
+        verdict = detect_put_success(exit_code)
+        self._sink.record_content(
+            "put",
+            verdict,
+            host=host,
+            uri=uri,
+            phase=self._phase,
+            out_file=None,
+            log_file=str(log_path),
+            exit_code=exit_code,
+            down_hosts=down_hosts,
+            publisher_host=host,
+        )
 
     # ------------------------------------------------------------------
     # get
@@ -215,13 +230,13 @@ class ContentOperationRunner:
     def _do_get(self, event):
         host = int(event["host"])
         uri = event["uri"]
-        label = _safe_uri_label(uri)
+        label = safe_uri_label(uri)
         out_path = self._run_dir / f"{self._phase}_recvfile_h{host}_{label}"
         log_path = self._log_path("cefgetfile", host, uri)
         down_hosts = self._flap_state.snapshot()
         info(f"[content_runner] get h{host} uri={uri}\n")
         exit_code = run_cefgetfile(
-            self._net,
+            self._runner,
             host,
             uri,
             str(out_path),
@@ -236,26 +251,17 @@ class ContentOperationRunner:
         )
         verdict = detect_get_success(log_path, out_path, exit_code)
         publisher_host = event.get("publisher_host") or self._uri_publishers.get(uri)
-        publisher_down = (
-            publisher_host in down_hosts if publisher_host is not None else False
-        )
-        self._result_callback(
-            {
-                "op_type": "get",
-                "ts": timestamp_utc(),
-                "phase": self._phase,
-                "host": host,
-                "uri": uri,
-                "out_file": str(out_path),
-                "log_file": str(log_path),
-                "exit_code": exit_code,
-                "down_hosts": down_hosts,
-                "publisher_host": publisher_host,
-                "publisher_down": publisher_down,
-                "success": verdict["success"],
-                "has_completed_log": verdict["has_completed_log"],
-                "has_output_file": verdict["has_output_file"],
-            }
+        self._sink.record_content(
+            "get",
+            verdict,
+            host=host,
+            uri=uri,
+            phase=self._phase,
+            out_file=str(out_path),
+            log_file=str(log_path),
+            exit_code=exit_code,
+            down_hosts=down_hosts,
+            publisher_host=publisher_host,
         )
 
     # ------------------------------------------------------------------
@@ -272,7 +278,7 @@ class ContentOperationRunner:
             wait_sec = float(self._pub_lifetime_by_uri[uri]) + 5.0
         else:
             wait_sec = 30.0
-        label = _safe_uri_label(uri)
+        label = safe_uri_label(uri)
         output_dir = self._run_dir / f"{self._phase}_recvdir_h{host}_{label}"
         output_dir.mkdir(parents=True, exist_ok=True)
         removed = clear_sub_output_artifacts(output_dir)
@@ -283,8 +289,8 @@ class ContentOperationRunner:
         log_path = self._log_path("cefsubfile", host, uri)
         down_hosts = self._flap_state.snapshot()
         started_at = time.monotonic()
-        proc = start_cefsubfile(
-            self._net,
+        handle = start_cefsubfile(
+            self._runner,
             host,
             uri,
             output_path=str(output_dir),
@@ -296,12 +302,12 @@ class ContentOperationRunner:
         )
         deadline = started_at + wait_sec
         info(
-            f"[content_runner] pubsub_sub h{host} uri={uri} pid={proc.pid} "
+            f"[content_runner] pubsub_sub h{host} uri={uri} "
             f"wait={wait_sec:.1f}s deadline={deadline:.1f}\n"
         )
         entry = {
             "op": event,
-            "proc": proc,
+            "handle": handle,
             "output_dir": output_dir,
             "log_path": log_path,
             "down_hosts": down_hosts,
@@ -344,8 +350,8 @@ class ContentOperationRunner:
         info(
             f"[content_runner] pubsub_pub h{host} uri={uri} deadline={pub_deadline:.1f}s\n"
         )
-        proc = run_cefpubfile(
-            self._net,
+        handle = run_cefpubfile(
+            self._runner,
             host,
             uri,
             file_path=infile,
@@ -361,60 +367,44 @@ class ContentOperationRunner:
             port_num=pub_opts.get("port_num"),
             log_name=str(log_path),
         )
-        pub_exit = None
-        timed_out = False
-        try:
-            end_time = time.monotonic() + pub_deadline
-            while True:
-                if self._cancel_event.is_set():
-                    raise subprocess.TimeoutExpired(cmd="cefpubfile", timeout=0)
-                remaining = end_time - time.monotonic()
-                if remaining <= 0:
-                    raise subprocess.TimeoutExpired(
-                        cmd="cefpubfile", timeout=pub_deadline
-                    )
-                try:
-                    pub_exit = proc.wait(timeout=min(0.1, remaining))
-                    break
-                except subprocess.TimeoutExpired:
-                    continue
+        pub_result = self._runner.wait(
+            handle,
+            deadline=time.monotonic() + pub_deadline,
+            cancel_event=self._cancel_event,
+        )
+        pub_exit = pub_result.returncode
+        pub_timed_out = pub_result.timed_out or pub_result.cancelled
+        if pub_timed_out:
+            info(
+                f"[WARN] content_runner: cefpubfile h{host} uri={uri} exceeded "
+                f"{pub_deadline:.1f}s or was cancelled; terminated\n"
+            )
+        else:
             info(
                 f"[content_runner] cefpubfile h{host} uri={uri} exit_code={pub_exit}\n"
             )
-        except subprocess.TimeoutExpired:
-            timed_out = True
-            info(
-                f"[WARN] content_runner: cefpubfile h{host} uri={uri} exceeded {pub_deadline:.1f}s; terminating\n"
-            )
-            proc.terminate()
-            try:
-                proc.wait(timeout=2)
-            except subprocess.TimeoutExpired:
-                proc.kill()
-                proc.wait()
-            pub_exit = proc.returncode
 
         # Record pub completion before waiting on subscribers
-        self._result_callback({
-            "op_type":           "pub",
-            "ts":                timestamp_utc(),
-            "phase":             self._phase,
-            "host":              host,
-            "uri":               uri,
-            "out_file":          str(log_path),
-            "log_file":          str(log_path),
-            "exit_code":         pub_exit,
-            "down_hosts":        self._flap_state.snapshot(),
-            "publisher_host":    host,
-            "publisher_down":    False,
-            "success":           pub_exit == 0 and not timed_out,
-            "has_completed_log": False,
-            "has_output_file":   False,
-        })
+        pub_verdict = detect_pub_success(pub_exit, pub_timed_out)
+        pub_down_hosts = self._flap_state.snapshot()
+        self._sink.record_content(
+            "pub",
+            pub_verdict,
+            host=host,
+            uri=uri,
+            phase=self._phase,
+            out_file=None,
+            log_file=str(log_path),
+            exit_code=pub_exit,
+            down_hosts=pub_down_hosts,
+            publisher_host=host,
+        )
 
         for item in sub_entries:
-            exit_code = wait_pubsub_process(
-                item["proc"], item["deadline"], cancel_event=self._cancel_event
+            result = self._runner.wait(
+                item["handle"],
+                deadline=item["deadline"],
+                cancel_event=self._cancel_event,
             )
             artifacts = (
                 sorted(item["output_dir"].glob("RNP0x*.out"))
@@ -424,37 +414,36 @@ class ContentOperationRunner:
             non_empty = [p for p in artifacts if p.stat().st_size > 0]
             info(
                 f"[content_runner] cefsubfile h{int(item['op']['host'])} uri={uri} "
-                f"exit_code={exit_code} artifacts={len(non_empty)}\n"
+                f"exit_code={result.returncode} artifacts={len(non_empty)}\n"
             )
-            self.record_sub_result(item, exit_code)
+            self.record_sub_result(item, result)
 
-    def record_sub_result(self, item, exit_code):
-        """Record a cefsubfile result via the result_callback."""
+    def record_sub_result(self, item, result):
+        """Record a cefsubfile result via the ResultsSink."""
         op = item["op"]
         host = int(op["host"])
         uri = op["uri"]
-        verdict = detect_sub_success(exit_code, item["output_dir"], item["log_path"])
-        out_file = verdict.get("artifact_path") or str(item["output_dir"])
+        verdict = detect_sub_success(result, item["output_dir"], item["log_path"])
+        out_file = verdict.artifact_path or str(item["output_dir"])
         publisher_host = op.get("publisher_host") or self._uri_publishers.get(uri)
-        down_hosts = item["down_hosts"]
-        publisher_down = (
-            publisher_host in down_hosts if publisher_host is not None else False
+        self._sink.record_content(
+            "sub",
+            verdict,
+            host=host,
+            uri=uri,
+            phase=self._phase,
+            out_file=out_file,
+            log_file=str(item["log_path"]),
+            exit_code=result.returncode,
+            down_hosts=item["down_hosts"],
+            publisher_host=publisher_host,
         )
-        self._result_callback(
-            {
-                "op_type": "sub",
-                "ts": timestamp_utc(),
-                "phase": self._phase,
-                "host": host,
-                "uri": uri,
-                "out_file": out_file,
-                "log_file": str(item["log_path"]),
-                "exit_code": exit_code,
-                "down_hosts": down_hosts,
-                "publisher_host": publisher_host,
-                "publisher_down": publisher_down,
-                "success": verdict["success"],
-                "has_completed_log": verdict["has_completed_log"],
-                "has_output_file": verdict["has_output_file"],
-            }
-        )
+
+
+# Keep the runtime dispatch table locked to the EventSchema-derived content set.
+# If EVENT_SCHEMA gains or loses a content operation, importing this module should
+# fail loudly instead of letting scheduler/content dispatch drift apart.
+assert set(ContentOperationRunner._HANDLERS) == content_event_types(), (
+    "ContentOperationRunner._HANDLERS must match content_event_types() -- "
+    "update _HANDLERS when EVENT_SCHEMA changes"
+)

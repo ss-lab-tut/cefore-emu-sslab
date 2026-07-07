@@ -1,0 +1,71 @@
+# =============================================================================
+# M3: scale sweep, 60-host variant (put + 3 eval gets + 1 pubsub pair, no failures)
+# Usage: sudo .venv/bin/python3 -m src disaster --config config/workshop/m3_scale_h60.yaml --no-cli
+# Driven by tools/autotest/run.py (overrides seed/num); values below are placeholders.
+#
+# Sibling files m3_scale_h15/h30/h45/h60.yaml share this exact event shape
+# (put, 1 pubsub pair, 3 eval gets at t=20/40/60) -- only hosts/switches and
+# the host indices used by events scale up with host count.
+#
+# switches = ~3.2x hosts, extrapolated from config/examples/example.yaml's
+# proven, runtime-validated 15h/48sw combination (this campaign avoids
+# running Mininet directly, so the ratio is not independently re-verified
+# per host count here -- it is a heuristic carried over from a known-good
+# baseline, not a hard guarantee from src/runtime/topo.py).
+#
+# Intended wall-clock duration: 120s. Last scheduled event fires at t=60,
+# leaving a 60s tail.
+# =============================================================================
+
+hosts: 60
+switches: 192
+seed: 42                # placeholder; overridden by run.py
+k: 2
+host_degree_min: 2
+host_degree_max: 6
+
+num: 1                  # placeholder; overridden by run.py
+output_dir: "logs"
+no_cli: true
+duration: 120
+results_json: "results.json"
+# 2026-07-07 fix: down_* キーは省略すると default が down_interval=30/down_count=5
+# で host flapping が有効になる（smoke 実測: [flap] down h1 が発生し get が失敗）。
+# 「failure なし」を意図する config は必ず明示的にゼロを指定すること。
+down_interval: 0
+down_duration: 0
+down_count: 0
+
+events:
+  - at: 0
+    type: put
+    host: 0
+    uri: "ccnx:/m3/data"
+    file: "./sample-putfile"
+
+  - at: 2
+    type: pubsub_sub
+    host: 59
+    uri: "ccnx:/m3/stream"
+    sub_opts:
+      wait: 20
+  - at: 2
+    type: pubsub_pub               # same `at` as sub above -> sub starts first
+    host: 0
+    uri: "ccnx:/m3/stream"
+    file: "./sample-putfile"
+    pub_opts:
+      lifetime: 8
+
+  - at: 20
+    type: get
+    host: 1
+    uri: "ccnx:/m3/data"
+  - at: 40
+    type: get
+    host: 20
+    uri: "ccnx:/m3/data"
+  - at: 60
+    type: get
+    host: 40
+    uri: "ccnx:/m3/data"

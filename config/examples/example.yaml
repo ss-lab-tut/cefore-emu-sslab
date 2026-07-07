@@ -11,14 +11,14 @@ switches: 48            # スイッチ数 (>=2, 最大 n*(n-1)/2)
 seed: 42               # 乱数シード (null でランダム)
 k: 2                   # 宛先ごとの最短パス数 (マルチパスルーティング)
 host_degree_min: 2     # ホストあたり最小スイッチ接続数 (>=1)
-host_degree_max: 5     # ホストあたり最大スイッチ接続数 (>= host_degree_min)
-switch_use_all: false   # true: --switches個までスイッチを作り余分なリンクを均等配分
+host_degree_max: 6     # ホストあたり最大スイッチ接続数 (>= host_degree_min)
+switch_use_all: false  # true: --switches個までスイッチを作り余分なリンクを均等配分
 node_per_switch: 2     # スイッチあたり最大ホスト数 (0=無制限, 2=リンクごとに1スイッチ)
 
 # -----------------------------------------------------------------------------
 # 出力設定
 # -----------------------------------------------------------------------------
-num: 4                         # 実験番号 (ログディレクトリ出力を有効化, null で無効)
+num: 999                       # 実験番号 (ログディレクトリ出力を有効化, null で無効)
 output_dir: "logs"             # ベース出力ディレクトリ
 timestamp: true              # true: 出力ディレクトリ名にタイムスタンプ付与
 topo_png: "topology.png"       # トポロジPNG出力パス (null で出力しない)
@@ -39,21 +39,21 @@ down_exclude: "0"
 # -----------------------------------------------------------------------------
 # キャッシュ設定 (レガシー: cache_count + cache_default_rct_ms)
 # -----------------------------------------------------------------------------
-cache_count: 0                 # キャッシュノード数 (0 = down_count + 1)
-cache_default_rct_ms: 10000    # キャッシュノードの CACHE_DEFAULT_RCT (ミリ秒, >=1000)
+# cache_count: 4                 # キャッシュノード数 (0 = down_count + 1)
+# cache_default_rct_ms: 10000    # キャッシュノードの CACHE_DEFAULT_RCT (ミリ秒, >=1000)
 
 # -----------------------------------------------------------------------------
 # キャッシュ設定 (拡張: cache_config)
 # cache_config を指定すると cache_count/cache_default_rct_ms より優先される
 # -----------------------------------------------------------------------------
-# cache_config:
-#   strategy: "k_centers"        # k_centers: 重心ベース / manual: 手動 / degree_based: 次数ベース
-#   default:
-#     count: 3                   # キャッシュノード数
-#     capacity: 819200           # CACHE_CAPACITY (bytes)
-#     default_rct_ms: 1800000    # CACHE_DEFAULT_RCT (ミリ秒, >=1000)
-#     algorithm: "LRU"           # CACHE_ALGORITHM: LRU / LFU / FIFO / None
-#     type: "memory"             # CACHE_TYPE: memory / filesystem
+cache_config:
+  strategy: "degree_based"        # k_centers: 重心ベース / manual: 手動 / degree_based: 次数ベース / random: ランダム CS_MODE
+  default:
+    count: 6                   # キャッシュノード数
+    capacity: 819200           # CACHE_CAPACITY (bytes)
+    default_rct_ms: 1800000    # CACHE_DEFAULT_RCT (ミリ秒, >=1000)
+    algorithm: "LFU"           # CACHE_ALGORITHM: LRU / LFU / FIFO / None
+    type: "memory"             # CACHE_TYPE: memory / filesystem
 #   nodes:                       # ノード個別設定（オプション）
 #     - id: [3, 5]
 #       capacity: 1638400
@@ -72,18 +72,18 @@ cache_default_rct_ms: 10000    # キャッシュノードの CACHE_DEFAULT_RCT (
 #   k: 3                         # ルーティング専用のk値（省略時はトップレベルの k を使用）
 
 # -----------------------------------------------------------------------------
-# ノード故障シミュレーション (拡張: failure_scenarios)
+# ノード故障シミュレーション
 # failure_scenarios を指定すると down_interval/down_duration 等より優先される
 # -----------------------------------------------------------------------------
 failure_scenarios:
   strategy: "cyclic"           # simple / cyclic / random / manual
-  simple:                      # simple 戦略用
+  simple:                      # simple 用
     interval: 30
     duration: 10
     count: 2
     stagger: 2
     exclude: [0, 4]
-  cycles:                    # cyclic/random/manual 戦略用
+  cycles:                    # cyclic/random/manual 用
     - interval: 30
       duration: 10
       count: 2
@@ -118,35 +118,35 @@ events:
   # topo_png の画像や起動ログの adjacency matrix で実際のリンクを確認すること。
   - at: 15                       # 開始から15秒後
     type: link_down              # リンクダウン
-    nodes: [0, 1]                # h0-h1 間 (seed=42 で s5 経由)
+    nodes: [0, 3]                # h0-h3 間 (hosts=15,switches=48,seed=42 で存在)
   - at: 25
     type: link_up
-    nodes: [0, 1]
+    nodes: [0, 3]
   - at: 30
     type: fib_del                # FIBエントリ削除
     host: 3
     prefix: "ccnx:/test/sample"
     protocol: udp
-    next_hop: "192.168.1.1"
+    next_hop: "10.0.1.1"
   - at: 40
     type: fib_add                # FIBエントリ追加
     host: 3
     prefix: "ccnx:/test/sample"
     protocol: udp
-    next_hop: "192.168.1.1"
+    next_hop: "10.0.1.1"
   - at: 50
     type: fib_enable             # FIBエントリ有効化
     host: 3
     prefix: "ccnx:/test/sample"
     protocol: udp
-    next_hop: "192.168.1.1"
+    next_hop: "10.0.1.1"
   - at: 60
     type: bw_set                 # 帯域変更（共有スイッチ全体に適用）
     nodes: [0, 3]                # ホストインデックスのペア
     bandwidth: 5                 # Mbps
   - at: 70
     type: bw_set                 # 周期的帯域劣化（repeat付き）
-    nodes: [1, 5]
+    nodes: [1, 2]                # h1-h2 間 (hosts=15,switches=48,seed=42 で存在)
     bandwidth: 1
     repeat:
       interval: 30               # 30秒ごとに繰り返し
@@ -172,8 +172,11 @@ events:
     uri: "ccnx:/test/event_data"
     file: "./sample-putfile"
     # rate: 10                   # 転送レート (Mbps) [オプション]
+    # block_size: 1024           # 最大ペイロード長 (bytes, >=60) [オプション]
     # expiry: 3000               # Content Objectライフタイム (秒) [オプション]
     # cache_time: 3000           # キャッシュ削除期間 (秒) [オプション]
+    # port_num: 9896             # ポート番号 [オプション]
+    # valid_algo: "crc32c"       # 検証アルゴリズム: crc32c / rsa-sha256 [オプション]
 
   # get イベント: put より後の時刻を指定。結果は results.json に記録される（phase: "event"）
   - at: 45
@@ -181,6 +184,11 @@ events:
     host: 0
     uri: "ccnx:/test/event_data"
     # pipeline: 4                # パイプライン数 [オプション]
+    # chunk: 100                 # 最大チャンク数 [オプション]
+    # port_num: 9896             # ポート番号 [オプション]
+    # sg: true                   # true: Send Long Life Interest (-z sg) [オプション]
+    # owner_only: false          # true: オーナーオンリーモード [オプション]
+    # valid_algo: "crc32c"       # 検証アルゴリズム: crc32c / rsa-sha256 [オプション]
 
   # --- コンテンツ操作イベント (pubsub_sub / pubsub_pub) --------------------
   # 同じ at 時刻でも pubsub_sub が先に起動される（優先度制御）。
@@ -191,14 +199,27 @@ events:
     uri: "ccnx:/test/event_stream"
     sub_opts:
       wait: 20                   # cefsubfile 待機時間 (秒)
+      # pipeline: 4              # パイプライン数 (>=1) [オプション]
+      # port_num: 9896           # ポート番号 [オプション]
+      # ri_valid_algo: "crc32c"  # RI 検証アルゴリズム [オプション]
+      # td_valid_algo: "crc32c"  # TD 検証アルゴリズム [オプション]
 
-  - at: 55
+  - at: 60
     type: pubsub_pub
     host: 4
     uri: "ccnx:/test/event_stream"
     file: "./sample-putfile"
     pub_opts:
       lifetime: 8                # Trigger Interest ライフタイム (秒)
+      # rate: 10                 # 転送レート (Mbps) [オプション]
+      # expiry: 3000             # Content Object ライフタイム (秒) [オプション]
+      # cache_time: 3000         # キャッシュ削除期間 (秒) [オプション]
+      # block_size: 1024         # 最大ペイロード長 (bytes) [オプション]
+      # port_num: 9896           # ポート番号 [オプション]
+      # retry_limit: 5           # リトライ上限 (>=0) [オプション]
+      # target: "trg"            # ターゲット: trg / ref / both [オプション]
+      # ti_valid_algo: "crc32c"  # TI 検証アルゴリズム [オプション]
+      # rd_valid_algo: "crc32c"  # RD 検証アルゴリズム [オプション]
 
 #   - at: 90
 #     type: compute_call           # 外部API呼び出し（bridges設定で到達性確保が必要）
@@ -237,6 +258,26 @@ results_json: ""       # 結果JSONファイル名 (空文字で無効, 出力�
 pubsub_sub_startup_grace: 1.0
 
 publisher_host: 4                  # パブリッシャーホスト (publisher-downメトリクス用)
+
+# cefnetd_timeout: 30             # cefnetd 起動タイムアウト (秒, 正の数)
+# webui_port: 8080                # WebUI ポート番号 (null で無効)
+
+# -----------------------------------------------------------------------------
+# ウォームアップ (キャッシュプリフェッチ)
+# -----------------------------------------------------------------------------
+# warmup_get_interval: 1           # ウォームアップ GET 間隔 (秒, 0で無効)
+# warmup_only_cache_nodes: true    # true: キャッシュノードのみウォームアップ
+# warmup_gets:                     # ウォームアップ GET リスト (省略時は自動生成)
+#   - host: 3
+#     uri: "ccnx:/test/hot/content1"
+
+# -----------------------------------------------------------------------------
+# デバッグ設定
+# -----------------------------------------------------------------------------
+# debug: false                     # true/dict: デバッグ情報収集
+# debug:
+#   artifacts: [node_dirs, fib_dump]
+#   output_subdir: "debug_out"
 
 # -----------------------------------------------------------------------------
 # 帯域制御 (静的: 起動時に適用)
@@ -292,8 +333,8 @@ publisher_host: 4                  # パブリッシャーホスト (publisher-d
 # 注意: network_cidr を変更した場合、events の fib_add/fib_del/fib_enable 等の
 #       next_hop フィールドも同じアドレス体系に合わせて手動で書き換えること。
 #
-# addressing:
-#   network_cidr: "192.168.0.0/16"
+addressing:
+  network_cidr: "10.0.0.0/16"
 # 外部接続時の推奨設定例:
 # addressing:
 #   network_cidr: "100.64.0.0/16"

@@ -6,18 +6,23 @@ Consolidates templates.py + config_io.py into a single module.
 import os
 import re
 import shutil
-import sys
 from pathlib import Path
 
-from mininet.log import info
-
 from ..core.paths import TEMPLATE_ROOT
-from ..core.roles import assign_roles
+from .cefore import cleanup_cefnetd_socket, read_port_num  # noqa: F401 (re-export)
 
-# Marker file written inside every hN directory created by ensure_node_dirs().
+# Marker file written inside every hN directory created by provision_node_dirs().
 # cleanup_node_dirs() only removes directories that carry this stamp,
 # preventing accidental deletion of manually created directories.
 STAMP_FILENAME = ".ceforeemu-node-dir"
+
+
+class NodeDirError(Exception):
+    """Raised when node directory provisioning cannot proceed.
+
+    Replaces the previous ``sys.exit`` so the scenario's staged cleanup
+    runs instead of the process being killed mid-experiment.
+    """
 
 
 def update_local_sock_id(node_dir, idx):
@@ -68,46 +73,55 @@ def update_node_name(node_dir, idx, base_uri="example.com/xxx/router-"):
     with open(conf_path, "w", encoding="utf-8") as conf_file:
         conf_file.writelines(new_lines)
 
+def provision_node_dirs(roles, base_dir: Path = Path(".")) -> list[Path]:
+    """Create node directories from templates for the given roles.
 
-from .cefore import cleanup_cefnetd_socket, read_port_num  # noqa: F401 (re-export)
-
-
-def ensure_node_dirs(host_num, rng, publishers=None) -> list[Path]:
-    """Create node directories from templates based on assigned roles.
+    The roles dict (host index -> NodeRole) is taken as-is; provisioning
+    never re-derives roles, so the caller owns the single ``assign_roles``
+    call and there is no rng save/restore dance.
 
     Each created directory receives a stamp file (STAMP_FILENAME) so that
     cleanup_node_dirs() can safely identify generated directories.
 
-    If a directory already exists without the stamp, the function exits with
-    an error to avoid destroying unmanaged content.
+    If a directory already exists without the stamp, a NodeDirError is
+    raised to avoid destroying unmanaged content. Provisioning is atomic:
+    on failure the directories this call created are removed (the unmanaged
+    directory that tripped the guard is left intact) before re-raising.
 
     Args:
-        host_num: Total number of hosts.
-        rng: Random number generator.
-        publishers: Set of host IDs designated as publishers.
+        roles: Mapping of host index to NodeRole.
+        base_dir: Directory under which hN directories are created
+            (defaults to the current working directory).
 
     Returns:
-        List of Path objects for every directory that was created or refreshed.
+        List of Path objects for every directory that was created.
     """
-    roles = assign_roles(host_num, rng, publishers)
     generated: list[Path] = []
-    for idx in range(host_num):
-        node_dir = Path(f"h{idx}")
-        template = TEMPLATE_ROOT / roles[idx].template
-        if not template.exists():
-            sys.exit(f"missing template directory: {template}")
-        if node_dir.is_dir():
-            stamp = node_dir / STAMP_FILENAME
-            if not stamp.exists():
-                sys.exit(
-                    f"{node_dir} exists but was not created by ceforeemu "
-                    f"(no {STAMP_FILENAME} stamp). Remove it manually before running."
-                )
-            shutil.rmtree(node_dir)
-        shutil.copytree(template, node_dir)
-        (node_dir / STAMP_FILENAME).touch()
-        update_local_sock_id(str(node_dir), idx)
-        generated.append(node_dir)
+    try:
+        for idx in sorted(roles):
+            node_dir = base_dir / f"h{idx}"
+            template = TEMPLATE_ROOT / roles[idx].template
+            if not template.exists():
+                raise NodeDirError(f"missing template directory: {template}")
+            if node_dir.is_dir():
+                stamp = node_dir / STAMP_FILENAME
+                if not stamp.exists():
+                    raise NodeDirError(
+                        f"{node_dir} exists but was not created by ceforeemu "
+                        f"(no {STAMP_FILENAME} stamp). "
+                        f"Remove it manually before running."
+                    )
+                shutil.rmtree(node_dir)
+            shutil.copytree(template, node_dir)
+            (node_dir / STAMP_FILENAME).touch()
+            update_local_sock_id(str(node_dir), idx)
+            generated.append(node_dir)
+    except BaseException:
+        # Atomic: undo only the directories this call created. The unmanaged
+        # directory that tripped the guard is never in ``generated``.
+        for created in generated:
+            shutil.rmtree(created, ignore_errors=True)
+        raise
     return generated
 
 
@@ -118,7 +132,7 @@ def cleanup_node_dirs(generated_dirs: list[Path]) -> None:
     Directories without the stamp are silently skipped.
 
     Args:
-        generated_dirs: List of Path objects returned by ensure_node_dirs().
+        generated_dirs: List of Path objects returned by provision_node_dirs().
     """
     for node_dir in generated_dirs:
         if not node_dir.is_dir():
@@ -226,3 +240,14 @@ def apply_cache_node_settings(
             current = _read_config_value(cefnetd_conf, "CS_MODE")
             if current == "2":
                 _set_config_value(cefnetd_conf, "CS_MODE", "0")
+
+
+def apply_cs_modes(cs_modes, base_dir=Path(".")):
+    """Write CS_MODE values to each host's cefnetd.conf.
+
+    Used by the random cache strategy instead of apply_cache_node_settings.
+    """
+    for idx, mode in cs_modes.items():
+        conf = base_dir / f"h{idx}" / "cefnetd.conf"
+        if conf.exists():
+            _set_config_value(conf, "CS_MODE", str(mode))

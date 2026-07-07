@@ -20,7 +20,6 @@ node_per_switch: 2     # スイッチあたり最大ホスト数 (0=無制限, 2
 # 出力設定
 # -----------------------------------------------------------------------------
 num: 9903                      # 実験番号 (ログディレクトリ出力を有効化, null で無効)
-output_dir: "logs"             # ベース出力ディレクトリ
 timestamp: true              # true: 出力ディレクトリ名にタイムスタンプ付与
 topo_png: "topology.png"       # トポロジPNG出力パス (null で出力しない)
 topo_layout: "kamada_kawai"    # レイアウト: spring / kamada_kawai / circular

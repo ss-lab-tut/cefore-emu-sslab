@@ -48,3 +48,9 @@ def main(argv: list[str] | None = None) -> None:
         grouped = collect_records(args.directories)
         for path in plot_all(grouped, output_dir):
             print(f"{path}  (graph)")
+
+
+# 2026-07-03 CLI fix: ``python3 -m src.log.cli`` silently did nothing without
+# an executable module guard.
+if __name__ == "__main__":
+    main()

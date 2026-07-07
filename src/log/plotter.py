@@ -12,12 +12,36 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
 import matplotlib.ticker as ticker  # noqa: E402
 
+from .schema import COMMAND_SCHEMAS
+
 PREFIX_COLORS: dict[str, str] = {
     "video": "#0077BB",
     "test": "#EE7733",
     "emergency": "#009988",
 }
 DEFAULT_COLOR = "#BBBBBB"
+
+
+def _require_schema_field(command: str, name: str) -> str:
+    """Return a canonical metric key only if the command schema owns it.
+
+    Plotters are downstream consumers of parser output; validating their keys
+    against the schema keeps graph code from quietly reintroducing legacy
+    spellings such as ``throughput`` or ``rate``.
+    """
+    if name not in COMMAND_SCHEMAS[command].field_names:
+        raise KeyError(f"{command} schema has no field {name!r}")
+    return name
+
+
+CEFPUT_THROUGHPUT = _require_schema_field("cefputfile", "throughput_bps")
+CEFGET_THROUGHPUT = _require_schema_field("cefgetfile", "throughput_bps")
+CEFGET_GOODPUT = _require_schema_field("cefgetfile", "goodput_bps")
+CEFGET_JITTER_AVE = _require_schema_field("cefgetfile", "jitter_ave_us")
+CEFSUB_THROUGHPUT = _require_schema_field("cefsubfile", "throughput_bps")
+CEFSUB_GOODPUT = _require_schema_field("cefsubfile", "goodput_bps")
+CEFSUB_JITTER_AVE = _require_schema_field("cefsubfile", "jitter_ave_us")
+CEFPUB_RATE = _require_schema_field("cefpubfile", "rate_mbps")
 
 
 def _color_for(prefix: str) -> str:
@@ -58,10 +82,20 @@ def _get_metric(rec: dict[str, Any], *keys: str) -> float | None:
     return None
 
 
+def _known_success(records: list[dict[str, Any]]) -> list[str]:
+    # Verdict success is tri-state; unknown (empty) stays out of denominators.
+    return [
+        s
+        for s in (str(record.get("success", "")).lower() for record in records)
+        if s in ("true", "false")
+    ]
+
+
 def _filter_eval(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
     # Records without a phase field (linear/mesh logs) are treated as eval records.
     return [
-        record for record in records
+        record
+        for record in records
         if record.get("phase") is None or str(record["phase"]).lower() == "eval"
     ]
 
@@ -145,16 +179,15 @@ def _grouped_bar_by_cycle(
         values: list[float] = []
         for cycle in cycles:
             cycle_records = [
-                record for record in by_prefix[prefix]
+                record
+                for record in by_prefix[prefix]
                 if (_safe_int(record.get("cycle")) or 0) == cycle
             ]
             if is_success_rate:
-                total = len(cycle_records)
-                success = sum(
-                    1 for record in cycle_records
-                    if str(record.get("success", "")).lower() == "true"
+                known = _known_success(cycle_records)
+                values.append(
+                    (known.count("true") / len(known) * 100) if known else 0.0
                 )
-                values.append((success / total * 100) if total > 0 else 0.0)
             else:
                 nums = [_get_metric(record, *metric_keys) for record in cycle_records]
                 nums = [value / divisor for value in nums if value is not None]
@@ -166,7 +199,9 @@ def _grouped_bar_by_cycle(
     axis.set_xlabel("Cycle")
     axis.set_ylabel(ylabel)
     axis.set_title(_build_title(records, chart_name))
-    axis.set_xticks([pos + bar_width * (prefix_count - 1) / 2 for pos in range(len(cycles))])
+    axis.set_xticks(
+        [pos + bar_width * (prefix_count - 1) / 2 for pos in range(len(cycles))]
+    )
     axis.set_xticklabels([str(cycle) for cycle in cycles])
     axis.legend()
     axis.yaxis.set_major_formatter(ticker.ScalarFormatter(useOffset=False))
@@ -190,7 +225,7 @@ def plot_cefgetfile(records: list[dict[str, Any]], output_dir: Path) -> list[Pat
     paths.extend(
         _grouped_bar_by_cycle(
             records,
-            metric_keys=("throughput_bps",),
+            metric_keys=(CEFGET_THROUGHPUT,),
             ylabel="Throughput (Mbps)",
             chart_name="cefgetfile Throughput",
             filename="cefgetfile_throughput",
@@ -201,7 +236,7 @@ def plot_cefgetfile(records: list[dict[str, Any]], output_dir: Path) -> list[Pat
     paths.extend(
         _grouped_bar_by_cycle(
             records,
-            metric_keys=("goodput_bps",),
+            metric_keys=(CEFGET_GOODPUT,),
             ylabel="Goodput (Mbps)",
             chart_name="cefgetfile Goodput",
             filename="cefgetfile_goodput",
@@ -212,7 +247,7 @@ def plot_cefgetfile(records: list[dict[str, Any]], output_dir: Path) -> list[Pat
     paths.extend(
         _grouped_bar_by_cycle(
             records,
-            metric_keys=("jitter_ave_us",),
+            metric_keys=(CEFGET_JITTER_AVE,),
             ylabel="Jitter (us)",
             chart_name="cefgetfile Jitter",
             filename="cefgetfile_jitter",
@@ -229,7 +264,7 @@ def plot_cefputfile(records: list[dict[str, Any]], output_dir: Path) -> list[Pat
     by_uri: dict[str, list[float]] = {}
     for record in records:
         uri = record.get("uri") or "unknown"
-        value = _safe_float(record.get("throughput_bps"))
+        value = _safe_float(record.get(CEFPUT_THROUGHPUT))
         if value is not None:
             by_uri.setdefault(str(uri), []).append(value / 1e6)
 
@@ -268,7 +303,7 @@ def plot_cefsubfile(records: list[dict[str, Any]], output_dir: Path) -> list[Pat
     paths.extend(
         _grouped_bar_by_cycle(
             records,
-            metric_keys=("throughput", "throughput_bps"),
+            metric_keys=(CEFSUB_THROUGHPUT,),
             ylabel="Throughput (Mbps)",
             chart_name="cefsubfile Throughput",
             filename="cefsubfile_throughput",
@@ -279,7 +314,7 @@ def plot_cefsubfile(records: list[dict[str, Any]], output_dir: Path) -> list[Pat
     paths.extend(
         _grouped_bar_by_cycle(
             records,
-            metric_keys=("goodput", "goodput_bps"),
+            metric_keys=(CEFSUB_GOODPUT,),
             ylabel="Goodput (Mbps)",
             chart_name="cefsubfile Goodput",
             filename="cefsubfile_goodput",
@@ -290,7 +325,7 @@ def plot_cefsubfile(records: list[dict[str, Any]], output_dir: Path) -> list[Pat
     paths.extend(
         _grouped_bar_by_cycle(
             records,
-            metric_keys=("jitter_ave", "jitter_ave_us"),
+            metric_keys=(CEFSUB_JITTER_AVE,),
             ylabel="Jitter (us)",
             chart_name="cefsubfile Jitter",
             filename="cefsubfile_jitter",
@@ -320,16 +355,14 @@ def plot_cefpubfile(records: list[dict[str, Any]], output_dir: Path) -> list[Pat
     success_pcts: list[float] = []
     for uri in uris:
         records_for_uri = by_uri[uri]
-        rate_values = [_safe_float(record.get("rate")) for record in records_for_uri]
+        rate_values = [
+            _safe_float(record.get(CEFPUB_RATE)) for record in records_for_uri
+        ]
         rate_values = [value for value in rate_values if value is not None]
         rates.append(sum(rate_values) / len(rate_values) if rate_values else 0.0)
 
-        total = len(records_for_uri)
-        success = sum(
-            1 for record in records_for_uri
-            if str(record.get("success", "")).lower() == "true"
-        )
-        success_pcts.append((success / total * 100) if total > 0 else 0.0)
+        known = _known_success(records_for_uri)
+        success_pcts.append((known.count("true") / len(known) * 100) if known else 0.0)
 
     fig, (ax_rate, ax_success) = plt.subplots(1, 2, figsize=(max(8, len(uris) * 2), 5))
 
