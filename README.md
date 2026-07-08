@@ -214,6 +214,19 @@ routing:
   strategy: "dijkstra"     # dijkstra / shortest_path / ecmp
 ```
 
+**Forwarding configuration (`forwarding_config`):**
+Config-only (no CLI flag); valid in `disaster` and `connect` blocks.
+```yaml
+forwarding_config:
+  default: "flooding"       # default / flooding / shortest_path
+  nodes:
+    - {id: [3, 5], strategy: "shortest_path"}
+```
+Written into every `hN/cefnetd.conf` as `FORWARDING_STRATEGY` before `cefnetd`
+starts (post-start edits do not take effect). A `nodes` entry overrides
+`default` for its host IDs; an unspecified `default` resolves to `"flooding"`,
+matching the template status quo.
+
 See `config/examples/example.yaml` for the complete reference with all parameters.
 
 ## Log Output Directory
@@ -324,7 +337,18 @@ timestamp, uri, file, rate_mbps, block_size_bytes, cache_time_sec, expiration_se
 **cefgetfile-specific columns:**
 timestamp, uri, rx_frames_all, rx_frames_content, rx_bytes_all, rx_bytes_content, duration_sec, throughput_bps, goodput_bps, jitter_ave_us, jitter_max_us, jitter_var_us, success
 
-**cefpubfile/cefsubfile:** Columns are extracted dynamically from `[command] Key = Value` lines in the log.
+**cefpubfile/cefsubfile-specific columns:** columns are schema-defined per
+command in `src/log/schema.py` (`COMMAND_SCHEMAS`), not discovered dynamically.
+`cefsubfile` carries the same metric set as `cefgetfile`:
+timestamp, uri, rx_frames_all, rx_frames_content, rx_bytes_all, rx_bytes_content, duration_sec, throughput_bps, goodput_bps, jitter_ave_us, jitter_max_us, jitter_var_us, success
+
+`cefpubfile` carries the put-side config metrics plus two presence markers
+(`trigger_interest_sent`/`trigger_data_received`, from the "Send Trigger
+Interest." / "Receive Trigger Data, finish application." log lines):
+timestamp, uri, file, rate_mbps, block_size_bytes, cache_time_sec, expiration_sec, trigger_interest_sent, trigger_data_received, success
+
+Unknown `Key = Value` lines not covered by the schema are still parsed and
+appended after the schema columns, with a stderr warning.
 
 ## Runtime Artifacts
 

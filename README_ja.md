@@ -206,6 +206,19 @@ routing:
   strategy: "dijkstra"     # dijkstra / shortest_path / ecmp
 ```
 
+**転送戦略設定 (`forwarding_config`):**
+config ファイル専用（CLI オプションなし）。`disaster` / `connect` ブロックで有効。
+```yaml
+forwarding_config:
+  default: "flooding"       # default / flooding / shortest_path
+  nodes:
+    - {id: [3, 5], strategy: "shortest_path"}
+```
+`cefnetd` 起動前に各 `hN/cefnetd.conf` の `FORWARDING_STRATEGY` として書き込まれます
+（起動後の書き換えは反映されません）。`nodes` の指定は該当ホスト ID について
+`default` を上書きします。`default` を省略した場合はテンプレートの初期値と同じ
+`"flooding"` になります。
+
 全パラメータは `config/examples/example.yaml` を参照してください。
 
 ## ログ出力ディレクトリ

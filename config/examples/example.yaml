@@ -72,6 +72,18 @@ cache_config:
 #   k: 3                         # ルーティング専用のk値（省略時はトップレベルの k を使用）
 
 # -----------------------------------------------------------------------------
+# 転送戦略設定 (forwarding_config)
+# config ファイル専用（CLI オプションなし）。disaster / connect ブロックで有効。
+# cefnetd 起動前に各 hN/cefnetd.conf の FORWARDING_STRATEGY として書き込まれる
+# （起動後の書き換えは反映されない）。
+# -----------------------------------------------------------------------------
+# forwarding_config:
+#   default: "flooding"          # default / flooding / shortest_path（省略時は flooding）
+#   nodes:                       # ノード個別設定（オプション、指定ホストで default を上書き）
+#     - id: [3, 5]
+#       strategy: "shortest_path"
+
+# -----------------------------------------------------------------------------
 # ノード故障シミュレーション
 # failure_scenarios を指定すると down_interval/down_duration 等より優先される
 # -----------------------------------------------------------------------------
