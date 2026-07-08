@@ -21,9 +21,6 @@ timestamp: false
 topo_png: "topology.png"
 topo_layout: "spring"
 
-# Start with failures disabled (turn on later)
-down_interval: 0
-
 # Optional: run in non-interactive mode + emit results
 # no_cli: true
 # duration: 120

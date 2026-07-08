@@ -37,7 +37,6 @@ def _csmgrd_is_up(output: str) -> bool:
 
 class DashboardState:
     MAX_OPERATIONS = 1000
-    MAX_MONITOR    = 500
     MAX_HISTORY    = 300
 
     def __init__(
@@ -66,7 +65,6 @@ class DashboardState:
             for i in range(host_count)
         }
         self._operations: list[dict] = []
-        self._monitor_records: list[dict] = []
         self._topology: dict = {"nodes": [], "edges": []}
         self._success_history: list[dict] = []  # [{elapsed, total, success, rate}]
 
@@ -103,9 +101,6 @@ class DashboardState:
                     self._hosts[host]["last_cefstatus"] = record.get("output", "")
                 elif rtype == "csmgrstatus":
                     self._hosts[host]["last_csmgrstatus"] = record.get("output", "")
-            if len(self._monitor_records) >= self.MAX_MONITOR:
-                del self._monitor_records[0]
-            self._monitor_records.append(record)
 
     # ------------------------------------------------------------------ #
     # Operation callbacks (called from experiment/scheduler threads)      #

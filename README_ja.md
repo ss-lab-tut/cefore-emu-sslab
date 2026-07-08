@@ -206,6 +206,19 @@ routing:
   strategy: "dijkstra"     # dijkstra / shortest_path / ecmp
 ```
 
+**転送戦略設定 (`forwarding_config`):**
+config ファイル専用（CLI オプションなし）。`disaster` / `connect` ブロックで有効。
+```yaml
+forwarding_config:
+  default: "flooding"       # default / flooding / shortest_path
+  nodes:
+    - {id: [3, 5], strategy: "shortest_path"}
+```
+`cefnetd` 起動前に各 `hN/cefnetd.conf` の `FORWARDING_STRATEGY` として書き込まれます
+（起動後の書き換えは反映されません）。`nodes` の指定は該当ホスト ID について
+`default` を上書きします。`default` を省略した場合はテンプレートの初期値と同じ
+`"flooding"` になります。
+
 全パラメータは `config/examples/example.yaml` を参照してください。
 
 ## ログ出力ディレクトリ
@@ -301,7 +314,7 @@ cefore-emu/
 │   ├── core/                      # コアロジックとアルゴリズム
 │   │   ├── config/                # 設定ユーティリティ
 │   │   │   ├── loader.py          # JSON/YAML 設定ローダ
-│   │   │   └── priority_resolver.py  # 設定優先度解決
+│   │   │   └── validator.py       # 設定バリデータ
 │   │   ├── artifacts.py           # 成果物命名（dir / PNG / log 名の build+parse）
 │   │   ├── fib.py                 # FIB ルート計算
 │   │   ├── flap_state.py          # ホストフラップ状態追跡
@@ -345,7 +358,6 @@ cefore-emu/
 ├── config/                        # 設定ファイル
 │   ├── templates/                 # ホストテンプレート（h0, h1, h2）
 │   └── examples/                  # 設定例（YAML/JSON）
-├── doc/                           # 設計ドキュメント
 ├── tools/
 │   └── autotest/                  # バッチ実験ランナー
 │       ├── run.py                 # バッチ実行スクリプト
@@ -359,11 +371,6 @@ cefore-emu/
 
 ## ドキュメント
 
-- [doc/autotest_plan_reviewed.md](doc/autotest_plan_reviewed.md) - 自動テスト実装計画
-- [doc/cefore_emu_autotest_spec.md](doc/cefore_emu_autotest_spec.md) - 自動テスト仕様
-- [doc/branch-retirement-feature-test.md](doc/branch-retirement-feature-test.md) - ブランチ廃止ノート
-- [doc/chatGPT_assumed-Plan.md](doc/chatGPT_assumed-Plan.md) - Bridge レビュー結果（Codex）
-- [ONBOARDING.md](ONBOARDING.md) - チームオンボーディングガイド
 - [CONTEXT.md](CONTEXT.md) - プロジェクト用語辞書
 
 ## ノードロール

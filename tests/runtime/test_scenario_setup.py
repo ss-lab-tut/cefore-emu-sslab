@@ -89,6 +89,7 @@ def patched_seam():
         "attach_external_interface": "src.runtime.scenario_setup.attach_external_interface",
         "render_topology_png": "src.runtime.scenario_setup.render_topology_png",
         "build_host_graph": "src.runtime.scenario_setup.build_host_graph",
+        "ForwardingConfigManager": "src.runtime.scenario_setup.ForwardingConfigManager",
         "build_fleet": "src.runtime.scenario_setup.build_fleet",
         "apply_fib": "src.runtime.scenario_setup.apply_fib",
         "run_cefstatus_all": "src.runtime.scenario_setup.run_cefstatus_all",
@@ -109,6 +110,12 @@ def patched_seam():
                 calls.append("MininetCommandRunner"),
                 runner_instance,
             )[1]
+        elif name == "ForwardingConfigManager":
+            manager = MagicMock(name="forwarding_manager")
+            manager.apply_configs.side_effect = lambda *a, **k: calls.append(
+                "forwarding.apply_configs"
+            )
+            m.return_value = manager
         else:
             m.side_effect = record(name)
 
@@ -151,6 +158,10 @@ def test_seam_walks_canonical_setup_order(patched_seam):
         fleet_readiness_policy="raise",
         fib_strategy="dijkstra",
         fib_uri_publishers={"ccnx:/x": 2},
+        forwarding_config={
+            "default": "flooding",
+            "nodes": [{"id": [1], "strategy": "shortest_path"}],
+        },
     )
     net = MagicMock(name="net")
 
@@ -169,6 +180,7 @@ def test_seam_walks_canonical_setup_order(patched_seam):
         "attach_external_interface",
         "render_topology_png",
         "build_host_graph",
+        "forwarding.apply_configs",
         "build_fleet",
         "fleet.start_all",
         "fleet.wait_ready",

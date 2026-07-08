@@ -397,6 +397,26 @@ def test_merge_cache_config_applied():
     assert args.cache_config == {"strategy": "manual"}
 
 
+def test_merge_forwarding_config_defaults_to_flooding():
+    parser = _make_merge_parser()
+    args = _make_args()
+    merge_cli_and_config(args, {}, parser)
+    assert args.forwarding_config == {"default": "flooding"}
+
+
+def test_merge_forwarding_config_applied():
+    parser = _make_merge_parser()
+    args = _make_args()
+    config = {
+        "forwarding_config": {
+            "default": "shortest_path",
+            "nodes": [{"id": [1], "strategy": "flooding"}],
+        }
+    }
+    merge_cli_and_config(args, config, parser)
+    assert args.forwarding_config == config["forwarding_config"]
+
+
 # ── additional validate_config coverage ──
 
 
@@ -429,6 +449,17 @@ def test_option_specs_are_canonical_source_for_flat_view():
     assert "topo_layout" in flat_keys
     assert OPTION_SPECS["topo_layout"].choices == ("spring", "kamada_kawai", "circular")
     assert OPTION_SPECS["cache_config"].kind == "structured"
+
+
+def test_forwarding_config_option_spec_excludes_special_merge():
+    spec = OPTION_SPECS["forwarding_config"]
+    assert spec.kind == "structured"
+    assert spec.config_allowed
+    assert not spec.cli_allowed
+    assert spec.block == ("disaster", "connect")
+    assert spec.default == {"default": "flooding"}
+    assert spec.special_config_merge
+    assert "forwarding_config" not in config_option_keys()
 
 
 def test_debug_option_specs_match_argparse_identity():
@@ -687,6 +718,43 @@ def test_validate_cache_config_nodes_type_invalid():
     assert any("type" in e for e in errors)
 
 
+@pytest.mark.parametrize(
+    ("config", "expected_error"),
+    [
+        ({"forwarding_config": None}, "forwarding_config must be a dict"),
+        ({"forwarding_config": {}}, "forwarding_config must not be empty"),
+        (
+            {"forwarding_config": {"default": "invalid"}},
+            "forwarding_config.default must be one of: default, flooding, shortest_path",
+        ),
+        (
+            {"forwarding_config": {"nodes": [{"id": "h1", "strategy": "flooding"}]}},
+            "forwarding_config.nodes[0].id must be a list of integers",
+        ),
+        (
+            {"forwarding_config": {"nodes": [{"id": [1]}]}},
+            "forwarding_config.nodes[0].strategy is required",
+        ),
+    ],
+)
+def test_validate_forwarding_config(config, expected_error):
+    assert expected_error in validate_config(config)
+
+
+def test_validate_forwarding_config_valid():
+    assert (
+        validate_config(
+            {
+                "forwarding_config": {
+                    "default": "flooding",
+                    "nodes": [{"id": [1, 2], "strategy": "shortest_path"}],
+                }
+            }
+        )
+        == []
+    )
+
+
 def test_validate_failure_scenarios_non_dict():
     errors = validate_config({"failure_scenarios": "bad"})
     assert any("failure_scenarios" in e for e in errors)
@@ -730,6 +798,13 @@ def test_validate_failure_scenarios_simple_interval_non_integer():
         {"failure_scenarios": {"strategy": "simple", "simple": {"interval": "slow"}}}
     )
     assert any("interval" in e for e in errors)
+
+
+def test_validate_failure_scenarios_simple_duration_null():
+    errors = validate_config(
+        {"failure_scenarios": {"strategy": "simple", "simple": {"duration": None}}}
+    )
+    assert any("duration" in e and "must not be null" in e for e in errors)
 
 
 def test_validate_failure_scenarios_cyclic_non_list():
@@ -777,6 +852,22 @@ def test_validate_failure_scenarios_cyclic_entry_fields():
     assert any("exclude" in e for e in errors)
     assert any("target" in e for e in errors)
     assert any("allow_publishers" in e for e in errors)
+
+
+def test_validate_failure_scenarios_cyclic_interval_duration_null():
+    errors = validate_config(
+        {
+            "failure_scenarios": {
+                "strategy": "cyclic",
+                "cycles": [{"interval": None, "duration": None}],
+            }
+        }
+    )
+
+    assert errors == [
+        "failure_scenarios.cycles[0].interval must not be null",
+        "failure_scenarios.cycles[0].duration must not be null",
+    ]
 
 
 def test_validate_monitoring_non_dict():

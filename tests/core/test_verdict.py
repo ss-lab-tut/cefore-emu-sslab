@@ -6,6 +6,7 @@ pub/sub invariant (timed_out/cancelled + non-empty artifact = success).
 
 from src.core.verdict import (
     COMPLETED_MARKER,
+    PUB_DELIVERED_MARKER,
     Verdict,
     failure_reasons,
     from_log,
@@ -120,9 +121,18 @@ class TestFromLog:
         assert from_log("cefputfile", text, fields_present=True).success is True
         assert from_log("cefputfile", text, fields_present=False).success is False
 
-    def test_sub_and_pub_stay_unknown(self):
+    def test_sub_stays_unknown(self):
+        # sub has no in-log definitive Factor at all, marker or otherwise.
         assert from_log("cefsubfile", "[cefsubfile] URI = ccnx:/a\n").success is None
+
+    def test_pub_without_delivery_marker_stays_unknown(self):
+        # Deliberately updated 2026-07-07: fields alone (no delivery marker)
+        # are not definitive for pub, unlike put's fields_present rule.
         assert from_log("cefpubfile", "[cefpubfile] URI = ccnx:/a\n").success is None
+
+    def test_pub_with_delivery_marker_decides_true(self):
+        text = f"[cefpubfile] URI = ccnx:/a\n[cefpubfile] {PUB_DELIVERED_MARKER}\n"
+        assert from_log("cefpubfile", text).success is True
 
     def test_marker_factor_only_applies_to_get(self):
         assert from_log("cefputfile", "x", fields_present=True).has_completed_log is None

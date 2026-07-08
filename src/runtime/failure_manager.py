@@ -160,8 +160,8 @@ class FlexibleFailureManager:
             info("[failure] simple mode requires 'simple' config section\n")
             return threading.Event(), None
 
-        interval = self.simple.get("interval") or 30
-        duration = self.simple.get("duration") or 10
+        interval = self.simple.get("interval", 30)
+        duration = self.simple.get("duration", 10)
         count = self.simple.get("count") if self.simple.get("count") is not None else 2
         stagger = (
             self.simple.get("stagger") if self.simple.get("stagger") is not None else 0
@@ -204,8 +204,8 @@ class FlexibleFailureManager:
                 if stop_event.is_set():
                     break
 
-                interval = cycle_config.get("interval") or 30
-                duration = cycle_config.get("duration") or 10
+                interval = cycle_config.get("interval", 30)
+                duration = cycle_config.get("duration", 10)
                 count = (
                     cycle_config.get("count")
                     if cycle_config.get("count") is not None
@@ -290,9 +290,7 @@ class FlexibleFailureManager:
                             )
                         success = False
                         error = str(exc)
-                    _record_flap(
-                        self.sink, "host_down", host_idx, success, error
-                    )
+                    _record_flap(self.sink, "host_down", host_idx, success, error)
 
                 def schedule_up(down_set: set[int], cycle_num: int):
                     timer = None
@@ -331,9 +329,7 @@ class FlexibleFailureManager:
                                     )
                                 success = False
                                 error = str(exc)
-                            _record_flap(
-                                self.sink, "host_up", host_idx, success, error
-                            )
+                            _record_flap(self.sink, "host_up", host_idx, success, error)
                         with state_lock:
                             for host_idx in restored_hosts:
                                 shared_down.discard(host_idx)

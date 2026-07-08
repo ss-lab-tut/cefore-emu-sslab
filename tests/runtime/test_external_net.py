@@ -100,12 +100,13 @@ def test_connect_main_meta_json_uses_bootstrap_schema(monkeypatch, tmp_path):
         "switches": 6,
         "seed": 33,
         "k": 4,
-        "down_interval": 30,
-        "down_duration": 10,
+        "down_interval": 0,
+        "down_duration": 0,
         "down_count": 5,
         "down_stagger": 2,
         "down_exclude": "",
         "cache_count": 2,
+        "forwarding": {"default": "flooding"},
     }
     assert "output_dir" not in meta
 

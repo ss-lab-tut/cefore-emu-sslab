@@ -18,22 +18,38 @@ class FieldKind(Enum):
 
     TEXT = "text"
     NUMERIC = "numeric"
+    # 2026-07-07: cefpubfile emits some events as bare protocol marker lines
+    # (e.g. "[cefpubfile] Send Trigger Interest.") rather than "KEY = value"
+    # pairs. MARKER fields record presence/absence of the exact line as a
+    # bool instead of parsing a captured value.
+    MARKER = "marker"
 
 
 @dataclass(frozen=True)
 class Field:
-    """One command log label and its canonical record field name."""
+    """One command log label and its canonical record field name.
+
+    ``log_label`` means different things depending on ``kind``: for TEXT/
+    NUMERIC fields it is the key half of a "KEY = value" line; for MARKER
+    fields it is the entire literal line (there is no value half to parse).
+    """
 
     name: str
     log_label: str
     kind: FieldKind
 
     def pattern(self, command: str) -> str:
-        """Return the regex that captures this field's raw value.
+        """Return the regex that detects or captures this field.
 
         Labels such as ``Rx Frames (All)`` contain regex metacharacters in the
         Cefore log itself, so escaping is part of the schema contract.
+
+        MARKER fields have no "= value" suffix to require — Cefore prints
+        them as standalone sentences — so the pattern only needs to prove the
+        line occurred anywhere in the text; presence is the entire signal.
         """
+        if self.kind is FieldKind.MARKER:
+            return rf"\[{command}\]\s+{re.escape(self.log_label)}"
         return rf"\[{command}\]\s+{re.escape(self.log_label)}\s*=\s*(.+)"
 
 
@@ -57,6 +73,7 @@ class LogRecordSchema:
 
 TEXT = FieldKind.TEXT
 NUMERIC = FieldKind.NUMERIC
+MARKER = FieldKind.MARKER
 
 
 COMMAND_SCHEMAS: dict[str, LogRecordSchema] = {
@@ -100,6 +117,21 @@ COMMAND_SCHEMAS: dict[str, LogRecordSchema] = {
             Field("block_size_bytes", "Block Size", NUMERIC),
             Field("cache_time_sec", "Cache Time", NUMERIC),
             Field("expiration_sec", "Expiration", NUMERIC),
+            # 2026-07-07: archived workshop campaign logs (logs/workshop_20260707/)
+            # show these two literal lines appear in every SUCCESS run's
+            # cefpubfile log and nowhere else; there is no KEY=value retry
+            # counter or label to parse instead. FAILURE runs have a 0-byte
+            # cefpubfile log (process killed by SIGTERM before any output), so
+            # absence of these markers is NOT proof the trigger round-trip
+            # failed — it is equally consistent with the log never being
+            # flushed. Treat False as "not observed", never as "did not
+            # happen".
+            Field("trigger_interest_sent", "Send Trigger Interest.", MARKER),
+            Field(
+                "trigger_data_received",
+                "Receive Trigger Data, finish application.",
+                MARKER,
+            ),
         ),
     ),
     "cefsubfile": LogRecordSchema(

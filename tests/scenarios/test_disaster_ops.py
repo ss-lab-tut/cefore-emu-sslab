@@ -147,6 +147,57 @@ def test_missing_cache_config_defaults_to_kcenters_strategy(tmp_path):
     assert strategy.cache_config is None
 
 
+def test_configure_passes_forwarding_config_to_setup(tmp_path):
+    forwarding_config = {
+        "default": "shortest_path",
+        "nodes": [{"id": [1], "strategy": "flooding"}],
+    }
+    scenario = DisasterScenario(
+        _make_args(
+            hosts=3,
+            k=2,
+            topo_png=None,
+            topo_layout="spring",
+            cache_config=None,
+            cache_count=0,
+            down_count=5,
+            bw=[],
+            ext=[],
+            cefnetd_timeout=10,
+            forwarding_config=forwarding_config,
+        ),
+        run_dir=tmp_path,
+    )
+    scenario.topo = SimpleNamespace(mesh_links=[])
+
+    with patch("src.scenarios.disaster.setup_scenario") as setup:
+        scenario.configure(MagicMock())
+
+    spec = setup.call_args.args[1]
+    assert spec.forwarding_config is forwarding_config
+
+
+@patch("src.scenarios.disaster.periodic_host_flap")
+def test_default_down_values_skip_legacy_failure_manager(mock_flap, tmp_path):
+    scenario = DisasterScenario(
+        _make_args(
+            down_interval=0,
+            down_duration=0,
+            down_count=5,
+            down_stagger=2,
+            down_exclude="",
+            failure_scenarios=None,
+        ),
+        run_dir=tmp_path,
+    )
+
+    scenario._start_failure_manager(MagicMock(), use_cli=True)
+
+    mock_flap.assert_not_called()
+    assert scenario.stop_event is None
+    assert scenario.stop_thread is None
+
+
 @patch("src.scenarios.disaster.info")
 def test_event_diagnostics_warn_for_unobserved_publications(mock_info, tmp_path):
     scenario = DisasterScenario(_make_args(), run_dir=tmp_path)

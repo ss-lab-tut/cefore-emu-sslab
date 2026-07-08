@@ -48,6 +48,9 @@ _EXPORT_MODULES = {
     "set_node_links_state": ".links",
     "periodic_host_flap": ".failure_manager",
     "FlexibleFailureManager": ".failure_manager",
+    # forwarding
+    "ForwardingConfigManager": ".forwarding",
+    "resolve_forwarding_config": ".forwarding",
     # daemon_fleet
     "DaemonFleet": ".daemon_fleet",
     # net_config
@@ -122,6 +125,9 @@ __all__ = [
     "set_node_links_state",
     "periodic_host_flap",
     "FlexibleFailureManager",
+    # forwarding
+    "ForwardingConfigManager",
+    "resolve_forwarding_config",
     # daemon_fleet
     "DaemonFleet",
     # net_config

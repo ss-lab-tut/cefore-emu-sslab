@@ -2,9 +2,7 @@
 
 import threading
 import time
-from unittest.mock import MagicMock, patch, call
-
-import pytest
+from unittest.mock import MagicMock, patch
 
 from src.core.flap_state import FlapState
 from src.runtime.results_sink import RecordingSink
@@ -26,8 +24,15 @@ class TestPeriodicHostFlap:
         net = _make_net(3)
         state = FlapState()
         stop = periodic_host_flap(
-            net, 3, interval=1, down_time=1, rng=None,
-            exclude=[0, 1, 2], state=state, down_count=1, stagger=0,
+            net,
+            3,
+            interval=1,
+            down_time=1,
+            rng=None,
+            exclude=[0, 1, 2],
+            state=state,
+            down_count=1,
+            stagger=0,
         )
         assert isinstance(stop, threading.Event)
         stop.set()
@@ -39,8 +44,16 @@ class TestPeriodicHostFlap:
         net = _make_net(3)
         state = FlapState()
         stop = periodic_host_flap(
-            net, 3, interval=0.05, down_time=0.05, rng=None,
-            exclude=[], state=state, down_count=1, stagger=0, quiet=True,
+            net,
+            3,
+            interval=0.05,
+            down_time=0.05,
+            rng=None,
+            exclude=[],
+            state=state,
+            down_count=1,
+            stagger=0,
+            quiet=True,
         )
         time.sleep(0.3)
         stop.set()
@@ -55,8 +68,16 @@ class TestPeriodicHostFlap:
         net = _make_net(4)
         state = FlapState()
         stop = periodic_host_flap(
-            net, 4, interval=0.05, down_time=0.05, rng=None,
-            exclude=[1], state=state, down_count=1, stagger=0, quiet=True,
+            net,
+            4,
+            interval=0.05,
+            down_time=0.05,
+            rng=None,
+            exclude=[1],
+            state=state,
+            down_count=1,
+            stagger=0,
+            quiet=True,
         )
         time.sleep(0.3)
         stop.set()
@@ -71,9 +92,17 @@ class TestPeriodicHostFlap:
         state = FlapState()
         callback = MagicMock()
         stop = periodic_host_flap(
-            net, 3, interval=0.05, down_time=0.05, rng=None,
-            exclude=[], state=state, down_count=1, stagger=0,
-            quiet=True, on_host_up=callback,
+            net,
+            3,
+            interval=0.05,
+            down_time=0.05,
+            rng=None,
+            exclude=[],
+            state=state,
+            down_count=1,
+            stagger=0,
+            quiet=True,
+            on_host_up=callback,
         )
         time.sleep(0.3)
         stop.set()
@@ -85,8 +114,16 @@ class TestPeriodicHostFlap:
         net = _make_net(3)
         state = FlapState()
         stop = periodic_host_flap(
-            net, 3, interval=10, down_time=10, rng=None,
-            exclude=[], state=state, down_count=1, stagger=0, quiet=True,
+            net,
+            3,
+            interval=10,
+            down_time=10,
+            rng=None,
+            exclude=[],
+            state=state,
+            down_count=1,
+            stagger=0,
+            quiet=True,
         )
         time.sleep(0.05)
         stop.set()
@@ -105,6 +142,42 @@ class TestFlexibleFailureManager:
         state = FlapState()
         stop, _ = mgr.start(MagicMock(), state, quiet=True)
         mock_flap.assert_called_once()
+
+    @patch("src.runtime.failure_manager.info")
+    @patch("src.runtime.failure_manager.periodic_host_flap")
+    def test_simple_duration_zero_uses_info_noop(self, mock_flap, mock_info):
+        config = {
+            "strategy": "simple",
+            "simple": {"interval": 10, "duration": 0, "count": 1},
+        }
+        mgr = FlexibleFailureManager(config, 5, rng=None, publisher_ids={4})
+        state = FlapState()
+        stop, thread = mgr.start(MagicMock(), state, quiet=True)
+
+        assert isinstance(stop, threading.Event)
+        assert thread is None
+        mock_flap.assert_not_called()
+        mock_info.assert_called_once_with(
+            "[failure] simple mode: interval/duration must be > 0\n"
+        )
+
+    @patch("src.runtime.failure_manager.info")
+    @patch("src.runtime.failure_manager.periodic_host_flap")
+    def test_simple_interval_zero_uses_info_noop(self, mock_flap, mock_info):
+        config = {
+            "strategy": "simple",
+            "simple": {"interval": 0, "duration": 10, "count": 1},
+        }
+        mgr = FlexibleFailureManager(config, 5, rng=None, publisher_ids={4})
+        state = FlapState()
+        stop, thread = mgr.start(MagicMock(), state, quiet=True)
+
+        assert isinstance(stop, threading.Event)
+        assert thread is None
+        mock_flap.assert_not_called()
+        mock_info.assert_called_once_with(
+            "[failure] simple mode: interval/duration must be > 0\n"
+        )
 
     @patch("src.runtime.failure_manager.set_node_links_state")
     def test_cyclic_strategy_processes_all_cycles(self, mock_links):
@@ -177,8 +250,16 @@ class TestFlapOutcomeRecords:
         state = FlapState()
         sink = RecordingSink()
         stop = periodic_host_flap(
-            net, 3, interval=0.05, down_time=0.05, rng=None,
-            exclude=[], state=state, down_count=1, stagger=0, quiet=True,
+            net,
+            3,
+            interval=0.05,
+            down_time=0.05,
+            rng=None,
+            exclude=[],
+            state=state,
+            down_count=1,
+            stagger=0,
+            quiet=True,
             sink=sink,
         )
         time.sleep(0.3)
@@ -201,8 +282,16 @@ class TestFlapOutcomeRecords:
         state = FlapState()
         sink = RecordingSink()
         stop = periodic_host_flap(
-            net, 3, interval=0.05, down_time=0.05, rng=None,
-            exclude=[], state=state, down_count=1, stagger=0, quiet=True,
+            net,
+            3,
+            interval=0.05,
+            down_time=0.05,
+            rng=None,
+            exclude=[],
+            state=state,
+            down_count=1,
+            stagger=0,
+            quiet=True,
             sink=sink,
         )
         time.sleep(0.2)

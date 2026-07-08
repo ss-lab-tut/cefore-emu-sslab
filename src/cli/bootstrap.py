@@ -9,6 +9,7 @@ from typing import Callable
 from mininet.log import setLogLevel
 
 from ..core.config.loader import (
+    OPTION_SPECS,
     load_config,
     merge_cli_and_config,
     validate_config,
@@ -19,6 +20,7 @@ from ..core.artifacts import topo_png_default_name
 from ..core.debug import build_debug_config
 from ..core.paths import resolve_run_dir, resolve_run_path
 from ..core.tee import Tee
+from ..runtime.forwarding import resolve_forwarding_config
 from .args import (
     add_common_args,
     add_connect_args,
@@ -68,11 +70,12 @@ def bootstrap_scenario(
     cli_parser = _build_cli_precedence_parser(blocks)
     merge_cli_and_config(args, config_data, cli_parser)
     errors = validate_merged_args(args)
-    # Debug is special_config_merge and never lands on args, so merged-args
-    # validation is blind to it. Validate the raw block to keep connect's
-    # existing strict debug contract and apply the same guard to disaster.
-    if "debug" in config_data:
-        errors.extend(validate_config({"debug": config_data["debug"]}))
+    # special_config_merge entries bypass ordinary config_option_keys() so raw
+    # validation owns them. That keeps unfinished blocks like
+    # forwarding_config: null visible instead of disappearing during merge.
+    for key, spec in OPTION_SPECS.items():
+        if spec.special_config_merge and key in config_data:
+            errors.extend(validate_config({key: config_data[key]}))
     if errors:
         for error in errors:
             print(f"config error: {error}", file=sys.stderr)
@@ -98,6 +101,9 @@ def bootstrap_scenario(
             "down_stagger": args.down_stagger,
             "down_exclude": args.down_exclude,
             "cache_count": args.cache_count,
+            "forwarding": resolve_forwarding_config(
+                getattr(args, "forwarding_config", None)
+            ),
         }
         meta_path = run_dir / "meta.json"
         meta_path.write_text(json.dumps(meta_data, indent=2), encoding="utf-8")

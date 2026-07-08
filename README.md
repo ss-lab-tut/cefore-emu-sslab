@@ -214,6 +214,19 @@ routing:
   strategy: "dijkstra"     # dijkstra / shortest_path / ecmp
 ```
 
+**Forwarding configuration (`forwarding_config`):**
+Config-only (no CLI flag); valid in `disaster` and `connect` blocks.
+```yaml
+forwarding_config:
+  default: "flooding"       # default / flooding / shortest_path
+  nodes:
+    - {id: [3, 5], strategy: "shortest_path"}
+```
+Written into every `hN/cefnetd.conf` as `FORWARDING_STRATEGY` before `cefnetd`
+starts (post-start edits do not take effect). A `nodes` entry overrides
+`default` for its host IDs; an unspecified `default` resolves to `"flooding"`,
+matching the template status quo.
+
 See `config/examples/example.yaml` for the complete reference with all parameters.
 
 ## Log Output Directory
@@ -314,7 +327,7 @@ the same directory's `results.json` via its `log_file` key.
 |--------|--------|
 | experiment_dir | Directory name |
 | num, hosts, switches, seed, k | meta.json |
-| down_interval, down_duration, down_count, down_stagger, down_exclude, cache_count | meta.json |
+| down_interval, down_duration, down_count, down_stagger, down_exclude, cache_count, forwarding_default | meta.json |
 | filename, host_id, phase, label | Filename |
 | down_hosts, publisher_down | results.json join |
 
@@ -324,7 +337,18 @@ timestamp, uri, file, rate_mbps, block_size_bytes, cache_time_sec, expiration_se
 **cefgetfile-specific columns:**
 timestamp, uri, rx_frames_all, rx_frames_content, rx_bytes_all, rx_bytes_content, duration_sec, throughput_bps, goodput_bps, jitter_ave_us, jitter_max_us, jitter_var_us, success
 
-**cefpubfile/cefsubfile:** Columns are extracted dynamically from `[command] Key = Value` lines in the log.
+**cefpubfile/cefsubfile-specific columns:** columns are schema-defined per
+command in `src/log/schema.py` (`COMMAND_SCHEMAS`), not discovered dynamically.
+`cefsubfile` carries the same metric set as `cefgetfile`:
+timestamp, uri, rx_frames_all, rx_frames_content, rx_bytes_all, rx_bytes_content, duration_sec, throughput_bps, goodput_bps, jitter_ave_us, jitter_max_us, jitter_var_us, success
+
+`cefpubfile` carries the put-side config metrics plus two presence markers
+(`trigger_interest_sent`/`trigger_data_received`, from the "Send Trigger
+Interest." / "Receive Trigger Data, finish application." log lines):
+timestamp, uri, file, rate_mbps, block_size_bytes, cache_time_sec, expiration_sec, trigger_interest_sent, trigger_data_received, success
+
+Unknown `Key = Value` lines not covered by the schema are still parsed and
+appended after the schema columns, with a stderr warning.
 
 ## Runtime Artifacts
 
@@ -350,7 +374,7 @@ cefore-emu/
 │   ├── core/                      # Core logic and algorithms
 │   │   ├── config/                # Configuration utilities
 │   │   │   ├── loader.py          # JSON/YAML config loader
-│   │   │   └── priority_resolver.py  # Config priority resolution
+│   │   │   └── validator.py       # Config validation
 │   │   ├── artifacts.py           # Artifact naming (dir / PNG / log names, build+parse)
 │   │   ├── fib.py                 # FIB route computation
 │   │   ├── flap_state.py          # Host flap state tracking
@@ -394,7 +418,6 @@ cefore-emu/
 ├── config/                        # Configuration
 │   ├── templates/                 # Host templates (h0, h1, h2)
 │   └── examples/                  # Example configurations (YAML/JSON)
-├── doc/                           # Design documents
 ├── tools/
 │   └── autotest/                  # Batch experiment runner
 │       ├── run.py                 # Batch runner script
@@ -487,11 +510,6 @@ Edit `config/templates/h1/csmgrd.conf` (applies to all router nodes).
 
 ## Documents
 
-- [doc/autotest_plan_reviewed.md](doc/autotest_plan_reviewed.md) - Autotest implementation plan
-- [doc/cefore_emu_autotest_spec.md](doc/cefore_emu_autotest_spec.md) - Autotest specification
-- [doc/branch-retirement-feature-test.md](doc/branch-retirement-feature-test.md) - Branch retirement notes
-- [doc/chatGPT_assumed-Plan.md](doc/chatGPT_assumed-Plan.md) - Bridge review findings (Codex)
-- [ONBOARDING.md](ONBOARDING.md) - Team onboarding guide
 - [CONTEXT.md](CONTEXT.md) - Project glossary (domain language)
 
 ## Node Roles

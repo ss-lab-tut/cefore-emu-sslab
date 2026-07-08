@@ -7,8 +7,6 @@ switches: 6
 seed: 42
 k: 1
 host_degree_min: 2
-down_interval: 0
-down_count: 0
 num: 9904
 output_dir: "logs/verify"
 no_cli: true

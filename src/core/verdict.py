@@ -14,8 +14,16 @@ Pinned semantics:
 - log-only: an empty/whitespace log means the command produced nothing and is
   judged ``False`` for every op type; a failure pattern anywhere is ``False``;
   otherwise the op's definitive Factor decides (get: completed marker,
-  put: parsed result fields), and ops without an in-log definitive Factor
-  (sub/pub) stay unknown (``None``).
+  put: parsed result fields, pub: trigger-data-received marker on the
+  success side only), and sub (and pub without the marker) stay unknown
+  (``None``).
+- pub delivery marker: 2026-07-07 workshop campaign logs show
+  ``PUB_DELIVERED_MARKER`` in every SUCCESS run's cefpubfile log and in no
+  FAILURE run. Presence is therefore treated as definitive success. Its
+  absence is deliberately NOT treated as definitive failure — FAILURE runs
+  produce a 0-byte cefpubfile log (process killed before any output), which
+  is indistinguishable from a lost/partial log. That asymmetry is
+  structural, not a gap to be closed here.
 """
 
 from __future__ import annotations
@@ -23,6 +31,13 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 COMPLETED_MARKER = "Completed to get all the chunks."
+# Kept as its own literal (like COMPLETED_MARKER above) rather than importing
+# src/log/schema.py's cefpubfile "trigger_data_received" Field: verdict.py is
+# a pure judgment module with no dependency on the log-parsing package, and
+# both call sites need to stay in lockstep only if Cefore's own wording
+# changes, which is exactly the kind of drift a dated comment (not an import)
+# is meant to catch.
+PUB_DELIVERED_MARKER = "Receive Trigger Data, finish application."
 FAILURE_PATTERNS = (
     "Could not receive anything",
     "Received frame ... NG",
@@ -128,7 +143,13 @@ def from_log(command: str, text: str, fields_present: bool | None = None) -> Ver
         success = has_completed
     elif op_type == "put":
         success = None if fields_present is None else bool(fields_present)
-    else:  # sub/pub: no in-log definitive Factor
+    elif op_type == "pub":
+        # Success side only (see module docstring): the marker's presence is
+        # definitive, but its absence must not be read as definitive failure,
+        # so unmatched pub logs fall through to the same unknown verdict sub
+        # gets below.
+        success = True if PUB_DELIVERED_MARKER in text else None
+    else:  # sub: no in-log definitive Factor
         success = None
 
     return Verdict(

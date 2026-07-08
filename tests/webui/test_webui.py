@@ -268,20 +268,6 @@ class TestDashboardStateRecordMonitor:
         ds = make_dashboard()  # host_count=3 -> known hosts are 0,1,2
         ds.record_monitor({"host": 99, "type": "cefstatus", "output": "faces: 1"})
         assert 99 not in ds._hosts
-        # the raw record is still appended to _monitor_records for audit/history purposes
-        assert ds._monitor_records[-1]["host"] == 99
-
-    def test_record_monitor_evicts_oldest_record_at_max_monitor_capacity(self):
-        ds = make_dashboard()
-        # Instance-attribute override keeps the test fast instead of inserting
-        # MAX_MONITOR=500 real records; self.MAX_MONITOR resolves to this
-        # instance value before the class default.
-        ds.MAX_MONITOR = 2
-        ds.record_monitor({"host": 0, "type": "cefstatus", "output": "first"})
-        ds.record_monitor({"host": 0, "type": "cefstatus", "output": "second"})
-        ds.record_monitor({"host": 0, "type": "cefstatus", "output": "third"})
-        assert len(ds._monitor_records) == 2
-        assert [r["output"] for r in ds._monitor_records] == ["second", "third"]
 
 
 # ------------------------------------------------------------------ #

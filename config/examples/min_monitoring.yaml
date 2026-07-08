@@ -4,8 +4,6 @@ hosts: 3
 switches: 3
 seed: 42
 k: 1
-down_interval: 0
-down_count: 0
 num: 9914
 output_dir: "logs/verify"
 no_cli: true

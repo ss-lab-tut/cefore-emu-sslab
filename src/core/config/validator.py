@@ -325,7 +325,7 @@ OPTION_SPECS = {
     "down_interval": OptionSpec(
         "down_interval",
         "int",
-        default=30,
+        default=0,
         minimum=0,
         flag="--down-interval",
         help="seconds between down events (0 to disable)",
@@ -335,7 +335,7 @@ OPTION_SPECS = {
     "down_duration": OptionSpec(
         "down_duration",
         "int",
-        default=10,
+        default=0,
         minimum=0,
         flag="--down-duration",
         help="seconds to keep host down",
@@ -422,6 +422,14 @@ OPTION_SPECS = {
     "addressing": OptionSpec("addressing", "structured", cli_allowed=False),
     "cache_config": OptionSpec(
         "cache_config", "structured", cli_allowed=False, special_config_merge=True
+    ),
+    "forwarding_config": OptionSpec(
+        "forwarding_config",
+        "structured",
+        default={"default": "flooding"},
+        block=("disaster", "connect"),
+        cli_allowed=False,
+        special_config_merge=True,
     ),
     "cefnetd_timeout": OptionSpec("cefnetd_timeout", "number", cli_allowed=False),
     "warmup_gets": OptionSpec("warmup_gets", "structured", cli_allowed=False),
@@ -569,7 +577,9 @@ def structured_option_keys() -> tuple[str, ...]:
     return tuple(
         spec.key
         for spec in OPTION_SPECS.values()
-        if spec.config_allowed and spec.kind == "structured" and spec.key != "debug"
+        if spec.config_allowed
+        and spec.kind == "structured"
+        and not spec.special_config_merge
     )
 
 
@@ -667,6 +677,55 @@ def _validate_cache_config(errors, config, host_count):
                             )
 
 
+FORWARDING_STRATEGY_CHOICES = ("default", "flooding", "shortest_path")
+
+
+def _validate_forwarding_config(errors, config):
+    if "forwarding_config" not in config:
+        return
+
+    fc = config["forwarding_config"]
+    if not isinstance(fc, dict):
+        errors.append("forwarding_config must be a dict")
+        return
+    if not fc:
+        errors.append("forwarding_config must not be empty")
+        return
+
+    if "default" in fc and fc["default"] not in FORWARDING_STRATEGY_CHOICES:
+        errors.append(
+            "forwarding_config.default must be one of: "
+            + ", ".join(FORWARDING_STRATEGY_CHOICES)
+        )
+
+    nodes = fc.get("nodes", [])
+    if not isinstance(nodes, list):
+        errors.append("forwarding_config.nodes must be a list")
+        return
+    for node_idx, node_entry in enumerate(nodes):
+        if not isinstance(node_entry, dict):
+            errors.append(f"forwarding_config.nodes[{node_idx}] must be a dict")
+            continue
+        ids = node_entry.get("id", [])
+        if not isinstance(ids, list) or not all(_is_int(i) for i in ids):
+            errors.append(
+                f"forwarding_config.nodes[{node_idx}].id must be a list of integers"
+            )
+        if "strategy" not in node_entry:
+            # 2026-07-08 silent-ignore fix: ForwardingConfigManager._parse_node_overrides
+            # skips any node entry without "strategy" (src/runtime/forwarding.py), so an
+            # override missing this key previously passed validation and then did nothing
+            # at runtime with no error surfaced to the user.
+            errors.append(
+                f"forwarding_config.nodes[{node_idx}].strategy is required"
+            )
+        elif node_entry["strategy"] not in FORWARDING_STRATEGY_CHOICES:
+            errors.append(
+                f"forwarding_config.nodes[{node_idx}].strategy must be one of: "
+                + ", ".join(FORWARDING_STRATEGY_CHOICES)
+            )
+
+
 def _validate_failure_scenarios(errors, config):
     if "failure_scenarios" in config:
         fs = config["failure_scenarios"]
@@ -689,6 +748,11 @@ def _validate_failure_scenarios(errors, config):
                 elif not isinstance(simple, dict):
                     errors.append("failure_scenarios.simple must be a dict")
                 else:
+                    for field in ("interval", "duration"):
+                        if field in simple and simple[field] is None:
+                            errors.append(
+                                f"failure_scenarios.simple.{field} must not be null"
+                            )
                     for field in ("interval", "duration", "count", "stagger"):
                         if (
                             field in simple
@@ -749,6 +813,11 @@ def _validate_failure_scenarios(errors, config):
                                 f"failure_scenarios.cycles[{idx}] must be a dict"
                             )
                             continue
+                        for field in ("interval", "duration"):
+                            if field in cycle and cycle[field] is None:
+                                errors.append(
+                                    f"failure_scenarios.cycles[{idx}].{field} must not be null"
+                                )
                         for field in ("interval", "duration", "count", "stagger"):
                             if (
                                 field in cycle
@@ -1136,6 +1205,7 @@ def validate_config(config: dict[str, Any]) -> list[str]:
             errors.append("cefnetd_timeout must be a positive number")
 
     _validate_cache_config(errors, config, config.get("hosts"))
+    _validate_forwarding_config(errors, config)
 
     _validate_failure_scenarios(errors, config)
 

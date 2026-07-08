@@ -6,6 +6,7 @@ csmgr_fsc_*
 
 .DS_Store
 __pycache__
+.coverage
 
 *.pdf
 *.png

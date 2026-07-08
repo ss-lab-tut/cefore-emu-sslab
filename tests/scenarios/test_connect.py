@@ -92,6 +92,32 @@ def test_run_experiment_without_events_is_noop(tmp_path):
     run_batch.assert_not_called()
 
 
+def test_configure_passes_forwarding_config_to_setup(tmp_path):
+    forwarding_config = {
+        "default": "shortest_path",
+        "nodes": [{"id": [1], "strategy": "flooding"}],
+    }
+    scenario = _make_scenario(
+        tmp_path,
+        hosts=3,
+        k=2,
+        topo_png=None,
+        topo_layout="spring",
+        cache_count=0,
+        down_count=5,
+        bw=[],
+        ext=[],
+        forwarding_config=forwarding_config,
+    )
+    scenario.topo = SimpleNamespace(mesh_links=[])
+
+    with patch("src.scenarios.connect.setup_scenario") as setup:
+        scenario.configure(MagicMock())
+
+    spec = setup.call_args.args[1]
+    assert spec.forwarding_config is forwarding_config
+
+
 def test_run_experiment_delegates_publications_to_event_batch(tmp_path):
     event = {
         "at": 0,

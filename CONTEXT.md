@@ -115,7 +115,7 @@ The build-side seam that extends the scenario lifecycle trilogy to the pre-net s
 _Avoid_: per-scenario roles/provision/MeshTopo copies, call-site `self.rng or random.Random()` fallbacks, two independent RNGs for roles vs topology, `swhich_num` spelling in new interfaces
 
 **setup_scenario / SetupResult**:
-The single seam through which every scenario's network configuration walks the canonical order: `apply_ip_addr` → bridges → ifconfig log → bw → ext → render_png → cache_strategy.place → build_fleet + start + wait_ready → apply_fib → cefstatus + print_mesh_links. Returns `SetupResult(daemon_fleet, cache_node_set, fib_routes)` so the scenario can wire them back into `self.daemon_fleet` / `self.cache_node_set` / `self._fib_routes` for downstream (monitoring, webui, FIB-restore). All three scenarios (disaster, connect, mesh) use it; pre-canonical drift (connect's bw/ext-after-everything, mesh/connect `time.sleep(1)`, mesh debug print) was removed once smoke 12/12 confirmed it carried no semantic load.
+The single seam through which every scenario's network configuration walks the canonical order: `apply_ip_addr` → bridges → ifconfig log → bw → ext → render_png → cache_strategy.place → forwarding_config.apply → build_fleet + start + wait_ready → apply_fib → cefstatus + print_mesh_links. Returns `SetupResult(daemon_fleet, cache_node_set, fib_routes)` so the scenario can wire them back into `self.daemon_fleet` / `self.cache_node_set` / `self._fib_routes` for downstream (monitoring, webui, FIB-restore). Forwarding strategy is written to every hN/cefnetd.conf before daemon start because post-start edits do not affect cefnetd. All three scenarios (disaster, connect, mesh) use it; pre-canonical drift (connect's bw/ext-after-everything, mesh/connect `time.sleep(1)`, mesh debug print) was removed once smoke 12/12 confirmed it carried no semantic load.
 _Avoid_: per-scenario IP/bridge/cache/fleet/FIB sequencing, ordering knobs
 
 **CacheStrategy**:
@@ -150,22 +150,26 @@ The single owner of every config-validation rule. Lives in `src/core/config/vali
 _Avoid_: validation rules in loader.py, per-block hand-rolled if/elif chains, duplicate event-type required-field lists, splitting `_FLAT_SPECS` from the validator
 
 **ScenarioBootstrap**:
-The single seam through which every config-driven CLI entry point (`ceforeemu disaster`, `ceforeemu-connect`) walks the canonical bootstrap sequence: `load_config` → legacy-key warning → parser-backed `merge_cli_and_config`（CLI が config に勝つ）→ `validate_merged_args` + raw-config debug-block validation → `resolve_run_dir` → topo_png default → meta.json（11キー、`run_dir == "."` では書かない）→ script.log Tee → `build_debug_config` → try/finally `run_fn`. `bootstrap_scenario(args, *, blocks, run_fn)` in `src/cli/bootstrap.py`; `blocks` は precedence parser を組む OPTION_SPECS CLI block 名、`run_fn(args, run_dir, log_context=, debug_config=)` が scenario runner の契約。debug block は `special_config_merge` で args に乗らないため、この seam が raw config から検証する（merged-args validation はそこに盲目）。mesh/linear は意図的に対象外 — config 非対応で seam の背後に置く behaviour が無い。
-Deliberate changes (2026-07-03, R8-1): connect の precedence-inversion bug 修正（parser 無し merge で config が明示 CLI flag を上書きしていた；`merge_cli_and_config` は parser 必須に変更済み）、connect validation を post-merge に統一、connect meta.json を 11キー disaster スキーマに片寄せ（`output_dir` キー廃止 = 読者ゼロ確認済み）、main-level `run_dir.resolve()` 削除（ConnectScenario が内部 resolve）、connect が debug 収集を獲得、fib_dump/daemon_logs collector を DisasterScenario から BaseScenario へ hoist（args namespace を持たない scenario は guard で opt out）。
-`tests/cli/test_bootstrap_differential.py` は HEAD 挙動を literal 捕捉した temporary migration gate — この branch の merge 後に削除すること。
+The single seam through which every config-driven CLI entry point (`ceforeemu disaster`, `ceforeemu-connect`) walks the canonical bootstrap sequence: `load_config` → legacy-key warning → parser-backed `merge_cli_and_config`（CLI が config に勝つ）→ `validate_merged_args` + raw-config debug-block validation → `resolve_run_dir` → topo_png default → meta.json（12キー、`run_dir == "."` では書かない）→ script.log Tee → `build_debug_config` → try/finally `run_fn`. `bootstrap_scenario(args, *, blocks, run_fn)` in `src/cli/bootstrap.py`; `blocks` は precedence parser を組む OPTION_SPECS CLI block 名、`run_fn(args, run_dir, log_context=, debug_config=)` が scenario runner の契約。debug block は `special_config_merge` で args に乗らないため、この seam が raw config から検証する（merged-args validation はそこに盲目）。mesh/linear は意図的に対象外 — config 非対応で seam の背後に置く behaviour が無い。
+Deliberate changes (2026-07-03, R8-1): connect の precedence-inversion bug 修正（parser 無し merge で config が明示 CLI flag を上書きしていた；`merge_cli_and_config` は parser 必須に変更済み）、connect validation を post-merge に統一、connect meta.json を 12キー disaster スキーマに片寄せ（`output_dir` キー廃止 = 読者ゼロ確認済み）、main-level `run_dir.resolve()` 削除（ConnectScenario が内部 resolve）、connect が debug 収集を獲得、fib_dump/daemon_logs collector を DisasterScenario から BaseScenario へ hoist（args namespace を持たない scenario は guard で opt out）。
+The temporary differential gate for HEAD-vs-branch bootstrap behavior was removed after the workshop branch merge; the bootstrap seam is now guarded by direct behavior tests.
 _Avoid_: per-entry-point bootstrap コピー, parser 無し merge_cli_and_config, pre-merge validate_config, meta.json output_dir キー, debug_config=None hardcode
 
 ## 次回実装候補 — Architecture review backlog (2026-06-26 round)
 
 このセクションは domain glossary ではなく、未着手の deepening candidate を次のセッションで再提案されないよう pin する backlog。`/tmp/architecture-review-20260626-165236.html` のレポート由来。完了したら該当エントリを削除し、上の domain section に正式名を追記すること。
 
+**最終ゲート完了 (2026-07-08) — `fix/failure-defaults-forwarding-monitor` → PR to main 提出済み**:
+2026-07-07 architecture review 候補1〜3 の実装 (fb0a5d5..68aa618) に対し 4 ゲートを 2026-07-08 に完走: (1) cefore-run-tests full smoke (sudo) — pytest + 11 disaster config + connect 全 [OK]、`[flap]` は min_failure セクションのみ (暗黙flap根絶の実機証明)、min_monitoring は整形済み monitor.json を出力。追加で forwarding node-override A/B run (h1 のみ shortest_path 指定) を実施し、cefnetd log の FwdStr 非対称 (h1=s_path / h0,h2=flooding) で ForwardingConfigManager の per-node 書込が template 値と区別可能な形で実機到達することを証明 (template は main 由来の一様 flooding のため default 値だけでは判別不能だった)。(2) codex-review ブランチ全体レビュー approve、findings ゼロ (Phase 3〜5 重点 + 自走 474 focused tests + ruff)。(3) 監査は advisor 不可 → Codex MCP gpt-5.5 fallback。初回 NO-GO: doc drift 3件 (workshop 35 config の旧 down_* default 説明 / forwarding_config 未文書化 / pub・sub CSV 「動的抽出」記述の陳腐化) + nodes[].strategy 省略の silent-ignore 罠。修正 3 commits (412a4f0 strategy 必須 validation / 9732b25 workshop コメント一斉更新 / 4b91954 README・README_ja・example.yaml) で解消、full pytest 1239 passed / 6 skipped。(4) PR to main 提出。merge 後この エントリは削除可。関連の独立負債 (変わらず housekeeping 候補): repo 全体の `mypy src` 57 errors / 24 files・`ruff check` 38 errors (main 由来)。
+_Avoid_: mypy/ruff 既存負債の解消をこの PR に混ぜること、forwarding runtime 検証で default 値 run のみを証拠とすること (template と判別不能)
+
 **候補6 — `runtime/result_detect.py` を Verdict に吸収**:
 74 LOC の薄い adapter。`detect_*` 5 関数は `from_runtime_*` Verdict factory の evidence-unpacking wrapper で、CONTEXT.md の Verdict `_Avoid_` リスト ("detect result") に名前が抵触。5 関数を `src/core/verdict.py` の runtime-adapter section に移管 + `timestamp_utc` は `src/core/paths.py` 等に分離 → `result_detect.py` 削除。Worth exploring。
 _Avoid_: 名前を `result_detect` のまま残すこと、Verdict factory と別モジュールに散らすこと
 
 **R8候補 — legacy 障害サイクル (down_\*) + legacy キャッシュ設定 (cache_count) の廃止**:
-2026-07-02 の R7-1 grilling で user が廃止意向を表明、behavior-preserving な OptionSpec 統合と混ぜると differential gate が無意味になるため分離した。現状の依存: `min_failure.yaml` smoke（gate 自身）が down_\* で host_down/host_up cycle 証拠を生成、smoke の min_\*.yaml 全部が cache_config 無し = legacy k-centers 経路（`cache_count`/`down_count+1`）を通る。廃止するなら (1) min_failure を `failure_scenarios` へ移行 + smoke checker 期待値更新、(2) デフォルトキャッシュ方針の再設計（全 smoke config 書き換え）、(3) disaster.py の cycle code + summarizer キー削除、が同時に要る独立プロジェクト。OptionSpec 完成済みなので option 面は「spec entry 削除 + dead code 削除」に縮み、導出3面と test が機械的に追従する。
-_Avoid_: OptionSpec 系 refactor と混ぜて differential gate を殺すこと、min_failure の gate 証拠を代替なしで消すこと
+2026-07-02 の R7-1 grilling で user が廃止意向を表明、behavior-preserving な OptionSpec 統合と混ぜると differential gate が無意味になるため分離した。2026-07-07 の即時fixで `down_interval`/`down_duration` の省略 default は 0/0 になり、no-failure config は暗黙 flap を起動しなくなった。残るR8決定は [ADR-0002](docs/adr/0002-failure-config-resolves-to-explicit-policy.md): bootstrap 時に `FailurePolicy` へ一度だけ解決し、legacy `down_*` OptionSpec 4つ・`periodic_host_flap`・summarizer legacy metadata・`min_failure.yaml` smoke 証拠・`cache_count`/`down_count+1` fallback を同時に整理する。`down_count=5` は cache fallback の二役が残るため即時fixでは維持した。
+_Avoid_: `down_count` default だけを単独で 0 化すること、legacy down_\* 廃止を cache fallback 再設計なしで進めること、min_failure の gate 証拠を代替なしで消すこと
 
 **修正案 — `swhich_num` typo の是正 (semantic 名 `switch_limit` へ)**:
 `MeshTopo(swhich_num=...)` は typo (`switch_num` が正) であるうえ、意味的には「emergent に生成される switch 数の上限」— 超過すると ValueError (`runtime/topo.py` の `switch count N exceeds limit M`)。つまり名前は綴りと意味の両方で実態とズレている。修正案 (2026-07-06, user 提案 `limit_sw_num` 系 → 採用候補 `switch_limit`): 新規コードは最初から semantic 名を使う — R9-2 の `MeshBuildSpec` は field 名 `switch_limit` を採用し、docstring で legacy kwarg `swhich_num` への対応を記す。既存 chain (config `switches:` → `args.switches` → scenario 属性 `swhich_num` → `MeshTopo(swhich_num=)`) の一括リネームは CLI/config 互換に触るため独立 housekeeping — 候補7 (topo.py リネーム) と同じ pass でまとめて行うのが合理的。
@@ -179,9 +183,9 @@ _Avoid_: 単独でこのリネームに取り掛かること (他の deepening �
 11 slice / 11 commit (fc6abe8..c8687e0) で +212 tests、全体 76%→89%。ゼロカバレッジだった plotter/log-cli/parsing/tee/links/topo と「spy 化で本体未実行」だった bandwidth/viz/cleanup、および monitoring lifecycle / webui state・server / CLI dispatch / base hooks / mesh・linear init 検証を direct test 化。到達不能分岐は file:line 根拠付きでテスト対象外として各テストファイルと commit message に明文化。残る意図的低カバレッジ: disaster.py 59% 等の Mininet-live 経路 (cefore-run-tests smoke が integration gate)。
 _Avoid_: 到達不能と記録済みの分岐に fake-rng/import-hook で無理にテストを足すこと、Mininet-live 経路の unit test 化
 
-**修正すべき点 (2026-07-07 workshop 計測で実測) — down_\* default が「暗黙の flap 有効」**:
-`down_interval`/`down_count`/`down_duration` の OptionSpec default は 30/5/10 で、キー省略の config は**意図せず host flapping が有効**になる（workshop smoke 実測: no-failure のつもりの m1_smoke で `[flap] down h1` が発生し eval get が exit 1、repeat get の 5s 間隔も flap 由来の scheduler 遅延で 1s 連発に崩れた）。「failure なし」の実験 config は down_interval/down_duration/down_count を明示的に 0 にする必要がある。恒久対応は R8候補 (legacy down_\* 廃止) と同時に default を 0/災害系 config での明示必須に変えるのが筋。また関連の罠として、repeat 付き get は同一 host+uri だと content log が同名で上書きされ、失敗した実行のログが後続成功で消える（判定比較は results.json を使うこと）。
-_Avoid_: default 変更を workshop branch でやること（本線の differential gate を通すこと）
+**解消済み (2026-07-07) — down_\* default の「暗黙の flap 有効」即時fix**:
+workshop smoke で no-failure のつもりの m1_smoke が `[flap] down h1` を発生させ、eval get が exit 1、repeat get の 5s 間隔も flap 由来の scheduler 遅延で 1s 連発に崩れる問題を実測した。即時fixとして `down_interval`/`down_duration` の OptionSpec default を 0/0 に変更し、省略 config は legacy failure manager を起動しないようにした。`down_count=5` は cache_count=0 の legacy cache fallback (`down_count + 1`) も兼ねるため default 維持。R8候補は legacy down_\* と cache_count fallback の廃止として残す。また関連の罠として、repeat 付き get は同一 host+uri だと content log が同名で上書きされ、失敗した実行のログが後続成功で消える（判定比較は results.json を使うこと）。
+_Avoid_: down_count default だけを単独で 0 化すること、legacy down_\* 廃止を cache fallback 再設計なしで進めること
 
 **発見 (2026-07-07 workshop 計測) — pubsub が 15-host mesh で系統的に失敗**:
 cefpubfile/cefsubfile ペアは 3〜5 host mesh では成功するが、15h/48sw では pub が
@@ -192,4 +196,12 @@ Trigger Interest を受信できないまま deadline (lifetime+15s) で termina
 FwdStr:flooding で起動している点も関連候補。hop距離相関 (M1 20-topology 分析): hop=1で5/5成功, hop=2で5/7, hop=3で0/8 — 距離依存を定量確認。ワークショップ計測では pubsub 行を
 5-host に縮小して測定し、15-host の失敗は「エミュレータによる再現性つき問題検出」
 として報告する。恒久対応は Cefore 側 pubsub の hop/スケール挙動の調査が必要。
+追記 (2026-07-07 Commit 4): archived campaign artifact 全件を grep しても
+Trigger-Interest retry 回数を示すラベルは存在しない (0-byte FAILURE ログ + SUCCESS
+ログの固定2行のみ)。この2行 (`Send Trigger Interest.` / `Receive Trigger Data,
+finish application.`) を `trigger_interest_sent`/`trigger_data_received` として
+schema 化した (src/log/schema.py)。`from_log` は marker 存在時のみ pub success を
+definitive True と判定するよう更新済み (src/core/verdict.py) — marker 不在側
+(0-byte FAILURE ログ) の log-only 判定は依然 unknown のままで、これはログ欠損と
+区別不能という構造的限界であり today の fix では解消しない。
 _Avoid_: 実験 config の pubsub を無検証で 10+ hosts に置くこと
