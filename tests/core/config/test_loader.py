@@ -731,6 +731,10 @@ def test_validate_cache_config_nodes_type_invalid():
             {"forwarding_config": {"nodes": [{"id": "h1", "strategy": "flooding"}]}},
             "forwarding_config.nodes[0].id must be a list of integers",
         ),
+        (
+            {"forwarding_config": {"nodes": [{"id": [1]}]}},
+            "forwarding_config.nodes[0].strategy is required",
+        ),
     ],
 )
 def test_validate_forwarding_config(config, expected_error):

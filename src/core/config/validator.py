@@ -711,10 +711,15 @@ def _validate_forwarding_config(errors, config):
             errors.append(
                 f"forwarding_config.nodes[{node_idx}].id must be a list of integers"
             )
-        if (
-            "strategy" in node_entry
-            and node_entry["strategy"] not in FORWARDING_STRATEGY_CHOICES
-        ):
+        if "strategy" not in node_entry:
+            # 2026-07-08 silent-ignore fix: ForwardingConfigManager._parse_node_overrides
+            # skips any node entry without "strategy" (src/runtime/forwarding.py), so an
+            # override missing this key previously passed validation and then did nothing
+            # at runtime with no error surfaced to the user.
+            errors.append(
+                f"forwarding_config.nodes[{node_idx}].strategy is required"
+            )
+        elif node_entry["strategy"] not in FORWARDING_STRATEGY_CHOICES:
             errors.append(
                 f"forwarding_config.nodes[{node_idx}].strategy must be one of: "
                 + ", ".join(FORWARDING_STRATEGY_CHOICES)
