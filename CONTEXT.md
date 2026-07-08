@@ -159,9 +159,54 @@ _Avoid_: per-entry-point bootstrap コピー, parser 無し merge_cli_and_config
 
 このセクションは domain glossary ではなく、未着手の deepening candidate を次のセッションで再提案されないよう pin する backlog。`/tmp/architecture-review-20260626-165236.html` のレポート由来。完了したら該当エントリを削除し、上の domain section に正式名を追記すること。
 
-**最終ゲート完了 (2026-07-08) — `fix/failure-defaults-forwarding-monitor` → PR to main 提出済み**:
-2026-07-07 architecture review 候補1〜3 の実装 (fb0a5d5..68aa618) に対し 4 ゲートを 2026-07-08 に完走: (1) cefore-run-tests full smoke (sudo) — pytest + 11 disaster config + connect 全 [OK]、`[flap]` は min_failure セクションのみ (暗黙flap根絶の実機証明)、min_monitoring は整形済み monitor.json を出力。追加で forwarding node-override A/B run (h1 のみ shortest_path 指定) を実施し、cefnetd log の FwdStr 非対称 (h1=s_path / h0,h2=flooding) で ForwardingConfigManager の per-node 書込が template 値と区別可能な形で実機到達することを証明 (template は main 由来の一様 flooding のため default 値だけでは判別不能だった)。(2) codex-review ブランチ全体レビュー approve、findings ゼロ (Phase 3〜5 重点 + 自走 474 focused tests + ruff)。(3) 監査は advisor 不可 → Codex MCP gpt-5.5 fallback。初回 NO-GO: doc drift 3件 (workshop 35 config の旧 down_* default 説明 / forwarding_config 未文書化 / pub・sub CSV 「動的抽出」記述の陳腐化) + nodes[].strategy 省略の silent-ignore 罠。修正 3 commits (412a4f0 strategy 必須 validation / 9732b25 workshop コメント一斉更新 / 4b91954 README・README_ja・example.yaml) で解消、full pytest 1239 passed / 6 skipped。(4) PR to main 提出。merge 後この エントリは削除可。関連の独立負債 (変わらず housekeeping 候補): repo 全体の `mypy src` 57 errors / 24 files・`ruff check` 38 errors (main 由来)。
-_Avoid_: mypy/ruff 既存負債の解消をこの PR に混ぜること、forwarding runtime 検証で default 値 run のみを証拠とすること (template と判別不能)
+**R10 backlog (2026-07-09 review 完了) — 次セッションの作業キュー**:
+feature/seam (= main, PR#13 マージ後) を対象に 8 subsystem 並列探索 + 候補ごと adversarial 検証を実施、21 raw 候補中 20 生存。優先順: (1) bug 級 B1・B2、(2) Strong S1〜S9、(3) Worth exploring W1〜W8 は余力で、Speculative P1〜P2 は保留。独立 housekeeping 負債は変わらず: repo 全体 `mypy src` 57 errors / 24 files・`ruff check` 38 errors (main 由来)。
+
+**B1 (bug) — validate_merged_args が present-but-empty な structured config を素通し**:
+`validator.py:1342-1346` が truthiness (`if val:`) で structured key を除外するため、`failure_scenarios: {}` / `null` が `_validate_failure_scenarios` に届かず bootstrap を無エラー通過する (実行で確認済み) — ADR-0002 は両方を validation error と明記しており、これはその未実装部分。fix = presence 判定 (merge_cli_and_config は key が config に実在したときのみ setattr する) へ変更。cache_config/forwarding_config の bootstrap raw-revalidation 統合は可能だが、`debug` は merge 側 carve-out (`key == 'debug'` skip) があるため同経路統合不可。R8 bundle と分離して先行 land 可 — down_interval/down_duration 即時fix と同じ precedent。
+_Avoid_: R8 完了までこの fix を寝かせること、debug の raw validation を同経路へ無理に統合すること
+
+**B2 (bug) — failure_manager cycle-mode の host 恒久除外 (refactor 提案は棄却済み、bug は実在)**:
+`failure_manager.py:80` の無条件 `active_down.discard` と `:334-335` の restored_hosts-gated `shared_down.discard` の非対称により、復帰に失敗した host が `:251-255` の `available` から恒久除外される — test-uncovered。down/up 共有 primitive 抽出案は ADR-0002 の periodic_host_flap 削除予定と衝突する throwaway (one-adapter 化) のため棄却。bug fix 自体は最小変更で単独に行うか R8 bundle 内で扱う。
+_Avoid_: periodic_host_flap と cycle-mode の共有 primitive 抽出 (R8 で片側が消える)
+
+**S1 — run_cefstatus deepening (argv 4 重複)**: `cefore.py:294-304` は info() 印字のみで return 無し。`monitoring.py:178-184` / `disaster.py:226-230` / `debug.py:34-41` が同一 `["cefstatus","-d","./hN"]` argv + runner 実行を手組み。同ファイルの run_csmgrstatus (:428-480) が証明済みの quiet/timeout/optional-runner/return-stdout 形へ揃え、3 caller を通す。run_cefstatus は現状 direct unit test ゼロ。
+
+**S2 — ContentOperationRunner の dead `seed_label` thread 削除**: `content_ops.py:55/67` で格納後どこからも未読 (初出 commit 4009945 から一貫)。EventBatchSpec.seed_label、disaster.py:94 / connect.py:58 の `"none" if seed is None ...` 導出ごと削除。
+
+**S3 — Disaster/Connect wiring 重複 collapse**: lifecycle quartet の外側の glue — build_topology (17行 byte-identical) / create_mininet / daemon_log_collection_scope (11行) / should_run_cli / before_cli・after_cli の tee-swap / __init__ prologue — が両 scenario に copy。BaseScenario と両者の間に mesh-CLI-scenario 中間 base を置き hoist。注意: connect の rng/seed_label init 位置、disaster の rng fallback (failure-manager scheduling 用に常に fresh Random()) の差は保持。
+
+**S4 — pub_lifetime_by_uri 二重導出**: `event_batch.py:55-64` の module-private helper を public 化し、`disaster.py:274-280` (_make_content_runner 内の inline 再実装) を置換。warmup 経路が seam 外なのは意図 (CONTEXT の EventBatchSpec 項) — 導出関数だけ共有する。
+
+**S5 — _validate_failure_scenarios の simple/cycles 重複検査 collapse**: `validator.py:729-878` が同一 flap-descriptor 検査を simple 用と cycles[idx] 用に 2 実装し、negative count/stagger は同一エラー文字列が 2 回返る (実測: 2 violation で 4 errors)。`_validate_flap_descriptor(errors, prefix, descriptor, *, allow_target=, allow_publishers=)` へ抽出。R8 が同関数の schema を変える予定 (duration/interval >= 1) なので R8 着手前に済ませるか R8 に同梱するかは着手時に判断。
+
+**S6 — bridge_external に CommandRunner seam**: attach_external_via_bridge / cleanup_external_bridges / attach_external_interface に optional `runner` param を追加し `_run_root_cmd_vec` (bridge_external.py:51-64 が MininetCommandRunner(None) を hardcode) へ thread。現行テストは internal patch 41 箇所 (_run_root_cmd_vec 37 + MininetCommandRunner 4: test 行 218/388/967/1015) — recording fake 注入へ移行可能に。bridge_root.py:74-89 BridgeManager の _root_runner/_host_runner pattern を mirror。
+
+**S7 — Monitor が CommandResult.returncode を捨て webui が text sniffing で liveness 再導出**: MONITOR_FIELDS (`monitoring.py:19`) に outcome field を追加し webui/state.py の hand-maintained keyword list を置換。tri-state 必須 (ok / not-ok / skipped-no-result — down-host skip :171-177 は CommandResult 自体が無い)。run_csmgrstatus が stdout str のみ返す interface も拡張が要る。ADR-0001 とは無関係 (stream 位置は変えない)。
+
+**S8 — fib.py の next-hop selection 3 重複 collapse**: `:75-95` (compute_fib inline) / `:125-150` (_add_routes closure) / `:227-247` (_add_ecmp closure) が同一の candidate-build + sort + next_hop_ip 解決。共有 primitive へ。variation 軸は 2 つ: k-selection 規則 (top-k slice vs all-tied-minimum) と `seen` cross-call dedup (compute_fib のみ持たない)。
+
+**S9 — adjacency-graph builder 2 重複 unify**: `viz.py:35-47` build_host_graph (sparse — 0-edge host を含まない) と `fib.py:30-47` build_graph_and_subnets (dense — 全 host pre-populate) が同じ TopologyModel.edges() walk。しかも CacheContext.host_graph は viz 経由 (`scenario_setup.py:265`) で、cache 配置の graph 出所が可視化 module になっている。TopologyModel.adjacency() 等へ一本化。注意: dense/sparse の挙動差は実在 — 統一時に 0-edge host の扱いを明示的に決めること。
+
+**W1 — Cefore conf key=value read の単一 owner**: `cefore_conf.py:6-22` / `daemon_logs.py:23-35` / `:38-54` の同形 3 loop + `template.py:145-181` の regex 版 (計 4 実装)。read 側を cefore_conf.py の `read_conf_value(path, key, default=None)` に集約。実測 divergence: manual loop は '=' 後の最初の whitespace token、regex は行末まで — 統一時に semantics を決める。_set_config_value の扱いは P1 と同時判断。
+
+**W2 — sub-artifact double-glob 解消**: `content_ops.py:409-414` (log 用) と `result_detect.py:66-67` (detect_sub_success) が同一 `RNP0x*.out` glob + non-empty filter。clear_sub_output_artifacts (:49) も同 glob の 3 つ目。候補6 (result_detect → Verdict 吸収) と同時に行うのが合理的。
+
+**W3 — daemon_log_collection_enabled の 4 __init__ copy hoist**: 同一 3-line 式が disaster/connect/mesh/linear の __init__ に copy、対応 test も 4 重複。base.py の helper へ。注意: mesh/linear は run_dir を resolve しないので、constraint の実体は「raw param のうちに計算」(disaster/connect のみ resolve 前後の話)。
+
+**W4 — cefroute_add/del/enable の boilerplate collapse**: `net_config.py:51-85` / `:154-177` / `:180-203` が verb 以外同形の 12 行 (drift 実在: add のみ非ゼロ returncode の failure logging を持つ)。verb-parametrized private helper へ。
+
+**W5 — auto-monitor dashboard-default policy の interface 化**: `disaster.py:373-402` _start_monitoring に inline の default-target/interval 正規化を pure function へ抽出。`tests/webui/test_webui.py:89-95` が現状 6 行を手 copy ("Simulate the disaster.py auto-monitor setup") しており、抽出後は import して直接テスト。
+
+**W6 — campaign.py/supervise.sh の job-done semantics 統一**: `supervise.sh:32` は ok/failed/skipped_memory を done 扱い、`campaign.py:303-304` _load_completed_job_ids は ok のみ — 2 プロセスが campaign 完了判定で食い違う。単純に ok-only へ寄せると deterministically-broken job で infinite-relaunch になるため、per-job give-up status の永続化とセットで `campaign.py --check-done` 等の単一判定点を作る。
+
+**W7 — topo_fingerprint.py を MeshBuildSpec seam 経由に**: `topo_fingerprint.py:116-126` が rng→assign_roles→MeshTopo の RNG-order invariant を手写し (docstring 自身が fragility を明記)。scenario_setup.py に filesystem-free な rng-only sub-step (または provision skip flag) を作り両者が呼ぶ。
+
+**W8 — plots.py の job-discovery layer 分離**: 1095 LOC に dataviz chrome + Job/discovery layer (:153-310、加えて _m1_jobs_by_seed/_m1_groups は fig セクション内に混在) + 10 fig_* が同居。`report.py:37` は discovery 到達のためだけに matplotlib ごと import し、underscore 4 関数 × 12 call sites が実質 interface。matplotlib-free な campaign_jobs.py へ抽出。
+
+**P1 (保留) — template.py `_set_config_value` の underscore 解消**: cache_manager.py:8/159・forwarding.py:6/50 が外部 import 済みだが、検証側は「package 内 sibling 共有の単一 underscore は _propagate_failures と同じ通常 pattern」と減衰評価。W1 (read 側集約) と同時にだけ判断。
+
+**P2 (保留) — campaign.py retry policy の injectable seam**: `_run_job_attempts` が _mem_available_fraction/_run_job_subprocess を hardwire、tools/ 配下は現状テストゼロ。seam 欠如がテスト不在の blocker とは未立証 — tools/ のテスト方針決定とセットで。
 
 **候補6 — `runtime/result_detect.py` を Verdict に吸収**:
 74 LOC の薄い adapter。`detect_*` 5 関数は `from_runtime_*` Verdict factory の evidence-unpacking wrapper で、CONTEXT.md の Verdict `_Avoid_` リスト ("detect result") に名前が抵触。5 関数を `src/core/verdict.py` の runtime-adapter section に移管 + `timestamp_utc` は `src/core/paths.py` 等に分離 → `result_detect.py` 削除。Worth exploring。
