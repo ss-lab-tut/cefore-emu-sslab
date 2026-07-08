@@ -374,7 +374,7 @@ cefore-emu/
 │   ├── core/                      # Core logic and algorithms
 │   │   ├── config/                # Configuration utilities
 │   │   │   ├── loader.py          # JSON/YAML config loader
-│   │   │   └── priority_resolver.py  # Config priority resolution
+│   │   │   └── validator.py       # Config validation
 │   │   ├── artifacts.py           # Artifact naming (dir / PNG / log names, build+parse)
 │   │   ├── fib.py                 # FIB route computation
 │   │   ├── flap_state.py          # Host flap state tracking
@@ -418,7 +418,6 @@ cefore-emu/
 ├── config/                        # Configuration
 │   ├── templates/                 # Host templates (h0, h1, h2)
 │   └── examples/                  # Example configurations (YAML/JSON)
-├── doc/                           # Design documents
 ├── tools/
 │   └── autotest/                  # Batch experiment runner
 │       ├── run.py                 # Batch runner script
@@ -511,11 +510,6 @@ Edit `config/templates/h1/csmgrd.conf` (applies to all router nodes).
 
 ## Documents
 
-- [doc/autotest_plan_reviewed.md](doc/autotest_plan_reviewed.md) - Autotest implementation plan
-- [doc/cefore_emu_autotest_spec.md](doc/cefore_emu_autotest_spec.md) - Autotest specification
-- [doc/branch-retirement-feature-test.md](doc/branch-retirement-feature-test.md) - Branch retirement notes
-- [doc/chatGPT_assumed-Plan.md](doc/chatGPT_assumed-Plan.md) - Bridge review findings (Codex)
-- [ONBOARDING.md](ONBOARDING.md) - Team onboarding guide
 - [CONTEXT.md](CONTEXT.md) - Project glossary (domain language)
 
 ## Node Roles

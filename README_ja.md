@@ -314,7 +314,7 @@ cefore-emu/
 │   ├── core/                      # コアロジックとアルゴリズム
 │   │   ├── config/                # 設定ユーティリティ
 │   │   │   ├── loader.py          # JSON/YAML 設定ローダ
-│   │   │   └── priority_resolver.py  # 設定優先度解決
+│   │   │   └── validator.py       # 設定バリデータ
 │   │   ├── artifacts.py           # 成果物命名（dir / PNG / log 名の build+parse）
 │   │   ├── fib.py                 # FIB ルート計算
 │   │   ├── flap_state.py          # ホストフラップ状態追跡
@@ -358,7 +358,6 @@ cefore-emu/
 ├── config/                        # 設定ファイル
 │   ├── templates/                 # ホストテンプレート（h0, h1, h2）
 │   └── examples/                  # 設定例（YAML/JSON）
-├── doc/                           # 設計ドキュメント
 ├── tools/
 │   └── autotest/                  # バッチ実験ランナー
 │       ├── run.py                 # バッチ実行スクリプト
@@ -372,11 +371,6 @@ cefore-emu/
 
 ## ドキュメント
 
-- [doc/autotest_plan_reviewed.md](doc/autotest_plan_reviewed.md) - 自動テスト実装計画
-- [doc/cefore_emu_autotest_spec.md](doc/cefore_emu_autotest_spec.md) - 自動テスト仕様
-- [doc/branch-retirement-feature-test.md](doc/branch-retirement-feature-test.md) - ブランチ廃止ノート
-- [doc/chatGPT_assumed-Plan.md](doc/chatGPT_assumed-Plan.md) - Bridge レビュー結果（Codex）
-- [ONBOARDING.md](ONBOARDING.md) - チームオンボーディングガイド
 - [CONTEXT.md](CONTEXT.md) - プロジェクト用語辞書
 
 ## ノードロール
