@@ -1259,12 +1259,12 @@ class TestExternalBridgeCleanupOrder:
 # ===========================================================================
 # Defect Remediation Tests — external-attach subset (T1, T1b, T1c, T2, T7, T8)
 #
-# These tests target the external-attach defects called out in
-# doc/chatGPT_assumed-Plan.md plus the duplicate-phy_intf rejection feature.
-# They follow the fail-before / pass-after pattern documented in the
-# remediation plan. The root-side subset (T3, T4, T5, T9 — proxy-ARP
-# restoration and the BridgeManager.cleanup() retry-retention contract)
-# lives in test_bridge_root.py.
+# These tests target the external-attach defects identified during the
+# bridge external-attach remediation review, plus the duplicate-phy_intf
+# rejection feature. They follow the fail-before / pass-after pattern
+# documented in the remediation review. The root-side subset (T3, T4, T5, T9
+# — proxy-ARP restoration and the BridgeManager.cleanup() retry-retention
+# contract) lives in test_bridge_root.py.
 # ===========================================================================
 
 
