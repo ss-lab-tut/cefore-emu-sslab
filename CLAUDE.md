@@ -4,6 +4,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 For architecture, project structure, command usage, and configuration reference, see [README.md](README.md).
 
+PLAN.md and MEMO.md are ephemeral scratch space for jotting in-progress plans/memos; durable decisions belong in CONTEXT.md, this file, or docs/adr/.
+
 # Write a program based on the Unix philosophy
 * Write programs that do one thing and do it well.
 * Write programs to work together.
