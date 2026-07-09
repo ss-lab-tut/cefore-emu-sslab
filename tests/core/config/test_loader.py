@@ -1089,6 +1089,69 @@ def test_validate_merged_args_cache_config_strategy_random():
 
 
 # ---------------------------------------------------------------------------
+# validate_merged_args structured-key presence vs. truthiness (B1)
+#
+# 2026-07-09 bug fix: validate_merged_args used to gate structured-key
+# inclusion on truthiness (`if val:`), so a present-but-empty block ({} /
+# null / []) was silently dropped before ever reaching validate_config.
+# ADR-0002 requires failure_scenarios: {} and failure_scenarios: null to be
+# validation errors (they look like unfinished config), while omission and
+# present-but-empty events/bridges lists must stay clean.
+# ---------------------------------------------------------------------------
+
+
+def test_validate_merged_args_failure_scenarios_omitted_no_error():
+    """Genuinely omitted failure_scenarios (attribute absent on args) is inert."""
+    args = SimpleNamespace(hosts=3)
+    assert validate_merged_args(args) == []
+
+
+def test_validate_merged_args_failure_scenarios_empty_dict_is_error():
+    """Regression test for the B1 bug: {} must reach _validate_failure_scenarios.
+
+    Before the fix this was silently dropped by the `if val:` truthiness
+    check (empty dict is falsy), so bootstrap exited 0 despite an unfinished
+    failure_scenarios block.
+    """
+    args = SimpleNamespace(failure_scenarios={})
+    errors = validate_merged_args(args)
+    assert "failure_scenarios with strategy 'simple' requires 'simple' block" in errors
+
+
+def test_validate_merged_args_failure_scenarios_null_is_error():
+    """null is likewise present-but-empty and must be rejected, not dropped."""
+    args = SimpleNamespace(failure_scenarios=None)
+    errors = validate_merged_args(args)
+    assert "failure_scenarios must be a dict" in errors
+
+
+def test_validate_merged_args_events_empty_list_not_newly_flagged():
+    """events: [] is a legitimate present-but-empty value, not an error.
+
+    _validate_events treats an empty list as zero events to iterate over, so
+    presence-based inclusion must not manufacture a new false positive here.
+    """
+    args = SimpleNamespace(events=[])
+    assert validate_merged_args(args) == []
+
+
+def test_validate_merged_args_bridges_empty_list_not_newly_flagged():
+    """bridges: [] is likewise a no-op for _validate_bridges, not an error."""
+    args = SimpleNamespace(bridges=[])
+    assert validate_merged_args(args) == []
+
+
+def test_validate_merged_args_debug_excluded_from_structured_presence_fix():
+    """debug has its own special_config_merge carve-out (loader.py skips it
+    entirely during merge) and is excluded from both scalar_option_keys() and
+    structured_option_keys(), so the B1 presence fix must not start pulling
+    the CLI-only args.debug attribute into merged-args validation.
+    """
+    args = SimpleNamespace(debug=False)
+    assert validate_merged_args(args) == []
+
+
+# ---------------------------------------------------------------------------
 # monitoring.targets.target_host validation
 # ---------------------------------------------------------------------------
 

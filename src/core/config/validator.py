@@ -1340,9 +1340,20 @@ def validate_merged_args(args: Any) -> list[str]:
             if val is not None or key in nullable_keys:
                 config[key] = val
     for key in structured_keys:
+        # 2026-07-09 bug fix: present-but-empty structured blocks ({} / null /
+        # []) must reach validate_config — ADR-0002 requires rejecting
+        # failure_scenarios: {} and failure_scenarios: null because they look
+        # like unfinished configuration blocks. The old `if val:` truthiness
+        # check silently dropped every falsy-but-present value (empty dict,
+        # None, empty list) before validate_config ever saw it, so bootstrap
+        # exited 0 on a config that should have failed. Presence on args
+        # (hasattr) is the correct gate: for the config-only, cli_allowed=False
+        # keys, merge_cli_and_config only sets the attribute when the key is
+        # actually present in the loaded config file, so hasattr is genuine
+        # evidence of presence. The exceptions are bw/ext (CLI append options
+        # whose argparse default [] makes the attribute always exist); their
+        # empty list validates vacuously, so forwarding it is harmless.
         if hasattr(args, key):
-            val = getattr(args, key)
-            if val:
-                config[key] = val
+            config[key] = getattr(args, key)
 
     return validate_config(config)

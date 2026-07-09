@@ -133,6 +133,82 @@ def test_malformed_forwarding_config_exits_with_raw_config_error(tmp_path, capsy
     assert "config error: forwarding_config must be a dict\n" in capsys.readouterr().err
 
 
+def test_forwarding_config_empty_dict_error_reported_exactly_once(tmp_path, capsys):
+    """forwarding_config keeps special_config_merge (excluded from
+    structured_option_keys()), so bootstrap's raw special-key revalidation
+    loop stays its only validation path even after the B1 presence fix in
+    validate_merged_args — confirm that path fires once, not twice.
+    """
+    args = _parse_disaster_args(
+        tmp_path,
+        "hosts: 3\nswitches: 4\nforwarding_config: {}\n",
+        ["--output-dir", str(tmp_path / "out"), "--no-script-log"],
+    )
+
+    with pytest.raises(SystemExit):
+        _run_bootstrap(args)
+
+    stderr = capsys.readouterr().err
+    assert stderr.count("config error: forwarding_config must not be empty") == 1
+
+
+def test_malformed_cache_config_exits_with_raw_config_error_exactly_once(
+    tmp_path, capsys
+):
+    """cache_config is likewise special_config_merge and only raw-validated
+    by bootstrap's dedicated loop; pin single-occurrence reporting the same
+    way as forwarding_config above.
+    """
+    args = _parse_disaster_args(
+        tmp_path,
+        "hosts: 3\nswitches: 4\ncache_config:\n  strategy: invalid\n",
+        ["--output-dir", str(tmp_path / "out"), "--no-script-log"],
+    )
+
+    with pytest.raises(SystemExit):
+        _run_bootstrap(args)
+
+    stderr = capsys.readouterr().err
+    expected = (
+        "cache_config.strategy must be one of: k_centers, manual, degree_based, random"
+    )
+    assert stderr.count(f"config error: {expected}") == 1
+
+
+@pytest.mark.parametrize(
+    ("failure_yaml", "expected_error"),
+    [
+        (
+            "failure_scenarios: {}\n",
+            "failure_scenarios with strategy 'simple' requires 'simple' block",
+        ),
+        (
+            "failure_scenarios: null\n",
+            "failure_scenarios must be a dict",
+        ),
+    ],
+)
+def test_malformed_failure_scenarios_exits_with_config_error(
+    tmp_path, capsys, failure_yaml, expected_error
+):
+    """2026-07-09 regression test for B1: present-but-empty failure_scenarios
+    ({} / null) previously reached validate_merged_args and got silently
+    dropped by its truthiness check, so bootstrap exited 0 despite an
+    unfinished failure_scenarios block (ADR-0002 requires both to error).
+    """
+    args = _parse_disaster_args(
+        tmp_path,
+        f"hosts: 3\nswitches: 4\n{failure_yaml}",
+        ["--output-dir", str(tmp_path / "out"), "--no-script-log"],
+    )
+
+    with pytest.raises(SystemExit) as exc_info:
+        _run_bootstrap(args)
+
+    assert exc_info.value.code == 1
+    assert f"config error: {expected_error}\n" in capsys.readouterr().err
+
+
 def test_meta_json_written_with_exact_disaster_keys(tmp_path):
     args = _parse_disaster_args(
         tmp_path,
