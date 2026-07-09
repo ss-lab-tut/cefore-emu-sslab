@@ -1468,3 +1468,28 @@ def test_flat_spec_accepts_null(spec):
     assert not any(spec.key in e for e in errors), (
         f"unexpected error for {spec.key}=None"
     )
+
+
+def test_no_scalar_spec_reintroduces_argparse_none_default_trap():
+    """Pin the invariant validate_merged_args's scalar presence-forwarding relies on.
+
+    A scalar OptionSpec that is config_allowed + cli_allowed + non-nullable
+    with default None would make args.<key> None on every plain no-flag run,
+    indistinguishable from an explicit config null — and the scalar loop
+    would flag every default run as invalid. "num" was the one historical
+    violation (fixed by nullable=True in d2680b1); this test keeps the
+    combination from ever coming back.
+    """
+    from src.core.config.validator import OPTION_SPECS, scalar_option_keys
+
+    offenders = [
+        key
+        for key in scalar_option_keys()
+        if OPTION_SPECS[key].config_allowed
+        and OPTION_SPECS[key].cli_allowed
+        and not OPTION_SPECS[key].nullable
+        and OPTION_SPECS[key].default is None
+    ]
+    assert offenders == [], (
+        f"scalar OptionSpecs reintroduce the argparse-None-default trap: {offenders}"
+    )
