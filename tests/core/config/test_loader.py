@@ -6,7 +6,13 @@ from types import SimpleNamespace
 
 import pytest
 
-from src.cli.args import add_debug_args
+from src.cli.args import (
+    add_common_args,
+    add_connect_args,
+    add_debug_args,
+    add_disaster_args,
+    add_mesh_args,
+)
 from src.core.config.validator import config_option_keys
 from src.core.config.loader import (
     _FLAT_SPECS,
@@ -1148,6 +1154,94 @@ def test_validate_merged_args_debug_excluded_from_structured_presence_fix():
     the CLI-only args.debug attribute into merged-args validation.
     """
     args = SimpleNamespace(debug=False)
+    assert validate_merged_args(args) == []
+
+
+# ---------------------------------------------------------------------------
+# validate_merged_args scalar-key presence vs. truthiness (B3)
+#
+# 2026-07-09 bug fix (audit follow-up to 73ca40b): validate_merged_args's
+# scalar loop gated inclusion on `val is not None or key in nullable_keys`,
+# so a present None for a NON-nullable scalar (e.g. "hosts: null" in YAML)
+# was silently dropped before validate_config ever saw it — bootstrap exited
+# 0 on a config validate_config({"hosts": None}) rejects outright. Fixing
+# this required first clearing a false-positive trap: unlike structured
+# keys, most scalar keys are argparse CLI options whose attribute always
+# exists post-parse, so None can also mean "never touched" rather than
+# "explicit config null". "num" was the one non-nullable scalar with an
+# argparse default of None; it is now marked nullable=True (None is its
+# genuine "no experiment number" state) so the loop's forwarding invariant
+# holds for every other non-nullable scalar.
+# ---------------------------------------------------------------------------
+
+
+def test_validate_merged_args_hosts_omitted_no_error():
+    """Genuinely omitted hosts (attribute absent on args) is inert."""
+    args = SimpleNamespace(switches=4)
+    assert validate_merged_args(args) == []
+
+
+def test_validate_merged_args_hosts_null_is_error():
+    """Regression test for the B3 bug: a present None for a non-nullable
+    scalar must reach validate_config, not be silently dropped.
+
+    Before the fix this was gated out by `val is not None`, so bootstrap
+    exited 0 despite "hosts: null" — a config validate_config itself rejects.
+    """
+    args = SimpleNamespace(hosts=None)
+    errors = validate_merged_args(args)
+    assert "hosts must be an integer >= 3" in errors
+
+
+def test_validate_merged_args_switches_null_is_error():
+    """Second non-nullable scalar pin, distinct from hosts."""
+    args = SimpleNamespace(switches=None)
+    errors = validate_merged_args(args)
+    assert "switches must be an integer >= 2" in errors
+
+
+def test_validate_merged_args_seed_null_not_newly_flagged():
+    """seed is a genuinely nullable scalar; null must stay error-free.
+
+    Pins that nullable scalars are unaffected by dropping the old
+    `or key in nullable_keys` clause — validate_config already tolerates
+    None for every nullable key, so unconditional forwarding is a no-op.
+    """
+    args = SimpleNamespace(seed=None)
+    assert validate_merged_args(args) == []
+
+
+def test_validate_merged_args_num_null_not_newly_flagged():
+    """num is the one non-nullable-looking scalar with an argparse default
+    of None (no --num flag ever produces args.num=None). It is marked
+    nullable=True precisely so this loop's forwarding does not manufacture
+    a false positive for the ordinary "no experiment number" run.
+    """
+    args = SimpleNamespace(num=None)
+    assert validate_merged_args(args) == []
+
+
+@pytest.mark.parametrize(
+    "build_parser",
+    [
+        lambda p: (add_common_args(p), add_mesh_args(p), add_disaster_args(p)),
+        lambda p: add_connect_args(p),
+    ],
+    ids=["disaster", "connect"],
+)
+def test_validate_merged_args_no_flags_no_config_is_clean(build_parser):
+    """The most important regression guard: a plain CLI parse with no flags
+    merged against an empty config must validate cleanly for every scalar
+    key.  This is the false-positive trap the B3 fix had to avoid — if any
+    non-nullable scalar had an argparse default of None (as "num" did before
+    being marked nullable), unconditional forwarding here would break every
+    default run across both CLI entry points.
+    """
+    parser = argparse.ArgumentParser()
+    add_debug_args(parser)
+    build_parser(parser)
+    args = parser.parse_args([])
+
     assert validate_merged_args(args) == []
 
 

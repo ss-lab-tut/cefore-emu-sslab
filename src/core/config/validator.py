@@ -207,6 +207,22 @@ OPTION_SPECS = {
         "num",
         "int",
         minimum=1,
+        # 2026-07-09 bug fix (audit follow-up to 73ca40b): num has no argparse
+        # default (parser default is None, not a real experiment number), and
+        # None is num's genuine "no numbered run" state throughout the
+        # codebase (see experiment_dir_name/resolve_run_dir treating num=None
+        # as omission). nullable=True documents that and is required by the
+        # scalar-forwarding fix below: without it, a plain run with no --num
+        # flag and no "num" key in config would forward None into
+        # validate_config and be flagged as invalid, breaking every default
+        # run. This was the one non-nullable-looking CLI scalar whose
+        # argparse default was None; every other non-nullable cli_allowed=True
+        # scalar key defaults to a real value, which is the invariant
+        # validate_merged_args's scalar loop relies on (nullable scalars are
+        # exempt — they tolerate None; cli_allowed=False scalars like
+        # cefnetd_timeout never enter a parser, so presence on args already
+        # means "was in the config").
+        nullable=True,
         flag="--num",
         help="experiment number (enables log directory output)",
         block=("common", "linear", "connect"),
@@ -1331,14 +1347,35 @@ def validate_merged_args(args: Any) -> list[str]:
     """
     scalar_keys = scalar_option_keys()
     structured_keys = structured_option_keys()
-    nullable_keys = nullable_option_keys()
 
     config: dict[str, Any] = {}
     for key in scalar_keys:
+        # 2026-07-09 bug fix (audit follow-up to 73ca40b): this loop used to
+        # gate on `val is not None or key in nullable_keys`, so a present
+        # None for a NON-nullable scalar (e.g. "hosts: null" in YAML) was
+        # silently dropped before validate_config ever saw it — bootstrap
+        # exited 0 on a config that validate_config({"hosts": None}) rejects
+        # outright. Scalar keys can't use B1's plain hasattr-is-presence
+        # reasoning directly: most are argparse CLI options (cli_allowed=True)
+        # whose attribute always exists post-parse regardless of whether the
+        # value came from CLI, config, or the parser's own default, so
+        # hasattr alone doesn't distinguish "provided" from "never touched".
+        # What makes forwarding safe here is a table invariant, verified
+        # empirically across every CLI block (linear/mesh/disaster/connect):
+        # every non-nullable cli_allowed=True scalar OptionSpec has a real
+        # (non-None) argparse default, so args.<key> can be None post-merge
+        # only if merge_cli_and_config copied an explicit config null onto
+        # it. The one violation was "num" (argparse default None, not marked
+        # nullable), fixed above by marking it nullable=True — None is num's
+        # genuine "no experiment number" state, not a validation error.
+        # cli_allowed=False scalars (e.g. cefnetd_timeout) never enter any
+        # parser, so for them hasattr IS genuine config-presence evidence —
+        # the same mechanism the structured loop below relies on.
+        # Nullable keys already tolerate None in validate_config, so
+        # forwarding is a no-op for them; non-nullable keys now correctly
+        # surface an explicit config null as an error instead of losing it.
         if hasattr(args, key):
-            val = getattr(args, key)
-            if val is not None or key in nullable_keys:
-                config[key] = val
+            config[key] = getattr(args, key)
     for key in structured_keys:
         # 2026-07-09 bug fix: present-but-empty structured blocks ({} / null /
         # []) must reach validate_config — ADR-0002 requires rejecting

@@ -209,6 +209,86 @@ def test_malformed_failure_scenarios_exits_with_config_error(
     assert f"config error: {expected_error}\n" in capsys.readouterr().err
 
 
+# ---------------------------------------------------------------------------
+# validate_merged_args scalar-key presence vs. truthiness (B3)
+#
+# 2026-07-09 bug fix (audit follow-up to 73ca40b): the scalar sibling of the
+# B1 structured-key fix above. A present None for a non-nullable scalar
+# (e.g. "hosts: null") used to be dropped by validate_merged_args's old
+# `val is not None` gate, so bootstrap exited 0 on a config validate_config
+# itself rejects. "num" is the false-positive trap this fix had to clear
+# first: its argparse default is None (not a real experiment number), so it
+# is now nullable=True to keep the ordinary no-flag run error-free.
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("key", "expected_error"),
+    [
+        ("hosts", "hosts must be an integer >= 3"),
+        ("switches", "switches must be an integer >= 2"),
+    ],
+)
+def test_null_non_nullable_scalar_exits_with_config_error(
+    tmp_path, capsys, key, expected_error
+):
+    """Regression test for the B3 bug: an explicit config null for a
+    non-nullable scalar must surface as a validate_config error at the
+    bootstrap level, not be silently dropped.
+    """
+    config_yaml = {"hosts": 3, "switches": 4}
+    config_yaml[key] = None
+    yaml_lines = "".join(
+        f"{k}: {'null' if v is None else v}\n" for k, v in config_yaml.items()
+    )
+    args = _parse_disaster_args(
+        tmp_path,
+        yaml_lines,
+        ["--output-dir", str(tmp_path / "out"), "--no-script-log"],
+    )
+
+    with pytest.raises(SystemExit) as exc_info:
+        _run_bootstrap(args)
+
+    assert exc_info.value.code == 1
+    assert f"config error: {expected_error}\n" in capsys.readouterr().err
+
+
+def test_num_null_in_config_does_not_error(tmp_path):
+    """num is nullable (its argparse default is already None, meaning "no
+    experiment number"), so an explicit "num: null" in config must behave
+    identically to omitting it entirely — no validation error, no crash.
+    """
+    args = _parse_disaster_args(
+        tmp_path,
+        "hosts: 3\nswitches: 4\nnum: null\n",
+        ["--output-dir", str(tmp_path / "out"), "--no-script-log"],
+    )
+
+    record = _run_bootstrap(args)
+
+    assert record["args"].num is None
+
+
+def test_no_flags_empty_config_validates_cleanly(tmp_path):
+    """The false-positive guard at the bootstrap level: a plain run with no
+    CLI flags and an empty config file must not trip any scalar key,
+    including "num" whose argparse default of None could otherwise be
+    mistaken for an explicit config null.
+    """
+    args = _parse_disaster_args(
+        tmp_path,
+        "",
+        ["--output-dir", str(tmp_path / "out"), "--no-script-log"],
+    )
+
+    record = _run_bootstrap(args)
+
+    assert record["args"].num is None
+    assert record["args"].hosts == 5
+    assert record["args"].switches == 10
+
+
 def test_meta_json_written_with_exact_disaster_keys(tmp_path):
     args = _parse_disaster_args(
         tmp_path,
