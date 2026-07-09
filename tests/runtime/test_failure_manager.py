@@ -232,6 +232,42 @@ class TestFlexibleFailureManager:
             thread.join(timeout=3)
         rng.sample.assert_called()
 
+    @patch("src.runtime.failure_manager.set_node_links_state")
+    def test_up_failure_does_not_permanently_exclude_host(self, mock_links):
+        """Regression test for B2: cycle-mode's do_up used to gate
+        shared_down.discard() on set_node_links_state("up") succeeding, so a
+        host whose recovery raised stayed in shared_down forever and was
+        excluded from every later cycle's "available" pool, even though the
+        legacy periodic path always discards regardless of up-outcome.
+        """
+
+        def fake_links(net_arg, host_name, action):
+            if host_name == "h0" and action == "up":
+                raise OSError("veth gone")
+
+        mock_links.side_effect = fake_links
+        config = {
+            "strategy": "cyclic",
+            "cycles": [
+                # cycle 0 deterministically picks h0 (first available, no rng)
+                # and its recovery attempt raises.
+                {"interval": 0.02, "duration": 0.02, "count": 1},
+                # cycle 1's interval is generous so cycle 0's do_up (duration
+                # 0.02s) has certainly completed by the time cycle 1 snapshots
+                # shared_down and picks its target.
+                {"interval": 0.2, "duration": 0.02, "count": 1},
+            ],
+        }
+        mgr = FlexibleFailureManager(config, 3, rng=None, publisher_ids=set())
+        state = FlapState()
+        stop, thread = mgr.start(_make_net(3), state, quiet=True)
+        if thread:
+            thread.join(timeout=3)
+        down_calls = [c[0][1] for c in mock_links.call_args_list if c[0][2] == "down"]
+        # h0 must be chosen again in cycle 1 -- if the bug were present, h0
+        # would still be in shared_down and cycle 1 would pick h1 instead.
+        assert down_calls.count("h0") >= 2
+
     def test_unknown_strategy_returns_noop(self):
         config = {"strategy": "bogus"}
         mgr = FlexibleFailureManager(config, 5, rng=None, publisher_ids=set())

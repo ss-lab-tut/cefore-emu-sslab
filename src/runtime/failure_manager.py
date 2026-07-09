@@ -302,7 +302,6 @@ class FlexibleFailureManager:
                             if cycle_timers.get(cycle_num) is not timer:
                                 return
                             cycle_timers.pop(cycle_num, None)
-                        restored_hosts = []
                         for host_idx in down_set:
                             host_name = f"h{host_idx}"
                             if not quiet:
@@ -311,7 +310,6 @@ class FlexibleFailureManager:
                             error = None
                             try:
                                 set_node_links_state(net, host_name, "up")
-                                restored_hosts.append(host_idx)
                                 if self.on_host_up is not None:
                                     try:
                                         self.on_host_up(host_idx)
@@ -330,8 +328,12 @@ class FlexibleFailureManager:
                                 success = False
                                 error = str(exc)
                             _record_flap(self.sink, "host_up", host_idx, success, error)
+                        # 2026-07-09 bug fix: up-failure must not permanently exclude the
+                        # host — discard unconditionally (matching periodic_host_flap) so
+                        # later cycles can retry it; the host_up failure is still recorded
+                        # via _record_flap above.
                         with state_lock:
-                            for host_idx in restored_hosts:
+                            for host_idx in down_set:
                                 shared_down.discard(host_idx)
                             state.update(set(shared_down))
 
