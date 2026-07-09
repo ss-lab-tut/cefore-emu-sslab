@@ -160,14 +160,14 @@ _Avoid_: per-entry-point bootstrap コピー, parser 無し merge_cli_and_config
 このセクションは domain glossary ではなく、未着手の deepening candidate を次のセッションで再提案されないよう pin する backlog。`/tmp/architecture-review-20260626-165236.html` のレポート由来。完了したら該当エントリを削除し、上の domain section に正式名を追記すること。
 
 **R10 backlog (2026-07-09 review 完了) — 次セッションの作業キュー**:
-feature/seam (= main, PR#13 マージ後) を対象に 8 subsystem 並列探索 + 候補ごと adversarial 検証を実施、21 raw 候補中 20 生存。優先順: (1) bug 級 B1・B2、(2) Strong S1〜S9、(3) Worth exploring W1〜W8 は余力で、Speculative P1〜P2 は保留。独立 housekeeping 負債は変わらず: repo 全体 `mypy src` 57 errors / 24 files・`ruff check` 38 errors (main 由来)。
+feature/seam (= main, PR#13 マージ後) を対象に 8 subsystem 並列探索 + 候補ごと adversarial 検証を実施、21 raw 候補中 20 生存。bug 級 B1・B2 は 2026-07-09 に解消済み (下記)。残る優先順: (1) Strong S1〜S9、(2) Worth exploring W1〜W8 は余力で、Speculative P1〜P2 は保留。独立 housekeeping 負債は変わらず: repo 全体 `mypy src` 57 errors / 24 files・`ruff check` 38 errors (main 由来)。
 
-**B1 (bug) — validate_merged_args が present-but-empty な structured config を素通し**:
-`validator.py:1342-1346` が truthiness (`if val:`) で structured key を除外するため、`failure_scenarios: {}` / `null` が `_validate_failure_scenarios` に届かず bootstrap を無エラー通過する (実行で確認済み) — ADR-0002 は両方を validation error と明記しており、これはその未実装部分。fix = presence 判定 (merge_cli_and_config は key が config に実在したときのみ setattr する) へ変更。cache_config/forwarding_config の bootstrap raw-revalidation 統合は可能だが、`debug` は merge 側 carve-out (`key == 'debug'` skip) があるため同経路統合不可。R8 bundle と分離して先行 land 可 — down_interval/down_duration 即時fix と同じ precedent。
-_Avoid_: R8 完了までこの fix を寝かせること、debug の raw validation を同経路へ無理に統合すること
+**解消済み (2026-07-09) — B1: validate_merged_args の present-but-empty structured config 素通し**:
+73ca40b で fix。structured-key 取り込みを truthiness から presence (`hasattr`) に変更し、`failure_scenarios: {}` / `null` が ADR-0002:21-24 通り validation error になった。presence が成立する根拠: config-only key は merge_cli_and_config が config 実在時のみ setattr する。bw/ext は argparse append (default `[]`) で常に attr が在るが、空リストは無害に検証通過。cache_config/forwarding_config は structured_option_keys() が special_config_merge を除外するため元々この経路外 — bootstrap raw revalidation が唯一の検証経路のまま (fold 不要と実証、exactly-once エラーを test で pin)。codex-review approve (findings ゼロ)。**発見した残課題 → R8 エントリに追記済み**: `failure_scenarios: "none"` (文字列) が現状 `'must be a dict'` で error になり、ADR-0002 の「省略と等価で許可」と矛盾する。
+_Avoid_: bw/ext の常時 presence を bug として再報告すること、"none" 許可を R8 の FailurePolicy 解決と切り離して実装すること
 
-**B2 (bug) — failure_manager cycle-mode の host 恒久除外 (refactor 提案は棄却済み、bug は実在)**:
-`failure_manager.py:80` の無条件 `active_down.discard` と `:334-335` の restored_hosts-gated `shared_down.discard` の非対称により、復帰に失敗した host が `:251-255` の `available` から恒久除外される — test-uncovered。down/up 共有 primitive 抽出案は ADR-0002 の periodic_host_flap 削除予定と衝突する throwaway (one-adapter 化) のため棄却。bug fix 自体は最小変更で単独に行うか R8 bundle 内で扱う。
+**解消済み (2026-07-09) — B2: failure_manager cycle-mode の host 恒久除外**:
+7716a93 で fix。cycle-mode do_up の `shared_down.discard` を restored_hosts gate から down_set 無条件へ変更 (periodic_host_flap :80 と同 semantics)。復帰失敗 host も次 cycle の available pool へ戻り、monitoring down-set からも外れる (probe 再開は periodic と同じ既存挙動で意図通り)。`_record_flap` の success=False 記録は維持 — 失敗証拠は results.json に残る。regression test は up 失敗 host が次 cycle で再選択されることを pin (pre-fix fail 確認・20 連続 flake なし)。共有 primitive 抽出は意図的に不採用 (ADR-0002 R8 が periodic_host_flap を削除予定 → one-adapter seam 化するため)。
 _Avoid_: periodic_host_flap と cycle-mode の共有 primitive 抽出 (R8 で片側が消える)
 
 **S1 — run_cefstatus deepening (argv 4 重複)**: `cefore.py:294-304` は info() 印字のみで return 無し。`monitoring.py:178-184` / `disaster.py:226-230` / `debug.py:34-41` が同一 `["cefstatus","-d","./hN"]` argv + runner 実行を手組み。同ファイルの run_csmgrstatus (:428-480) が証明済みの quiet/timeout/optional-runner/return-stdout 形へ揃え、3 caller を通す。run_cefstatus は現状 direct unit test ゼロ。
@@ -213,7 +213,7 @@ _Avoid_: periodic_host_flap と cycle-mode の共有 primitive 抽出 (R8 で片
 _Avoid_: 名前を `result_detect` のまま残すこと、Verdict factory と別モジュールに散らすこと
 
 **R8候補 — legacy 障害サイクル (down_\*) + legacy キャッシュ設定 (cache_count) の廃止**:
-2026-07-02 の R7-1 grilling で user が廃止意向を表明、behavior-preserving な OptionSpec 統合と混ぜると differential gate が無意味になるため分離した。2026-07-07 の即時fixで `down_interval`/`down_duration` の省略 default は 0/0 になり、no-failure config は暗黙 flap を起動しなくなった。残るR8決定は [ADR-0002](docs/adr/0002-failure-config-resolves-to-explicit-policy.md): bootstrap 時に `FailurePolicy` へ一度だけ解決し、legacy `down_*` OptionSpec 4つ・`periodic_host_flap`・summarizer legacy metadata・`min_failure.yaml` smoke 証拠・`cache_count`/`down_count+1` fallback を同時に整理する。`down_count=5` は cache fallback の二役が残るため即時fixでは維持した。
+2026-07-02 の R7-1 grilling で user が廃止意向を表明、behavior-preserving な OptionSpec 統合と混ぜると differential gate が無意味になるため分離した。2026-07-07 の即時fixで `down_interval`/`down_duration` の省略 default は 0/0 になり、no-failure config は暗黙 flap を起動しなくなった。残るR8決定は [ADR-0002](docs/adr/0002-failure-config-resolves-to-explicit-policy.md): bootstrap 時に `FailurePolicy` へ一度だけ解決し、legacy `down_*` OptionSpec 4つ・`periodic_host_flap`・summarizer legacy metadata・`min_failure.yaml` smoke 証拠・`cache_count`/`down_count+1` fallback を同時に整理する。追記 (2026-07-09, B1 fix 時に発見): `failure_scenarios: "none"` (文字列リテラル) は ADR-0002 が「省略と等価で許可」と定めるのに、現状 `_validate_failure_scenarios` が `'must be a dict'` で reject する — ADR 未実装ギャップ。"none" 許可は FailurePolicy 解決 (mode=none) の一部として R8 で実装すること。`down_count=5` は cache fallback の二役が残るため即時fixでは維持した。
 _Avoid_: `down_count` default だけを単独で 0 化すること、legacy down_\* 廃止を cache fallback 再設計なしで進めること、min_failure の gate 証拠を代替なしで消すこと
 
 **修正案 — `swhich_num` typo の是正 (semantic 名 `switch_limit` へ)**:
