@@ -219,6 +219,20 @@ class TestRunCsmgrstatus:
             run_csmgrstatus(MagicMock(), 1, host="127.0.0.1", quiet=True, timeout=10)
         assert fake.runs[0]["timeout"] == 10
 
+    def test_port_num_builds_two_token_argv(self):
+        fake = FakeCommandRunner()
+        with patch.object(cefore_mod, "MininetCommandRunner", return_value=fake):
+            run_csmgrstatus(MagicMock(), 1, port_num=9799, host="127.0.0.1", quiet=True)
+        argv = fake.runs[0]["argv"]
+        assert argv == ["csmgrstatus", "-p", "9799", "-h", "127.0.0.1"]
+
+    def test_timeout_returns_diagnostic_string(self):
+        fake = FakeCommandRunner()
+        fake.script_run(timed_out=True)
+        with patch.object(cefore_mod, "MininetCommandRunner", return_value=fake):
+            out = run_csmgrstatus(MagicMock(), 1, host="127.0.0.1", quiet=True)
+        assert out == "error: command timeout"
+
 
 def test_start_cefnetd_removes_stale_socket_and_cefnetd_log_before_start():
     fake = FakeCommandRunner()
@@ -255,20 +269,6 @@ def test_start_csmgrd_removes_only_stale_csmgrd_log_before_start():
     cleanup_csmgrd_log.assert_called_once_with("h1", 1)
     cleanup_cefnetd_log.assert_not_called()
     assert fake.runs[0]["node"] == "h1"
-
-    def test_port_num_builds_two_token_argv(self):
-        fake = FakeCommandRunner()
-        with patch.object(cefore_mod, "MininetCommandRunner", return_value=fake):
-            run_csmgrstatus(MagicMock(), 1, port_num=9799, host="127.0.0.1", quiet=True)
-        argv = fake.runs[0]["argv"]
-        assert argv == ["csmgrstatus", "-p", "9799", "-h", "127.0.0.1"]
-
-    def test_timeout_returns_diagnostic_string(self):
-        fake = FakeCommandRunner()
-        fake.script_run(timed_out=True)
-        with patch.object(cefore_mod, "MininetCommandRunner", return_value=fake):
-            out = run_csmgrstatus(MagicMock(), 1, host="127.0.0.1", quiet=True)
-        assert out == "error: command timeout"
 
 
 # ---------------------------------------------------------------------------
