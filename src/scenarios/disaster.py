@@ -90,7 +90,6 @@ class DisasterScenario(BaseScenario):
         self.uri_publishers = {}
         self.publisher_ids = set()
         self.topo = None
-        self.seed_label = "none" if args.seed is None else str(args.seed)
         self.stop_thread = None
         self.event_scheduler = None
         self.content_runner = None
@@ -279,7 +278,6 @@ class DisasterScenario(BaseScenario):
             run_dir=self.run_dir,
             sink=self.results_sink,
             flap_state=self.flap_state,
-            seed_label=self.seed_label,
             uri_publishers=self.uri_publishers,
             startup_grace=startup_grace,
             pub_lifetime_by_uri=pub_lifetime_by_uri,
@@ -408,7 +406,6 @@ class DisasterScenario(BaseScenario):
                 mesh_links=self.topo.mesh_links,
                 sink=self.results_sink,
                 flap_state=self.flap_state,
-                seed_label=self.seed_label,
                 uri_publishers=self.uri_publishers,
                 startup_grace=float(
                     getattr(self.args, "pubsub_sub_startup_grace", 1.0)
@@ -438,7 +435,6 @@ class DisasterScenario(BaseScenario):
                     mesh_links=self.topo.mesh_links,
                     sink=self.results_sink,
                     flap_state=self.flap_state,
-                    seed_label=self.seed_label,
                     uri_publishers=self.uri_publishers,
                     startup_grace=float(
                         getattr(self.args, "pubsub_sub_startup_grace", 1.0)
@@ -477,7 +473,6 @@ class DisasterScenario(BaseScenario):
                 mesh_links=self.topo.mesh_links,
                 sink=self.results_sink,
                 flap_state=self.flap_state,
-                seed_label=self.seed_label,
                 uri_publishers=self.uri_publishers,
                 startup_grace=float(
                     getattr(self.args, "pubsub_sub_startup_grace", 1.0)

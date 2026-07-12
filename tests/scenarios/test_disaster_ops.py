@@ -245,7 +245,6 @@ def test_autotest_put_only_duration_zero_skips_failure_phase(tmp_path):
     assert spec.mesh_links == scenario.topo.mesh_links
     assert spec.sink is scenario.results_sink
     assert spec.flap_state is scenario.flap_state
-    assert spec.seed_label == scenario.seed_label
     assert spec.uri_publishers == {"ccnx:/test/sample": 2}
     assert spec.startup_grace == 1.0
     assert spec.phase == "event"

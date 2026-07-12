@@ -55,7 +55,6 @@ class ConnectScenario(BaseScenario):
         self.debug_config = debug_config
 
         self.rng = random.Random(args.seed) if args.seed is not None else None
-        self.seed_label = "none" if args.seed is None else str(args.seed)
 
         addr_cfg = getattr(args, "addressing", {}) or {}
         self.scheme = AddressingScheme(
@@ -166,7 +165,6 @@ class ConnectScenario(BaseScenario):
             mesh_links=self.topo.mesh_links,
             sink=RecordingSink(),
             flap_state=FlapState(),
-            seed_label=self.seed_label,
             uri_publishers=self.uri_publishers,
             phase="seed",
             start_time=None,
