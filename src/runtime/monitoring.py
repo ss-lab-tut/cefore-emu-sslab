@@ -10,8 +10,7 @@ from typing import Callable
 from mininet.log import info
 
 from ..core.paths import ensure_within_run_dir
-from .cefore import run_csmgrstatus
-from .command_runner import MininetCommandRunner
+from .cefore import run_cefstatus, run_csmgrstatus
 
 # Field order for every monitor record, shared by monitor.json, monitor.csv,
 # and the webui live-status feed. Defined once here so a field rename cannot
@@ -176,12 +175,18 @@ class Monitor:
                 info(f"[monitor] h{host_idx} is down, skipping csmgrstatus\n")
             return "skipped: host down"
         if target_type == "cefstatus":
-            node_name = f"h{host_idx}"
-            argv = ["cefstatus", "-d", f"./{node_name}"]
-            timeout = self.command_timeout if bg else None
-            return MininetCommandRunner(self.net).run(
-                node_name, argv, timeout=timeout
-            ).stdout
+            # 2026-07-12 S1: quiet=bg mirrors the csmgrstatus branch below —
+            # foreground monitor calls now emit the same command-echo/output
+            # info() the csmgrstatus branch already did, closing a drift
+            # between the two branches. Background calls stay quiet and gain
+            # the timed_out -> "error: command timeout" translation that
+            # run_cefstatus now shares with run_csmgrstatus.
+            return run_cefstatus(
+                self.net,
+                host_idx,
+                quiet=bg,
+                timeout=self.command_timeout if bg else None,
+            )
         elif target_type == "csmgrstatus":
             # Use explicit target_host if provided; otherwise use resolver.
             explicit = target.get("target_host")

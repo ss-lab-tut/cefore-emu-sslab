@@ -7,7 +7,6 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from src.runtime.command_runner import FakeCommandRunner
 from src.runtime.monitoring import (
     MONITOR_FIELDS,
     Monitor,
@@ -229,23 +228,21 @@ class TestCollectTargetCsmgrstatus:
 # ---------------------------------------------------------------------------
 
 class TestCollectTargetCefstatus:
-    def test_cefstatus_runs_via_runner(self, tmp_path):
-        fake = FakeCommandRunner()
-        fake.script_run(stdout="cef out")
+    def test_cefstatus_runs_via_run_cefstatus(self, tmp_path):
+        net = MagicMock()
         monitor = Monitor(
-            MagicMock(),
+            net,
             targets=[_cefstatus_target(hosts="all")],
             interval=1,
             output_dir=tmp_path,
             host_count=3,
         )
-        with patch("src.runtime.monitoring.MininetCommandRunner", return_value=fake):
+        with patch(
+            "src.runtime.monitoring.run_cefstatus", return_value="cef out"
+        ) as mock_fn:
             out = monitor._collect_target("cefstatus", 0, {"type": "cefstatus"})
         assert out == "cef out"
-        assert fake.runs[0]["node"] == "h0"
-        assert fake.runs[0]["argv"] == ["cefstatus", "-d", "./h0"]
-        # Non-background: no command timeout.
-        assert fake.runs[0]["timeout"] is None
+        mock_fn.assert_called_once_with(net, 0, quiet=False, timeout=None)
 
 
 # ---------------------------------------------------------------------------
@@ -281,16 +278,16 @@ class TestBackgroundMode:
         assert monitor._background.is_set()
 
     def test_background_cefstatus_passes_command_timeout(self, tmp_path):
-        fake = FakeCommandRunner()
-        fake.script_run(stdout="cef out")
-        monitor = self._bg_monitor(tmp_path, net=MagicMock(), command_timeout=7)
-        with patch("src.runtime.monitoring.MininetCommandRunner", return_value=fake):
+        net = MagicMock()
+        monitor = self._bg_monitor(tmp_path, net=net, command_timeout=7)
+        with patch(
+            "src.runtime.monitoring.run_cefstatus", return_value="cef out"
+        ) as mock_fn:
             out = monitor._collect_target("cefstatus", 1, {"type": "cefstatus"})
         assert out == "cef out"
-        assert fake.runs[0]["node"] == "h1"
-        assert fake.runs[0]["argv"] == ["cefstatus", "-d", "./h1"]
-        # Background mode applies the command timeout.
-        assert fake.runs[0]["timeout"] == 7
+        # Background mode goes quiet and applies the command timeout, mirroring
+        # the csmgrstatus branch's quiet=bg/timeout=command_timeout contract.
+        mock_fn.assert_called_once_with(net, 1, quiet=True, timeout=7)
 
     def test_background_csmgrstatus_quiet_and_timeout(self, tmp_path):
         monitor = self._bg_monitor(tmp_path)  # default command_timeout=10

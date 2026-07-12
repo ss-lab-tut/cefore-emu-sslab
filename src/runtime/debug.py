@@ -11,7 +11,7 @@ Collection phases (see scenarios/base.py):
 import shutil
 from pathlib import Path
 
-from .command_runner import MininetCommandRunner
+from .cefore import run_cefstatus
 
 
 def archive_node_dirs(generated_dirs: list[Path], dest_dir: Path) -> None:
@@ -34,8 +34,7 @@ def archive_node_dirs(generated_dirs: list[Path], dest_dir: Path) -> None:
 def dump_fib(net, host_ids: list[int], dest_dir: Path) -> None:
     """Dump FIB tables for the given hosts to dest_dir/fib_hN.txt."""
     dest_dir.mkdir(parents=True, exist_ok=True)
-    runner = MininetCommandRunner(net)
     for idx in host_ids:
         node_name = f"h{idx}"
-        output = runner.run(node_name, ["cefstatus", "-d", f"./{node_name}"]).stdout
+        output = run_cefstatus(net, idx, quiet=True)
         (dest_dir / f"fib_{node_name}.txt").write_text(output, encoding="utf-8")

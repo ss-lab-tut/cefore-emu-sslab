@@ -17,7 +17,6 @@ from ..core.paths import resolve_run_path
 from ..runtime.bridge_args import parse_bridge_args
 from ..runtime.bridge_root import BridgeManager
 from ..runtime.cache_strategy import KCentersStrategy, RandomCSModeStrategy
-from ..runtime.command_runner import MininetCommandRunner
 from ..runtime.content_ops import ContentOperationRunner
 from ..runtime.event_batch import EventBatchSpec, run_event_batch
 from ..runtime.monitoring import Monitor, make_monitor_record
@@ -31,7 +30,7 @@ from ..runtime.scenario_setup import (
     setup_scenario,
     teardown_scenario,
 )
-from ..runtime.cefore import run_csmgrstatus, wait_for_cefnetd
+from ..runtime.cefore import run_cefstatus, run_csmgrstatus, wait_for_cefnetd
 from ..core.parsing import parse_int_list
 from ..runtime.daemon_logs import HostLogScope
 from ..runtime.failure_manager import FlexibleFailureManager, periodic_host_flap
@@ -223,11 +222,8 @@ class DisasterScenario(BaseScenario):
             self.results_sink.subscribe(self.dashboard.record_operation)
             info(f"[webui] dashboard: http://0.0.0.0:{webui_port}/\n")
             # Pre-populate initial host state before Monitor starts polling
-            webui_runner = MininetCommandRunner(net)
             for idx in range(args.hosts):
-                output = webui_runner.run(
-                    f"h{idx}", ["cefstatus", "-d", f"./h{idx}"]
-                ).stdout
+                output = run_cefstatus(net, idx, quiet=True)
                 self.dashboard.record_monitor(
                     make_monitor_record(0.0, "cefstatus", idx, output)
                 )

@@ -291,17 +291,39 @@ def run_cefgetfile(
     return result.returncode
 
 
-def run_cefstatus(net, host_idx):
+def run_cefstatus(net, host_idx, *, quiet=False, timeout=None, runner=None):
     """Run cefstatus to display FIB state.
 
     Args:
         net: Mininet network instance.
         host_idx: Host index.
+        quiet: When True, suppress the command echo and the output ``info``
+            (the output is still returned).
+        timeout: Command timeout (seconds).
+        runner: Optional CommandRunner (defaults to a Mininet-backed one).
+
+    Returns:
+        Command output string.
+
+    2026-07-12 S1 deepening: reshaped to run_csmgrstatus's proven
+    quiet/timeout/runner shape so the 3 hand-rolled cefstatus callers
+    (monitoring, disaster webui pre-populate, debug.dump_fib) share one seam
+    instead of each re-building argv + a bare MininetCommandRunner. The
+    timed_out -> "error: command timeout" translation matches
+    run_csmgrstatus's semantics. run_cefstatus_all's default (non-quiet,
+    no-timeout) call path stays byte-identical to the pre-deepening info()
+    output.
     """
     node_name = f"h{host_idx}"
     argv = ["cefstatus", "-d", f"./{node_name}"]
-    info(f"{node_name} command: {argv}\n")
-    info(MininetCommandRunner(net).run(node_name, argv).stdout)
+    if not quiet:
+        info(f"{node_name} command: {argv}\n")
+    runner = runner or MininetCommandRunner(net)
+    result = runner.run(node_name, argv, timeout=timeout)
+    output = "error: command timeout" if result.timed_out else result.stdout
+    if not quiet:
+        info(output)
+    return output
 
 
 def run_cefstatus_all(net, host_num):

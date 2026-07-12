@@ -9,6 +9,7 @@ from src.runtime.cefore import (
     run_cefgetfile,
     run_cefpubfile,
     run_cefputfile,
+    run_cefstatus,
     run_csmgrstatus,
     start_cefsubfile,
 )
@@ -232,6 +233,65 @@ class TestRunCsmgrstatus:
         with patch.object(cefore_mod, "MininetCommandRunner", return_value=fake):
             out = run_csmgrstatus(MagicMock(), 1, host="127.0.0.1", quiet=True)
         assert out == "error: command timeout"
+
+
+# ---------------------------------------------------------------------------
+# run_cefstatus — S1 deepening: reshaped to run_csmgrstatus's proven
+# quiet/timeout/runner shape (2026-07-12).
+# ---------------------------------------------------------------------------
+
+
+class TestRunCefstatus:
+    def test_default_runs_argv_and_emits_output(self):
+        fake = FakeCommandRunner()
+        fake.script_run(stdout="fib output")
+        with (
+            patch.object(cefore_mod, "MininetCommandRunner", return_value=fake),
+            patch.object(cefore_mod, "info") as mock_info,
+        ):
+            out = run_cefstatus(MagicMock(), 1)
+        assert out == "fib output"
+        rec = fake.runs[0]
+        assert rec["node"] == "h1"
+        assert rec["argv"] == ["cefstatus", "-d", "./h1"]
+        # Non-quiet emits the command echo via info too; the output is among them.
+        mock_info.assert_any_call("h1 command: ['cefstatus', '-d', './h1']\n")
+        mock_info.assert_any_call("fib output")
+
+    def test_quiet_suppresses_print_and_info(self, capsys):
+        fake = FakeCommandRunner()
+        fake.script_run(stdout="fib output")
+        with (
+            patch.object(cefore_mod, "MininetCommandRunner", return_value=fake),
+            patch.object(cefore_mod, "info") as mock_info,
+        ):
+            out = run_cefstatus(MagicMock(), 1, quiet=True)
+        assert out == "fib output"
+        mock_info.assert_not_called()
+        assert "command:" not in capsys.readouterr().out
+
+    def test_timeout_forwarded(self):
+        fake = FakeCommandRunner()
+        with patch.object(cefore_mod, "MininetCommandRunner", return_value=fake):
+            run_cefstatus(MagicMock(), 1, quiet=True, timeout=10)
+        assert fake.runs[0]["timeout"] == 10
+
+    def test_timeout_returns_diagnostic_string(self):
+        fake = FakeCommandRunner()
+        fake.script_run(timed_out=True)
+        with patch.object(cefore_mod, "MininetCommandRunner", return_value=fake):
+            out = run_cefstatus(MagicMock(), 1, quiet=True)
+        assert out == "error: command timeout"
+
+    def test_runner_injection_skips_mininet_command_runner_construction(self):
+        fake = FakeCommandRunner()
+        fake.script_run(stdout="fib output")
+        with patch.object(cefore_mod, "MininetCommandRunner") as mock_ctor:
+            out = run_cefstatus(MagicMock(), 1, quiet=True, runner=fake)
+        mock_ctor.assert_not_called()
+        assert out == "fib output"
+        assert fake.runs[0]["node"] == "h1"
+        assert fake.runs[0]["argv"] == ["cefstatus", "-d", "./h1"]
 
 
 def test_start_cefnetd_removes_stale_socket_and_cefnetd_log_before_start():
