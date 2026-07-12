@@ -175,7 +175,7 @@ class Monitor:
                 info(f"[monitor] h{host_idx} is down, skipping csmgrstatus\n")
             return "skipped: host down"
         if target_type == "cefstatus":
-            # 2026-07-12 S1: quiet=bg mirrors the csmgrstatus branch below —
+            # 2026-07-12: quiet=bg mirrors the csmgrstatus branch below —
             # foreground monitor calls now emit the same command-echo/output
             # info() the csmgrstatus branch already did, closing a drift
             # between the two branches. Background calls stay quiet and gain

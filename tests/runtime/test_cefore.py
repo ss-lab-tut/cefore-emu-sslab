@@ -236,8 +236,9 @@ class TestRunCsmgrstatus:
 
 
 # ---------------------------------------------------------------------------
-# run_cefstatus — S1 deepening: reshaped to run_csmgrstatus's proven
-# quiet/timeout/runner shape (2026-07-12).
+# run_cefstatus — 2026-07-12: quiet/timeout/timed_out->"error: command
+# timeout" shape aligned with run_csmgrstatus (run_csmgrstatus itself has
+# no runner= parameter; that injection seam is run_cefstatus-only).
 # ---------------------------------------------------------------------------
 
 

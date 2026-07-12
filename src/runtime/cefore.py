@@ -305,14 +305,13 @@ def run_cefstatus(net, host_idx, *, quiet=False, timeout=None, runner=None):
     Returns:
         Command output string.
 
-    2026-07-12 S1 deepening: reshaped to run_csmgrstatus's proven
-    quiet/timeout/runner shape so the 3 hand-rolled cefstatus callers
-    (monitoring, disaster webui pre-populate, debug.dump_fib) share one seam
-    instead of each re-building argv + a bare MininetCommandRunner. The
-    timed_out -> "error: command timeout" translation matches
-    run_csmgrstatus's semantics. run_cefstatus_all's default (non-quiet,
-    no-timeout) call path stays byte-identical to the pre-deepening info()
-    output.
+    2026-07-12: the quiet/timeout/timed_out->"error: command timeout"/
+    return-value shape mirrors run_csmgrstatus's existing behavior (a
+    deliberate alignment, not a coincidence). The runner= injection seam
+    below is run_cefstatus-only: run_csmgrstatus has no runner= parameter
+    and always constructs its own MininetCommandRunner. The default
+    (non-quiet, no-timeout) call path stays byte-identical to the
+    pre-alignment info() output.
     """
     node_name = f"h{host_idx}"
     argv = ["cefstatus", "-d", f"./{node_name}"]
