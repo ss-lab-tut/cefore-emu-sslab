@@ -16,6 +16,10 @@ _Avoid_: output, return tuple, proc result
 The token a CommandRunner returns for a still-running command. Callers wait/poll/terminate/kill it through the runner; they never hold a raw `Popen`.
 _Avoid_: proc, process handle, popen object
 
+**run_cefstatus / run_csmgrstatus**:
+`cefore.py` helpers that wrap one diagnostic command (cefstatus / csmgrstatus) through CommandRunner and normalize the result: `quiet` suppresses the argv-echo/output `info()` calls, `timeout` forwards to the runner, a `timed_out` CommandResult becomes `"error: command timeout"`, and the (possibly-converted) output is returned instead of only printed. Their test-injection seams differ: run_cefstatus takes an optional `runner=` kwarg (default: fresh `MininetCommandRunner(net)`); run_csmgrstatus has no such param — it always builds its own `MininetCommandRunner(net)` internally, so tests inject a fake by patching the `MininetCommandRunner` class itself, not by passing a kwarg. run_cefstatus was deepened to this shape (2026-07-12) to match run_csmgrstatus's proven quiet/timeout/timed_out/return-value behavior (not its construction seam); monitoring's cefstatus branch, disaster's webui pre-populate loop, and debug.dump_fib all now call run_cefstatus instead of hand-rolling the `["cefstatus","-d",f"./h{idx}"]` argv. run_csmgrstatus itself is deliberately unchanged.
+_Avoid_: hand-built `["cefstatus",...]` / `["csmgrstatus",...]` argv outside cefore.py, a caller constructing its own CommandRunner for this argv
+
 ## Host identity
 
 **Node name**:
@@ -160,7 +164,7 @@ _Avoid_: per-entry-point bootstrap コピー, parser 無し merge_cli_and_config
 このセクションは domain glossary ではなく、未着手の deepening candidate を次のセッションで再提案されないよう pin する backlog。`/tmp/architecture-review-20260626-165236.html` のレポート由来。完了したら該当エントリを削除し、上の domain section に正式名を追記すること。
 
 **R10 backlog (2026-07-09 review 完了) — 次セッションの作業キュー**:
-feature/seam (= main, PR#13 マージ後) を対象に 8 subsystem 並列探索 + 候補ごと adversarial 検証を実施、21 raw 候補中 20 生存。bug 級 B1・B2 は 2026-07-09 に解消済み (下記)。残る優先順: (1) Strong S1〜S9、(2) Worth exploring W1〜W8 は余力で、Speculative P1〜P2 は保留。独立 housekeeping 負債は変わらず: repo 全体 `mypy src` 57 errors / 24 files・`ruff check` 38 errors (main 由来)。
+feature/seam (= main, PR#13 マージ後) を対象に 8 subsystem 並列探索 + 候補ごと adversarial 検証を実施、21 raw 候補中 20 生存。bug 級 B1・B2 は 2026-07-09 に解消済み (下記)。Strong S1 (run_cefstatus deepening)・S2 (dead per-content label param 削除) は 2026-07-12 に実装完了、エントリ削除済み。残る優先順: (1) Strong S3〜S9、(2) Worth exploring W1〜W8 は余力で、Speculative P1〜P2 は保留。独立 housekeeping 負債は変わらず: repo 全体 `mypy src` 57 errors / 24 files・`ruff check` 38 errors (main 由来)。
 
 **解消済み (2026-07-09) — B1: validate_merged_args の present-but-empty structured config 素通し**:
 73ca40b で fix。structured-key 取り込みを truthiness から presence (`hasattr`) に変更し、`failure_scenarios: {}` / `null` が ADR-0002:21-24 通り validation error になった。presence が成立する根拠: config-only key は merge_cli_and_config が config 実在時のみ setattr する。bw/ext は argparse append (default `[]`) で常に attr が在るが、空リストは無害に検証通過。cache_config/forwarding_config は structured_option_keys() が special_config_merge を除外するため元々この経路外 — bootstrap raw revalidation が唯一の検証経路のまま (fold 不要と実証、exactly-once エラーを test で pin)。codex-review approve (findings ゼロ)。**発見した残課題 → R8 エントリに追記済み**: `failure_scenarios: "none"` (文字列) が現状 `'must be a dict'` で error になり、ADR-0002 の「省略と等価で許可」と矛盾する。
@@ -174,11 +178,7 @@ _Avoid_: 新規 scalar OptionSpec に「argparse default None かつ非 nullable
 7716a93 で fix。cycle-mode do_up の `shared_down.discard` を restored_hosts gate から down_set 無条件へ変更 (periodic_host_flap :80 と同 semantics)。復帰失敗 host も次 cycle の available pool へ戻り、monitoring down-set からも外れる (probe 再開は periodic と同じ既存挙動で意図通り)。`_record_flap` の success=False 記録は維持 — 失敗証拠は results.json に残る。regression test は up 失敗 host が次 cycle で再選択されることを pin (pre-fix fail 確認・20 連続 flake なし)。共有 primitive 抽出は意図的に不採用 (ADR-0002 R8 が periodic_host_flap を削除予定 → one-adapter seam 化するため)。
 _Avoid_: periodic_host_flap と cycle-mode の共有 primitive 抽出 (R8 で片側が消える)
 
-**S1 — run_cefstatus deepening (argv 4 重複)**: `cefore.py:294-304` は info() 印字のみで return 無し。`monitoring.py:178-184` / `disaster.py:226-230` / `debug.py:34-41` が同一 `["cefstatus","-d","./hN"]` argv + runner 実行を手組み。同ファイルの run_csmgrstatus (:428-480) が証明済みの quiet/timeout/optional-runner/return-stdout 形へ揃え、3 caller を通す。run_cefstatus は現状 direct unit test ゼロ。
-
-**S2 — ContentOperationRunner の dead `seed_label` thread 削除**: `content_ops.py:55/67` で格納後どこからも未読 (初出 commit 4009945 から一貫)。EventBatchSpec.seed_label、disaster.py:94 / connect.py:58 の `"none" if seed is None ...` 導出ごと削除。
-
-**S3 — Disaster/Connect wiring 重複 collapse**: lifecycle quartet の外側の glue — build_topology (17行 byte-identical) / create_mininet / daemon_log_collection_scope (11行) / should_run_cli / before_cli・after_cli の tee-swap / __init__ prologue — が両 scenario に copy。BaseScenario と両者の間に mesh-CLI-scenario 中間 base を置き hoist。注意: connect の rng/seed_label init 位置、disaster の rng fallback (failure-manager scheduling 用に常に fresh Random()) の差は保持。
+**S3 — Disaster/Connect wiring 重複 collapse**: lifecycle quartet の外側の glue — build_topology (17行 byte-identical) / create_mininet / daemon_log_collection_scope (11行) / should_run_cli / before_cli・after_cli の tee-swap / __init__ prologue — が両 scenario に copy。BaseScenario と両者の間に mesh-CLI-scenario 中間 base を置き hoist。注意: connect の rng init 位置、disaster の rng fallback (failure-manager scheduling 用に常に fresh Random()) の差は保持。
 
 **S4 — pub_lifetime_by_uri 二重導出**: `event_batch.py:55-64` の module-private helper を public 化し、`disaster.py:274-280` (_make_content_runner 内の inline 再実装) を置換。warmup 経路が seam 外なのは意図 (CONTEXT の EventBatchSpec 項) — 導出関数だけ共有する。
 
