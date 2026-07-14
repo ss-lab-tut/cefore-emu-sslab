@@ -68,33 +68,37 @@ import topo_fingerprint  # noqa: E402
 
 
 # =============================================================================
-# Dataviz palette -- lifted verbatim from the dataviz skill's reference
-# instance (references/palette.md, light mode only: these are static PNG/PDF
-# slide assets, not a themeable web page). Keep these in sync with the skill
-# if the palette instance ever changes; do not eyeball substitute hexes.
+# Workshop deck palette -- monochrome base + one accent. The deck these
+# figures land in is white background / black text with Toyohashi Tech logo
+# red (#B6261D) as the single emphasis color, and the figures must read as
+# part of the same system: blacks/grays carry every baseline or "normal"
+# series, and #B6261D is reserved for THE semantically emphasized series of a
+# figure (failure markers, publisher-down bars, the headline cache-hit
+# series). Never use red for a second series in the same figure -- if two
+# things compete for emphasis, neither is emphasized.
 # =============================================================================
 CATEGORICAL = [
-    "#2a78d6",  # 1 blue
-    "#1baf7a",  # 2 aqua
-    "#eda100",  # 3 yellow
-    "#008300",  # 4 green
-    "#4a3aa7",  # 5 violet
-    "#e34948",  # 6 red
-    "#e87ba4",  # 7 magenta
-    "#eb6834",  # 8 orange
+    "#B6261D",  # 1 TUT red -- emphasis only (index 0 by design: grep-able)
+    "#1a1a1a",  # 2 near-black -- primary neutral series
+    "#6b6b6b",  # 3 mid gray
+    "#a8a8a8",  # 4 light gray
+    "#3d3d3d",  # 5 dark gray
+    "#8a2420",  # 6 muted dark red (serious-but-not-headline)
+    "#555555",  # 7 gray
+    "#c9c9c9",  # 8 lightest gray
 ]
 STATUS = {
-    "good": "#0ca30c",
-    "warning": "#fab219",
-    "serious": "#ec835a",
-    "critical": "#d03b3b",
+    "good": "#1a1a1a",  # "normal/ok" is neutral near-black, not green: only
+    "warning": "#8a8a8a",  # failure states earn color in this deck
+    "serious": "#8a2420",
+    "critical": "#B6261D",  # the one accent: TUT logo red
 }
 TEXT_PRIMARY = "#0b0b0b"
-TEXT_SECONDARY = "#52514e"
-TEXT_MUTED = "#898781"
-GRIDLINE = "#e1e0d9"
-BASELINE = "#c3c2b7"
-SURFACE = "#fcfcfb"
+TEXT_SECONDARY = "#525252"
+TEXT_MUTED = "#8a8a8a"
+GRIDLINE = "#e5e5e5"
+BASELINE = "#c4c4c4"
+SURFACE = "#FFFFFF"  # pure white to match the deck background exactly
 
 
 def _style_axes(ax, *, horizontal_grid: bool = True) -> None:
@@ -390,7 +394,9 @@ def fig_m1_structure(jobs: dict[str, Job], analysis_dir: Path, out_dir: Path) ->
         f"{n_identical}/{len(same_fps)} identical" if same_fps else "no data",
         f"{n_unique}/{len(distinct_fps)} distinct" if distinct_fps else "no data",
     ]
-    bars = ax.bar(categories, fractions, width=0.5, color=CATEGORICAL[0])
+    # Neutral single-series result (no failure/baseline contrast to draw):
+    # near-black, keeping red available for figures with a real emphasis.
+    bars = ax.bar(categories, fractions, width=0.5, color=CATEGORICAL[1])
     for bar, label in zip(bars, labels):
         ax.text(
             bar.get_x() + bar.get_width() / 2,
@@ -445,7 +451,7 @@ def fig_m1_verdict_agreement(jobs: dict[str, Job], analysis_dir: Path, out_dir: 
     _write_json(analysis_dir, name, payload)
 
     fig, ax = _new_figure((max(7, n_ops * 0.6), 4.5))
-    ax.bar(range(n_ops), agreement, color=CATEGORICAL[0], width=0.6)
+    ax.bar(range(n_ops), agreement, color=CATEGORICAL[1], width=0.6)
     ax.set_xticks(range(n_ops))
     ax.set_xticklabels(op_labels, rotation=45, ha="right")
     ax.set_ylim(0, 1.05)
@@ -512,9 +518,9 @@ def fig_m1_perf_cv(jobs: dict[str, Job], analysis_dir: Path, out_dir: Path) -> N
     ):
         bp = ax.boxplot(series, tick_labels=[o.replace(".log", "") for o in op_names], patch_artist=True)
         for patch in bp["boxes"]:
-            patch.set_facecolor(CATEGORICAL[0])
+            patch.set_facecolor(CATEGORICAL[1])
             patch.set_alpha(0.35)
-            patch.set_edgecolor(CATEGORICAL[0])
+            patch.set_edgecolor(CATEGORICAL[1])
         for median in bp["medians"]:
             median.set_color(TEXT_PRIMARY)
         for i, cv in enumerate(cvs):
@@ -584,6 +590,9 @@ def fig_m5a_pubdown(jobs: dict[str, Job], analysis_dir: Path, out_dir: Path) -> 
     fig, ax = _new_figure((7, 5))
     x = range(len(buckets))
     width = 0.32
+    # Emphasis lands on the "down" bars (TUT red via STATUS["critical"]):
+    # the headline claim is what happens WHILE the publisher is down; the
+    # "up" bars are the neutral near-black baseline (STATUS["good"]).
     for offset, state, color, state_label in (
         (-width / 2, "up", STATUS["good"], "Publisher up"),
         (width / 2, "down", STATUS["critical"], "Publisher down"),
@@ -739,12 +748,14 @@ def fig_m5b_timeline(jobs: dict[str, Job], analysis_dir: Path, out_dir: Path) ->
         for t, event_type, success in entry["link_events"]:
             if not success:
                 continue  # failed link_down/link_up outcome: topology had no such edge this seed
-            marker_color = CATEGORICAL[4] if event_type == "link_down" else CATEGORICAL[1]
+            # Context lines stay grayscale (dark=down, light=up) so the only
+            # red on this figure is the get-failure markers -- the emphasis.
+            marker_color = CATEGORICAL[4] if event_type == "link_down" else CATEGORICAL[3]
             ax.axvline(t, color=marker_color, linewidth=1, alpha=0.5, zorder=1)
     ax.set_yticks(range(len(rows_payload)))
     ax.set_yticklabels([e["job_id"] for e in rows_payload])
     ax.set_xlabel("Seconds since run start")
-    ax.set_title("M5b: get outcomes around link_down/link_up (violet=down, aqua=up)")
+    ax.set_title("M5b: get outcomes around link_down/link_up (dark gray=down, light gray=up)")
     legend_handles = [
         Patch(facecolor=STATUS["good"], label="get success"),
         Patch(facecolor=STATUS["critical"], label="get failure"),
@@ -798,7 +809,7 @@ def fig_m5c_intensity(jobs: dict[str, Job], analysis_dir: Path, out_dir: Path) -
     )
 
     fig, ax = _new_figure((6.5, 4.5))
-    ax.errorbar(dcs, means, yerr=errs, color=CATEGORICAL[0], marker="o", markersize=6, linewidth=2, capsize=4)
+    ax.errorbar(dcs, means, yerr=errs, color=CATEGORICAL[1], marker="o", markersize=6, linewidth=2, capsize=4)
     ax.set_xticks(dcs)
     ax.set_xlabel("down_count (hosts flapped per cycle)")
     ax.set_ylabel("Eval success rate")
@@ -858,11 +869,255 @@ def fig_m5d_strategies(jobs: dict[str, Job], analysis_dir: Path, out_dir: Path) 
     )
 
     fig, ax = _new_figure((6.5, 4.5))
-    ax.bar(names_present, means, yerr=errs, capsize=4, color=CATEGORICAL[0], width=0.5)
+    ax.bar(names_present, means, yerr=errs, capsize=4, color=CATEGORICAL[1], width=0.5)
     ax.set_ylabel("Eval success rate")
     ax.set_ylim(0, 1.05)
     ax.set_title("M5d: success rate by cache node-selection strategy")
     _style_axes(ax)
+    _save(fig, out_dir, name)
+
+
+# =============================================================================
+# M5e: repeated publisher outages -- cached vs fresh URI availability timeline
+# =============================================================================
+
+
+# host number -> lane label. The M5e scenario is a fixed three-actor story:
+# h7 re-fetches a URI it already cached before any outage (the control), h3
+# fetches a fresh URI for the first time mid-story, and h5 is a brand-new
+# consumer that only starts asking after the content is already cached
+# upstream. Hosts outside this cast (if a config variant adds one) fall back
+# to a plain "hN" lane rather than being dropped.
+def _m5e_lane_labels(gets_raw: list[dict]) -> dict[tuple[int, str], str]:
+    """Per-seed role classification (hosts differ per seed's cache placement).
+
+    The generated configs (tools/workshop/gen_m5e_config.py) schedule roles
+    by first-attempt order: control polls the pre-cached URI from t=5; the
+    fresh URI is touched first by the protagonist (cache on its path), then
+    the unlucky contrast host (no cache on any path), and last by the
+    newcomer whose first touch lands inside a later outage window. Deriving
+    labels from (uri, first-attempt order) keeps the figure correct for any
+    seed without hardcoding host ids.
+    """
+    firsts: dict[tuple[int, str], float] = {}
+    for r in gets_raw:
+        key = (r.get("host"), r.get("uri", ""))
+        ts = r["_t"]
+        if key not in firsts or ts < firsts[key]:
+            firsts[key] = ts
+    labels: dict[tuple[int, str], str] = {}
+    fresh = sorted(
+        (k for k in firsts if "cached" not in k[1]), key=lambda k: firsts[k]
+    )
+    fresh_roles = ["cache on path", "no cache on path", "new consumer"]
+    for key in firsts:
+        host, uri = key
+        if "cached" in uri:
+            labels[key] = f"pre-cached URI @h{host} (control)"
+    for idx, key in enumerate(fresh):
+        role = fresh_roles[idx] if idx < len(fresh_roles) else f"extra {idx}"
+        labels[key] = f"fresh URI @h{key[0]} ({role})"
+    ordered = [labels[k] for k in sorted(firsts, key=lambda k: ("cached" not in k[1], firsts[k]))]
+    return labels, ordered
+# Outage band fill: lighter than any palette gray so markers stay readable
+# on top of it; the band is context, not data.
+_M5E_BAND = "#e8e8e8"
+
+
+def fig_m5e_timeline(jobs: dict[str, Job], analysis_dir: Path, out_dir: Path) -> None:
+    """Per-lane get outcomes over time against shaded publisher-down windows.
+
+    Emphasis: failed gets are the only red (TUT #B6261D, large X); successes
+    are near-black dots; outage windows are light-gray bands with thin red
+    solid boundary lines (dashed linestyles are banned deck-wide).
+    """
+    name = "m5e_timeline"
+    # Anchored fullmatch: real campaign ids (m5e_s101), a bare family id
+    # (m5e), and the ad hoc smoke id (smoke_m5e) all resolve to this figure.
+    m5e_jobs = _match(jobs, r"(?:smoke_)?m5e(?:_s\d+)?")
+    if not m5e_jobs:
+        _skip(name, "no m5e-family jobs found")
+        return
+
+    from datetime import datetime
+
+    def _parse_ts(ts: str) -> float:
+        return datetime.fromisoformat(ts).timestamp()
+
+    per_job: dict[str, dict] = {}
+    for job in m5e_jobs:
+        gets_raw = [
+            r
+            for r in job.results
+            if r.get("op_type") == "get" and r.get("phase") in ("eval", "event")
+        ]
+        if not gets_raw:
+            continue
+        # t=0 is the first get, not the first record: the put/warmup preamble
+        # before it is setup noise the availability story doesn't cover.
+        t0 = _parse_ts(gets_raw[0]["ts"])
+        for r in gets_raw:
+            r["_t"] = _parse_ts(r["ts"])
+        # Story order: control on top, then the fresh lanes by first attempt.
+        lane_of, lane_order = _m5e_lane_labels(gets_raw)
+        gets = [
+            {
+                "lane": lane_of.get((r.get("host"), r.get("uri", "")), f"h{r.get('host')}"),
+                "t": r["_t"] - t0,
+                "success": eval_success(r),
+                "publisher_down": bool(r.get("publisher_down")),
+            }
+            for r in gets_raw
+        ]
+        # host_down -> host_up pairs become outage windows. A failed event
+        # outcome means the host never actually flapped, so it must not open
+        # or close a window (same rule as m5b's failed link events).
+        events = [
+            (_parse_ts(r["ts"]) - t0, r.get("event_type"))
+            for r in job.results
+            if r.get("op_type") == "event"
+            and r.get("event_type") in ("host_down", "host_up")
+            and r.get("success") is not False
+        ]
+        windows: list[list[float]] = []
+        open_t: float | None = None
+        for t, event_type in events:
+            if event_type == "host_down" and open_t is None:
+                open_t = t
+            elif event_type == "host_up" and open_t is not None:
+                windows.append([open_t, t])
+                open_t = None
+        if open_t is not None:
+            # Publisher still down when the run ended: close the band at the
+            # last observed get so the shading doesn't run off to infinity.
+            windows.append([open_t, max(g["t"] for g in gets)])
+        per_job[job.job_id] = {"windows": windows, "gets": gets, "lane_order": lane_order}
+
+    if not per_job:
+        _skip(name, "no eval/event get records in m5e runs")
+        return
+
+    _write_json(analysis_dir, name, {"per_job": per_job})
+
+    from matplotlib.lines import Line2D
+
+    def _draw(ax, entry: dict, annotate: bool) -> None:
+        # Lanes in story order (control on top), plus any off-script hosts.
+        lanes = [
+            lane
+            for lane in entry.get("lane_order", [])
+            + sorted({g["lane"] for g in entry["gets"]} - set(entry.get("lane_order", [])))
+            if any(g["lane"] == lane for g in entry["gets"])
+        ]
+        y_of = {lane: i for i, lane in enumerate(lanes)}
+        for w0, w1 in entry["windows"]:
+            ax.axvspan(w0, w1, color=_M5E_BAND, zorder=0)
+            for edge in (w0, w1):
+                ax.axvline(edge, color=CATEGORICAL[0], linewidth=0.8, zorder=1)
+        for g in entry["gets"]:
+            if g["success"]:
+                ax.scatter(g["t"], y_of[g["lane"]], marker="o", color=CATEGORICAL[1], s=36, zorder=3)
+            else:
+                ax.scatter(g["t"], y_of[g["lane"]], marker="X", color=CATEGORICAL[0], s=80, zorder=3)
+        ax.set_yticks(range(len(lanes)))
+        ax.set_yticklabels(lanes)
+        # Reversed limits put lane 0 (the control) at the top, with headroom
+        # above it (-0.8) so beat annotations don't collide with the title.
+        ax.set_ylim(len(lanes) - 0.5, -0.8)
+        _style_axes(ax, horizontal_grid=False)
+
+        if not annotate:
+            return
+        # The three story beats, located from the data rather than hardcoded
+        # times so re-runs with different event schedules keep correct labels.
+        gets = entry["gets"]
+        first_fail = next((g for g in gets if not g["success"]), None)
+        # Beat 2 is the fresh URI's own recovery: the first success on the
+        # SAME lane that just failed (the control lane succeeds throughout,
+        # so an any-lane "first success" would mislabel the story).
+        first_ok = None
+        if first_fail is not None:
+            first_ok = next(
+                (
+                    g
+                    for g in gets
+                    if g["success"] and g["lane"] == first_fail["lane"] and g["t"] > first_fail["t"]
+                ),
+                None,
+            )
+        # Beat 3 must land AFTER beat 2 in story time: the control lane also
+        # serves from cache during the first outage, but the payoff being
+        # annotated is cache service after the fresh URI got cached.
+        first_ok_down = next(
+            (
+                g
+                for g in gets
+                if g["success"]
+                and g["publisher_down"]
+                and (first_ok is None or g["t"] > first_ok["t"])
+            ),
+            None,
+        )
+        beats = [
+            (first_fail, "fails (no cache)"),
+            (first_ok, "first success -> cached"),
+            (first_ok_down, "served from cache while publisher down"),
+        ]
+        for beat, label in beats:
+            if beat is None:
+                continue
+            ax.annotate(
+                label,
+                xy=(beat["t"], y_of[beat["lane"]]),
+                xytext=(beat["t"], y_of[beat["lane"]] - 0.55),
+                fontsize=8,
+                color=TEXT_SECONDARY,
+                ha="center",
+                arrowprops={"arrowstyle": "-", "color": TEXT_MUTED, "linewidth": 0.8},
+            )
+
+    # The DECK figure is the annotated representative panel alone (first job
+    # by id -- seed order); the cross-seed small multiples go to a separate
+    # `<name>_all` stem for the appendix / verification, so the slide image
+    # stays landscape instead of a 5-panel portrait stack.
+    job_ids = list(per_job)
+    if len(job_ids) > 1:
+        fig_all, axes_all = plt.subplots(
+            len(job_ids), 1, figsize=(9, 2.8 * len(job_ids)), dpi=200
+        )
+        for idx, (ax, job_id) in enumerate(zip(list(axes_all), job_ids)):
+            _draw(ax, per_job[job_id], annotate=False)
+            ax.set_title(job_id, fontsize=9, color=TEXT_SECONDARY)
+        list(axes_all)[-1].set_xlabel("Seconds since first get")
+        fig_all.suptitle(
+            "M5e: content availability across repeated publisher outages (all seeds)",
+            color=TEXT_PRIMARY,
+        )
+        _save(fig_all, out_dir, f"{name}_all")
+    job_ids = job_ids[:1]
+    fig, ax = _new_figure((9, 3.6))
+    axes = [ax]
+    for idx, (ax, job_id) in enumerate(zip(axes, job_ids)):
+        # 2026-07-14: annotations off -- three beats land within ~20s of each
+        # other and the labels collide; the slide text carries the reading.
+        _draw(ax, per_job[job_id], annotate=False)
+        if len(job_ids) > 1:
+            ax.set_title(job_id, fontsize=9, color=TEXT_SECONDARY)
+    axes[-1].set_xlabel("Seconds since first get")
+    legend_handles = [
+        Line2D([], [], marker="o", linestyle="", color=CATEGORICAL[1], label="get success"),
+        Line2D([], [], marker="X", linestyle="", color=CATEGORICAL[0], label="get failure"),
+        Patch(facecolor=_M5E_BAND, label="publisher down"),
+    ]
+    axes[0].legend(
+        handles=legend_handles, frameon=False, loc="upper right", fontsize=8,
+        labelcolor=TEXT_SECONDARY,
+    )
+    title = "M5e: content availability across repeated publisher outages"
+    if len(job_ids) == 1:
+        axes[0].set_title(title)
+    else:
+        fig.suptitle(title, color=TEXT_PRIMARY)
     _save(fig, out_dir, name)
 
 
@@ -935,7 +1190,7 @@ def fig_m3_scale(jobs: dict[str, Job], analysis_dir: Path, out_dir: Path) -> Non
     for ax, values, ylabel in panels:
         plot_hosts = [h for h, v in zip(hosts_present, values) if v is not None]
         plot_values = [v for v in values if v is not None]
-        ax.plot(plot_hosts, plot_values, color=CATEGORICAL[0], marker="o", markersize=6, linewidth=2)
+        ax.plot(plot_hosts, plot_values, color=CATEGORICAL[1], marker="o", markersize=6, linewidth=2)
         ax.set_xlabel("Hosts")
         ax.set_ylabel(ylabel)
         _style_axes(ax)
@@ -1017,11 +1272,14 @@ def fig_m4_bw_fidelity(jobs: dict[str, Job], analysis_dir: Path, out_dir: Path) 
     )
     axis_max = max(all_values) * 1.1 if all_values else 100
 
+    # Emphasis: the eval (cache-hit) series IS the M4 story -- points rising
+    # above y=x are the caching acceleration -- so it gets the TUT red; the
+    # warmup first-fetch series is the near-black baseline it beats.
     if warmup_points:
         ax.scatter(
             [p[0] for p in warmup_points],
             [p[1] for p in warmup_points],
-            color=CATEGORICAL[0],
+            color=CATEGORICAL[1],
             s=40,
             alpha=0.8,
             zorder=3,
@@ -1032,7 +1290,7 @@ def fig_m4_bw_fidelity(jobs: dict[str, Job], analysis_dir: Path, out_dir: Path) 
         ax.scatter(
             [p[0] for p in eval_points],
             [p[1] for p in eval_points],
-            color=CATEGORICAL[5],
+            color=CATEGORICAL[0],
             s=40,
             alpha=0.8,
             zorder=3,
@@ -1060,6 +1318,7 @@ FIGURES: list[Callable[[dict[str, Job], Path, Path], None]] = [
     fig_m5b_timeline,
     fig_m5c_intensity,
     fig_m5d_strategies,
+    fig_m5e_timeline,
     fig_m3_scale,
     fig_m4_bw_fidelity,
 ]

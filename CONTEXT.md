@@ -254,3 +254,19 @@ definitive True と判定するよう更新済み (src/core/verdict.py) — mark
 (0-byte FAILURE ログ) の log-only 判定は依然 unknown のままで、これはログ欠損と
 区別不能という構造的限界であり today の fix では解消しない。
 _Avoid_: 実験 config の pubsub を無検証で 10+ hosts に置くこと
+
+**発見 (2026-07-14 M5e 時系列実験) — 障害窓中の get 可用性は「FIB 経路上の csmgrd」で決まる**:
+機構を対照実験で確定: (1) 非cacheノードは CS_MODE=0 (テンプレ既定) で一切キャッシュを
+持たず、他ホストの取得は誰にも再供給されない (2) csmgrd が複製を持つのは「そのノード
+自身が取得した場合」または「consumer→publisher の FIB 経路上にいて取得が通過した場合」
+のみ (3) publisher 停止中に get が成功する必要十分条件 ≒ 経路上の csmgrd に複製がある
+こと。flooding (FwdStr) は実質 FIB 経路のみで、経路外の csmgrd 複製は救わない。
+m5a の 85〜96% の正体もこれ (5秒間隔ポーリングの直近複製が経路上に生きていた)。
+オフライン再現: k_centers 配置は topo_fingerprint の隣接 + src/core/graph.select_k_centers
+で実行時と完全一致 (seed 1101 で実測検証済) → per-seed の役割選定
+(tools/workshop/gen_m5e_config.py) が可能になった。
+failure_scenarios cycles の罠: interval は前 cycle の down 時点起点で、down 中の
+target は skip される → **interval > 前 cycle の duration が必須** (でないと後続窓が
+無言で消える)。
+_Avoid_: 「一度取得した content は網内キャッシュに乗る」と仮定した実験設計
+(非cacheノードの取得は乗らない)。cycles の interval ≤ duration。
