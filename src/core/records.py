@@ -8,7 +8,10 @@ dashboard) depends on them:
 - ``EventRecord`` always serializes ``op_type``/``event_type``/``ts``/
   ``success``/``error`` and includes a variant field only when it is not
   ``None``: ``scheduled_at``/``actual_at``/``event`` for scheduler events,
-  ``host`` for host-flap events.
+  ``host`` for host-flap events, and ``outcome``/``detail`` for handlers
+  that report a tri-state outcome (S7 vocabulary: ok / not-ok /
+  skipped-no-result) with structured evidence. Records that do not set
+  them serialize byte-identically to the pre-extension format.
 
 This module is pure data; construction (``ts``/``publisher_down``
 derivation) is owned by the ResultsSink (src/runtime/results_sink.py).
@@ -58,6 +61,11 @@ class EventRecord:
     event: dict | None = None
     # Host-flap variant only:
     host: int | None = None
+    # Tri-state outcome variant (S7: ok / not-ok / skipped-no-result), with
+    # handler-specific evidence in detail. skipped-no-result separates
+    # environment problems (endpoint unreachable) from experiment failures.
+    outcome: str | None = None
+    detail: dict | None = None
 
     def to_dict(self) -> dict:
         """Serialize; variant fields are included only when not ``None``."""
@@ -70,6 +78,10 @@ class EventRecord:
             record["host"] = self.host
         record["success"] = self.success
         record["error"] = self.error
+        if self.outcome is not None:
+            record["outcome"] = self.outcome
+        if self.detail is not None:
+            record["detail"] = self.detail
         if self.event is not None:
             record["event"] = self.event
         return record
