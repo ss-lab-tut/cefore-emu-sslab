@@ -132,6 +132,24 @@ def test_extract_publications_conditional_without_publish_uri_is_ignored():
     assert pub_ids == frozenset()
 
 
+def test_duplicate_uri_precedence_is_input_order_last_wins():
+    """Collision policy: the dict comprehension has always been input-order
+    last-wins, and FIB computation accepts one host per URI. Conditional
+    publishers must obey the same order, not unconditionally overwrite."""
+    compute = {
+        "type": "compute_call", "host": 2,
+        "endpoint": "http://edge.local/process",
+        "publish_uri": "ccnx:/same",
+    }
+    put = {"type": "put", "host": 1, "uri": "ccnx:/same", "file": "f1"}
+
+    _, pub_dict, _ = extract_publications([compute, put], include_conditional=True)
+    assert pub_dict == {"ccnx:/same": 1}
+
+    _, pub_dict, _ = extract_publications([put, compute], include_conditional=True)
+    assert pub_dict == {"ccnx:/same": 2}
+
+
 def test_publication_uri_field_pins_per_type_uri_key():
     fields = {
         t: spec.publication_uri_field

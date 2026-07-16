@@ -115,17 +115,23 @@ def extract_publications(
     """
     pub_types = publication_event_types()
     publications = [ev for ev in events if ev.get("type") in pub_types]
-    counted = list(publications)
-    if include_conditional:
-        for ev in events:
-            spec = EVENT_SCHEMA.get(ev.get("type", ""))
-            if (
-                spec is not None
-                and not spec.is_publication
-                and spec.publication_uri_field is not None
-                and ev.get(spec.publication_uri_field)
-            ):
-                counted.append(ev)
+
+    def _counts(ev) -> bool:
+        if ev.get("type") in pub_types:
+            return True
+        if not include_conditional:
+            return False
+        spec = EVENT_SCHEMA.get(ev.get("type", ""))
+        return (
+            spec is not None
+            and spec.publication_uri_field is not None
+            and bool(ev.get(spec.publication_uri_field))
+        )
+
+    # One pass over events so duplicate-URI precedence stays input-order
+    # last-wins — FIB computation accepts one host per URI, and conditional
+    # publishers must not silently outrank a later unconditional one.
+    counted = [ev for ev in events if _counts(ev)]
     publishers_dict = {
         ev[EVENT_SCHEMA[ev["type"]].publication_uri_field]: ev["host"]
         for ev in counted
