@@ -964,6 +964,28 @@ def _validate_get_options(errors, prefix, event):
     _validate_algo_option(errors, prefix, event, "valid_algo")
 
 
+def _validate_putfile_options(errors, prefix, event):
+    """Validate a ``pub_opts`` dict holding cefputfile options.
+
+    Used by compute_call's republish stage: the option set mirrors the put
+    event's cefputfile flags (rate/block_size/expiry/cache_time/valid_algo/
+    port_num), not pubsub_pub's cefpubfile set.
+    """
+    options = event.get("pub_opts") or {}
+    if not isinstance(options, dict):
+        errors.append(f"{prefix}.pub_opts must be a dict")
+        return
+    option_prefix = f"{prefix}.pub_opts"
+    _validate_number_option(errors, option_prefix, options, "rate", minimum=0.001)
+    for field in ("expiry", "cache_time"):
+        _validate_number_option(errors, option_prefix, options, field, minimum=1)
+    for field in ("block_size", "port_num"):
+        _validate_number_option(
+            errors, option_prefix, options, field, integer=True, minimum=1
+        )
+    _validate_algo_option(errors, option_prefix, options, "valid_algo")
+
+
 def _validate_pubsub_options(errors, prefix, event, op_type):
     options_key = "pub_opts" if op_type == "pubsub_pub" else "sub_opts"
     options = event.get(options_key) or {}
@@ -1086,6 +1108,35 @@ def _validate_events(errors, config):
                                 errors.append(
                                     f"events[{idx}].timeout must be a positive number"
                                 )
+                        for field in ("payload", "output_file", "publish_uri"):
+                            if field in event and not isinstance(
+                                event[field], str
+                            ):
+                                errors.append(
+                                    f"events[{idx}].{field} must be a string"
+                                )
+                        if "headers" in event:
+                            headers = event["headers"]
+                            if not isinstance(headers, dict) or not all(
+                                isinstance(k, str) and isinstance(v, str)
+                                for k, v in headers.items()
+                            ):
+                                errors.append(
+                                    f"events[{idx}].headers must be a dict of "
+                                    f"string keys to string values"
+                                )
+                        # cefputfile needs a saved response body to publish;
+                        # publish_uri without output_file can never publish.
+                        if event.get("publish_uri") and not event.get(
+                            "output_file"
+                        ):
+                            errors.append(
+                                f"events[{idx}].publish_uri requires "
+                                f"output_file to be set"
+                            )
+                        _validate_putfile_options(
+                            errors, f"events[{idx}]", event
+                        )
                     elif etype in ("fib_add", "fib_del", "fib_enable"):
                         for field in EVENT_SCHEMA[etype].required_fields:
                             if field not in event:

@@ -1493,3 +1493,72 @@ def test_no_scalar_spec_reintroduces_argparse_none_default_trap():
     assert offenders == [], (
         f"scalar OptionSpecs reintroduce the argparse-None-default trap: {offenders}"
     )
+
+
+# ── compute_call event validation ──
+
+
+def _compute_event(**overrides):
+    event = {
+        "at": 0,
+        "type": "compute_call",
+        "host": 0,
+        "endpoint": "http://edge.local/process",
+    }
+    event.update(overrides)
+    return event
+
+
+def _compute_errors(**overrides):
+    return validate_config({"hosts": 5, "events": [_compute_event(**overrides)]})
+
+
+def test_compute_call_minimal_is_valid():
+    assert _compute_errors() == []
+
+
+def test_compute_call_payload_must_be_string():
+    assert any(".payload" in e for e in _compute_errors(payload=123))
+
+
+def test_compute_call_output_file_must_be_string():
+    assert any(".output_file" in e for e in _compute_errors(output_file=1))
+
+
+def test_compute_call_publish_uri_must_be_string():
+    assert any(
+        ".publish_uri" in e
+        for e in _compute_errors(publish_uri=5, output_file="out.json")
+    )
+
+
+def test_compute_call_headers_must_be_str_to_str_dict():
+    assert any(".headers" in e for e in _compute_errors(headers="Accept: x"))
+    assert any(".headers" in e for e in _compute_errors(headers={1: "x"}))
+    assert any(".headers" in e for e in _compute_errors(headers={"Accept": 2}))
+    assert _compute_errors(headers={"Accept": "application/json"}) == []
+
+
+def test_compute_call_publish_uri_requires_output_file():
+    # cefputfile needs a saved response body; publish_uri without output_file
+    # can never publish anything and must fail at config time.
+    errors = _compute_errors(publish_uri="ccnx:/compute/r1")
+    assert any("publish_uri" in e and "output_file" in e for e in errors)
+    assert _compute_errors(
+        publish_uri="ccnx:/compute/r1", output_file="out.json"
+    ) == []
+
+
+def test_compute_call_pub_opts_validated_like_pubsub_pub():
+    assert any(".pub_opts" in e for e in _compute_errors(pub_opts="bad"))
+    assert any(
+        ".pub_opts.expiry" in e
+        for e in _compute_errors(pub_opts={"expiry": 0})
+    )
+    assert any(
+        ".pub_opts.valid_algo" in e
+        for e in _compute_errors(pub_opts={"valid_algo": "bogus"})
+    )
+    assert _compute_errors(
+        pub_opts={"expiry": 5000, "cache_time": 2500, "block_size": 1024}
+    ) == []
