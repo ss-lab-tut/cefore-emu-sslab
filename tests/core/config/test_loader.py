@@ -1647,3 +1647,53 @@ def test_compute_call_publish_timeout_must_be_positive_number():
             ".publish_timeout" in e for e in _compute_errors(publish_timeout=bad)
         ), f"publish_timeout={bad!r} was accepted"
     assert _compute_errors(publish_timeout=300) == []
+
+
+def test_validate_bridges_switch_must_be_non_negative():
+    """A negative index would translate to a nonexistent switch name (s-1)
+    at setup time; reject it at config time (2026-07-16 review fix)."""
+    errors = validate_config(
+        {
+            "bridges": [
+                {
+                    "switch": -1,
+                    "root_ip": "10.0.0.1/24",
+                    "local_routes": "192.168.0.0/16",
+                }
+            ]
+        }
+    )
+    assert any("bridges[0].switch" in e for e in errors)
+
+
+def test_validate_bridges_switch_range_checked_when_switch_count_known():
+    """When the config declares the switch count, an out-of-range bridge
+    index is a config error, not a runtime warning (2026-07-16 review fix)."""
+    errors = validate_config(
+        {
+            "switches": 3,
+            "bridges": [
+                {
+                    "switch": 3,
+                    "root_ip": "10.0.0.1/24",
+                    "local_routes": "192.168.0.0/16",
+                }
+            ],
+        }
+    )
+    assert any("bridges[0].switch" in e and "out-of-range" in e for e in errors)
+    assert (
+        validate_config(
+            {
+                "switches": 3,
+                "bridges": [
+                    {
+                        "switch": 2,
+                        "root_ip": "10.0.0.1/24",
+                        "local_routes": "192.168.0.0/16",
+                    }
+                ],
+            }
+        )
+        == []
+    )

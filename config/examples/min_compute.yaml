@@ -11,14 +11,17 @@
 # ok 経路（実 HTTP → output_file 保存 → publish_uri で ICN 再publish → 他ノード get）
 # の手動確認手順（autotest mode は bridges 禁止なので、このファイルをコピーして
 # no_cli と results_json を外し、CLI モードで実行する）:
-#   1. コピーに追記（switch は整数 index、local_routes は必須）:
+#   1. コピーに追記（switch は整数 index、local_routes は必須。root_ip は auto に
+#      すると当該スイッチのサブネット内 .254 が root 側に付き、ホスト側の追加
+#      ルート無しで到達できる。seed=42 では s0 のサブネットは 192.168.1.0/24）:
 #        bridges:
-#          - {switch: 0, root_ip: "192.168.200.1/24", local_routes: "192.168.0.0/16"}
-#   2. events の endpoint を root ns 側サーバに変更:
-#        endpoint: "http://192.168.200.1:18080/"
+#          - {switch: 0, root_ip: "auto", local_routes: "192.168.0.0/16"}
+#   2. events の endpoint を root ns 側サーバ（サブネット内 .254）に変更:
+#        endpoint: "http://192.168.1.254:18080/"
 #        method: GET   （http.server は POST に 501 を返すため GET にする）
 #        （payload/headers 行は削除）
-#   3. root ns 側: .venv/bin/python3 -m http.server 18080
+#   3. root ns 側: .venv/bin/python3 -m http.server 18080 --bind 192.168.1.254
+#      （bridge 作成後に起動する。CLI 起動を待ってから別端末で実行）
 #   4. sudo .venv/bin/python3 -m src disaster --config <コピー>
 #      → CLI で h0 から: cefgetfile ccnx:/compute/result1 -f /tmp/r1
 hosts: 3

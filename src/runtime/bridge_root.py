@@ -120,6 +120,13 @@ class BridgeManager:
         link = net.addLink(root, switch)
         self.root_intf = link.intf1
 
+        # 2026-07-16 runtime fix: setup runs after net.start(), and addLink
+        # alone does not enroll the new veth into a running OVS switch — the
+        # port stayed off the bridge (ovs-vsctl list-ports lacked it) and
+        # every host→root packet was dropped, so bridge endpoints answered
+        # with connection refused. Explicitly attach the switch-side end.
+        switch.attach(link.intf2)
+
         root.setIP(root_ip, intf=self.root_intf)
 
         runner = self._root_runner()

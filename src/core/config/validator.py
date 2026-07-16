@@ -904,8 +904,19 @@ def _validate_bridges(errors, config):
                     continue
                 if "switch" not in bridge:
                     errors.append(f"bridges[{idx}] missing required field 'switch'")
-                elif not _is_int(bridge["switch"]):
-                    errors.append(f"bridges[{idx}].switch must be an integer")
+                elif not _is_int(bridge["switch"]) or bridge["switch"] < 0:
+                    # 2026-07-16 review fix: a negative index would translate
+                    # to a nonexistent switch name (s-1) at setup time.
+                    errors.append(
+                        f"bridges[{idx}].switch must be a non-negative integer"
+                    )
+                elif _is_int(config.get("switches")) and bridge[
+                    "switch"
+                ] >= config["switches"]:
+                    errors.append(
+                        f"bridges[{idx}].switch is out-of-range: "
+                        f"{bridge['switch']} (switches: {config['switches']})"
+                    )
                 if "root_ip" not in bridge:
                     errors.append(f"bridges[{idx}] missing required field 'root_ip'")
                 elif not isinstance(bridge["root_ip"], str):

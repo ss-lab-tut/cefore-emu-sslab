@@ -260,10 +260,14 @@ class TestComputeCallOutcomeMapping:
         with patch(
             "src.runtime.scheduler._do_compute_call", return_value=result
         ) as call:
-            sched = EventScheduler(net, [event], sink=sink)
+            sched = EventScheduler(net, [event], run_dir="logs/run-x", sink=sink)
             sched.start()
             sched.wait_all(timeout=3)
+        args = call.call_args.args
+        assert args[1] == 1
+        assert args[2] == "http://edge.local/process"
         kwargs = call.call_args.kwargs
+        assert kwargs["run_dir"] == "logs/run-x"
         assert kwargs["method"] == "POST"
         assert kwargs["payload"] == "{}"
         assert kwargs["headers"] == {"Content-Type": "application/json"}

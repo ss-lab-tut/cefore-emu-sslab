@@ -185,8 +185,8 @@ AND HTTP 2xx AND, when publishing, cefputfile exit 0 with neither run timed
 out nor cancelled — and the results.json record carries a tri-state
 `outcome`: `ok`; `not-ok` (HTTP failure, or a failed/timed-out/cancelled
 publish); or `skipped-no-result` (environment: endpoint unreachable — curl
-exit 5/6/7/28 — or the HTTP run itself timed out / was cancelled before
-reaching the endpoint) plus a `detail` dict (`http_status`,
+exit 5/6/7/28 — or the HTTP run timed out / was cancelled) plus a `detail`
+dict (`http_status`,
 `curl_exit`, `publish_ok`, `output_file`). A `publish_uri`-bearing
 compute_call also joins the disaster scenario's publisher metadata so FIB
 pre-programming routes consumers toward the republished content. `repeat`

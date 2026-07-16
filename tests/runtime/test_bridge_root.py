@@ -181,6 +181,30 @@ class TestSetupBridgesSchemeWiring:
         assert resolved_ips and resolved_ips[0] == "192.168.3.254/24"
 
 
+class TestConnectToRootNsAttachesSwitchPort:
+    """setup_bridges runs after net.start(), and Mininet's addLink alone does
+    not enroll the new veth into a running OVS switch — without an explicit
+    switch.attach() the root-side port carries no traffic, so every host→root
+    HTTP request fails with connection refused (2026-07-16 runtime-proven:
+    ovs-vsctl list-ports lacked the port; manual add-port fixed h1→root)."""
+
+    def test_switch_side_interface_is_attached(self):
+        """connect_to_root_ns must attach the switch-side link interface."""
+        from src.runtime.bridge_root import BridgeManager
+
+        mgr = BridgeManager(runner=FakeCommandRunner())
+        mgr.root_node = MagicMock()
+        switch = MagicMock()
+        net = MagicMock()
+        net.get = MagicMock(return_value=switch)
+        link = MagicMock()
+        net.addLink = MagicMock(return_value=link)
+
+        mgr.connect_to_root_ns(net, "s0", "192.168.1.254/24", "192.168.0.0/16")
+
+        switch.attach.assert_called_once_with(link.intf2)
+
+
 class TestSetupBridgesIntegerSwitchIndex:
     """YAML bridges give switch as an integer index (the config validator
     requires it), but Mininet switches are named sN — setup_bridges must

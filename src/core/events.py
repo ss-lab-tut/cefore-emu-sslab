@@ -11,8 +11,8 @@ must never import from ``runtime`` or the core->runtime layering would break.
 
 Scope: the canonical source for valid types, required fields, content
 classification, publication classification, and same-timestamp priority.
-The loader, the scheduler, the content-op dispatch, and the scenario
-publisher-metadata builders all derive from this module.
+Every consumer of per-type event facts derives them from this module
+instead of keeping its own table.
 """
 
 from dataclasses import dataclass
