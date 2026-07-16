@@ -236,6 +236,29 @@ def test_no_publish_on_http_failure(monkeypatch):
     assert len(fake.runs) == 1
 
 
+def test_runner_timeout_rejects_success_even_with_status_line():
+    # A timed-out CommandResult can still carry returncode 0 and a body from
+    # the injected runner; the timeout flag must veto success and classify
+    # the call as an environment failure.
+    fake = FakeCommandRunner()
+    fake.script_run(returncode=0, stdout="\n200", timed_out=True)
+
+    result = _call(fake)
+
+    assert result.ok is False
+    assert result.env_failure is True
+
+
+def test_cancelled_run_rejects_success_and_is_environment():
+    fake = FakeCommandRunner()
+    fake.script_run(returncode=0, stdout="\n200", cancelled=True)
+
+    result = _call(fake)
+
+    assert result.ok is False
+    assert result.env_failure is True
+
+
 def test_unparseable_status_line_yields_none_status_and_failure():
     fake = FakeCommandRunner()
     fake.script_run(returncode=0, stdout="body without status")

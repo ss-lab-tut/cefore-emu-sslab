@@ -123,8 +123,18 @@ def compute_call(runner, host_idx, endpoint, method="GET", payload=None,
     curl_exit = result.returncode
     body, http_status = _split_status(result.stdout)
 
-    env_failure = result.timed_out or curl_exit in _ENV_FAILURE_EXITS
-    http_ok = curl_exit == 0 and http_status is not None and 200 <= http_status < 300
+    # timed_out/cancelled are the CommandResult's authoritative deadline /
+    # shutdown channel (never a sentinel returncode) — they veto success even
+    # when curl managed to emit a status line before termination. Both count
+    # as environment: the compute endpoint was never given a fair chance.
+    interrupted = result.timed_out or result.cancelled
+    env_failure = interrupted or curl_exit in _ENV_FAILURE_EXITS
+    http_ok = (
+        not interrupted
+        and curl_exit == 0
+        and http_status is not None
+        and 200 <= http_status < 300
+    )
 
     publish_ok: Optional[bool] = None
     if http_ok and publish_uri:
