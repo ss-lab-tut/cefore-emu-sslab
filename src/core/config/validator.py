@@ -913,6 +913,11 @@ def _validate_bridges(errors, config):
                 elif _is_int(config.get("switches")) and bridge[
                     "switch"
                 ] >= config["switches"]:
+                    # Coarse bound only: switches is an upper bound on the
+                    # emergent (seed-dependent) topology, so indices >= it
+                    # can never exist; an in-bound index may still be
+                    # missing at runtime, which bridge setup degrades to a
+                    # warning.
                     errors.append(
                         f"bridges[{idx}].switch is out-of-range: "
                         f"{bridge['switch']} (switches: {config['switches']})"

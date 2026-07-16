@@ -184,8 +184,8 @@ class TestSetupBridgesSchemeWiring:
 class TestConnectToRootNsAttachesSwitchPort:
     """setup_bridges runs after net.start(), and Mininet's addLink alone does
     not enroll the new veth into a running OVS switch — without an explicit
-    switch.attach() the root-side port carries no traffic, so every host→root
-    HTTP request fails with connection refused (2026-07-16 runtime-proven:
+    switch.attach() the root-side port carries no traffic and every
+    host↔root packet is silently dropped (2026-07-16 runtime-proven:
     ovs-vsctl list-ports lacked the port; manual add-port fixed h1→root)."""
 
     def test_switch_side_interface_is_attached(self):
@@ -203,6 +203,27 @@ class TestConnectToRootNsAttachesSwitchPort:
         mgr.connect_to_root_ns(net, "s0", "192.168.1.254/24", "192.168.0.0/16")
 
         switch.attach.assert_called_once_with(link.intf2)
+
+
+class TestConnectToRootNsMissingSwitch:
+    """The switches config value is an upper bound on the emergent topology
+    (seed-dependent), so a validator-accepted index can still name a switch
+    that was never built. Mininet's net.get raises KeyError for unknown
+    names — the old `if switch is None` guard was dead code (2026-07-16
+    review fix)."""
+
+    def test_missing_switch_warns_and_returns_without_addlink(self):
+        """A KeyError from net.get degrades to the documented warning."""
+        from src.runtime.bridge_root import BridgeManager
+
+        mgr = BridgeManager(runner=FakeCommandRunner())
+        net = MagicMock()
+        net.get = MagicMock(side_effect=KeyError("s2"))
+
+        mgr.connect_to_root_ns(net, "s2", "192.168.3.254/24", "192.168.0.0/16")
+
+        net.addLink.assert_not_called()
+        assert mgr.cleanup_actions == []
 
 
 class TestSetupBridgesIntegerSwitchIndex:

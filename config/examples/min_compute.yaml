@@ -10,20 +10,25 @@
 #
 # ok 経路（実 HTTP → output_file 保存 → publish_uri で ICN 再publish → 他ノード get）
 # の手動確認手順（autotest mode は bridges 禁止なので、このファイルをコピーして
-# no_cli と results_json を外し、CLI モードで実行する）:
-#   1. コピーに追記（switch は整数 index、local_routes は必須。root_ip は auto に
-#      すると当該スイッチのサブネット内 .254 が root 側に付き、ホスト側の追加
-#      ルート無しで到達できる。seed=42 では s0 のサブネットは 192.168.1.0/24）:
-#        bridges:
-#          - {switch: 0, root_ip: "auto", local_routes: "192.168.0.0/16"}
-#   2. events の endpoint を root ns 側サーバ（サブネット内 .254）に変更:
-#        endpoint: "http://192.168.1.254:18080/"
-#        method: GET   （http.server は POST に 501 を返すため GET にする）
-#        （payload/headers 行は削除）
-#   3. root ns 側: .venv/bin/python3 -m http.server 18080 --bind 192.168.1.254
-#      （bridge 作成後に起動する。CLI 起動を待ってから別端末で実行）
-#   4. sudo .venv/bin/python3 -m src disaster --config <コピー>
-#      → CLI で h0 から: cefgetfile ccnx:/compute/result1 -f /tmp/r1
+# no_cli と results_json を外し、CLI モードで実行する。イベントは bridge 作成の
+# 数秒後に発火するため、at: 3 のままではサーバ起動が間に合わない — at: 60 に遅らせ、
+# bridge アドレス出現を待ってからサーバを立てる）:
+#   1. コピーを編集:
+#      - bridges を追記（switch は整数 index、local_routes は必須。root_ip: auto
+#        で当該スイッチのサブネット内 .254 が root 側に付き、ホスト側の追加ルート
+#        無しで到達できる。seed=42 では s0 のサブネットは 192.168.1.0/24）:
+#          bridges:
+#            - {switch: 0, root_ip: "auto", local_routes: "192.168.0.0/16"}
+#      - events の compute_call を at: 60 に変更し、endpoint を root ns 側サーバに:
+#          endpoint: "http://192.168.1.254:18080/"
+#          method: GET   （http.server は POST に 501 を返すため。payload/headers は削除）
+#   2. 端末A: sudo .venv/bin/python3 -m src disaster --config <コピー>
+#   3. 端末B: bridge アドレスが付いたら（起動後数秒）サーバを起動 — t=60 発火前に立つ:
+#        until ip -o addr show | grep -q 192.168.1.254; do sleep 1; done
+#        .venv/bin/python3 -m http.server 18080 --bind 192.168.1.254
+#   4. t=60 経過後、端末Aの CLI で h0 から取得し、バイト一致まで確認:
+#        h0 cefgetfile ccnx:/compute/result1 -f /tmp/r1 -d ./h0
+#        h0 diff /tmp/r1 <run_dir>/compute_result.json   （差分なしなら成功）
 hosts: 3
 switches: 3
 seed: 42

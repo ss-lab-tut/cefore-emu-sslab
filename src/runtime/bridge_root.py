@@ -109,7 +109,14 @@ class BridgeManager:
             root_ip: IP address for root namespace node (e.g., "192.168.100.1/24").
             local_routes: Local Mininet host networks to route to.
         """
-        switch = net.get(switch_name)
+        # 2026-07-16 review fix: the switches config value is an upper bound
+        # on the emergent topology, so a validator-accepted index can name a
+        # switch that was never built — and net.get raises KeyError for
+        # unknown names (the old `is None` guard was dead code).
+        try:
+            switch = net.get(switch_name)
+        except KeyError:
+            switch = None
         if switch is None:
             info(f"*** Warning: switch {switch_name} not found\n")
             return
@@ -122,9 +129,9 @@ class BridgeManager:
 
         # 2026-07-16 runtime fix: setup runs after net.start(), and addLink
         # alone does not enroll the new veth into a running OVS switch — the
-        # port stayed off the bridge (ovs-vsctl list-ports lacked it) and
-        # every host→root packet was dropped, so bridge endpoints answered
-        # with connection refused. Explicitly attach the switch-side end.
+        # port stayed off the bridge (ovs-vsctl list-ports lacked it), so
+        # every host↔root packet was silently dropped and connections could
+        # never be established. Explicitly attach the switch-side end.
         switch.attach(link.intf2)
 
         root.setIP(root_ip, intf=self.root_intf)

@@ -1667,8 +1667,11 @@ def test_validate_bridges_switch_must_be_non_negative():
 
 
 def test_validate_bridges_switch_range_checked_when_switch_count_known():
-    """When the config declares the switch count, an out-of-range bridge
-    index is a config error, not a runtime warning (2026-07-16 review fix)."""
+    """The switches value is an UPPER BOUND on the emergent (seed-dependent)
+    topology, so this is a coarse bound only: switch >= switches can never
+    exist and is a config error, while an in-bound index may still be
+    missing at runtime — connect_to_root_ns degrades that to a warning
+    (2026-07-16 review fix)."""
     errors = validate_config(
         {
             "switches": 3,
