@@ -20,6 +20,7 @@ logs/
 config/ex*.yaml
 out/
 cefore_emu.egg-info
+projects/
 
 # node-modules
 node_modules
