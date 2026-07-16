@@ -16,7 +16,7 @@ from ..core.paths import resolve_run_path
 from ..runtime.cache_strategy import KCentersStrategy, RandomCSModeStrategy
 from ..runtime.content_ops import ContentOperationRunner
 from ..runtime.event_batch import EventBatchSpec, run_event_batch
-from ..runtime.monitoring import Monitor, make_monitor_record
+from ..runtime.monitoring import Monitor, derive_monitor_outcome, make_monitor_record
 from ..runtime.results_sink import ResultsSink
 from ..runtime.scenario_setup import (
     ScenarioSetupSpec,
@@ -24,7 +24,7 @@ from ..runtime.scenario_setup import (
     setup_scenario,
     teardown_scenario,
 )
-from ..runtime.cefore import run_cefstatus, run_csmgrstatus, wait_for_cefnetd
+from ..runtime.cefore import run_cefstatus, run_csmgrstatus, status_output, wait_for_cefnetd
 from ..core.parsing import parse_int_list
 from ..runtime.failure_manager import FlexibleFailureManager, periodic_host_flap
 from ..runtime.net_config import apply_fib_routes
@@ -160,14 +160,22 @@ class DisasterScenario(ConfigDrivenMeshScenario):
             info(f"[webui] dashboard: http://0.0.0.0:{webui_port}/\n")
             # Pre-populate initial host state before Monitor starts polling
             for idx in range(args.hosts):
-                output = run_cefstatus(net, idx, quiet=True)
+                result = run_cefstatus(net, idx, quiet=True)
                 self.dashboard.record_monitor(
-                    make_monitor_record(0.0, "cefstatus", idx, output)
+                    make_monitor_record(
+                        0.0, "cefstatus", idx,
+                        status_output(result),
+                        derive_monitor_outcome("cefstatus", result),
+                    )
                 )
             for idx in sorted(self.cache_node_set):
-                output = run_csmgrstatus(net, idx, host="127.0.0.1")
+                result = run_csmgrstatus(net, idx, host="127.0.0.1")
                 self.dashboard.record_monitor(
-                    make_monitor_record(0.0, "csmgrstatus", idx, output)
+                    make_monitor_record(
+                        0.0, "csmgrstatus", idx,
+                        status_output(result),
+                        derive_monitor_outcome("csmgrstatus", result),
+                    )
                 )
 
     def _build_cache_strategy(self):

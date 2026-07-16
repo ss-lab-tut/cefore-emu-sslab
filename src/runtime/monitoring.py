@@ -10,26 +10,65 @@ from typing import Callable
 from mininet.log import info
 
 from ..core.paths import ensure_within_run_dir
-from .cefore import run_cefstatus, run_csmgrstatus
+from .cefore import run_cefstatus, run_csmgrstatus, status_output
 
 # Field order for every monitor record, shared by monitor.json, monitor.csv,
 # and the webui live-status feed. Defined once here so a field rename cannot
 # silently drift between the CSV header, the JSON records, and the dashboard.
-MONITOR_FIELDS = ("elapsed_sec", "type", "host", "output")
+MONITOR_FIELDS = ("elapsed_sec", "type", "host", "output", "outcome")
+
+# Per-type negative markers. cefstatus uses 4 (matching the original
+# _cefnetd_is_up); csmgrstatus uses 8 (matching _csmgrd_is_up) because
+# csmgrstatus can return rc=0 with "ERROR: Connection failed".
+# 2026-07-16: scoped per command type to avoid false negatives from
+# FIB URI content (ccnx:/timeout would match a shared "timeout" marker).
+_NEGATIVE_MARKERS = {
+    "cefstatus": ("error", "failed", "connection refused", "no such file"),
+    "csmgrstatus": (
+        "error", "failed", "connection refused", "no such file",
+        "skipped", "not found", "cannot", "timeout", "timed out",
+    ),
+}
+
+# Per-type positive markers confirming the daemon is alive.
+_POSITIVE_MARKERS = {
+    "cefstatus": ("faces", "fib"),
+    "csmgrstatus": ("connect to", "all connection num"),
+}
 
 
-def make_monitor_record(elapsed_sec, type_, host, output) -> dict:
+def derive_monitor_outcome(target_type: str, result) -> str:
+    """Derive tri-state outcome from a CommandResult.
+
+    Fail-closed priority:
+    1. timed_out or cancelled → "not-ok"
+    2. returncode is None or nonzero → "not-ok"
+    3. known negative marker in output → "not-ok"
+       (catches csmgrstatus rc=0 + "ERROR: Connection failed")
+    4. returncode 0 AND command-specific positive marker → "ok"
+    5. otherwise → "not-ok" (unknown output, fail-closed)
+    """
+    if result.timed_out or result.cancelled:
+        return "not-ok"
+    if result.returncode is None or result.returncode != 0:
+        return "not-ok"
+    low = result.stdout.lower()
+    negatives = _NEGATIVE_MARKERS.get(target_type, ())
+    if any(m in low for m in negatives):
+        return "not-ok"
+    positives = _POSITIVE_MARKERS.get(target_type, ())
+    if any(m in low for m in positives):
+        return "ok"
+    return "not-ok"
+
+
+def make_monitor_record(elapsed_sec, type_, host, output, outcome="not-ok") -> dict:
     """Build a monitor record dict with the single, shared field shape.
 
-    This is the sole owner of the monitor-record shape consumed by
-    monitor.json/monitor.csv (Monitor._collect_once, _write_outputs) and by
-    the webui's live host-status feed (disaster-scenario pre-populate calls
-    into DashboardState.record_monitor). All producers must build records
-    through this factory rather than hand-rolling the dict literal, so that
-    a field rename or reorder is caught at the one definition site instead
-    of silently drifting between callers.
+    All producers must build records through this factory so that a field
+    rename or reorder is caught at the one definition site.
     """
-    return dict(zip(MONITOR_FIELDS, (elapsed_sec, type_, host, output)))
+    return dict(zip(MONITOR_FIELDS, (elapsed_sec, type_, host, output, outcome)))
 
 
 def _resolve_hosts(spec, host_count, cache_nodes=None):
@@ -150,11 +189,14 @@ class Monitor:
                 if self._stop_event.is_set():
                     return
                 try:
-                    output = self._collect_target(target_type, host_idx, target)
+                    output, outcome = self._collect_target(
+                        target_type, host_idx, target
+                    )
                 except Exception as exc:
                     output = f"error: {exc}"
+                    outcome = "not-ok"
                 record = make_monitor_record(
-                    round(elapsed, 1), target_type, host_idx, output
+                    round(elapsed, 1), target_type, host_idx, output, outcome
                 )
                 self._records.append(record)
                 if self._on_record is not None:
@@ -165,7 +207,7 @@ class Monitor:
                             info(f"[monitor] on_record callback failed: {exc}\n")
 
     def _collect_target(self, target_type, host_idx, target):
-        """Collect a single target output."""
+        """Collect a single target and return (output_str, outcome)."""
         bg = self._background.is_set()
         if (
             self._down_hosts_getter is not None
@@ -173,22 +215,16 @@ class Monitor:
         ):
             if target_type == "csmgrstatus" and not bg:
                 info(f"[monitor] h{host_idx} is down, skipping csmgrstatus\n")
-            return "skipped: host down"
+            return "skipped: host down", "skipped"
         if target_type == "cefstatus":
-            # 2026-07-12: quiet=bg mirrors the csmgrstatus branch below —
-            # foreground monitor calls now emit the same command-echo/output
-            # info() the csmgrstatus branch already did, closing a drift
-            # between the two branches. Background calls stay quiet and gain
-            # the timed_out -> "error: command timeout" translation that
-            # run_cefstatus now shares with run_csmgrstatus.
-            return run_cefstatus(
+            result = run_cefstatus(
                 self.net,
                 host_idx,
                 quiet=bg,
                 timeout=self.command_timeout if bg else None,
             )
+            return status_output(result), derive_monitor_outcome(target_type, result)
         elif target_type == "csmgrstatus":
-            # Use explicit target_host if provided; otherwise use resolver.
             explicit = target.get("target_host")
             if isinstance(explicit, str) and explicit:
                 csmgr_host = explicit
@@ -196,7 +232,7 @@ class Monitor:
                 csmgr_host = self._csmgr_host_resolver(host_idx)
             else:
                 csmgr_host = "127.0.0.1"
-            return run_csmgrstatus(
+            result = run_csmgrstatus(
                 self.net,
                 host_idx,
                 uri=target.get("uri"),
@@ -205,8 +241,9 @@ class Monitor:
                 quiet=bg,
                 timeout=self.command_timeout if bg else None,
             )
+            return status_output(result), derive_monitor_outcome(target_type, result)
         else:
-            return f"unknown monitor type: {target_type}"
+            return f"unknown monitor type: {target_type}", "not-ok"
 
     def _run(self):
         start = time.time()

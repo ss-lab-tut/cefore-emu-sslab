@@ -12,6 +12,7 @@ from src.runtime.cefore import (
     run_cefstatus,
     run_csmgrstatus,
     start_cefsubfile,
+    status_output,
 )
 from src.runtime.command_runner import FakeCommandRunner
 
@@ -180,13 +181,11 @@ class TestRunCsmgrstatus:
             patch.object(cefore_mod, "info") as mock_info,
         ):
             out = run_csmgrstatus(MagicMock(), 1, uri="ccnx:/", host="127.0.0.1")
-        assert out == "status output"
+        assert out.stdout == "status output"
         rec = fake.runs[0]
         assert rec["node"] == "h1"
         assert rec["argv"] == ["csmgrstatus", "ccnx:/", "-h", "127.0.0.1"]
-        # Redirection is owned by the seam, never present in argv.
         assert ">" not in _argv_str(rec["argv"])
-        # Non-quiet emits the command echo via info too; the output is among them.
         mock_info.assert_any_call("status output")
 
     def test_quiet_suppresses_print_and_info(self, capsys):
@@ -199,7 +198,7 @@ class TestRunCsmgrstatus:
             out = run_csmgrstatus(
                 MagicMock(), 1, uri="ccnx:/", host="127.0.0.1", quiet=True
             )
-        assert out == "status output"
+        assert out.stdout == "status output"
         mock_info.assert_not_called()
         assert "command:" not in capsys.readouterr().out
 
@@ -227,12 +226,13 @@ class TestRunCsmgrstatus:
         argv = fake.runs[0]["argv"]
         assert argv == ["csmgrstatus", "-p", "9799", "-h", "127.0.0.1"]
 
-    def test_timeout_returns_diagnostic_string(self):
+    def test_timeout_returns_command_result_with_timed_out_flag(self):
         fake = FakeCommandRunner()
         fake.script_run(timed_out=True)
         with patch.object(cefore_mod, "MininetCommandRunner", return_value=fake):
             out = run_csmgrstatus(MagicMock(), 1, host="127.0.0.1", quiet=True)
-        assert out == "error: command timeout"
+        assert out.timed_out is True
+        assert status_output(out) == "error: command timeout"
 
 
 # ---------------------------------------------------------------------------
@@ -251,11 +251,10 @@ class TestRunCefstatus:
             patch.object(cefore_mod, "info") as mock_info,
         ):
             out = run_cefstatus(MagicMock(), 1)
-        assert out == "fib output"
+        assert out.stdout == "fib output"
         rec = fake.runs[0]
         assert rec["node"] == "h1"
         assert rec["argv"] == ["cefstatus", "-d", "./h1"]
-        # Non-quiet emits the command echo via info too; the output is among them.
         mock_info.assert_any_call("h1 command: ['cefstatus', '-d', './h1']\n")
         mock_info.assert_any_call("fib output")
 
@@ -267,7 +266,7 @@ class TestRunCefstatus:
             patch.object(cefore_mod, "info") as mock_info,
         ):
             out = run_cefstatus(MagicMock(), 1, quiet=True)
-        assert out == "fib output"
+        assert out.stdout == "fib output"
         mock_info.assert_not_called()
         assert "command:" not in capsys.readouterr().out
 
@@ -277,12 +276,13 @@ class TestRunCefstatus:
             run_cefstatus(MagicMock(), 1, quiet=True, timeout=10)
         assert fake.runs[0]["timeout"] == 10
 
-    def test_timeout_returns_diagnostic_string(self):
+    def test_timeout_returns_command_result_with_timed_out_flag(self):
         fake = FakeCommandRunner()
         fake.script_run(timed_out=True)
         with patch.object(cefore_mod, "MininetCommandRunner", return_value=fake):
             out = run_cefstatus(MagicMock(), 1, quiet=True)
-        assert out == "error: command timeout"
+        assert out.timed_out is True
+        assert status_output(out) == "error: command timeout"
 
     def test_runner_injection_skips_mininet_command_runner_construction(self):
         fake = FakeCommandRunner()
@@ -290,7 +290,7 @@ class TestRunCefstatus:
         with patch.object(cefore_mod, "MininetCommandRunner") as mock_ctor:
             out = run_cefstatus(MagicMock(), 1, quiet=True, runner=fake)
         mock_ctor.assert_not_called()
-        assert out == "fib output"
+        assert out.stdout == "fib output"
         assert fake.runs[0]["node"] == "h1"
         assert fake.runs[0]["argv"] == ["cefstatus", "-d", "./h1"]
 

@@ -11,7 +11,7 @@ Collection phases (see scenarios/base.py):
 import shutil
 from pathlib import Path
 
-from .cefore import run_cefstatus
+from .cefore import run_cefstatus, status_output
 
 
 def archive_node_dirs(generated_dirs: list[Path], dest_dir: Path) -> None:
@@ -36,5 +36,7 @@ def dump_fib(net, host_ids: list[int], dest_dir: Path) -> None:
     dest_dir.mkdir(parents=True, exist_ok=True)
     for idx in host_ids:
         node_name = f"h{idx}"
-        output = run_cefstatus(net, idx, quiet=True)
-        (dest_dir / f"fib_{node_name}.txt").write_text(output, encoding="utf-8")
+        result = run_cefstatus(net, idx, quiet=True)
+        (dest_dir / f"fib_{node_name}.txt").write_text(
+            status_output(result), encoding="utf-8"
+        )

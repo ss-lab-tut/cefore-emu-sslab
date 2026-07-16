@@ -2,17 +2,21 @@
 
 import csv
 import json
-from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-import pytest
-
+from src.runtime.command_runner import CommandResult
 from src.runtime.monitoring import (
     MONITOR_FIELDS,
     Monitor,
     _resolve_hosts,
     make_monitor_record,
 )
+
+
+def _ok_result(stdout="ok"):
+    """Build a CommandResult that derive_monitor_outcome will classify as ok or not-ok
+    depending on content.  Tests that only care about kwarg forwarding use this."""
+    return CommandResult(returncode=0, stdout=stdout)
 
 
 def _make_net(host_count=3):
@@ -133,7 +137,7 @@ class TestCollectTargetCsmgrstatus:
     def test_resolver_called_with_host_idx(self, tmp_path):
         resolver = MagicMock(return_value="192.168.3.4")
         monitor = self._make_monitor(tmp_path, resolver=resolver)
-        with patch("src.runtime.monitoring.run_csmgrstatus", return_value="ok") as mock_fn:
+        with patch("src.runtime.monitoring.run_csmgrstatus", return_value=_ok_result()) as mock_fn:
             monitor._collect_target("csmgrstatus", 2, {"type": "csmgrstatus"})
         resolver.assert_called_once_with(2)
         mock_fn.assert_called_once()
@@ -143,7 +147,7 @@ class TestCollectTargetCsmgrstatus:
     def test_resolver_ip_passed_to_run_csmgrstatus(self, tmp_path):
         resolver = lambda h: f"172.20.{h}.1"
         monitor = self._make_monitor(tmp_path, resolver=resolver)
-        with patch("src.runtime.monitoring.run_csmgrstatus", return_value="ok") as mock_fn:
+        with patch("src.runtime.monitoring.run_csmgrstatus", return_value=_ok_result()) as mock_fn:
             monitor._collect_target("csmgrstatus", 1, {"type": "csmgrstatus"})
         _, kwargs = mock_fn.call_args
         assert kwargs["host"] == "172.20.1.1"
@@ -151,7 +155,7 @@ class TestCollectTargetCsmgrstatus:
     def test_target_host_override_takes_priority_over_resolver(self, tmp_path):
         resolver = MagicMock(return_value="192.168.1.1")
         monitor = self._make_monitor(tmp_path, resolver=resolver)
-        with patch("src.runtime.monitoring.run_csmgrstatus", return_value="ok") as mock_fn:
+        with patch("src.runtime.monitoring.run_csmgrstatus", return_value=_ok_result()) as mock_fn:
             monitor._collect_target(
                 "csmgrstatus", 0, {"type": "csmgrstatus", "target_host": "10.99.0.1"}
             )
@@ -162,7 +166,7 @@ class TestCollectTargetCsmgrstatus:
     def test_empty_target_host_falls_back_to_resolver(self, tmp_path):
         resolver = MagicMock(return_value="192.168.5.1")
         monitor = self._make_monitor(tmp_path, resolver=resolver)
-        with patch("src.runtime.monitoring.run_csmgrstatus", return_value="ok") as mock_fn:
+        with patch("src.runtime.monitoring.run_csmgrstatus", return_value=_ok_result()) as mock_fn:
             monitor._collect_target(
                 "csmgrstatus", 0, {"type": "csmgrstatus", "target_host": ""}
             )
@@ -175,7 +179,7 @@ class TestCollectTargetCsmgrstatus:
         # A target_host=12345 passes init only if resolver is provided (validated above)
         # so we directly test the fallback path with a monkeypatched monitor.
         monitor = self._make_monitor(tmp_path, resolver=resolver)
-        with patch("src.runtime.monitoring.run_csmgrstatus", return_value="ok") as mock_fn:
+        with patch("src.runtime.monitoring.run_csmgrstatus", return_value=_ok_result()) as mock_fn:
             monitor._collect_target(
                 "csmgrstatus", 0, {"type": "csmgrstatus", "target_host": 12345}
             )
@@ -193,7 +197,7 @@ class TestCollectTargetCsmgrstatus:
             host_count=3,
             csmgr_host_resolver=None,
         )
-        with patch("src.runtime.monitoring.run_csmgrstatus", return_value="ok") as mock_fn:
+        with patch("src.runtime.monitoring.run_csmgrstatus", return_value=_ok_result()) as mock_fn:
             monitor._collect_target("csmgrstatus", 1, {"type": "csmgrstatus"})
         _, kwargs = mock_fn.call_args
         assert kwargs.get("host") == "127.0.0.1"
@@ -207,7 +211,7 @@ class TestCollectTargetCsmgrstatus:
             host_count=3,
             csmgr_host_resolver=None,
         )
-        with patch("src.runtime.monitoring.run_csmgrstatus", return_value="ok") as mock_fn:
+        with patch("src.runtime.monitoring.run_csmgrstatus", return_value=_ok_result()) as mock_fn:
             monitor._collect_target("csmgrstatus", 0, {"type": "csmgrstatus", "target_host": ""})
         _, kwargs = mock_fn.call_args
         assert kwargs.get("host") == "127.0.0.1"
@@ -216,7 +220,7 @@ class TestCollectTargetCsmgrstatus:
         resolver = lambda h: "192.168.1.1"
         monitor = self._make_monitor(tmp_path, resolver=resolver)
         target = {"type": "csmgrstatus", "uri": "ccnx:/test", "port_num": 9696}
-        with patch("src.runtime.monitoring.run_csmgrstatus", return_value="ok") as mock_fn:
+        with patch("src.runtime.monitoring.run_csmgrstatus", return_value=_ok_result()) as mock_fn:
             monitor._collect_target("csmgrstatus", 0, target)
         _, kwargs = mock_fn.call_args
         assert kwargs["uri"] == "ccnx:/test"
@@ -238,10 +242,11 @@ class TestCollectTargetCefstatus:
             host_count=3,
         )
         with patch(
-            "src.runtime.monitoring.run_cefstatus", return_value="cef out"
+            "src.runtime.monitoring.run_cefstatus", return_value=_ok_result("cef out")
         ) as mock_fn:
-            out = monitor._collect_target("cefstatus", 0, {"type": "cefstatus"})
+            out, outcome = monitor._collect_target("cefstatus", 0, {"type": "cefstatus"})
         assert out == "cef out"
+        assert outcome == "not-ok"  # "cef out" has no positive markers
         mock_fn.assert_called_once_with(net, 0, quiet=False, timeout=None)
 
 
@@ -281,18 +286,17 @@ class TestBackgroundMode:
         net = MagicMock()
         monitor = self._bg_monitor(tmp_path, net=net, command_timeout=7)
         with patch(
-            "src.runtime.monitoring.run_cefstatus", return_value="cef out"
+            "src.runtime.monitoring.run_cefstatus", return_value=_ok_result("cef out")
         ) as mock_fn:
-            out = monitor._collect_target("cefstatus", 1, {"type": "cefstatus"})
+            out, outcome = monitor._collect_target("cefstatus", 1, {"type": "cefstatus"})
         assert out == "cef out"
-        # Background mode goes quiet and applies the command timeout, mirroring
-        # the csmgrstatus branch's quiet=bg/timeout=command_timeout contract.
+        assert outcome == "not-ok"
         mock_fn.assert_called_once_with(net, 1, quiet=True, timeout=7)
 
     def test_background_csmgrstatus_quiet_and_timeout(self, tmp_path):
         monitor = self._bg_monitor(tmp_path)  # default command_timeout=10
         with patch(
-            "src.runtime.monitoring.run_csmgrstatus", return_value="ok"
+            "src.runtime.monitoring.run_csmgrstatus", return_value=_ok_result()
         ) as mock_fn:
             monitor._collect_target("csmgrstatus", 0, {"type": "csmgrstatus"})
         _, kwargs = mock_fn.call_args
@@ -304,8 +308,9 @@ class TestBackgroundMode:
         monitor = self._bg_monitor(tmp_path)
         monitor._down_hosts_getter = lambda: [0]
         with patch("src.runtime.monitoring.info") as mock_info:
-            out = monitor._collect_target("csmgrstatus", 0, {"type": "csmgrstatus"})
+            out, outcome = monitor._collect_target("csmgrstatus", 0, {"type": "csmgrstatus"})
         assert out == "skipped: host down"
+        assert outcome == "skipped"
         mock_info.assert_not_called()
 
     def test_non_background_csmgrstatus_not_quiet(self, tmp_path):
@@ -317,7 +322,7 @@ class TestBackgroundMode:
             host_count=3,
         )
         with patch(
-            "src.runtime.monitoring.run_csmgrstatus", return_value="ok"
+            "src.runtime.monitoring.run_csmgrstatus", return_value=_ok_result()
         ) as mock_fn:
             monitor._collect_target("csmgrstatus", 0, {"type": "csmgrstatus"})
         _, kwargs = mock_fn.call_args
@@ -375,19 +380,21 @@ class TestCollectOnce:
             host_count=3,
         )
         monkeypatch.setattr(
-            monitor, "_collect_target", lambda t, host_idx, tgt: f"out-{host_idx}"
+            monitor, "_collect_target",
+            lambda t, host_idx, tgt: (f"out-{host_idx}", "ok"),
         )
         monitor._collect_once(1.234)
         assert len(monitor._records) == 2
-        # elapsed_sec is rounded to 1 decimal place by _collect_once.
         assert monitor._records[0] == {
             "elapsed_sec": 1.2,
             "type": "cefstatus",
             "host": 0,
             "output": "out-0",
+            "outcome": "ok",
         }
         assert monitor._records[1]["host"] == 1
         assert monitor._records[1]["output"] == "out-1"
+        assert monitor._records[1]["outcome"] == "ok"
 
     def test_exception_from_collect_target_becomes_an_error_string_record(
         self, tmp_path, monkeypatch
@@ -405,9 +412,9 @@ class TestCollectOnce:
 
         monkeypatch.setattr(monitor, "_collect_target", _raise)
         monitor._collect_once(0.0)
-        # The loop must not propagate the exception — it degrades to a record.
         assert len(monitor._records) == 1
         assert monitor._records[0]["output"] == "error: boom"
+        assert monitor._records[0]["outcome"] == "not-ok"
 
     def test_stop_event_set_mid_loop_ends_collection_early(self, tmp_path, monkeypatch):
         monitor = Monitor(
@@ -423,7 +430,7 @@ class TestCollectOnce:
                 # Simulate Monitor.stop() being called from another thread
                 # mid-cycle; the next host-loop iteration must observe it.
                 monitor._stop_event.set()
-            return f"out-{host_idx}"
+            return f"out-{host_idx}", "ok"
 
         monkeypatch.setattr(monitor, "_collect_target", _collect)
         monitor._collect_once(0.0)
@@ -444,7 +451,7 @@ class TestCollectOnce:
             host_count=2,
             on_record=received.append,
         )
-        monkeypatch.setattr(monitor, "_collect_target", lambda t, h, tgt: "ok")
+        monkeypatch.setattr(monitor, "_collect_target", lambda t, h, tgt: ("ok", "ok"))
         monitor._collect_once(2.0)
         assert len(received) == 1
         assert received[0]["output"] == "ok"
@@ -464,7 +471,7 @@ class TestCollectOnce:
             host_count=2,
             on_record=_raising_callback,
         )
-        monkeypatch.setattr(monitor, "_collect_target", lambda t, h, tgt: "ok")
+        monkeypatch.setattr(monitor, "_collect_target", lambda t, h, tgt: ("ok", "ok"))
         assert not monitor._background.is_set()
         with patch("src.runtime.monitoring.info") as mock_info:
             monitor._collect_once(0.0)
@@ -488,7 +495,7 @@ class TestCollectOnce:
             background=True,
             on_record=_raising_callback,
         )
-        monkeypatch.setattr(monitor, "_collect_target", lambda t, h, tgt: "ok")
+        monkeypatch.setattr(monitor, "_collect_target", lambda t, h, tgt: ("ok", "ok"))
         with patch("src.runtime.monitoring.info") as mock_info:
             monitor._collect_once(0.0)
         assert len(monitor._records) == 1
@@ -515,7 +522,7 @@ class TestThreadLifecycle:
             host_count=2,
             **kwargs,
         )
-        monitor._collect_target = lambda target_type, host_idx, target: "ok"
+        monitor._collect_target = lambda target_type, host_idx, target: ("ok", "ok")
         return monitor
 
     def test_start_then_stop_terminates_the_background_thread(self, tmp_path):
@@ -532,7 +539,7 @@ class TestThreadLifecycle:
         # cycle before stop() fires (real thread scheduling is not under our
         # control here, and the plan forbids relying on fixed sleeps).
         monitor._records.append(
-            {"elapsed_sec": 0.0, "type": "cefstatus", "host": 0, "output": "seed"}
+            {"elapsed_sec": 0.0, "type": "cefstatus", "host": 0, "output": "seed", "outcome": "ok"}
         )
         monitor.start()
         monitor.stop()
@@ -577,8 +584,8 @@ class TestWriteOutputs:
     def test_writes_both_json_and_csv_when_both_paths_are_configured(self, tmp_path):
         monitor = self._monitor(tmp_path, output_json="monitor.json", output_csv="monitor.csv")
         monitor._records = [
-            {"elapsed_sec": 0.0, "type": "cefstatus", "host": 0, "output": "a"},
-            {"elapsed_sec": 1.5, "type": "csmgrstatus", "host": 1, "output": "b"},
+            {"elapsed_sec": 0.0, "type": "cefstatus", "host": 0, "output": "a", "outcome": "not-ok"},
+            {"elapsed_sec": 1.5, "type": "csmgrstatus", "host": 1, "output": "b", "outcome": "not-ok"},
         ]
         monitor._write_outputs()
 
@@ -595,14 +602,14 @@ class TestWriteOutputs:
 
     def test_writes_json_only_when_csv_path_is_not_configured(self, tmp_path):
         monitor = self._monitor(tmp_path, output_json="monitor.json")
-        monitor._records = [{"elapsed_sec": 0.0, "type": "cefstatus", "host": 0, "output": "a"}]
+        monitor._records = [{"elapsed_sec": 0.0, "type": "cefstatus", "host": 0, "output": "a", "outcome": "not-ok"}]
         monitor._write_outputs()
         assert (tmp_path / "monitor.json").exists()
         assert not (tmp_path / "monitor.csv").exists()
 
     def test_writes_csv_only_when_json_path_is_not_configured(self, tmp_path):
         monitor = self._monitor(tmp_path, output_csv="monitor.csv")
-        monitor._records = [{"elapsed_sec": 0.0, "type": "cefstatus", "host": 0, "output": "a"}]
+        monitor._records = [{"elapsed_sec": 0.0, "type": "cefstatus", "host": 0, "output": "a", "outcome": "not-ok"}]
         monitor._write_outputs()
         assert not (tmp_path / "monitor.json").exists()
         assert (tmp_path / "monitor.csv").exists()
@@ -616,7 +623,7 @@ class TestWriteOutputs:
 
     def test_info_logs_one_line_per_file_actually_written(self, tmp_path):
         monitor = self._monitor(tmp_path, output_json="monitor.json", output_csv="monitor.csv")
-        monitor._records = [{"elapsed_sec": 0.0, "type": "cefstatus", "host": 0, "output": "a"}]
+        monitor._records = [{"elapsed_sec": 0.0, "type": "cefstatus", "host": 0, "output": "a", "outcome": "not-ok"}]
         with patch("src.runtime.monitoring.info") as mock_info:
             monitor._write_outputs()
         assert mock_info.call_count == 2
@@ -630,19 +637,16 @@ class TestWriteOutputs:
 
 class TestMakeMonitorRecord:
     def test_returns_exactly_monitor_fields_keys_with_given_values(self):
-        record = make_monitor_record(1.5, "cefstatus", 2, "faces: 1")
+        record = make_monitor_record(1.5, "cefstatus", 2, "faces: 1", "ok")
         assert set(record.keys()) == set(MONITOR_FIELDS)
         assert record["elapsed_sec"] == 1.5
         assert record["type"] == "cefstatus"
         assert record["host"] == 2
         assert record["output"] == "faces: 1"
+        assert record["outcome"] == "ok"
 
     def test_key_order_matches_monitor_fields(self):
-        # CSV writing relies on fieldnames == list(MONITOR_FIELDS); a record
-        # built out of order would still serialize correctly via
-        # DictWriter (keyed by name, not position), but keeping insertion
-        # order aligned with MONITOR_FIELDS keeps json.dumps output stable.
-        record = make_monitor_record(0.0, "csmgrstatus", 0, "ok")
+        record = make_monitor_record(0.0, "csmgrstatus", 0, "ok", "not-ok")
         assert tuple(record.keys()) == MONITOR_FIELDS
 
 
@@ -662,6 +666,6 @@ class TestCollectOnceUsesFactory:
             output_dir=tmp_path,
             host_count=2,
         )
-        monkeypatch.setattr(monitor, "_collect_target", lambda t, h, tgt: "out")
+        monkeypatch.setattr(monitor, "_collect_target", lambda t, h, tgt: ("out", "ok"))
         monitor._collect_once(0.5)
         assert tuple(monitor._records[0].keys()) == MONITOR_FIELDS

@@ -8,33 +8,6 @@ from typing import Callable
 from ..core.topology import TopologyModel
 
 
-def _cefnetd_is_up(output: str) -> bool:
-    """Infer cefnetd liveness from cefstatus text output."""
-    if not output:
-        return False
-    low = output.lower()
-    if any(k in low for k in ("error", "failed", "connection refused", "no such file")):
-        return False
-    return "faces" in low or "fib" in low
-
-
-def _csmgrd_is_up(output: str) -> bool:
-    """Infer csmgrd liveness from csmgrstatus text output.
-
-    Requires positive markers to confirm up, not just absence of errors.
-    Monitor returns "skipped: host down" for down hosts — treat as not-up.
-    """
-    if not output:
-        return False
-    low = output.lower()
-    if any(k in low for k in (
-        "error", "failed", "connection refused", "no such file",
-        "skipped", "not found", "cannot", "timeout", "timed out",
-    )):
-        return False
-    return "connect to" in low or "all connection num" in low
-
-
 class DashboardState:
     MAX_OPERATIONS = 1000
     MAX_HISTORY    = 300
@@ -54,12 +27,14 @@ class DashboardState:
         self.started_at = started_at
         self._flap_state_getter = flap_state_getter
 
-        # hosts[i] = {"last_cefstatus": str, "last_csmgrstatus": str, "is_cache": bool}
-        # (up/down は snapshot 時に flap_state_getter で動的に計算)
+        # Per-host state: output strings + authoritative outcome from Monitor.
+        # outcome starts None (never observed) → maps to *_ok: False in snapshot.
         self._hosts: dict[int, dict] = {
             i: {
                 "last_cefstatus": "",
                 "last_csmgrstatus": "",
+                "cefnetd_outcome": None,
+                "csmgrd_outcome": None,
                 "is_cache": i in cache_nodes,
             }
             for i in range(host_count)
@@ -99,8 +74,10 @@ class DashboardState:
             if host is not None and host in self._hosts:
                 if rtype == "cefstatus":
                     self._hosts[host]["last_cefstatus"] = record.get("output", "")
+                    self._hosts[host]["cefnetd_outcome"] = record.get("outcome")
                 elif rtype == "csmgrstatus":
                     self._hosts[host]["last_csmgrstatus"] = record.get("output", "")
+                    self._hosts[host]["csmgrd_outcome"] = record.get("outcome")
 
     # ------------------------------------------------------------------ #
     # Operation callbacks (called from experiment/scheduler threads)      #
@@ -170,8 +147,8 @@ class DashboardState:
                 hosts_out[str(i)] = {
                     "up":               i not in down_set,
                     "is_cache":         h["is_cache"],
-                    "cefnetd_ok":       _cefnetd_is_up(h["last_cefstatus"]),
-                    "csmgrd_ok":        _csmgrd_is_up(h["last_csmgrstatus"]),
+                    "cefnetd_ok":       h.get("cefnetd_outcome") == "ok",
+                    "csmgrd_ok":        h.get("csmgrd_outcome") == "ok",
                     "last_cefstatus":   h["last_cefstatus"],
                     "last_csmgrstatus": h["last_csmgrstatus"],
                 }

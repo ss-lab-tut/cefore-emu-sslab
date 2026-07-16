@@ -8,7 +8,9 @@ from urllib.error import URLError
 
 import pytest
 
-from src.webui.state import DashboardState, _cefnetd_is_up, _csmgrd_is_up
+from src.runtime.command_runner import CommandResult
+from src.runtime.monitoring import derive_monitor_outcome
+from src.webui.state import DashboardState
 from src.webui.server import WebUIServer
 
 
@@ -27,60 +29,83 @@ def make_dashboard():
 
 
 # ------------------------------------------------------------------ #
-# _csmgrd_is_up()                                                     #
+# derive_monitor_outcome() — the fail-closed classifier                #
+# (tested here because it replaces the old keyword-sniffing functions) #
 # ------------------------------------------------------------------ #
 
-def test_csmgrd_is_up_empty():
-    assert _csmgrd_is_up("") is False
+class TestDeriveMonitorOutcome:
+    """Priority: timed_out/cancelled → bad rc → negative marker → positive → fail-closed."""
 
+    def test_timed_out_is_not_ok(self):
+        r = CommandResult(returncode=0, stdout="faces", timed_out=True)
+        assert derive_monitor_outcome("cefstatus", r) == "not-ok"
 
-def test_csmgrd_is_up_skipped():
-    assert _csmgrd_is_up("skipped: host down") is False
+    def test_cancelled_is_not_ok(self):
+        r = CommandResult(returncode=0, stdout="faces", cancelled=True)
+        assert derive_monitor_outcome("cefstatus", r) == "not-ok"
 
+    def test_nonzero_returncode_is_not_ok(self):
+        r = CommandResult(returncode=1, stdout="Faces: 2\nFIB entries: 3")
+        assert derive_monitor_outcome("cefstatus", r) == "not-ok"
 
-def test_csmgrd_is_up_connection_refused():
-    assert _csmgrd_is_up("connection refused") is False
+    def test_none_returncode_is_not_ok(self):
+        r = CommandResult(returncode=None, stdout="faces")
+        assert derive_monitor_outcome("cefstatus", r) == "not-ok"
 
+    def test_csmgrstatus_rc0_with_error_is_not_ok(self):
+        r = CommandResult(returncode=0, stdout="[csmgrstatus] ERROR: Connection failed")
+        assert derive_monitor_outcome("csmgrstatus", r) == "not-ok"
 
-def test_csmgrd_is_up_error():
-    assert _csmgrd_is_up("error: cannot connect") is False
+    def test_cefstatus_positive_faces(self):
+        r = CommandResult(returncode=0, stdout="Faces: 2\nFIB entries: 3\n")
+        assert derive_monitor_outcome("cefstatus", r) == "ok"
 
+    def test_cefstatus_positive_fib_only(self):
+        r = CommandResult(returncode=0, stdout="fib entries: 0\n")
+        assert derive_monitor_outcome("cefstatus", r) == "ok"
 
-def test_csmgrd_is_up_positive():
-    output = "Connect to 127.0.0.1 9799\nAll Connection Num = 0\n"
-    assert _csmgrd_is_up(output) is True
+    def test_csmgrstatus_positive(self):
+        r = CommandResult(returncode=0, stdout="Connect to 127.0.0.1 9799\nAll Connection Num = 0\n")
+        assert derive_monitor_outcome("csmgrstatus", r) == "ok"
 
+    def test_cefstatus_empty_output_is_not_ok(self):
+        r = CommandResult(returncode=0, stdout="")
+        assert derive_monitor_outcome("cefstatus", r) == "not-ok"
 
-def test_csmgrd_is_up_no_positive_markers():
-    assert _csmgrd_is_up("some unknown output without markers") is False
+    def test_csmgrstatus_empty_output_is_not_ok(self):
+        r = CommandResult(returncode=0, stdout="")
+        assert derive_monitor_outcome("csmgrstatus", r) == "not-ok"
 
+    def test_unknown_output_is_not_ok(self):
+        r = CommandResult(returncode=0, stdout="some random text without markers")
+        assert derive_monitor_outcome("cefstatus", r) == "not-ok"
 
-# ------------------------------------------------------------------ #
-# _cefnetd_is_up()                                                    #
-# ------------------------------------------------------------------ #
+    def test_unknown_target_type_is_not_ok(self):
+        r = CommandResult(returncode=0, stdout="faces")
+        assert derive_monitor_outcome("unknown_type", r) == "not-ok"
 
-def test_cefnetd_is_up_empty():
-    assert _cefnetd_is_up("") is False
+    def test_negative_marker_overrides_positive_marker(self):
+        r = CommandResult(returncode=0, stdout="Faces: 2\nerror: something\n")
+        assert derive_monitor_outcome("cefstatus", r) == "not-ok"
 
+    def test_connection_refused_is_not_ok(self):
+        r = CommandResult(returncode=0, stdout="connection refused")
+        assert derive_monitor_outcome("cefstatus", r) == "not-ok"
 
-def test_cefnetd_is_up_connection_refused():
-    assert _cefnetd_is_up("connection refused") is False
+    def test_cefstatus_fib_uri_with_timeout_is_ok(self):
+        """FIB URIs like ccnx:/timeout/report must not trigger negative markers."""
+        r = CommandResult(
+            returncode=0,
+            stdout="Faces : 1\nFIB : 1\n  ccnx:/timeout/report\n",
+        )
+        assert derive_monitor_outcome("cefstatus", r) == "ok"
 
-
-def test_cefnetd_is_up_error():
-    assert _cefnetd_is_up("error: no such file") is False
-
-
-def test_cefnetd_is_up_positive_faces():
-    assert _cefnetd_is_up("Faces: 2\nFIB entries: 3\n") is True
-
-
-def test_cefnetd_is_up_positive_fib_only():
-    assert _cefnetd_is_up("fib entries: 0\n") is True
-
-
-def test_cefnetd_is_up_no_positive_markers():
-    assert _cefnetd_is_up("some unknown output without markers") is False
+    def test_cefstatus_fib_uri_with_not_found_is_ok(self):
+        r = CommandResult(
+            returncode=0,
+            stdout="Faces : 2\nFIB : 2\n  ccnx:/not-found/handler\n",
+        )
+        assert derive_monitor_outcome("cefstatus", r) == "ok"
 
 
 # ------------------------------------------------------------------ #
@@ -257,12 +282,14 @@ class TestDashboardStateTopology:
 class TestDashboardStateRecordMonitor:
     """record_monitor is invoked from the Monitor background thread per sample."""
 
-    def test_record_monitor_updates_last_status_fields_for_known_host(self):
+    def test_record_monitor_updates_last_status_and_outcome_for_known_host(self):
         ds = make_dashboard()
-        ds.record_monitor({"host": 1, "type": "cefstatus", "output": "faces: 2"})
-        ds.record_monitor({"host": 1, "type": "csmgrstatus", "output": "Connect to 127.0.0.1"})
+        ds.record_monitor({"host": 1, "type": "cefstatus", "output": "faces: 2", "outcome": "ok"})
+        ds.record_monitor({"host": 1, "type": "csmgrstatus", "output": "Connect to 127.0.0.1", "outcome": "ok"})
         assert ds._hosts[1]["last_cefstatus"] == "faces: 2"
         assert ds._hosts[1]["last_csmgrstatus"] == "Connect to 127.0.0.1"
+        assert ds._hosts[1]["cefnetd_outcome"] == "ok"
+        assert ds._hosts[1]["csmgrd_outcome"] == "ok"
 
     def test_record_monitor_ignores_records_for_unknown_host(self):
         ds = make_dashboard()  # host_count=3 -> known hosts are 0,1,2

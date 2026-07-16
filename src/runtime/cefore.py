@@ -291,27 +291,23 @@ def run_cefgetfile(
     return result.returncode
 
 
+def status_output(result) -> str:
+    """Return a display-safe output string from a CommandResult.
+
+    Preserves the ``"error: command timeout"`` sentinel so that the
+    monitor.json output field and debug FIB dumps show the same
+    timeout diagnostic as the pre-S7 string-returning wrappers did.
+    """
+    if result.timed_out:
+        return "error: command timeout"
+    return result.stdout
+
+
 def run_cefstatus(net, host_idx, *, quiet=False, timeout=None, runner=None):
     """Run cefstatus to display FIB state.
 
-    Args:
-        net: Mininet network instance.
-        host_idx: Host index.
-        quiet: When True, suppress the command echo and the output ``info``
-            (the output is still returned).
-        timeout: Command timeout (seconds).
-        runner: Optional CommandRunner (defaults to a Mininet-backed one).
-
     Returns:
-        Command output string.
-
-    2026-07-12: the quiet/timeout/timed_out->"error: command timeout"/
-    return-value shape mirrors run_csmgrstatus's existing behavior (a
-    deliberate alignment, not a coincidence). The runner= injection seam
-    below is run_cefstatus-only: run_csmgrstatus has no runner= parameter
-    and always constructs its own MininetCommandRunner. The default
-    (non-quiet, no-timeout) call path stays byte-identical to the
-    pre-alignment info() output.
+        CommandResult with returncode, stdout, and timeout/cancel flags.
     """
     node_name = f"h{host_idx}"
     argv = ["cefstatus", "-d", f"./{node_name}"]
@@ -319,10 +315,9 @@ def run_cefstatus(net, host_idx, *, quiet=False, timeout=None, runner=None):
         info(f"{node_name} command: {argv}\n")
     runner = runner or MininetCommandRunner(net)
     result = runner.run(node_name, argv, timeout=timeout)
-    output = "error: command timeout" if result.timed_out else result.stdout
     if not quiet:
-        info(output)
-    return output
+        info(status_output(result))
+    return result
 
 
 def run_cefstatus_all(net, host_num):
@@ -458,21 +453,8 @@ def run_csmgrstatus(
 ):
     """Run csmgrstatus to query cache manager status.
 
-    Args:
-        net: Mininet network instance.
-        host_idx: Host index.
-        uri: Content URI to query (optional).
-        port_num: Port number.
-        host: Hostname or IP to connect to.
-        log_name: When given, stdout is redirected to this log file (stdout
-            only, matching the old ``> log`` shell redirect) and the empty
-            stdout is returned.
-        quiet: When True, suppress the command echo and the output ``info``
-            (the output is still returned).
-        timeout: Command timeout (seconds).
-
     Returns:
-        Command output string.
+        CommandResult with returncode, stdout, and timeout/cancel flags.
     """
     node_name = f"h{host_idx}"
     argv = ["csmgrstatus"]
@@ -488,14 +470,11 @@ def run_csmgrstatus(
 
     runner = MininetCommandRunner(net)
     if log_name:
-        # stdout -> log file (stdout only, like the old "> log"); stderr is
-        # kept separate so the log stays stdout-only.
         result = runner.run(
             node_name, argv, log_path=log_name, capture_stderr=True, timeout=timeout
         )
-        return "error: command timeout" if result.timed_out else result.stdout
+        return result
     result = runner.run(node_name, argv, timeout=timeout)
-    output = "error: command timeout" if result.timed_out else result.stdout
     if not quiet:
-        info(output)
-    return output
+        info(status_output(result))
+    return result
