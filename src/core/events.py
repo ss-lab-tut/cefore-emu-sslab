@@ -105,7 +105,9 @@ def extract_publications(
             publishing host) but never the publications list: that list is a
             seeding input (connect executes it as content ops), and a
             compute_call there would crash on the missing "uri". Opt-in per
-            scenario — disaster passes True; connect keeps the default.
+            scenario policy: pass True where compute_call events actually
+            execute (so their republished URIs get FIB metadata); keep the
+            default where the publications list is a seeding input.
 
     Returns:
         publications: events whose type is in publication_event_types().

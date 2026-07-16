@@ -45,6 +45,7 @@ For the home-skill copy:
 - `config/examples/min_mixed.yaml`
 - `config/examples/min_event_putget.yaml`
 - `config/examples/min_event_pubsub.yaml`
+- `config/examples/min_compute.yaml` (compute_call tri-state: guaranteed-unreachable TEST-NET-3 endpoint must record `outcome=skipped-no-result`)
 - `connect` — ConnectScenario plain-mesh run (`ceforeemu-connect`, no config)
 
 The disaster smoke configs validate `results.json` contents after each run instead of only trusting exit codes. The `connect` case is different: ConnectScenario (`ceforeemu-connect`) has no `--results-json` and writes no `results.json`, so it is validated by exit 0 plus the topology PNG that proves the configure stage completed (mesh built, daemons started, FIB applied). It is run via `python -c "from src.runtime.external_net import main; main()" --hosts 3 --switches 2 --seed 42 --no-cli --no-script-log` because `ceforeemu-connect` is only registered as a console script after `pip install -e .`. Expected result shapes are summarized in `references/test-matrix.md`.

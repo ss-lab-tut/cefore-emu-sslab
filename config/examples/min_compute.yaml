@@ -7,9 +7,15 @@
 # endpoint は TEST-NET-3 (203.0.113.0/24, RFC 5737) なので到達不能が保証される。
 #
 # ok 経路（実 HTTP → output_file 保存 → publish_uri で ICN 再publish → 他ノード get）
-# は bridges で外部到達性を確保した CLI 実行で手動確認する:
-#   bridges: [{switch: "s0", root_ip: "192.168.200.1/24"}]
-#   root ns 側: python3 -m http.server 18080
+# の手動確認手順（autotest mode は bridges 禁止なので、このファイルをコピーして
+# no_cli と results_json を外し、CLI モードで実行する）:
+#   1. コピーに追記:  bridges: [{switch: "s0", root_ip: "192.168.200.1/24"}]
+#   2. events の endpoint を root ns 側サーバに変更:
+#        endpoint: "http://192.168.200.1:18080/"
+#        method: GET   （http.server は POST に 501 を返すため GET にする）
+#   3. root ns 側: python3 -m http.server 18080
+#   4. sudo .venv/bin/python3 -m src disaster --config <コピー>
+#      → CLI で h0 から: cefgetfile ccnx:/compute/result1 -f /tmp/r1
 hosts: 3
 switches: 3
 seed: 42

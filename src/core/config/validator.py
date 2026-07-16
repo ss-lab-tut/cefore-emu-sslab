@@ -988,7 +988,9 @@ def _validate_putfile_options(errors, prefix, event):
         errors.append(f"{prefix}.pub_opts must be a dict")
         return
     option_prefix = f"{prefix}.pub_opts"
-    unknown = sorted(set(options) - _PUTFILE_OPTION_KEYS)
+    # 2026-07-16 audit fix: keys may be arbitrary YAML scalars; sorting a
+    # mixed-type key set raises TypeError, so normalize to str before sorting.
+    unknown = sorted(str(k) for k in set(options) - _PUTFILE_OPTION_KEYS)
     if unknown:
         errors.append(
             f"{option_prefix} has unsupported keys: {', '.join(map(str, unknown))} "
@@ -1144,6 +1146,24 @@ def _validate_events(errors, config):
                             errors.append(
                                 f"events[{idx}].publish_uri requires "
                                 f"output_file to be set"
+                            )
+                        # 2026-07-16 audit fix: repeat restore forms merge a
+                        # synthesized event at runtime, bypassing this
+                        # validator and the pre-run conditional-publication
+                        # (FIB) extraction — a restored publish_uri would
+                        # publish content no consumer can reach. compute has
+                        # no natural "restore", so only interval/count repeat
+                        # is allowed.
+                        repeat = event.get("repeat")
+                        if isinstance(repeat, dict) and any(
+                            key in repeat
+                            for key in ("duration", "restore", "restore_type")
+                        ):
+                            errors.append(
+                                f"events[{idx}].repeat for compute_call "
+                                f"allows only interval/count "
+                                f"(duration/restore/restore_type are not "
+                                f"supported)"
                             )
                         _validate_putfile_options(
                             errors, f"events[{idx}]", event

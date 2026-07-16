@@ -1598,3 +1598,30 @@ def test_compute_call_pub_opts_falsy_non_dict_rejected():
             ".pub_opts must be a dict" in e
             for e in _compute_errors(pub_opts=bad)
         ), f"pub_opts={bad!r} was accepted"
+
+
+def test_compute_call_repeat_forbids_restore_forms():
+    """compute_call repeat allows interval/count only: a restore/restore_type
+    event is synthesized at runtime by merging dicts, bypassing both this
+    validator and the pre-run conditional-publication (FIB) extraction — a
+    restored publish_uri would publish content no consumer can reach. Compute
+    has no natural "restore" semantics, so the forms are rejected outright
+    (2026-07-16 audit fix)."""
+    ok = {"interval": 5, "count": 2}
+    assert _compute_errors(repeat=ok) == []
+    for bad in (
+        {"interval": 5, "duration": 10},
+        {"interval": 5, "duration": 10, "restore": {"host": 2}},
+        {"interval": 5, "duration": 10, "restore_type": "compute_call"},
+    ):
+        errors = _compute_errors(repeat=bad)
+        assert any(
+            ".repeat" in e and "compute_call" in e for e in errors
+        ), f"repeat={bad!r} was accepted"
+
+
+def test_compute_call_pub_opts_mixed_type_unknown_keys_report_not_crash():
+    """A pub_opts dict with non-string keys must produce a validation error,
+    not a TypeError from sorting mixed key types (2026-07-16 audit fix)."""
+    errors = _compute_errors(pub_opts={1: 2, "bogus": 3})
+    assert any(".pub_opts" in e and "unsupported keys" in e for e in errors)

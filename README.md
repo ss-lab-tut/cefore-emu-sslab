@@ -170,6 +170,21 @@ as `3000` to preserve the pre-events disaster behavior. Pub/sub publication
 options remain explicit: omitted `pub_opts.expiry` or `pub_opts.cache_time`
 uses the Cefore command default.
 
+`compute_call` emulates edge-compute offload: the host issues an HTTP request
+(`endpoint`, `method` GET/POST, optional `payload`/`headers`/`timeout`),
+optionally saves the response (`output_file`, under the run dir) and
+republishes it into the ICN (`publish_uri` → cefputfile; requires
+`output_file`; `pub_opts` takes the put-style cefputfile options with
+`expiry`/`cache_time` defaulting to `3000`). Success is strict — curl exit 0
+AND HTTP 2xx AND, when publishing, cefputfile exit 0 — and the results.json
+record carries a tri-state `outcome`: `ok`, `not-ok` (HTTP/publish failure),
+or `skipped-no-result` (endpoint unreachable — an environment problem, not an
+experiment result) plus a `detail` dict (`http_status`, `curl_exit`,
+`publish_ok`, `output_file`). A `publish_uri`-bearing compute_call also joins
+the disaster scenario's publisher metadata so FIB pre-programming routes
+consumers toward the republished content. `repeat` supports `interval`/
+`count` only (no restore forms).
+
 `ceforeemu-connect` uses `put` and `pubsub_pub` events only to identify
 publishers, program URI-specific FIB entries, and seed publications before
 opening its CLI. It warns and does not automatically execute `get` or

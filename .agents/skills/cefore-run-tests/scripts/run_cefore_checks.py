@@ -404,7 +404,12 @@ def validate_results(
     ):
         fail("contains a failed event record")
     for event_type, want_outcome in expect.get("event_outcomes", {}).items():
-        for row in (r for r in event_rows if r.get("event_type") == event_type):
+        # Zero matching rows must fail, not vacuously pass: the outcome
+        # expectation implies the event happened at all.
+        matching = [r for r in event_rows if r.get("event_type") == event_type]
+        if not matching:
+            fail(f"expected at least 1 {event_type} record to check outcome")
+        for row in matching:
             if row.get("outcome") != want_outcome:
                 fail(
                     f"{event_type} record outcome is {row.get('outcome')!r}, "

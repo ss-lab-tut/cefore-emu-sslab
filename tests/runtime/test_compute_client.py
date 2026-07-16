@@ -165,6 +165,37 @@ def test_publish_defaults_keep_legacy_expiry_and_cache_time(monkeypatch):
     assert argv[argv.index("-t") + 1] == "3000"
 
 
+def test_publish_timed_out_or_cancelled_vetoes_publish_ok(monkeypatch):
+    """cefputfile's CommandResult flags are as authoritative as curl's:
+    a timed-out/cancelled publish must not count as published, and the
+    publish run must carry a deadline so a hung cefputfile cannot stall
+    the scheduler thread."""
+    for flag in ("timed_out", "cancelled"):
+        fake = FakeCommandRunner()
+        fake.script_run(returncode=0, stdout="\n200")
+        fake.script_run(returncode=0, **{flag: True})
+
+        monkeypatch.setattr(
+            "src.runtime.compute_client.Path.exists", lambda self: True
+        )
+        with patch(
+            "src.runtime.compute_client.resolve_run_path",
+            return_value=Path("logs/run-6/out.json"),
+        ):
+            result = _call(
+                fake,
+                host_idx=4,
+                output_file="out.json",
+                publish_uri="ccnx:/compute/result1",
+                run_dir="logs/run-6",
+                timeout=10,
+            )
+
+        assert result.publish_ok is False, flag
+        assert result.ok is False, flag
+        assert fake.runs[1]["timeout"] == 10 + 5
+
+
 def test_publish_failure_fails_the_call(monkeypatch):
     fake = FakeCommandRunner()
     fake.script_run(returncode=0, stdout="\n200")

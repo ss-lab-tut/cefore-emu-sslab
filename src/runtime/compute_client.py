@@ -152,7 +152,17 @@ def compute_call(runner, host_idx, endpoint, method="GET", payload=None,
                 port_num=opts.get("port_num"),
             )
             info(f"[compute] {host_name}: publishing {publish_uri}\n")
-            publish_ok = runner.run(host_name, pub_argv).returncode == 0
+            # 2026-07-16 audit fix: cefputfile's timed_out/cancelled flags are
+            # as authoritative as curl's, and without a runner deadline a hung
+            # cefputfile would stall the single-threaded scheduler forever.
+            pub_result = runner.run(
+                host_name, pub_argv, timeout=timeout + _RUNNER_TIMEOUT_MARGIN
+            )
+            publish_ok = (
+                pub_result.returncode == 0
+                and not pub_result.timed_out
+                and not pub_result.cancelled
+            )
         else:
             # Publish was requested but there is nothing to publish — a
             # config/runtime mismatch that must be visible, not skipped.
