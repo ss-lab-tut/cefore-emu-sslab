@@ -8,40 +8,49 @@ from mininet.log import info
 
 from ..core.events import content_event_types, event_priorities
 from .bandwidth import set_switch_bandwidth
-from .compute_client import check_external_connectivity
+from .command_runner import MininetCommandRunner
 from .compute_client import compute_call as _do_compute_call
 from .links import link_down, link_up
 from .net_config import cefroute_add, cefroute_del, cefroute_enable
 
 
 def _handle_compute_call(net, event, mesh_links, ctx):
-    """Handle compute_call event with connectivity check.
+    """Handle a compute_call event through the injected-runner client.
 
     Returns False on failure so the scheduler records an honest event Verdict.
+    No pre-flight connectivity probe: the real request's curl exit code
+    already distinguishes an unreachable endpoint (env_failure) from an HTTP
+    failure, and a probe would double-hit the endpoint (a POST-only API
+    answers the probe GET with 405).
     """
     host_idx = event["host"]
-    endpoint = event["endpoint"]
 
-    if not check_external_connectivity(net, host_idx, endpoint):
-        info(
-            f"[scheduler] compute_call: h{host_idx} cannot reach {endpoint}. "
-            f"Ensure ext/bridges are configured for this host.\n"
-        )
-        return False
-
-    exit_code, stdout = _do_compute_call(
-        net,
+    result = _do_compute_call(
+        MininetCommandRunner(net),
         host_idx,
-        endpoint,
+        event["endpoint"],
         method=event.get("method", "GET"),
         payload=event.get("payload"),
+        headers=event.get("headers"),
         output_file=event.get("output_file"),
         publish_uri=event.get("publish_uri"),
+        pub_opts=event.get("pub_opts"),
         run_dir=ctx.get("run_dir"),
         timeout=event.get("timeout", 30),
     )
-    if exit_code != 0:
-        info(f"[scheduler] compute_call failed for h{host_idx}: exit={exit_code}\n")
+    if result.env_failure:
+        info(
+            f"[scheduler] compute_call: h{host_idx} cannot reach "
+            f"{event['endpoint']} (curl exit={result.curl_exit}). "
+            f"Ensure ext/bridges are configured for this host.\n"
+        )
+        return False
+    if not result.ok:
+        info(
+            f"[scheduler] compute_call failed for h{host_idx}: "
+            f"exit={result.curl_exit} http={result.http_status} "
+            f"publish={result.publish_ok}\n"
+        )
         return False
     return True
 
