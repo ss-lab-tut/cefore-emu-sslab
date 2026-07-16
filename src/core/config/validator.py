@@ -964,26 +964,37 @@ def _validate_get_options(errors, prefix, event):
     _validate_algo_option(errors, prefix, event, "valid_algo")
 
 
+# The exact option keys cefputfile republishing forwards; anything else is
+# either cefpubfile-only (lifetime/retry_limit/target) or a typo, and a key
+# that would be silently dropped at runtime must fail at config time instead.
+_PUTFILE_OPTION_KEYS = frozenset(
+    {"rate", "block_size", "expiry", "cache_time", "valid_algo", "port_num"}
+)
+
+
 def _validate_putfile_options(errors, prefix, event):
     """Validate a ``pub_opts`` dict holding cefputfile options.
 
-    Used by compute_call's republish stage: the option set mirrors the put
-    event's cefputfile flags (rate/block_size/expiry/cache_time/valid_algo/
-    port_num), not pubsub_pub's cefpubfile set.
+    The option set and its bounds are exactly the put event's cefputfile
+    flags — delegated to ``_validate_put_options`` so the two can never
+    diverge (e.g. block_size >= 60 is the cefputfile minimum). Unknown keys
+    are rejected, and a falsy non-dict ([]/false/0/"") must not coerce to
+    an empty dict and bypass the type check.
     """
-    options = event.get("pub_opts") or {}
+    if "pub_opts" not in event:
+        return
+    options = event["pub_opts"]
     if not isinstance(options, dict):
         errors.append(f"{prefix}.pub_opts must be a dict")
         return
     option_prefix = f"{prefix}.pub_opts"
-    _validate_number_option(errors, option_prefix, options, "rate", minimum=0.001)
-    for field in ("expiry", "cache_time"):
-        _validate_number_option(errors, option_prefix, options, field, minimum=1)
-    for field in ("block_size", "port_num"):
-        _validate_number_option(
-            errors, option_prefix, options, field, integer=True, minimum=1
+    unknown = sorted(set(options) - _PUTFILE_OPTION_KEYS)
+    if unknown:
+        errors.append(
+            f"{option_prefix} has unsupported keys: {', '.join(map(str, unknown))} "
+            f"(allowed: {', '.join(sorted(_PUTFILE_OPTION_KEYS))})"
         )
-    _validate_algo_option(errors, option_prefix, options, "valid_algo")
+    _validate_put_options(errors, option_prefix, options)
 
 
 def _validate_pubsub_options(errors, prefix, event, op_type):

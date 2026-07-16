@@ -117,6 +117,9 @@ def extract_publications(
     publications = [ev for ev in events if ev.get("type") in pub_types]
 
     def _counts(ev) -> bool:
+        """True when this event contributes publisher metadata: any
+        unconditional publication, or (opt-in) a conditional publisher
+        whose publication_uri_field is present and truthy."""
         if ev.get("type") in pub_types:
             return True
         if not include_conditional:
@@ -128,9 +131,11 @@ def extract_publications(
             and bool(ev.get(spec.publication_uri_field))
         )
 
-    # One pass over events so duplicate-URI precedence stays input-order
-    # last-wins — FIB computation accepts one host per URI, and conditional
-    # publishers must not silently outrank a later unconditional one.
+    # 2026-07-16 review fix: counted was unconditional-then-conditional, so a
+    # compute_call's publish_uri always overwrote a put on the same URI. One
+    # pass over events keeps duplicate-URI precedence input-order last-wins —
+    # FIB computation accepts one host per URI, and conditional publishers
+    # must not silently outrank a later unconditional one.
     counted = [ev for ev in events if _counts(ev)]
     publishers_dict = {
         ev[EVENT_SCHEMA[ev["type"]].publication_uri_field]: ev["host"]

@@ -135,7 +135,9 @@ def test_extract_publications_conditional_without_publish_uri_is_ignored():
 def test_duplicate_uri_precedence_is_input_order_last_wins():
     """Collision policy: the dict comprehension has always been input-order
     last-wins, and FIB computation accepts one host per URI. Conditional
-    publishers must obey the same order, not unconditionally overwrite."""
+    publishers must obey the same order, not unconditionally overwrite
+    (2026-07-16 review fix: counted was built conditional-last, so a
+    compute_call silently outranked a later put on the same URI)."""
     compute = {
         "type": "compute_call", "host": 2,
         "endpoint": "http://edge.local/process",

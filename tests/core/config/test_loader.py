@@ -1514,18 +1514,22 @@ def _compute_errors(**overrides):
 
 
 def test_compute_call_minimal_is_valid():
+    """host+endpoint alone is a complete, valid compute_call."""
     assert _compute_errors() == []
 
 
 def test_compute_call_payload_must_be_string():
+    """payload passes to curl -d verbatim; non-strings fail at config time."""
     assert any(".payload" in e for e in _compute_errors(payload=123))
 
 
 def test_compute_call_output_file_must_be_string():
+    """output_file resolves under run_dir; non-strings fail at config time."""
     assert any(".output_file" in e for e in _compute_errors(output_file=1))
 
 
 def test_compute_call_publish_uri_must_be_string():
+    """publish_uri names the republish target; non-strings fail early."""
     assert any(
         ".publish_uri" in e
         for e in _compute_errors(publish_uri=5, output_file="out.json")
@@ -1533,6 +1537,7 @@ def test_compute_call_publish_uri_must_be_string():
 
 
 def test_compute_call_headers_must_be_str_to_str_dict():
+    """headers expand to curl -H \"k: v\"; both keys and values must be str."""
     assert any(".headers" in e for e in _compute_errors(headers="Accept: x"))
     assert any(".headers" in e for e in _compute_errors(headers={1: "x"}))
     assert any(".headers" in e for e in _compute_errors(headers={"Accept": 2}))
@@ -1550,6 +1555,7 @@ def test_compute_call_publish_uri_requires_output_file():
 
 
 def test_compute_call_pub_opts_validated_like_pubsub_pub():
+    """pub_opts carries cefputfile options and is bound-checked as such."""
     assert any(".pub_opts" in e for e in _compute_errors(pub_opts="bad"))
     assert any(
         ".pub_opts.expiry" in e
@@ -1562,3 +1568,33 @@ def test_compute_call_pub_opts_validated_like_pubsub_pub():
     assert _compute_errors(
         pub_opts={"expiry": 5000, "cache_time": 2500, "block_size": 1024}
     ) == []
+
+
+def test_compute_call_pub_opts_block_size_shares_put_minimum():
+    """cefputfile requires block_size >= 60; compute's republish uses the
+    same binary, so the same boundary must hold (review fix 2026-07-16)."""
+    assert any(
+        ".pub_opts.block_size" in e
+        for e in _compute_errors(pub_opts={"block_size": 59})
+    )
+    assert _compute_errors(pub_opts={"block_size": 60}) == []
+
+
+def test_compute_call_pub_opts_rejects_unknown_and_cefpubfile_keys():
+    """Keys compute_client never forwards (cefpubfile-only or typos) must
+    fail at config time instead of being silently dropped."""
+    for key in ("lifetime", "retry_limit", "target", "bogus"):
+        assert any(
+            ".pub_opts" in e and key in e
+            for e in _compute_errors(pub_opts={key: 1})
+        ), f"unknown pub_opts key {key!r} was accepted"
+
+
+def test_compute_call_pub_opts_falsy_non_dict_rejected():
+    """A falsy non-dict ([], false, 0, \"\") must not coerce to {} and
+    bypass the dict type check."""
+    for bad in ([], False, 0, ""):
+        assert any(
+            ".pub_opts must be a dict" in e
+            for e in _compute_errors(pub_opts=bad)
+        ), f"pub_opts={bad!r} was accepted"
