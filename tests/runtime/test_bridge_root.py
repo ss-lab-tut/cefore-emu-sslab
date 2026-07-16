@@ -181,6 +181,32 @@ class TestSetupBridgesSchemeWiring:
         assert resolved_ips and resolved_ips[0] == "192.168.3.254/24"
 
 
+class TestSetupBridgesIntegerSwitchIndex:
+    """YAML bridges give switch as an integer index (the config validator
+    requires it), but Mininet switches are named sN — setup_bridges must
+    translate, or net.get(0) raises KeyError (2026-07-16 audit fix: the
+    YAML bridges path had never been exercised end-to-end)."""
+
+    def test_integer_switch_translates_to_switch_name(self):
+        """switch: 1 in config reaches BridgeManager as "s1"."""
+        bridge_configs = [
+            {"switch": 1, "root_ip": "auto", "local_routes": "192.168.3.0/24"},
+        ]
+        mesh_links = _mesh_links_with_switch("s1", subnet=3)
+        net = MagicMock()
+        bridge_manager = MagicMock()
+        bridge_manager.connect_to_root_ns.return_value = None
+        bridge_manager.enable_normal_flow.return_value = None
+
+        try:
+            setup_bridges(net, bridge_manager, bridge_configs, 2, mesh_links)
+        except Exception:
+            pass  # host-route internals may fail on the MagicMock net
+        args = bridge_manager.connect_to_root_ns.call_args[0]
+        assert args[1] == "s1"
+        bridge_manager.enable_normal_flow.assert_called_once_with(net, "s1")
+
+
 class TestSetupBridgesCommandRunnerWiring:
     """Verify setup_bridges reaches bridge root/host paths through one runner."""
 

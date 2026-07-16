@@ -619,9 +619,15 @@ def setup_bridges(
         scheme: AddressingScheme for IP generation (defaults to 192.168.0.0/16).
     """
     for config in bridge_configs:
+        # 2026-07-16 audit fix: YAML bridges give switch as an integer index
+        # (the config validator requires int), but Mininet switches are named
+        # sN — without translation net.get(0) raises KeyError. CLI-parsed
+        # configs already carry the sN string and pass through unchanged.
         switch = config["switch"]
+        if isinstance(switch, int):
+            switch = f"s{switch}"
         root_ip = _resolve_root_ip(
-            config["switch"], config.get("root_ip"), mesh_links, scheme=scheme
+            switch, config.get("root_ip"), mesh_links, scheme=scheme
         )
         if not root_ip:
             info(f"*** Warning: root_ip not set for switch {switch}\n")

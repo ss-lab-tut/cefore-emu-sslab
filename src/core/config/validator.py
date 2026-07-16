@@ -1033,6 +1033,13 @@ def _validate_pubsub_options(errors, prefix, event, op_type):
 
 
 def _validate_events(errors, config):
+    """Validate the ``events`` list: per-type required fields and field shapes.
+
+    Missing-field checks are bound to ``EVENT_SCHEMA.required_fields``; the
+    per-type branches add the field-shape and cross-field rules a handler
+    cannot express there (see CONTEXT.md EventSchema for the binding
+    asymmetry). Appends messages to ``errors``; never raises on config data.
+    """
     if "events" in config:
         if not isinstance(config["events"], list):
             errors.append("events must be a list")

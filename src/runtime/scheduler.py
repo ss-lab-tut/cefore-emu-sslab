@@ -55,6 +55,8 @@ def _handle_compute_call(net, event, mesh_links, ctx):
         pub_opts=event.get("pub_opts"),
         run_dir=ctx.get("run_dir"),
         timeout=event.get("timeout", 30),
+        # 2026-07-16 audit fix: the cefputfile deadline is its own field —
+        # publish speed is governed by pub_opts rate, not the HTTP timeout.
         publish_timeout=event.get("publish_timeout"),
     )
     detail = {

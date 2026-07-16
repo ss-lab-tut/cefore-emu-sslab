@@ -1639,7 +1639,11 @@ def test_compute_call_repeat_rejects_unknown_keys():
 
 def test_compute_call_publish_timeout_must_be_positive_number():
     """publish_timeout bounds the cefputfile run independently of the HTTP
-    timeout (2026-07-16 audit fix: slow-rate publications outlive it)."""
-    assert any(".publish_timeout" in e for e in _compute_errors(publish_timeout=0))
-    assert any(".publish_timeout" in e for e in _compute_errors(publish_timeout="x"))
+    timeout (2026-07-16 audit fix: slow-rate publications outlive it).
+    Booleans are ints in Python and must still be rejected; an explicit
+    null is rejected too (omit the field for the default)."""
+    for bad in (0, "x", True, None):
+        assert any(
+            ".publish_timeout" in e for e in _compute_errors(publish_timeout=bad)
+        ), f"publish_timeout={bad!r} was accepted"
     assert _compute_errors(publish_timeout=300) == []

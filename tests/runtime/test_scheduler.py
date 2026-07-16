@@ -232,6 +232,47 @@ class TestComputeCallOutcomeMapping:
             sched.wait_all(timeout=3)
         return sink.records[0]
 
+    def test_event_fields_are_forwarded_to_compute_client(self):
+        """The handler forwards every optional compute field — including the
+        publish_timeout deadline (2026-07-16 audit fix) — to compute_call."""
+        from src.runtime.compute_client import ComputeResult
+
+        sink = RecordingSink()
+        net = _make_net()
+        event = {
+            "at": 0.0,
+            "type": "compute_call",
+            "host": 1,
+            "endpoint": "http://edge.local/process",
+            "method": "POST",
+            "payload": "{}",
+            "headers": {"Content-Type": "application/json"},
+            "output_file": "out.json",
+            "publish_uri": "ccnx:/compute/r1",
+            "pub_opts": {"expiry": 5000},
+            "timeout": 7,
+            "publish_timeout": 300,
+        }
+        result = ComputeResult(
+            ok=True, http_status=200, curl_exit=0, publish_ok=True,
+            output_file="out.json", stdout="", env_failure=False,
+        )
+        with patch(
+            "src.runtime.scheduler._do_compute_call", return_value=result
+        ) as call:
+            sched = EventScheduler(net, [event], sink=sink)
+            sched.start()
+            sched.wait_all(timeout=3)
+        kwargs = call.call_args.kwargs
+        assert kwargs["method"] == "POST"
+        assert kwargs["payload"] == "{}"
+        assert kwargs["headers"] == {"Content-Type": "application/json"}
+        assert kwargs["output_file"] == "out.json"
+        assert kwargs["publish_uri"] == "ccnx:/compute/r1"
+        assert kwargs["pub_opts"] == {"expiry": 5000}
+        assert kwargs["timeout"] == 7
+        assert kwargs["publish_timeout"] == 300
+
     def test_env_failure_records_skipped_no_result(self):
         rec = self._run_compute(
             dict(

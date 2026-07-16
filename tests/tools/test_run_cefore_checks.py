@@ -18,6 +18,7 @@ _SCRIPT = (
 
 
 def _load_checker():
+    """Load the checker script as a module from its skill path."""
     spec = importlib.util.spec_from_file_location("run_cefore_checks", _SCRIPT)
     module = importlib.util.module_from_spec(spec)
     # dataclass field-type resolution looks the module up in sys.modules;
@@ -31,6 +32,7 @@ checker = _load_checker()
 
 
 def _event_row(event_type, outcome=None, success=False):
+    """One results.json event record with an optional tri-state outcome."""
     row = {"op_type": "event", "event_type": event_type, "success": success}
     if outcome is not None:
         row["outcome"] = outcome
@@ -50,6 +52,7 @@ def test_event_outcomes_zero_matching_rows_fails():
 
 
 def test_event_outcomes_wrong_outcome_fails():
+    """A mismatching outcome value must fail the expectation."""
     with pytest.raises(RuntimeError, match="skipped-no-result"):
         checker.validate_results(
             "case",
@@ -60,6 +63,7 @@ def test_event_outcomes_wrong_outcome_fails():
 
 
 def test_event_outcomes_matching_outcome_passes():
+    """The expectation passes when every matching record carries the outcome."""
     checker.validate_results(
         "case",
         [_event_row("compute_call", outcome="skipped-no-result")],

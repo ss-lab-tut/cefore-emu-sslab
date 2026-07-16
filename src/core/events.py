@@ -11,8 +11,8 @@ must never import from ``runtime`` or the core->runtime layering would break.
 
 Scope: the canonical source for valid types, required fields, content
 classification, publication classification, and same-timestamp priority.
-Loader, scheduler, content_ops, and the scenario publisher-metadata builders
-(``disaster.py``/``connect.py``) all derive from this module.
+The loader, the scheduler, the content-op dispatch, and the scenario
+publisher-metadata builders all derive from this module.
 """
 
 from dataclasses import dataclass
