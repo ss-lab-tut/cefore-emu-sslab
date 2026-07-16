@@ -106,7 +106,8 @@ class TestMonitorInitValidation:
         )
 
     def test_resolver_provided_is_accepted(self, tmp_path):
-        resolver = lambda h: f"192.168.1.{h + 1}"
+        def resolver(h):
+            return f"192.168.1.{h + 1}"
         Monitor(
             _make_net(),
             targets=[_csmgrstatus_target(hosts="all")],
@@ -145,7 +146,8 @@ class TestCollectTargetCsmgrstatus:
         assert kwargs.get("host") == "192.168.3.4"
 
     def test_resolver_ip_passed_to_run_csmgrstatus(self, tmp_path):
-        resolver = lambda h: f"172.20.{h}.1"
+        def resolver(h):
+            return f"172.20.{h}.1"
         monitor = self._make_monitor(tmp_path, resolver=resolver)
         with patch("src.runtime.monitoring.run_csmgrstatus", return_value=_ok_result()) as mock_fn:
             monitor._collect_target("csmgrstatus", 1, {"type": "csmgrstatus"})
@@ -217,7 +219,8 @@ class TestCollectTargetCsmgrstatus:
         assert kwargs.get("host") == "127.0.0.1"
 
     def test_uri_and_port_num_forwarded(self, tmp_path):
-        resolver = lambda h: "192.168.1.1"
+        def resolver(h):
+            return "192.168.1.1"
         monitor = self._make_monitor(tmp_path, resolver=resolver)
         target = {"type": "csmgrstatus", "uri": "ccnx:/test", "port_num": 9696}
         with patch("src.runtime.monitoring.run_csmgrstatus", return_value=_ok_result()) as mock_fn:
