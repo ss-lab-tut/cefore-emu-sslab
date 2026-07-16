@@ -82,6 +82,69 @@ def test_extract_publications_empty():
     assert pub_ids == frozenset()
 
 
+def test_extract_publications_conditional_compute_call_opt_in():
+    """compute_call with publish_uri is a *conditional* publication.
+
+    Opt-in (include_conditional=True, used by disaster): its publish_uri
+    joins publishers_dict/publisher_ids so FIB pre-programming can route
+    consumers toward the compute host — without it, the republished result
+    is unreachable and the offload experiment cannot succeed. The
+    publications list (connect's seeding input) must NOT grow: seeding a
+    compute_call as a content op would crash on the missing "uri".
+    """
+    events = [
+        {"type": "put", "host": 1, "uri": "ccnx:/a", "file": "f1"},
+        {
+            "type": "compute_call", "host": 2,
+            "endpoint": "http://edge.local/process",
+            "output_file": "out.json", "publish_uri": "ccnx:/compute/r1",
+        },
+    ]
+    pubs, pub_dict, pub_ids = extract_publications(events, include_conditional=True)
+    assert [ev["type"] for ev in pubs] == ["put"]
+    assert pub_dict == {"ccnx:/a": 1, "ccnx:/compute/r1": 2}
+    assert pub_ids == frozenset({1, 2})
+
+
+def test_extract_publications_default_excludes_conditional():
+    # connect keeps its exact pre-extension behavior: conditional publishers
+    # are an explicit per-scenario policy, not a silent global change.
+    events = [
+        {
+            "type": "compute_call", "host": 2,
+            "endpoint": "http://edge.local/process",
+            "publish_uri": "ccnx:/compute/r1",
+        },
+    ]
+    pubs, pub_dict, pub_ids = extract_publications(events)
+    assert pubs == []
+    assert pub_dict == {}
+    assert pub_ids == frozenset()
+
+
+def test_extract_publications_conditional_without_publish_uri_is_ignored():
+    events = [
+        {"type": "compute_call", "host": 2, "endpoint": "http://edge.local/x"},
+    ]
+    pubs, pub_dict, pub_ids = extract_publications(events, include_conditional=True)
+    assert pubs == []
+    assert pub_dict == {}
+    assert pub_ids == frozenset()
+
+
+def test_publication_uri_field_pins_per_type_uri_key():
+    fields = {
+        t: spec.publication_uri_field
+        for t, spec in EVENT_SCHEMA.items()
+        if spec.publication_uri_field is not None
+    }
+    assert fields == {
+        "put": "uri",
+        "pubsub_pub": "uri",
+        "compute_call": "publish_uri",
+    }
+
+
 def test_publication_is_strict_subset_of_content():
     # Every publication is also a content op; the converse is not true
     # (get/pubsub_sub are content but not publication).

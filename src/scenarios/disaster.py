@@ -84,7 +84,12 @@ class DisasterScenario(ConfigDrivenMeshScenario):
             sys.exit("autotest mode forbids ext/bridge configuration")
 
         events = getattr(args, "events", None) or []
-        _, self.uri_publishers, publisher_ids = extract_publications(events)
+        # include_conditional: a compute_call with publish_uri republishes its
+        # result into the ICN — its host must be in the publisher metadata or
+        # FIB pre-programming leaves the republished content unreachable.
+        _, self.uri_publishers, publisher_ids = extract_publications(
+            events, include_conditional=True
+        )
         self.publisher_ids = set(publisher_ids)
 
     def _host_lock(self, host_idx: int) -> threading.Lock:
