@@ -1,0 +1,34 @@
+# compute_call の tri-state outcome 最小サンプル
+# Usage: sudo .venv/bin/python3 -m src disaster --config config/examples/min_compute.yaml
+#
+# 外部到達性なし（bridges/ext 未設定 — autotest mode では設定禁止）で実行し、
+# endpoint 到達不能 → 実験失敗ではなく環境要因として
+# outcome=skipped-no-result が results.json に記録されることを検証する。
+# endpoint は TEST-NET-3 (203.0.113.0/24, RFC 5737) なので到達不能が保証される。
+#
+# ok 経路（実 HTTP → output_file 保存 → publish_uri で ICN 再publish → 他ノード get）
+# は bridges で外部到達性を確保した CLI 実行で手動確認する:
+#   bridges: [{switch: "s0", root_ip: "192.168.200.1/24"}]
+#   root ns 側: python3 -m http.server 18080
+hosts: 3
+switches: 3
+seed: 42
+k: 1
+num: 9910
+output_dir: "logs/verify"
+no_cli: true
+duration: 15
+results_json: "results.json"
+
+events:
+  - at: 3
+    type: compute_call
+    host: 1
+    endpoint: "http://203.0.113.1:8080/api/process"
+    method: POST
+    payload: '{"query": "analyze"}'
+    headers: {"Content-Type": "application/json"}
+    output_file: "compute_result.json"
+    publish_uri: "ccnx:/compute/result1"
+    pub_opts: {expiry: 5000, cache_time: 5000}
+    timeout: 3

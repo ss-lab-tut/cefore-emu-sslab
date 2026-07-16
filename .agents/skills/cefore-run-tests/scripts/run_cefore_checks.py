@@ -28,6 +28,7 @@ SMOKE_CONFIGS = (
     "min_failure",
     "min_event_link",
     "min_monitoring",
+    "min_compute",
     "connect",
 )
 
@@ -312,6 +313,18 @@ def build_smoke_cases() -> list[SmokeCase]:
                 "monitor_json": {"min_entries": 1},
             },
         ),
+        SmokeCase(
+            # compute_call tri-state: no bridges/ext in autotest mode, so the
+            # TEST-NET-3 endpoint is guaranteed unreachable and the record
+            # must be skipped-no-result (environment), never a plain failure.
+            "min_compute",
+            config_relpath="config/examples/min_compute.yaml",
+            expect={
+                "min_rows": 1,
+                "require_event_types": ("compute_call",),
+                "event_outcomes": {"compute_call": "skipped-no-result"},
+            },
+        ),
         SmokeCase("connect", kind="connect"),
     ]
 
@@ -349,6 +362,8 @@ def validate_results(
     - ``require_event_types``: at least one ``op_type == "event"`` record per
       listed event_type (scheduler / failure-cycle outcome records).
     - ``all_events_success``: every event record must have truthy ``success``.
+    - ``event_outcomes``: per-event_type required ``outcome`` value; every
+      event record of that type must carry exactly that tri-state outcome.
     - ``monitor_json``: a monitor.json with at least ``min_entries`` entries
       must exist under the case output directory.
     - ``summarizer_min_rows``: ceforeemu-log module-form stdout must produce at
@@ -388,6 +403,13 @@ def validate_results(
         r.get("success") for r in event_rows
     ):
         fail("contains a failed event record")
+    for event_type, want_outcome in expect.get("event_outcomes", {}).items():
+        for row in (r for r in event_rows if r.get("event_type") == event_type):
+            if row.get("outcome") != want_outcome:
+                fail(
+                    f"{event_type} record outcome is {row.get('outcome')!r}, "
+                    f"expected {want_outcome!r}"
+                )
     monitor_spec = expect.get("monitor_json")
     if monitor_spec:
         matches = sorted(case_output_dir.rglob("monitor.json"))
