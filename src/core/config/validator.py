@@ -1152,19 +1152,32 @@ def _validate_events(errors, config):
                         # validator and the pre-run conditional-publication
                         # (FIB) extraction — a restored publish_uri would
                         # publish content no consumer can reach. compute has
-                        # no natural "restore", so only interval/count repeat
-                        # is allowed.
+                        # no natural "restore", so repeat is an allowlist:
+                        # anything but interval/count (restore forms, typos)
+                        # is rejected rather than silently ignored.
                         repeat = event.get("repeat")
-                        if isinstance(repeat, dict) and any(
-                            key in repeat
-                            for key in ("duration", "restore", "restore_type")
-                        ):
-                            errors.append(
-                                f"events[{idx}].repeat for compute_call "
-                                f"allows only interval/count "
-                                f"(duration/restore/restore_type are not "
-                                f"supported)"
+                        if isinstance(repeat, dict):
+                            extra = sorted(
+                                str(k) for k in set(repeat) - {"interval", "count"}
                             )
+                            if extra:
+                                errors.append(
+                                    f"events[{idx}].repeat for compute_call "
+                                    f"allows only interval/count; got: "
+                                    f"{', '.join(extra)}"
+                                )
+                        # 2026-07-16 audit fix: publishing speed is governed
+                        # by pub_opts rate, not the HTTP request, so the
+                        # cefputfile deadline is its own field.
+                        if "publish_timeout" in event:
+                            if (
+                                not _is_number(event["publish_timeout"])
+                                or event["publish_timeout"] <= 0
+                            ):
+                                errors.append(
+                                    f"events[{idx}].publish_timeout must be "
+                                    f"a positive number"
+                                )
                         _validate_putfile_options(
                             errors, f"events[{idx}]", event
                         )

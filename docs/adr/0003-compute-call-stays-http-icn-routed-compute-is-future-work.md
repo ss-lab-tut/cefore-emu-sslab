@@ -34,8 +34,9 @@ not an extension of this event type.
 
 - Request channel: compute node runs a subscriber (`cefsubfile`-style loop or
   a dedicated cefapp) on a request prefix; consumers publish request payloads
-  under it. The FIB seam already supports routing the request prefix toward
-  the compute host (`publication_uri_field` metadata, ADR-agnostic).
+  under it. Routing the *request* prefix toward the compute host needs its own
+  FIB programming (the existing fib_add machinery); the current
+  `publication_uri_field` metadata only maps the *response* `publish_uri`.
 - Execution: on request receipt the compute node invokes the same
   `compute_client.compute_call()` (the HTTP seam is reusable as-is; the
   runner-injected `ComputeResult` interface was shaped for this).

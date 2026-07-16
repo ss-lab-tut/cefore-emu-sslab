@@ -193,7 +193,37 @@ def test_publish_timed_out_or_cancelled_vetoes_publish_ok(monkeypatch):
 
         assert result.publish_ok is False, flag
         assert result.ok is False, flag
-        assert fake.runs[1]["timeout"] == 10 + 5
+        # 2026-07-16 audit fix: the publish deadline is independent of the
+        # HTTP timeout — at cefputfile's minimum rate (0.001 Mbps) even a
+        # small result outlives timeout+margin, so reusing it would kill
+        # valid slow publications.
+        assert fake.runs[1]["timeout"] == 120
+
+
+def test_publish_timeout_field_overrides_default_deadline(monkeypatch):
+    """publish_timeout bounds only the cefputfile run; the HTTP run keeps
+    its own timeout-derived deadline."""
+    fake = FakeCommandRunner()
+    fake.script_run(returncode=0, stdout="\n200")
+    fake.script_run(returncode=0)
+
+    monkeypatch.setattr("src.runtime.compute_client.Path.exists", lambda self: True)
+    with patch(
+        "src.runtime.compute_client.resolve_run_path",
+        return_value=Path("logs/run-7/out.json"),
+    ):
+        _call(
+            fake,
+            host_idx=4,
+            output_file="out.json",
+            publish_uri="ccnx:/compute/result1",
+            run_dir="logs/run-7",
+            timeout=10,
+            publish_timeout=600,
+        )
+
+    assert fake.runs[0]["timeout"] == 10 + 5
+    assert fake.runs[1]["timeout"] == 600
 
 
 def test_publish_failure_fails_the_call(monkeypatch):

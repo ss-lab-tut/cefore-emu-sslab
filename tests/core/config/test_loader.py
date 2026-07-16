@@ -1499,6 +1499,7 @@ def test_no_scalar_spec_reintroduces_argparse_none_default_trap():
 
 
 def _compute_event(**overrides):
+    """Minimal valid compute_call event, with overrides applied on top."""
     event = {
         "at": 0,
         "type": "compute_call",
@@ -1510,6 +1511,7 @@ def _compute_event(**overrides):
 
 
 def _compute_errors(**overrides):
+    """validate_config errors for one compute_call event built by _compute_event."""
     return validate_config({"hosts": 5, "events": [_compute_event(**overrides)]})
 
 
@@ -1545,8 +1547,8 @@ def test_compute_call_headers_must_be_str_to_str_dict():
 
 
 def test_compute_call_publish_uri_requires_output_file():
-    # cefputfile needs a saved response body; publish_uri without output_file
-    # can never publish anything and must fail at config time.
+    """cefputfile needs a saved response body; publish_uri without
+    output_file can never publish anything and must fail at config time."""
     errors = _compute_errors(publish_uri="ccnx:/compute/r1")
     assert any("publish_uri" in e and "output_file" in e for e in errors)
     assert _compute_errors(
@@ -1625,3 +1627,19 @@ def test_compute_call_pub_opts_mixed_type_unknown_keys_report_not_crash():
     not a TypeError from sorting mixed key types (2026-07-16 audit fix)."""
     errors = _compute_errors(pub_opts={1: 2, "bogus": 3})
     assert any(".pub_opts" in e and "unsupported keys" in e for e in errors)
+
+
+def test_compute_call_repeat_rejects_unknown_keys():
+    """compute_call repeat is an interval/count allowlist; unknown keys
+    (typos or unsupported forms) must fail rather than be silently ignored
+    (2026-07-16 audit fix)."""
+    errors = _compute_errors(repeat={"interval": 5, "bogus": 1})
+    assert any(".repeat" in e and "bogus" in e for e in errors)
+
+
+def test_compute_call_publish_timeout_must_be_positive_number():
+    """publish_timeout bounds the cefputfile run independently of the HTTP
+    timeout (2026-07-16 audit fix: slow-rate publications outlive it)."""
+    assert any(".publish_timeout" in e for e in _compute_errors(publish_timeout=0))
+    assert any(".publish_timeout" in e for e in _compute_errors(publish_timeout="x"))
+    assert _compute_errors(publish_timeout=300) == []

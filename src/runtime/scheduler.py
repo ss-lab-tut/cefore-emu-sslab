@@ -55,6 +55,7 @@ def _handle_compute_call(net, event, mesh_links, ctx):
         pub_opts=event.get("pub_opts"),
         run_dir=ctx.get("run_dir"),
         timeout=event.get("timeout", 30),
+        publish_timeout=event.get("publish_timeout"),
     )
     detail = {
         "http_status": result.http_status,

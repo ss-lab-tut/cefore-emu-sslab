@@ -34,6 +34,13 @@ _ENV_FAILURE_EXITS = frozenset({5, 6, 7, 28})
 # hung netns exec that never reaches curl.
 _RUNNER_TIMEOUT_MARGIN = 5
 
+# 2026-07-16 audit fix: the publish deadline must be independent of the HTTP
+# timeout — at cefputfile's minimum rate (0.001 Mbps) even a few-KB result
+# outlives timeout+margin, so reusing it killed valid slow publications.
+# The default still bounds a hung cefputfile; slow transfers override it via
+# the event's publish_timeout.
+_PUBLISH_TIMEOUT_DEFAULT = 120
+
 
 @dataclass(frozen=True)
 class ComputeResult:
@@ -72,7 +79,8 @@ def _split_status(stdout: str):
 
 def compute_call(runner, host_idx, endpoint, method="GET", payload=None,
                  headers=None, output_file=None, publish_uri=None,
-                 pub_opts=None, run_dir=None, timeout=30):
+                 pub_opts=None, run_dir=None, timeout=30,
+                 publish_timeout=None):
     """Execute an HTTP API call from a Mininet host and report a ComputeResult.
 
     Args:
@@ -91,6 +99,9 @@ def compute_call(runner, host_idx, endpoint, method="GET", payload=None,
         run_dir: Experiment run directory (Path).
         timeout: Request timeout in seconds (curl --max-time; the runner
             deadline is armed with a margin on top).
+        publish_timeout: Deadline in seconds for the cefputfile run
+            (default 120). Independent of ``timeout``: publishing speed is
+            governed by pub_opts rate, not by the HTTP request.
 
     Returns:
         ComputeResult.
@@ -156,7 +167,9 @@ def compute_call(runner, host_idx, endpoint, method="GET", payload=None,
             # as authoritative as curl's, and without a runner deadline a hung
             # cefputfile would stall the single-threaded scheduler forever.
             pub_result = runner.run(
-                host_name, pub_argv, timeout=timeout + _RUNNER_TIMEOUT_MARGIN
+                host_name,
+                pub_argv,
+                timeout=publish_timeout or _PUBLISH_TIMEOUT_DEFAULT,
             )
             publish_ok = (
                 pub_result.returncode == 0

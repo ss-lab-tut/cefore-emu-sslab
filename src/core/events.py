@@ -103,8 +103,8 @@ def extract_publications(
             compute_call with publish_uri set). They join publishers_dict /
             publisher_ids (so FIB pre-programming routes consumers toward the
             publishing host) but never the publications list: that list is a
-            seeding input (connect executes it as content ops), and a
-            compute_call there would crash on the missing "uri". Opt-in per
+            seeding input (seeding scenarios execute it as content ops), and
+            a compute_call there would crash on the missing "uri". Opt-in per
             scenario policy: pass True where compute_call events actually
             execute (so their republished URIs get FIB metadata); keep the
             default where the publications list is a seeding input.

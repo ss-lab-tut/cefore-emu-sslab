@@ -4,16 +4,21 @@
 # 外部到達性なし（bridges/ext 未設定 — autotest mode では設定禁止）で実行し、
 # endpoint 到達不能 → 実験失敗ではなく環境要因として
 # outcome=skipped-no-result が results.json に記録されることを検証する。
-# endpoint は TEST-NET-3 (203.0.113.0/24, RFC 5737) なので到達不能が保証される。
+# 到達不能の保証は topology isolation（autotest mode に外部経路が無いこと）で、
+# RFC 5737 (TEST-NET-3) はその上で「万一経路があっても実サービスに当たらない」
+# 安全側の選択にすぎない。
 #
 # ok 経路（実 HTTP → output_file 保存 → publish_uri で ICN 再publish → 他ノード get）
 # の手動確認手順（autotest mode は bridges 禁止なので、このファイルをコピーして
 # no_cli と results_json を外し、CLI モードで実行する）:
-#   1. コピーに追記:  bridges: [{switch: "s0", root_ip: "192.168.200.1/24"}]
+#   1. コピーに追記（switch は整数 index、local_routes は必須）:
+#        bridges:
+#          - {switch: 0, root_ip: "192.168.200.1/24", local_routes: "192.168.0.0/16"}
 #   2. events の endpoint を root ns 側サーバに変更:
 #        endpoint: "http://192.168.200.1:18080/"
 #        method: GET   （http.server は POST に 501 を返すため GET にする）
-#   3. root ns 側: python3 -m http.server 18080
+#        （payload/headers 行は削除）
+#   3. root ns 側: .venv/bin/python3 -m http.server 18080
 #   4. sudo .venv/bin/python3 -m src disaster --config <コピー>
 #      → CLI で h0 から: cefgetfile ccnx:/compute/result1 -f /tmp/r1
 hosts: 3
