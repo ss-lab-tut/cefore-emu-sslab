@@ -100,7 +100,7 @@ class BridgeManager:
         switch_name: str,
         root_ip: str,
         local_routes: str,
-    ) -> None:
+    ) -> bool:
         """Connect Mininet hosts to root namespace via switch.
 
         Args:
@@ -108,6 +108,12 @@ class BridgeManager:
             switch_name: Switch name to connect to root namespace.
             root_ip: IP address for root namespace node (e.g., "192.168.100.1/24").
             local_routes: Local Mininet host networks to route to.
+
+        Returns:
+            True when the root link is attached; False when the switch does
+            not exist. The caller must skip every follow-on operation for
+            the bridge entry on False — flows/routes/NAT against a missing
+            switch would mutate unrelated state and register bogus cleanup.
         """
         # 2026-07-16 review fix: the switches config value is an upper bound
         # on the emergent topology, so a validator-accepted index can name a
@@ -119,7 +125,7 @@ class BridgeManager:
             switch = None
         if switch is None:
             info(f"*** Warning: switch {switch_name} not found\n")
-            return
+            return False
 
         validate_static_ip(root_ip)
 
@@ -151,6 +157,7 @@ class BridgeManager:
                 ),
             )
         )
+        return True
 
     def add_host_route(
         self,
@@ -648,7 +655,15 @@ def setup_bridges(
             continue
         local_routes = config["local_routes"]
 
-        bridge_manager.connect_to_root_ns(net, switch, root_ip, local_routes)
+        # 2026-07-21 review fix: when attachment fails (emergent topology
+        # lacks the switch), skip the WHOLE entry — continuing would issue
+        # ovs-ofctl against the missing switch, register bogus cleanup
+        # actions, and mutate unrelated routing/NAT state.
+        if bridge_manager.connect_to_root_ns(
+            net, switch, root_ip, local_routes
+        ) is False:
+            info(f"*** Skipping bridge entry for missing switch {switch}\n")
+            continue
         bridge_manager.enable_normal_flow(net, switch)
 
         gateway = extract_gateway_from_ip(root_ip)

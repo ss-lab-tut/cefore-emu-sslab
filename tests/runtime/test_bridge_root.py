@@ -213,17 +213,41 @@ class TestConnectToRootNsMissingSwitch:
     review fix)."""
 
     def test_missing_switch_warns_and_returns_without_addlink(self):
-        """A KeyError from net.get degrades to the documented warning."""
+        """A KeyError from net.get degrades to the documented warning and
+        reports failure so the caller can skip the whole bridge entry."""
         from src.runtime.bridge_root import BridgeManager
 
         mgr = BridgeManager(runner=FakeCommandRunner())
         net = MagicMock()
         net.get = MagicMock(side_effect=KeyError("s2"))
 
-        mgr.connect_to_root_ns(net, "s2", "192.168.3.254/24", "192.168.0.0/16")
+        with patch("src.runtime.bridge_root.info") as mock_info:
+            ok = mgr.connect_to_root_ns(
+                net, "s2", "192.168.3.254/24", "192.168.0.0/16"
+            )
 
+        assert ok is False
         net.addLink.assert_not_called()
         assert mgr.cleanup_actions == []
+        assert any(
+            "s2 not found" in str(c.args[0]) for c in mock_info.call_args_list
+        )
+
+    def test_successful_connect_reports_true(self):
+        """The success/failure return is the seam setup_bridges keys on."""
+        from src.runtime.bridge_root import BridgeManager
+
+        mgr = BridgeManager(runner=FakeCommandRunner())
+        mgr.root_node = MagicMock()
+        net = MagicMock()
+        net.get = MagicMock(return_value=MagicMock())
+        net.addLink = MagicMock(return_value=MagicMock())
+
+        ok = mgr.connect_to_root_ns(
+            net, "s0", "192.168.1.254/24", "192.168.0.0/16"
+        )
+
+        assert ok is True
 
 
 class TestSetupBridgesIntegerSwitchIndex:
@@ -250,6 +274,35 @@ class TestSetupBridgesIntegerSwitchIndex:
         args = bridge_manager.connect_to_root_ns.call_args[0]
         assert args[1] == "s1"
         bridge_manager.enable_normal_flow.assert_called_once_with(net, "s1")
+
+
+class TestSetupBridgesSkipsEntryOnAttachFailure:
+    """2026-07-21 review fix: when the switch cannot be attached, the whole
+    bridge entry must be skipped — continuing with enable_normal_flow /
+    routes / NAT would issue ovs-ofctl against a missing switch, register
+    bogus cleanup actions, and mutate unrelated routing state."""
+
+    def test_no_follow_on_operations_after_failed_connect(self):
+        """connect_to_root_ns=False stops flow/route/NAT processing."""
+        bridge_configs = [
+            {
+                "switch": 2,
+                "root_ip": "192.168.3.254/24",
+                "local_routes": "192.168.0.0/16",
+                "nat": True,
+            }
+        ]
+        net = MagicMock()
+        bridge_manager = MagicMock()
+        bridge_manager.connect_to_root_ns.return_value = False
+
+        setup_bridges(net, bridge_manager, bridge_configs, 2, None)
+
+        bridge_manager.connect_to_root_ns.assert_called_once()
+        bridge_manager.enable_normal_flow.assert_not_called()
+        bridge_manager.add_host_route.assert_not_called()
+        bridge_manager.enable_ip_forwarding.assert_not_called()
+        bridge_manager.enable_nat.assert_not_called()
 
 
 class TestSetupBridgesCommandRunnerWiring:
