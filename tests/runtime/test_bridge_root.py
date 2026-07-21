@@ -234,7 +234,8 @@ class TestConnectToRootNsMissingSwitch:
         )
 
     def test_successful_connect_reports_true(self):
-        """The success/failure return is the seam setup_bridges keys on."""
+        """The bool distinguishes attachment success from a missing switch
+        so every follow-on mutation can be keyed off it."""
         from src.runtime.bridge_root import BridgeManager
 
         mgr = BridgeManager(runner=FakeCommandRunner())
@@ -284,12 +285,18 @@ class TestSetupBridgesSkipsEntryOnAttachFailure:
 
     def test_no_follow_on_operations_after_failed_connect(self):
         """connect_to_root_ns=False stops flow/route/NAT processing."""
+        # external_routes + gateway + nat + proxy_arp make every follow-on
+        # branch reachable, so each assert_not_called can actually fail if
+        # the early skip regresses.
         bridge_configs = [
             {
                 "switch": 2,
                 "root_ip": "192.168.3.254/24",
                 "local_routes": "192.168.0.0/16",
+                "external_routes": "10.0.0.0/24",
+                "gateway": "192.168.3.1",
                 "nat": True,
+                "proxy_arp": True,
             }
         ]
         net = MagicMock()
@@ -300,9 +307,39 @@ class TestSetupBridgesSkipsEntryOnAttachFailure:
 
         bridge_manager.connect_to_root_ns.assert_called_once()
         bridge_manager.enable_normal_flow.assert_not_called()
+        bridge_manager.add_root_route.assert_not_called()
         bridge_manager.add_host_route.assert_not_called()
         bridge_manager.enable_ip_forwarding.assert_not_called()
         bridge_manager.enable_nat.assert_not_called()
+        bridge_manager.enable_proxy_arp.assert_not_called()
+
+    def test_follow_ons_reachable_when_connect_succeeds(self):
+        """Sanity for the fixture above: with attachment succeeding, the same
+        config drives the route/NAT/proxy follow-ons — proving the
+        not-called asserts are behavior-sensitive, not vacuous."""
+        bridge_configs = [
+            {
+                "switch": 2,
+                "root_ip": "192.168.3.254/24",
+                "local_routes": "192.168.0.0/16",
+                "external_routes": "10.0.0.0/24",
+                "gateway": "192.168.3.1",
+                "nat": True,
+                "proxy_arp": True,
+            }
+        ]
+        net = MagicMock()
+        bridge_manager = MagicMock()
+        bridge_manager.connect_to_root_ns.return_value = True
+
+        setup_bridges(net, bridge_manager, bridge_configs, 2, None)
+
+        bridge_manager.enable_normal_flow.assert_called_once()
+        bridge_manager.add_root_route.assert_called_once()
+        assert bridge_manager.add_host_route.call_count == 2
+        bridge_manager.enable_ip_forwarding.assert_called_once()
+        bridge_manager.enable_nat.assert_called_once()
+        bridge_manager.enable_proxy_arp.assert_called_once()
 
 
 class TestSetupBridgesCommandRunnerWiring:
