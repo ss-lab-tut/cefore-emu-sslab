@@ -1,4 +1,4 @@
-# CeforeEmu
+# CeforeEmu (by sslab)
 
 [README.md(en)](./README.md)
 
