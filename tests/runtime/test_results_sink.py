@@ -5,7 +5,8 @@ import threading
 
 import pytest
 
-from src.core.verdict import Verdict
+from src.core.ccninfo_parse import CcninfoHop, CcninfoReply
+from src.core.verdict import CcninfoVerdict, Verdict
 from src.runtime.results_sink import RecordingSink, ResultsSink
 
 
@@ -132,3 +133,66 @@ class TestRecordingSink:
         sink.record_event("host_up", success=True, error=None, host=1)
         assert len(sink.of_type("get")) == 1
         assert len(sink.of_type("event")) == 1
+
+
+class TestRecordCcninfo:
+    """Wire-contract tests for ccninfo records emitted via record_ccninfo."""
+
+    def _record_one_ccninfo(self, sink, **overrides):
+        verdict = overrides.pop("verdict", CcninfoVerdict(
+            success=True,
+            reply_received=True,
+            responder_matched=True,
+            route_matched=True,
+            exit_code=0,
+            timed_out=False,
+            cancelled=False,
+            responder="h1",
+            route_nodes=("h1",),
+        ))
+        reply = overrides.pop("reply", CcninfoReply(
+            reply_received=True,
+            responder="h1",
+            result="NO_ERROR",
+            rtt_ms=5.562,
+            route=(CcninfoHop(index=1, node="h1", delay_ms=5.463),),
+            cache_lines=(" 1 c ccnx:/test/a\t423 KB",),
+        ))
+        defaults = dict(
+            host=0,
+            uri="ccnx:/test/a",
+            phase="event",
+            log_file="/tmp/ccninfo.log",
+            down_hosts=[],
+            expected_responder="h1",
+            expected_route=("h1",),
+        )
+        defaults.update(overrides)
+        sink.record_ccninfo(verdict, reply, **defaults)
+
+    def test_serializes_full_wire_contract_key_set(self):
+        from tests.core.test_records import CCNINFO_KEYS
+        sink = ResultsSink()
+        self._record_one_ccninfo(sink)
+        rec = sink.records[0]
+        assert list(rec.keys()) == CCNINFO_KEYS
+
+    def test_route_is_json_primitive_dicts(self):
+        sink = ResultsSink()
+        self._record_one_ccninfo(sink)
+        rec = sink.records[0]
+        assert isinstance(rec["route"], (list, tuple))
+        hop = rec["route"][0]
+        assert isinstance(hop, dict)
+        assert hop == {"index": 1, "node": "h1", "delay_ms": 5.463}
+
+    def test_ts_is_iso_utc(self):
+        sink = ResultsSink()
+        self._record_one_ccninfo(sink)
+        assert "T" in sink.records[0]["ts"]
+        assert "+00:00" in sink.records[0]["ts"]
+
+    def test_of_type_filters_ccninfo(self):
+        sink = RecordingSink()
+        self._record_one_ccninfo(sink)
+        assert len(sink.of_type("ccninfo")) == 1

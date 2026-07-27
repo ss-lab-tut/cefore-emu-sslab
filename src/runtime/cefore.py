@@ -7,6 +7,7 @@ from pathlib import Path
 from mininet.log import info
 
 from .cef_argv import (
+    build_ccninfo_argv,
     build_cefgetfile_argv,
     build_cefpubfile_argv,
     build_cefputfile_argv,
@@ -20,6 +21,27 @@ from .daemon_logs import (
     cleanup_stale_csmgrd_log,
     tmp_daemon_log_paths,
 )
+
+# ccninfo self-terminates on its own once it gets a reply or hits
+# CCNINFO_REPLY_TIMEOUT+1 (cefnetd.conf default 4s + 1s grace = ~5s), so this
+# guard is not the primary bound — it exists to cap a *hung* binary (e.g. a
+# wedged cefnetd never replying and never letting ccninfo's own timer fire)
+# so a caller's run() call cannot block forever.
+CCNINFO_GUARD_TIMEOUT = 10
+
+
+def cefore_env_prefix(env_dir: str) -> list[str]:
+    """Build the ``env CEFORE_DIR=<dir>`` argv prefix.
+
+    Shared between ``run_ccninfo`` (event-driven, log-file mode) and
+    monitoring (periodic, stdout mode).
+
+    Why this prefix is necessary: ccninfo parses ``-d`` AFTER
+    ``cef_client_init()``, so without ``CEFORE_DIR`` it reads
+    ``/usr/local/cefore/cefnetd.conf``'s ``LOCAL_SOCK_ID`` and connects
+    to the wrong cefnetd in multi-node Mininet runs.
+    """
+    return ["env", f"CEFORE_DIR={env_dir}"]
 
 
 def _expected_daemon_log_path(idx: int, *, has_csmgrd: bool) -> Path:
@@ -289,6 +311,71 @@ def run_cefgetfile(
         cancel_event=cancel_event,
     )
     return result.returncode
+
+
+def run_ccninfo(
+    runner,
+    host_idx,
+    uri,
+    *,
+    log_name,
+    cache_info=False,
+    owner_only=False,
+    hop_count=None,
+    skip_hop=None,
+    valid_algo=None,
+    timeout=CCNINFO_GUARD_TIMEOUT,
+    cancel_event=None,
+    cefore_env_dir=None,
+):
+    """Run ccninfo to query cache/path information for a content prefix.
+
+    Args:
+        runner: CommandRunner used to execute the command.
+        host_idx: Querying host index.
+        uri: Content name prefix to query.
+        cache_info: If True, add -c flag to request cache info/RTT.
+        owner_only: If True, add -o flag for owner-only query.
+        hop_count: Max number of routers to trace.
+        skip_hop: Number of upstream routers to skip.
+        valid_algo: Validation algorithm (crc32c or rsa-sha256).
+        log_name: Name of the log file.
+        timeout: Maximum number of seconds to wait (default:
+            CCNINFO_GUARD_TIMEOUT — bounds a hung binary; ccninfo itself
+            self-terminates well before this under normal operation).
+        cancel_event: Optional threading event used to cancel the command.
+        cefore_env_dir: When set, prepend ``env CEFORE_DIR=<path>`` to the
+            command so ccninfo reads the correct node's cefnetd.conf.
+
+    Returns:
+        CommandResult: the full result, not just the exit code. Unlike
+        run_cefputfile/run_cefgetfile (which return a bare returncode — a
+        legacy contract this function does not copy), interpreting a ccninfo
+        run requires timed_out/cancelled: a real reply, a timeout, and a
+        cancellation can all surface as similar-looking exit codes, and the
+        verdict layer needs to tell them apart.
+    """
+    node_name = f"h{host_idx}"
+    argv = build_ccninfo_argv(
+        uri,
+        node_name=node_name,
+        cache_info=cache_info,
+        owner_only=owner_only,
+        hop_count=hop_count,
+        skip_hop=skip_hop,
+        valid_algo=valid_algo,
+    )
+    # 2026-07-27 upstream bug workaround — see cefore_env_prefix docstring.
+    if cefore_env_dir is not None:
+        argv = [*cefore_env_prefix(cefore_env_dir), *argv]
+    info(f"{node_name} command: {argv}\n")
+    return runner.run(
+        node_name,
+        argv,
+        log_path=log_name,
+        timeout=timeout,
+        cancel_event=cancel_event,
+    )
 
 
 def run_cefstatus(net, host_idx):

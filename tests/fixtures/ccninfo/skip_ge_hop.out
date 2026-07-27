@@ -1,0 +1,7 @@
+[ccninfo] ERROR: [-s skip_hop] is greater than or equal to [-r hop_count]
+
+Usage: ccninfo
+
+  ccninfo name_prefix [-V] [-f] [-c] [-o] [-r hop_count]  [-s skip_hop] [-v valid_algo]   [-d config_file_dir] [-p port_num]
+
+EXIT=0 ELAPSED_MS=3

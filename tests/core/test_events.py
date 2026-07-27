@@ -24,6 +24,7 @@ def test_canonical_order_matches_loader_error_message_order():
     assert event_types() == (
         "link_down", "link_up", "fib_add", "fib_del", "fib_enable",
         "bw_set", "compute_call", "put", "get", "pubsub_pub", "pubsub_sub",
+        "ccninfo",
     )
 
 
@@ -44,12 +45,13 @@ def test_required_fields_pin_the_contract_including_file_drift():
         "get": ("host", "uri"),
         "pubsub_pub": ("host", "uri", "file"),
         "pubsub_sub": ("host", "uri"),
+        "ccninfo": ("host", "uri"),
     }
 
 
-def test_content_event_types_are_put_get_pub_sub():
+def test_content_event_types_include_all_runner_managed_ops():
     assert content_event_types() == frozenset(
-        {"put", "get", "pubsub_pub", "pubsub_sub"}
+        {"put", "get", "pubsub_pub", "pubsub_sub", "ccninfo"}
     )
 
 

@@ -70,7 +70,7 @@ One named piece of Verdict evidence (`has_completed_log`, `has_output_file`, exi
 _Avoid_: flag, boolean column
 
 **ResultsRecord**:
-One judgment entry in results.json — a tagged union of two shapes: ContentRecord (one per put/get/pub/sub; 14 fixed keys carrying the Verdict Factors) and EventRecord (one per non-content scheduler event or host flap). Defined in `src/core/records.py`; the on-disk key sets are frozen — every reader (autotest analyze, smoke checker, webui) depends on them.
+One judgment entry in results.json — a tagged union of three shapes: ContentRecord (one per put/get/pub/sub; 14 fixed keys carrying the Verdict Factors), CcninfoRecord (one per ccninfo probe; 21 fixed keys carrying route/responder evidence and match Factors), and EventRecord (one per non-content scheduler event or host flap). Defined in `src/core/records.py`; the on-disk key sets are frozen — every reader (autotest analyze, smoke checker, webui) depends on them.
 _Avoid_: result dict, record dict, results entry
 
 **ResultsSink**:
@@ -98,6 +98,14 @@ _Avoid_: `valid_event_types` literal, `_EVENT_PRIORITY`/`_CONTENT_EVENT_TYPES` l
 **extract_publications**:
 The single owner of "which events introduce content into the network and who publishes them". Pure function in `src/core/events.py`: `extract_publications(events: list[dict]) → (publications, publishers_dict, publisher_ids)` where `publications` is the filtered list, `publishers_dict` is `{uri: host_idx}`, and `publisher_ids` is `frozenset[int]` (integer host indices, matching `ScenarioSetupSpec.publisher_ids: set[int]`). Both `DisasterScenario` and `ConnectScenario` derive their publisher state from it; `runtime/external_net.py` re-exports it as the public surface.
 _Avoid_: `_prepare_event_publishers` (removed), `_publication_metadata` (removed), per-scenario iteration over `publication_event_types()`
+
+**ccninfo event**:
+A content event type that runs a CCNinfo path/cache trace (RFC 9344) from a designated host. Opt-in assert fields `expected_responder` and `expected_route` pin the responder node name and the ordered route token list respectively; mismatches are recorded as `responder_matched`/`route_matched` Factors in the CcninfoRecord.
+_Avoid_: calling ccninfo from a CS_MODE=2 originator without `-c` (upstream Bug2 produces corrupt replies)
+
+**ccninfo monitor target**:
+A monitoring target (`type: ccninfo`) that periodically runs a CCNinfo probe from specified hosts. Each collection cycle produces a structured dict (not a string) in `monitor.json` with `parsed.reply_received`, `parsed.route`, `parsed.responder`, `timed_out`, and `elapsed_ms`. The monitor `output` field is a dict for successful ccninfo probes but stays a plain string for host-down skips and exception wraps (the existing `_collect_once` contract), so the output type for any monitor entry is `dict | str`.
+_Avoid_: monitoring ccninfo at intervals below the 5s warning threshold
 
 ## Scenario setup
 
@@ -205,3 +213,10 @@ definitive True と判定するよう更新済み (src/core/verdict.py) — mark
 (0-byte FAILURE ログ) の log-only 判定は依然 unknown のままで、これはログ欠損と
 区別不能という構造的限界であり today の fix では解消しない。
 _Avoid_: 実験 config の pubsub を無検証で 10+ hosts に置くこと
+
+**deferred (2026-07-27 external review) — ccninfo/monitoring known gaps**:
+- `.inf` が monitoring.interval validation を通過した後 monitor thread を無限待機で殺す (pre-existing class; isfinite guard は command_timeout のみ適用済み)
+- monitor の per-cycle timestamps は cycle 先頭で 1 回だけ打刻 → 後続 serial targets は stale な elapsed_sec を持つ
+- webui は ccninfo monitor entries を表示しない; ccninfo を success rate に含めない
+- Monitor.stop() の残余 unbounded paths: on_record callback タイムアウトなし; post-kill proc.wait(); fg cefstatus/csmgrstatus timeout=None
+- dense ccninfo timeline 下の serial content worker occupancy (ccninfo ~5s/probe が content op latency を圧迫する可能性)

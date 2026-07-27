@@ -1,0 +1,2 @@
+ccninfo to ccnx:/no/such/prefix with HopLimit=32, SkipHopCount=0, Flag=0x0000, Request ID=59853 and node ID=192.168.2.1
+EXIT=0 ELAPSED_MS=5013

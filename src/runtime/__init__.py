@@ -18,6 +18,7 @@ _EXPORT_MODULES = {
     "run_cefgetfile": ".cefore",
     "run_cefstatus": ".cefore",
     "run_cefstatus_all": ".cefore",
+    "run_ccninfo": ".cefore",
     "run_csmgrstatus": ".cefore",
     # cleanup
     "cleanup_all": ".cleanup",
@@ -93,6 +94,7 @@ __all__ = [
     "stop_cefnetd",
     "run_cefputfile",
     "run_cefgetfile",
+    "run_ccninfo",
     "run_cefstatus",
     "run_cefstatus_all",
     "run_csmgrstatus",

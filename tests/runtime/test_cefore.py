@@ -6,13 +6,14 @@ import pytest
 
 import src.runtime.cefore as cefore_mod
 from src.runtime.cefore import (
+    run_ccninfo,
     run_cefgetfile,
     run_cefpubfile,
     run_cefputfile,
     run_csmgrstatus,
     start_cefsubfile,
 )
-from src.runtime.command_runner import FakeCommandRunner
+from src.runtime.command_runner import CommandResult, FakeCommandRunner
 
 
 def _argv_str(argv):
@@ -110,6 +111,129 @@ class TestRunCefgetfile:
             == -15
         )
         assert fake.runs[0]["timeout"] == 0
+
+
+# ---------------------------------------------------------------------------
+# run_ccninfo
+# ---------------------------------------------------------------------------
+
+
+class TestRunCcninfo:
+    def test_builds_expected_argv_and_log(self):
+        fake = FakeCommandRunner()
+        run_ccninfo(
+            fake, 0, "ccnx:/test/sample", log_name="/tmp/ccninfo.log"
+        )
+        rec = fake.runs[0]
+        assert rec["node"] == "h0"
+        assert rec["argv"] == ["ccninfo", "ccnx:/test/sample", "-d", "./h0"]
+        assert rec["log_path"] == "/tmp/ccninfo.log"
+        assert "2>&1" not in _argv_str(rec["argv"])
+
+    def test_forwards_all_option_kwargs_into_argv(self):
+        # port_num removed from run_ccninfo (Cefore 0.12.0 parse-order bug
+        # makes -p ineffective); kept in build_ccninfo_argv only.
+        fake = FakeCommandRunner()
+        run_ccninfo(
+            fake,
+            0,
+            "ccnx:/test/sample",
+            log_name="/tmp/ccninfo.log",
+            cache_info=True,
+            owner_only=True,
+            hop_count=5,
+            skip_hop=1,
+            valid_algo="crc32c",
+        )
+        argv = fake.runs[0]["argv"]
+        assert argv[:5] == ["ccninfo", "ccnx:/test/sample", "-c", "-o", "-r"]
+        assert argv[argv.index("-r") + 1] == "5"
+        assert argv[argv.index("-s") + 1] == "1"
+        assert argv[argv.index("-v") + 1] == "crc32c"
+        assert "-p" not in argv
+        assert argv[-2:] == ["-d", "./h0"]
+
+    def test_log_name_is_required(self):
+        fake = FakeCommandRunner()
+        with pytest.raises(TypeError):
+            run_ccninfo(fake, 0, "ccnx:/test/sample")
+
+    def test_default_timeout_is_ccninfo_guard_timeout(self):
+        fake = FakeCommandRunner()
+        run_ccninfo(fake, 0, "ccnx:/test/sample", log_name="/tmp/ccninfo.log")
+        # No explicit timeout kwarg: the module's CCNINFO_GUARD_TIMEOUT
+        # constant must be what actually reaches the runner, not None —
+        # ccninfo self-terminates but a hung binary must still be bounded.
+        assert fake.runs[0]["timeout"] == cefore_mod.CCNINFO_GUARD_TIMEOUT
+
+    def test_passes_timeout_and_cancel_event(self):
+        fake = FakeCommandRunner()
+        sentinel = object()
+        run_ccninfo(
+            fake,
+            0,
+            "ccnx:/test/sample",
+            log_name="/tmp/ccninfo.log",
+            timeout=7,
+            cancel_event=sentinel,
+        )
+        assert fake.runs[0]["timeout"] == 7
+        assert fake.runs[0]["cancel_event"] is sentinel
+
+    def test_cefore_env_dir_prepends_env_prefix_to_argv(self):
+        fake = FakeCommandRunner()
+        run_ccninfo(
+            fake, 0, "ccnx:/test/sample",
+            log_name="/tmp/ccninfo.log",
+            cefore_env_dir="/abs/path/h0/.cefore_env",
+        )
+        argv = fake.runs[0]["argv"]
+        assert argv[0] == "env"
+        assert argv[1] == "CEFORE_DIR=/abs/path/h0/.cefore_env"
+        assert argv[2] == "ccninfo"
+
+    def test_cefore_env_dir_none_has_no_env_prefix(self):
+        fake = FakeCommandRunner()
+        run_ccninfo(
+            fake, 0, "ccnx:/test/sample",
+            log_name="/tmp/ccninfo.log",
+            cefore_env_dir=None,
+        )
+        argv = fake.runs[0]["argv"]
+        assert argv[0] == "ccninfo"
+
+    def test_returns_full_command_result_not_just_returncode(self):
+        # Unlike run_cefputfile/run_cefgetfile (legacy contract: bare exit
+        # code), ccninfo verdict interpretation needs timed_out/cancelled —
+        # a timeout and a "no cache found" reply are both exit-code-ish but
+        # mean very different things, so the caller needs the full result.
+        # Scripting timed_out=True (a non-default value distinct from a
+        # plain-success result) is the discriminating case: a caller that
+        # reconstructed a partial CommandResult from just the returncode
+        # would silently drop this flag and this assertion would catch it.
+        #
+        # Note: run_ccninfo always passes log_path=log_name, so on the real
+        # MininetCommandRunner stdout is redirected to that log file and
+        # CommandResult.stdout comes back empty (see MininetCommandRunner
+        # .wait()/._spawn()) — the reply text lives in the log file, not in
+        # this field. FakeCommandRunner clones scripted stdout regardless of
+        # log_path, so the stdout assertion below is Fake-only fiction kept
+        # for documentation; it does not hold against the real runner.
+        fake = FakeCommandRunner()
+        fake.script_run(
+            returncode=-15,
+            stdout="cache info\n",
+            timed_out=True,
+            cancelled=False,
+        )
+        result = run_ccninfo(
+            fake, 0, "ccnx:/test/sample", log_name="/tmp/ccninfo.log"
+        )
+        assert isinstance(result, CommandResult)
+        assert result.returncode == -15
+        assert result.stdout == "cache info\n"
+        assert result.timed_out is True
+        assert result.cancelled is False
 
 
 # ---------------------------------------------------------------------------

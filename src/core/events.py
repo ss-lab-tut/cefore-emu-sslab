@@ -24,12 +24,13 @@ class EventSpec:
 
     required_fields: the keys a handler reads non-optionally (``ev["X"]``); the
         config validator uses these to emit "missing required field" errors.
-    is_content: a content operation (put/get/pub/sub) recorded by the
-        ContentOperationRunner with its own Verdict, so the scheduler does not
-        emit an outcome record for it.
+    is_content: operations executed and recorded by the ContentOperationRunner
+        with their own Verdict/CcninfoVerdict, so the scheduler does not emit
+        an outcome record for them.
     priority: same-timestamp execution order (lower fires first). The default 5
-        means "no special ordering"; only the content ops carry an explicit
-        priority so pubsub_sub precedes pubsub_pub and put precedes get.
+        means "no special ordering"; the ordering-sensitive content ops carry
+        explicit priorities so pubsub_sub precedes pubsub_pub and put precedes
+        get. Other content ops (ccninfo) take the default.
     """
 
     required_fields: tuple[str, ...]
@@ -53,6 +54,7 @@ EVENT_SCHEMA: dict[str, EventSpec] = {
     "get":          EventSpec(("host", "uri"), is_content=True, priority=3),
     "pubsub_pub":   EventSpec(("host", "uri", "file"), is_content=True, is_publication=True, priority=2),
     "pubsub_sub":   EventSpec(("host", "uri"), is_content=True, priority=0),
+    "ccninfo":      EventSpec(("host", "uri"), is_content=True),
 }
 
 
@@ -62,7 +64,12 @@ def event_types() -> tuple[str, ...]:
 
 
 def content_event_types() -> frozenset[str]:
-    """Event types recorded by the ContentOperationRunner (put/get/pub/sub)."""
+    """Event types recorded by the ContentOperationRunner.
+
+    Includes all operations the runner executes and records itself
+    (put/get/pub/sub/ccninfo), so the scheduler does not emit a separate
+    outcome record for them.
+    """
     return frozenset(t for t, spec in EVENT_SCHEMA.items() if spec.is_content)
 
 

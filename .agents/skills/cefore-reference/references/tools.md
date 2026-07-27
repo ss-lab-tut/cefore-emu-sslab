@@ -122,6 +122,13 @@ cefinfo terminates when a single reply message is given back (the default behavi
   &emsp;N cache information-N*
 
 
+> **2026-07-27 characterization notes (Cefore 0.12.0):**
+> - The executable is named `ccninfo` in 0.10.x+; `cefinfo` is the legacy name.
+> - Explicit `-s` minimum is 1 (`-s 0` is rejected with usage AND exit 0).
+> - ccninfo always runs for REPLY_TIMEOUT+1 (~5s) even after a successful reply, contradicting the "terminates when a single reply is given back" text above.
+> - **Upstream Bug1 (client -d parse order):** ccninfo parses `-d` AFTER `cef_client_init()`, so the wrong `LOCAL_SOCK_ID` socket is opened and replies are silently discarded. `-p` is also affected by the same parse-order bug: it is parsed after `cef_client_init`, so port_num never overrides the socket identity. Workaround: set `CEFORE_DIR` env var to point at the correct node's config directory.
+> - **Upstream Bug2 (cache-hit originator without -c):** When the originator's cefnetd has a csmgrd cache hit (`CS_MODE=2`) and `-c` is NOT set, `cefnetd_external_cache_seek`'s else-branch (`cef_netd.c:5487`) reads `pkt_len` back in network byte order, producing a corrupt reply that the client discards. Workaround: the ccninfo originator must be `CS_MODE=0`, or use `-c`, or set `skip_hop>=1`.
+
 ## 7. cefsubfile
 
 cefsubfile is a tool that subscribes a file using Reflexive Forwarding. This tool sends Reflexive Interest to cefnetd upon receiving Trigger Interest with the specified URI, thereby retrieving Reflexive Data. After completing content retrieval, it sends Trigger Data to terminate subscription. To exit manually, press Ctrl + C.

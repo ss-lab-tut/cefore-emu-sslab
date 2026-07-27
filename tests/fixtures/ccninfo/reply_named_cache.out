@@ -1,0 +1,11 @@
+ccninfo to ccnx:/test/event_sample with HopLimit=32, SkipHopCount=0, Flag=0x0001, Request ID=61670 and node ID=h1
+
+response from h1: NO_ERROR, time=5.562000 ms
+
+route information:
+ 1 h1: 5.463 ms
+
+cache information:   prefix    size    cobs    interests   start-end    cachetime    lifetime
+ 1 c ccnx:/test/event_sample	       423 KB        424        424   0-423   19 secs  2977 secs
+
+EXIT=0 ELAPSED_MS=5018

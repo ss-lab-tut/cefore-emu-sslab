@@ -9,7 +9,7 @@ write. The Monitor observation stream stays outside this sink (docs/adr/0001).
 import json
 import threading
 
-from ..core.records import ContentRecord, EventRecord
+from ..core.records import CcninfoRecord, ContentRecord, EventRecord
 from .result_detect import timestamp_utc
 
 
@@ -57,6 +57,52 @@ class ResultsSink:
             success=verdict.success,
             has_completed_log=verdict.has_completed_log,
             has_output_file=verdict.has_output_file,
+        )
+        self._append(record.to_dict())
+
+    def record_ccninfo(
+        self,
+        verdict,
+        reply,
+        *,
+        host,
+        uri,
+        phase,
+        log_file,
+        down_hosts,
+        expected_responder=None,
+        expected_route=None,
+    ):
+        """Record one ccninfo judgment from its CcninfoVerdict, CcninfoReply, and op context."""
+        # Build route dicts from the parsed CcninfoReply hops (JSON-primitive
+        # values only — index/node/delay_ms — so the wire format stays
+        # deserializable without custom hooks).
+        route = tuple(
+            {"index": hop.index, "node": hop.node, "delay_ms": hop.delay_ms}
+            for hop in reply.route
+        )
+        record = CcninfoRecord(
+            op_type="ccninfo",
+            ts=timestamp_utc(),
+            phase=phase,
+            host=host,
+            uri=uri,
+            log_file=log_file,
+            down_hosts=down_hosts,
+            exit_code=verdict.exit_code,
+            timed_out=verdict.timed_out,
+            cancelled=verdict.cancelled,
+            success=verdict.success,
+            reply_received=verdict.reply_received,
+            responder=verdict.responder,
+            result=reply.result,
+            rtt_ms=reply.rtt_ms,
+            route=route,
+            cache_lines=reply.cache_lines,
+            expected_responder=expected_responder,
+            expected_route=expected_route,
+            responder_matched=verdict.responder_matched,
+            route_matched=verdict.route_matched,
         )
         self._append(record.to_dict())
 
