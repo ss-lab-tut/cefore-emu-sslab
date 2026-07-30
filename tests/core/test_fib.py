@@ -70,7 +70,7 @@ def test_compute_fib_triangle_k1(sample_mesh_links):
     assert len(routes) == 6
     # No self-routes
     for r in routes:
-        assert r.source != r.next_hop or True  # next_hop is neighbor, not dest
+        assert r.source != r.next_hop
 
 
 def test_compute_fib_triangle_k2(sample_mesh_links):

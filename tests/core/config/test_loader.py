@@ -677,7 +677,7 @@ def test_validate_events_protocol_invalid():
 
 def test_validate_cache_config_non_dict():
     errors = validate_config({"cache_config": "bad"})
-    assert any("cache_config" in e for e in errors)
+    assert "cache_config must be a dict" in errors
 
 
 def test_validate_cache_config_default_non_dict():
@@ -755,6 +755,11 @@ def test_validate_cache_config_nodes_type_invalid():
         (
             {"forwarding_config": {"nodes": [{"id": [1]}]}},
             "forwarding_config.nodes[0].strategy is required",
+        ),
+        (
+            {"forwarding_config": {"nodes": [{"id": [1], "strategy": "bogus"}]}},
+            "forwarding_config.nodes[0].strategy must be one of: "
+            "default, flooding, shortest_path",
         ),
     ],
 )
@@ -1350,7 +1355,7 @@ def test_validate_ccninfo_hop_count_boundary_ok(hop_count):
 @pytest.mark.parametrize("hop_count", [0, 256])
 def test_validate_ccninfo_hop_count_boundary_bad(hop_count):
     errors = validate_config({"events": [_ccninfo_event(hop_count=hop_count)]})
-    assert any("hop_count" in e for e in errors)
+    assert "events[0].hop_count must be an integer 1..255" in errors
 
 
 @pytest.mark.parametrize("skip_hop", [1, 15])
@@ -1366,14 +1371,14 @@ def test_validate_ccninfo_skip_hop_boundary_bad(skip_hop):
     # success) -- exit codes cannot catch this at runtime, so it must be
     # rejected here, before the binary ever runs.
     errors = validate_config({"events": [_ccninfo_event(skip_hop=skip_hop)]})
-    assert any("skip_hop" in e for e in errors)
+    assert "events[0].skip_hop must be an integer 1..15" in errors
 
 
 def test_validate_ccninfo_skip_hop_equal_hop_count_bad():
     errors = validate_config(
         {"events": [_ccninfo_event(hop_count=5, skip_hop=5)]}
     )
-    assert any("skip_hop" in e and "hop_count" in e for e in errors)
+    assert "events[0].skip_hop must be less than hop_count" in errors
 
 
 def test_validate_ccninfo_skip_hop_less_than_hop_count_ok():
@@ -1420,7 +1425,7 @@ def test_validate_ccninfo_expected_responder_empty_or_whitespace_bad(responder):
     errors = validate_config(
         {"events": [_ccninfo_event(expected_responder=responder)]}
     )
-    assert any("expected_responder" in e for e in errors)
+    assert "events[0].expected_responder must be a non-empty string" in errors
 
 
 def test_validate_ccninfo_expected_responder_valid():
@@ -1433,7 +1438,10 @@ def test_validate_ccninfo_expected_responder_valid():
 @pytest.mark.parametrize("route", [[], [""], ["   "]])
 def test_validate_ccninfo_expected_route_bad(route):
     errors = validate_config({"events": [_ccninfo_event(expected_route=route)]})
-    assert any("expected_route" in e for e in errors)
+    assert (
+        "events[0].expected_route must be a non-empty list of non-empty strings"
+        in errors
+    )
 
 
 def test_validate_ccninfo_expected_route_valid():
