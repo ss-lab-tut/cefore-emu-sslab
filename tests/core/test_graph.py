@@ -1,6 +1,5 @@
 """Tests for src.core.graph."""
 
-import pytest
 
 from src.core.graph import (
     UnionFind,

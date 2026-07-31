@@ -1,13 +1,11 @@
 """Unit tests for event scheduler."""
 
-import threading
 import time
 from unittest.mock import MagicMock, patch
 
-import pytest
 
 from src.runtime.results_sink import RecordingSink
-from src.runtime.scheduler import EventScheduler, _EVENT_PRIORITY
+from src.runtime.scheduler import EventScheduler
 
 
 def _make_net(host_count=3):
