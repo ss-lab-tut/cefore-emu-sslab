@@ -6,7 +6,13 @@ from types import SimpleNamespace
 
 import pytest
 
-from src.cli.args import add_debug_args
+from src.cli.args import (
+    add_common_args,
+    add_connect_args,
+    add_debug_args,
+    add_disaster_args,
+    add_mesh_args,
+)
 from src.core.config.validator import config_option_keys
 from src.core.config.loader import (
     _FLAT_SPECS,
@@ -1115,6 +1121,157 @@ def test_validate_merged_args_cache_config_strategy_random():
 
 
 # ---------------------------------------------------------------------------
+# validate_merged_args structured-key presence vs. truthiness (B1)
+#
+# 2026-07-09 bug fix: validate_merged_args used to gate structured-key
+# inclusion on truthiness (`if val:`), so a present-but-empty block ({} /
+# null / []) was silently dropped before ever reaching validate_config.
+# ADR-0002 requires failure_scenarios: {} and failure_scenarios: null to be
+# validation errors (they look like unfinished config), while omission and
+# present-but-empty events/bridges lists must stay clean.
+# ---------------------------------------------------------------------------
+
+
+def test_validate_merged_args_failure_scenarios_omitted_no_error():
+    """Genuinely omitted failure_scenarios (attribute absent on args) is inert."""
+    args = SimpleNamespace(hosts=3)
+    assert validate_merged_args(args) == []
+
+
+def test_validate_merged_args_failure_scenarios_empty_dict_is_error():
+    """Regression test for the B1 bug: {} must reach _validate_failure_scenarios.
+
+    Before the fix this was silently dropped by the `if val:` truthiness
+    check (empty dict is falsy), so bootstrap exited 0 despite an unfinished
+    failure_scenarios block.
+    """
+    args = SimpleNamespace(failure_scenarios={})
+    errors = validate_merged_args(args)
+    assert "failure_scenarios with strategy 'simple' requires 'simple' block" in errors
+
+
+def test_validate_merged_args_failure_scenarios_null_is_error():
+    """null is likewise present-but-empty and must be rejected, not dropped."""
+    args = SimpleNamespace(failure_scenarios=None)
+    errors = validate_merged_args(args)
+    assert "failure_scenarios must be a dict" in errors
+
+
+def test_validate_merged_args_events_empty_list_not_newly_flagged():
+    """events: [] is a legitimate present-but-empty value, not an error.
+
+    _validate_events treats an empty list as zero events to iterate over, so
+    presence-based inclusion must not manufacture a new false positive here.
+    """
+    args = SimpleNamespace(events=[])
+    assert validate_merged_args(args) == []
+
+
+def test_validate_merged_args_bridges_empty_list_not_newly_flagged():
+    """bridges: [] is likewise a no-op for _validate_bridges, not an error."""
+    args = SimpleNamespace(bridges=[])
+    assert validate_merged_args(args) == []
+
+
+def test_validate_merged_args_debug_excluded_from_structured_presence_fix():
+    """debug has its own special_config_merge carve-out (loader.py skips it
+    entirely during merge) and is excluded from both scalar_option_keys() and
+    structured_option_keys(), so the B1 presence fix must not start pulling
+    the CLI-only args.debug attribute into merged-args validation.
+    """
+    args = SimpleNamespace(debug=False)
+    assert validate_merged_args(args) == []
+
+
+# ---------------------------------------------------------------------------
+# validate_merged_args scalar-key presence vs. truthiness (B3)
+#
+# 2026-07-09 bug fix (audit follow-up to 73ca40b): validate_merged_args's
+# scalar loop gated inclusion on `val is not None or key in nullable_keys`,
+# so a present None for a NON-nullable scalar (e.g. "hosts: null" in YAML)
+# was silently dropped before validate_config ever saw it — bootstrap exited
+# 0 on a config validate_config({"hosts": None}) rejects outright. Fixing
+# this required first clearing a false-positive trap: unlike structured
+# keys, most scalar keys are argparse CLI options whose attribute always
+# exists post-parse, so None can also mean "never touched" rather than
+# "explicit config null". "num" was the one non-nullable scalar with an
+# argparse default of None; it is now marked nullable=True (None is its
+# genuine "no experiment number" state) so the loop's forwarding invariant
+# holds for every other non-nullable scalar.
+# ---------------------------------------------------------------------------
+
+
+def test_validate_merged_args_hosts_omitted_no_error():
+    """Genuinely omitted hosts (attribute absent on args) is inert."""
+    args = SimpleNamespace(switches=4)
+    assert validate_merged_args(args) == []
+
+
+def test_validate_merged_args_hosts_null_is_error():
+    """Regression test for the B3 bug: a present None for a non-nullable
+    scalar must reach validate_config, not be silently dropped.
+
+    Before the fix this was gated out by `val is not None`, so bootstrap
+    exited 0 despite "hosts: null" — a config validate_config itself rejects.
+    """
+    args = SimpleNamespace(hosts=None)
+    errors = validate_merged_args(args)
+    assert "hosts must be an integer >= 3" in errors
+
+
+def test_validate_merged_args_switches_null_is_error():
+    """Second non-nullable scalar pin, distinct from hosts."""
+    args = SimpleNamespace(switches=None)
+    errors = validate_merged_args(args)
+    assert "switches must be an integer >= 2" in errors
+
+
+def test_validate_merged_args_seed_null_not_newly_flagged():
+    """seed is a genuinely nullable scalar; null must stay error-free.
+
+    Pins that nullable scalars are unaffected by dropping the old
+    `or key in nullable_keys` clause — validate_config already tolerates
+    None for every nullable key, so unconditional forwarding is a no-op.
+    """
+    args = SimpleNamespace(seed=None)
+    assert validate_merged_args(args) == []
+
+
+def test_validate_merged_args_num_null_not_newly_flagged():
+    """num is the one non-nullable-looking scalar with an argparse default
+    of None (no --num flag ever produces args.num=None). It is marked
+    nullable=True precisely so this loop's forwarding does not manufacture
+    a false positive for the ordinary "no experiment number" run.
+    """
+    args = SimpleNamespace(num=None)
+    assert validate_merged_args(args) == []
+
+
+@pytest.mark.parametrize(
+    "build_parser",
+    [
+        lambda p: (add_common_args(p), add_mesh_args(p), add_disaster_args(p)),
+        lambda p: add_connect_args(p),
+    ],
+    ids=["disaster", "connect"],
+)
+def test_validate_merged_args_no_flags_no_config_is_clean(build_parser):
+    """The most important regression guard: a plain CLI parse with no flags
+    merged against an empty config must validate cleanly for every scalar
+    key.  This is the false-positive trap the B3 fix had to avoid — if any
+    non-nullable scalar had an argparse default of None (as "num" did before
+    being marked nullable), unconditional forwarding here would break every
+    default run across both CLI entry points.
+    """
+    parser = argparse.ArgumentParser()
+    add_debug_args(parser)
+    build_parser(parser)
+    args = parser.parse_args([])
+
+    assert validate_merged_args(args) == []
+
+
+# ---------------------------------------------------------------------------
 # monitoring.targets.target_host validation
 # ---------------------------------------------------------------------------
 
@@ -1336,6 +1493,238 @@ def test_flat_spec_accepts_null(spec):
     errors = validate_config({spec.key: None})
     assert not any(spec.key in e for e in errors), (
         f"unexpected error for {spec.key}=None"
+    )
+
+
+def test_no_scalar_spec_reintroduces_argparse_none_default_trap():
+    """Pin the invariant validate_merged_args's scalar presence-forwarding relies on.
+
+    A scalar OptionSpec that is config_allowed + cli_allowed + non-nullable
+    with default None would make args.<key> None on every plain no-flag run,
+    indistinguishable from an explicit config null — and the scalar loop
+    would flag every default run as invalid. "num" was the one historical
+    violation (fixed by nullable=True in d2680b1); this test keeps the
+    combination from ever coming back.
+    """
+    from src.core.config.validator import OPTION_SPECS, scalar_option_keys
+
+    offenders = [
+        key
+        for key in scalar_option_keys()
+        if OPTION_SPECS[key].config_allowed
+        and OPTION_SPECS[key].cli_allowed
+        and not OPTION_SPECS[key].nullable
+        and OPTION_SPECS[key].default is None
+    ]
+    assert offenders == [], (
+        f"scalar OptionSpecs reintroduce the argparse-None-default trap: {offenders}"
+    )
+
+
+# ── compute_call event validation ──
+
+
+def _compute_event(**overrides):
+    """Minimal valid compute_call event, with overrides applied on top."""
+    event = {
+        "at": 0,
+        "type": "compute_call",
+        "host": 0,
+        "endpoint": "http://edge.local/process",
+    }
+    event.update(overrides)
+    return event
+
+
+def _compute_errors(**overrides):
+    """validate_config errors for one compute_call event built by _compute_event."""
+    return validate_config({"hosts": 5, "events": [_compute_event(**overrides)]})
+
+
+def test_compute_call_minimal_is_valid():
+    """host+endpoint alone is a complete, valid compute_call."""
+    assert _compute_errors() == []
+
+
+def test_compute_call_payload_must_be_string():
+    """payload passes to curl -d verbatim; non-strings fail at config time."""
+    assert any(".payload" in e for e in _compute_errors(payload=123))
+
+
+def test_compute_call_output_file_must_be_string():
+    """output_file resolves under run_dir; non-strings fail at config time."""
+    assert any(".output_file" in e for e in _compute_errors(output_file=1))
+
+
+def test_compute_call_publish_uri_must_be_string():
+    """publish_uri names the republish target; non-strings fail early."""
+    assert any(
+        ".publish_uri" in e
+        for e in _compute_errors(publish_uri=5, output_file="out.json")
+    )
+
+
+def test_compute_call_headers_must_be_str_to_str_dict():
+    """headers expand to curl -H \"k: v\"; both keys and values must be str."""
+    assert any(".headers" in e for e in _compute_errors(headers="Accept: x"))
+    assert any(".headers" in e for e in _compute_errors(headers={1: "x"}))
+    assert any(".headers" in e for e in _compute_errors(headers={"Accept": 2}))
+    assert _compute_errors(headers={"Accept": "application/json"}) == []
+
+
+def test_compute_call_publish_uri_requires_output_file():
+    """cefputfile needs a saved response body; publish_uri without
+    output_file can never publish anything and must fail at config time."""
+    errors = _compute_errors(publish_uri="ccnx:/compute/r1")
+    assert any("publish_uri" in e and "output_file" in e for e in errors)
+    assert _compute_errors(
+        publish_uri="ccnx:/compute/r1", output_file="out.json"
+    ) == []
+
+
+def test_compute_call_pub_opts_validated_like_pubsub_pub():
+    """pub_opts carries cefputfile options and is bound-checked as such."""
+    assert any(".pub_opts" in e for e in _compute_errors(pub_opts="bad"))
+    assert any(
+        ".pub_opts.expiry" in e
+        for e in _compute_errors(pub_opts={"expiry": 0})
+    )
+    assert any(
+        ".pub_opts.valid_algo" in e
+        for e in _compute_errors(pub_opts={"valid_algo": "bogus"})
+    )
+    assert _compute_errors(
+        pub_opts={"expiry": 5000, "cache_time": 2500, "block_size": 1024}
+    ) == []
+
+
+def test_compute_call_pub_opts_block_size_shares_put_minimum():
+    """cefputfile requires block_size >= 60; compute's republish uses the
+    same binary, so the same boundary must hold (review fix 2026-07-16)."""
+    assert any(
+        ".pub_opts.block_size" in e
+        for e in _compute_errors(pub_opts={"block_size": 59})
+    )
+    assert _compute_errors(pub_opts={"block_size": 60}) == []
+
+
+def test_compute_call_pub_opts_rejects_unknown_and_cefpubfile_keys():
+    """Keys compute_client never forwards (cefpubfile-only or typos) must
+    fail at config time instead of being silently dropped."""
+    for key in ("lifetime", "retry_limit", "target", "bogus"):
+        assert any(
+            ".pub_opts" in e and key in e
+            for e in _compute_errors(pub_opts={key: 1})
+        ), f"unknown pub_opts key {key!r} was accepted"
+
+
+def test_compute_call_pub_opts_falsy_non_dict_rejected():
+    """A falsy non-dict ([], false, 0, \"\") must not coerce to {} and
+    bypass the dict type check."""
+    for bad in ([], False, 0, ""):
+        assert any(
+            ".pub_opts must be a dict" in e
+            for e in _compute_errors(pub_opts=bad)
+        ), f"pub_opts={bad!r} was accepted"
+
+
+def test_compute_call_repeat_forbids_restore_forms():
+    """compute_call repeat allows interval/count only: a restore/restore_type
+    event is synthesized at runtime by merging dicts, bypassing both this
+    validator and the pre-run conditional-publication (FIB) extraction — a
+    restored publish_uri would publish content no consumer can reach. Compute
+    has no natural "restore" semantics, so the forms are rejected outright
+    (2026-07-16 audit fix)."""
+    ok = {"interval": 5, "count": 2}
+    assert _compute_errors(repeat=ok) == []
+    for bad in (
+        {"interval": 5, "duration": 10},
+        {"interval": 5, "duration": 10, "restore": {"host": 2}},
+        {"interval": 5, "duration": 10, "restore_type": "compute_call"},
+    ):
+        errors = _compute_errors(repeat=bad)
+        assert any(
+            ".repeat" in e and "compute_call" in e for e in errors
+        ), f"repeat={bad!r} was accepted"
+
+
+def test_compute_call_pub_opts_mixed_type_unknown_keys_report_not_crash():
+    """A pub_opts dict with non-string keys must produce a validation error,
+    not a TypeError from sorting mixed key types (2026-07-16 audit fix)."""
+    errors = _compute_errors(pub_opts={1: 2, "bogus": 3})
+    assert any(".pub_opts" in e and "unsupported keys" in e for e in errors)
+
+
+def test_compute_call_repeat_rejects_unknown_keys():
+    """compute_call repeat is an interval/count allowlist; unknown keys
+    (typos or unsupported forms) must fail rather than be silently ignored
+    (2026-07-16 audit fix)."""
+    errors = _compute_errors(repeat={"interval": 5, "bogus": 1})
+    assert any(".repeat" in e and "bogus" in e for e in errors)
+
+
+def test_compute_call_publish_timeout_must_be_positive_number():
+    """publish_timeout bounds the cefputfile run independently of the HTTP
+    timeout (2026-07-16 audit fix: slow-rate publications outlive it).
+    Booleans are ints in Python and must still be rejected; an explicit
+    null is rejected too (omit the field for the default)."""
+    for bad in (0, "x", True, None):
+        assert any(
+            ".publish_timeout" in e for e in _compute_errors(publish_timeout=bad)
+        ), f"publish_timeout={bad!r} was accepted"
+    assert _compute_errors(publish_timeout=300) == []
+
+
+def test_validate_bridges_switch_must_be_non_negative():
+    """A negative index would translate to a nonexistent switch name (s-1)
+    at setup time; reject it at config time (2026-07-16 review fix)."""
+    errors = validate_config(
+        {
+            "bridges": [
+                {
+                    "switch": -1,
+                    "root_ip": "10.0.0.1/24",
+                    "local_routes": "192.168.0.0/16",
+                }
+            ]
+        }
+    )
+    assert any("bridges[0].switch" in e for e in errors)
+
+
+def test_validate_bridges_switch_range_checked_when_switch_count_known():
+    """The switches value is an UPPER BOUND on the emergent (seed-dependent)
+    topology, so this is a coarse bound only: switch >= switches can never
+    exist and is a config error, while an in-bound index may still be
+    missing at runtime — connect_to_root_ns degrades that to a warning
+    (2026-07-16 review fix)."""
+    errors = validate_config(
+        {
+            "switches": 3,
+            "bridges": [
+                {
+                    "switch": 3,
+                    "root_ip": "10.0.0.1/24",
+                    "local_routes": "192.168.0.0/16",
+                }
+            ],
+        }
+    )
+    assert any("bridges[0].switch" in e and "out-of-range" in e for e in errors)
+    assert (
+        validate_config(
+            {
+                "switches": 3,
+                "bridges": [
+                    {
+                        "switch": 2,
+                        "root_ip": "10.0.0.1/24",
+                        "local_routes": "192.168.0.0/16",
+                    }
+                ],
+            }
+        )
+        == []
     )
 
 

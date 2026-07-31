@@ -20,7 +20,16 @@ from mininet.log import info, warn
 from ..core.ccninfo_parse import parse_ccninfo
 from ..core.paths import ensure_within_run_dir
 from .cef_argv import build_ccninfo_argv
-from .cefore import cefore_env_prefix, run_csmgrstatus
+from .cefore import (
+    cefore_env_prefix,
+    run_cefstatus,
+    run_csmgrstatus,
+    status_output,
+)
+# The ccninfo probe assembles its own argv and needs the raw stdout back, so it
+# drives the runner directly instead of going through a cefore.py run_* wrapper
+# the way every other target type does. That asymmetry is why the runner class
+# itself is imported here and not just the wrappers above.
 from .command_runner import MininetCommandRunner
 
 # Default per-command timeout (seconds) for background popen collection.
@@ -33,21 +42,60 @@ DEFAULT_COMMAND_TIMEOUT = 10
 # Field order for every monitor record, shared by monitor.json, monitor.csv,
 # and the webui live-status feed. Defined once here so a field rename cannot
 # silently drift between the CSV header, the JSON records, and the dashboard.
-MONITOR_FIELDS = ("elapsed_sec", "type", "host", "output")
+MONITOR_FIELDS = ("elapsed_sec", "type", "host", "output", "outcome")
+
+# Per-type negative markers. cefstatus uses 4 (matching the original
+# _cefnetd_is_up); csmgrstatus uses 8 (matching _csmgrd_is_up) because
+# csmgrstatus can return rc=0 with "ERROR: Connection failed".
+# 2026-07-16: scoped per command type to avoid false negatives from
+# FIB URI content (ccnx:/timeout would match a shared "timeout" marker).
+_NEGATIVE_MARKERS = {
+    "cefstatus": ("error", "failed", "connection refused", "no such file"),
+    "csmgrstatus": (
+        "error", "failed", "connection refused", "no such file",
+        "skipped", "not found", "cannot", "timeout", "timed out",
+    ),
+}
+
+# Per-type positive markers confirming the daemon is alive.
+_POSITIVE_MARKERS = {
+    "cefstatus": ("faces", "fib"),
+    "csmgrstatus": ("connect to", "all connection num"),
+}
 
 
-def make_monitor_record(elapsed_sec, type_, host, output) -> dict:
+def derive_monitor_outcome(target_type: str, result) -> str:
+    """Derive tri-state outcome from a CommandResult.
+
+    Fail-closed priority:
+    1. timed_out or cancelled → "not-ok"
+    2. returncode is None or nonzero → "not-ok"
+    3. known negative marker in output → "not-ok"
+       (catches csmgrstatus rc=0 + "ERROR: Connection failed")
+    4. returncode 0 AND command-specific positive marker → "ok"
+    5. otherwise → "not-ok" (unknown output, fail-closed)
+    """
+    if result.timed_out or result.cancelled:
+        return "not-ok"
+    if result.returncode is None or result.returncode != 0:
+        return "not-ok"
+    low = result.stdout.lower()
+    negatives = _NEGATIVE_MARKERS.get(target_type, ())
+    if any(m in low for m in negatives):
+        return "not-ok"
+    positives = _POSITIVE_MARKERS.get(target_type, ())
+    if any(m in low for m in positives):
+        return "ok"
+    return "not-ok"
+
+
+def make_monitor_record(elapsed_sec, type_, host, output, outcome="not-ok") -> dict:
     """Build a monitor record dict with the single, shared field shape.
 
-    This is the sole owner of the monitor-record shape consumed by
-    monitor.json/monitor.csv (Monitor._collect_once, _write_outputs) and by
-    the webui's live host-status feed (disaster-scenario pre-populate calls
-    into DashboardState.record_monitor). All producers must build records
-    through this factory rather than hand-rolling the dict literal, so that
-    a field rename or reorder is caught at the one definition site instead
-    of silently drifting between callers.
+    All producers must build records through this factory so that a field
+    rename or reorder is caught at the one definition site.
     """
-    return dict(zip(MONITOR_FIELDS, (elapsed_sec, type_, host, output)))
+    return dict(zip(MONITOR_FIELDS, (elapsed_sec, type_, host, output, outcome)))
 
 
 def _resolve_hosts(spec, host_count, cache_nodes=None):
@@ -182,11 +230,14 @@ class Monitor:
                 if self._stop_event.is_set():
                     return
                 try:
-                    output = self._collect_target(target_type, host_idx, target)
+                    output, outcome = self._collect_target(
+                        target_type, host_idx, target
+                    )
                 except Exception as exc:
                     output = f"error: {exc}"
+                    outcome = "not-ok"
                 record = make_monitor_record(
-                    round(elapsed, 1), target_type, host_idx, output
+                    round(elapsed, 1), target_type, host_idx, output, outcome
                 )
                 with self._records_lock:
                     self._records.append(record)
@@ -198,7 +249,13 @@ class Monitor:
                             info(f"[monitor] on_record callback failed: {exc}\n")
 
     def _collect_target(self, target_type, host_idx, target):
-        """Collect a single target output."""
+        """Collect a single target and return ``(output, outcome)``.
+
+        The output half is a str for every target type except ccninfo, which
+        returns a structured dict — hence the json.dumps branch in
+        _write_outputs. The outcome half is always one of
+        ``{"ok", "not-ok", "skipped"}``.
+        """
         bg = self._background.is_set()
         if (
             self._down_hosts_getter is not None
@@ -206,16 +263,16 @@ class Monitor:
         ):
             if target_type == "csmgrstatus" and not bg:
                 info(f"[monitor] h{host_idx} is down, skipping csmgrstatus\n")
-            return "skipped: host down"
+            return "skipped: host down", "skipped"
         if target_type == "cefstatus":
-            node_name = f"h{host_idx}"
-            argv = ["cefstatus", "-d", f"./{node_name}"]
-            timeout = self.command_timeout if bg else None
-            return MininetCommandRunner(self.net).run(
-                node_name, argv, timeout=timeout
-            ).stdout
+            result = run_cefstatus(
+                self.net,
+                host_idx,
+                quiet=bg,
+                timeout=self.command_timeout if bg else None,
+            )
+            return status_output(result), derive_monitor_outcome(target_type, result)
         elif target_type == "csmgrstatus":
-            # Use explicit target_host if provided; otherwise use resolver.
             explicit = target.get("target_host")
             if isinstance(explicit, str) and explicit:
                 csmgr_host = explicit
@@ -223,7 +280,7 @@ class Monitor:
                 csmgr_host = self._csmgr_host_resolver(host_idx)
             else:
                 csmgr_host = "127.0.0.1"
-            return run_csmgrstatus(
+            result = run_csmgrstatus(
                 self.net,
                 host_idx,
                 uri=target.get("uri"),
@@ -232,22 +289,28 @@ class Monitor:
                 quiet=bg,
                 timeout=self.command_timeout if bg else None,
             )
+            return status_output(result), derive_monitor_outcome(target_type, result)
         elif target_type == "ccninfo":
             node_name = f"h{host_idx}"
             return self._collect_ccninfo(node_name, host_idx, target)
         else:
-            return f"unknown monitor type: {target_type}"
+            return f"unknown monitor type: {target_type}", "not-ok"
 
     def _collect_ccninfo(self, node_name, host_idx, target):
-        """Collect a ccninfo probe and return a structured dict.
+        """Collect a ccninfo probe and return an ``(output, outcome)`` pair.
 
         Builds argv via build_ccninfo_argv with passthrough options from the
         target dict, prepends the CEFORE_DIR env prefix, and parses stdout
         into a CcninfoReply.
 
-        Returns a dict (not a string) with keys: uri, raw, parsed,
+        The output half is a dict (not a string) with keys: uri, raw, parsed,
         elapsed_ms, timed_out.  The ``parsed`` sub-dict carries plain
         JSON-primitive types (lists of dicts, not dataclass objects).
+
+        The pair shape is not optional: _collect_target unpacks every branch
+        as two values, and returning the bare dict would raise a ValueError
+        that _collect_once swallows into a generic error record — a silent
+        loss of every ccninfo probe rather than a visible failure.
         """
         argv = build_ccninfo_argv(
             target["uri"],
@@ -274,7 +337,12 @@ class Monitor:
         elapsed_ms = int((time.time() - t0) * 1000)
 
         reply = parse_ccninfo(result.stdout)
-        return {
+        # Deliberately NOT routed through derive_monitor_outcome: that helper
+        # keys its marker tables by target type and has no "ccninfo" entry, so
+        # its fail-closed default would stamp every healthy reply "not-ok".
+        # A parsed reply is stronger evidence than a stdout marker scan anyway.
+        outcome = "ok" if reply.reply_received and not result.timed_out else "not-ok"
+        payload = {
             "uri": target["uri"],
             "raw": result.stdout,
             "parsed": {
@@ -291,6 +359,7 @@ class Monitor:
             "elapsed_ms": elapsed_ms,
             "timed_out": bool(result.timed_out),
         }
+        return payload, outcome
 
     def _run(self):
         start = time.time()

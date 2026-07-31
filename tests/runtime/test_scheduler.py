@@ -204,6 +204,118 @@ class TestFibAddDelegation:
         assert records[0]["success"] is False
 
 
+class TestComputeCallOutcomeMapping:
+    """compute_call records separate skipped-vs-failed tri-state outcomes.
+
+    An unreachable endpoint (env_failure) is an environment problem, not an
+    experiment result — it must be distinguishable in results.json from an
+    HTTP/publish failure.
+    """
+
+    def _run_compute(self, compute_result):
+        from src.runtime.compute_client import ComputeResult
+
+        sink = RecordingSink()
+        net = _make_net()
+        event = {
+            "at": 0.0,
+            "type": "compute_call",
+            "host": 1,
+            "endpoint": "http://edge.local/process",
+        }
+        with patch(
+            "src.runtime.scheduler._do_compute_call",
+            return_value=ComputeResult(**compute_result),
+        ):
+            sched = EventScheduler(net, [event], sink=sink)
+            sched.start()
+            sched.wait_all(timeout=3)
+        return sink.records[0]
+
+    def test_event_fields_are_forwarded_to_compute_client(self):
+        """The handler forwards every optional compute field — including the
+        publish_timeout deadline (2026-07-16 audit fix) — to compute_call."""
+        from src.runtime.compute_client import ComputeResult
+
+        sink = RecordingSink()
+        net = _make_net()
+        event = {
+            "at": 0.0,
+            "type": "compute_call",
+            "host": 1,
+            "endpoint": "http://edge.local/process",
+            "method": "POST",
+            "payload": "{}",
+            "headers": {"Content-Type": "application/json"},
+            "output_file": "out.json",
+            "publish_uri": "ccnx:/compute/r1",
+            "pub_opts": {"expiry": 5000},
+            "timeout": 7,
+            "publish_timeout": 300,
+        }
+        result = ComputeResult(
+            ok=True, http_status=200, curl_exit=0, publish_ok=True,
+            output_file="out.json", stdout="", env_failure=False,
+        )
+        with patch(
+            "src.runtime.scheduler._do_compute_call", return_value=result
+        ) as call:
+            sched = EventScheduler(net, [event], run_dir="logs/run-x", sink=sink)
+            sched.start()
+            sched.wait_all(timeout=3)
+        args = call.call_args.args
+        assert args[1] == 1
+        assert args[2] == "http://edge.local/process"
+        kwargs = call.call_args.kwargs
+        assert kwargs["run_dir"] == "logs/run-x"
+        assert kwargs["method"] == "POST"
+        assert kwargs["payload"] == "{}"
+        assert kwargs["headers"] == {"Content-Type": "application/json"}
+        assert kwargs["output_file"] == "out.json"
+        assert kwargs["publish_uri"] == "ccnx:/compute/r1"
+        assert kwargs["pub_opts"] == {"expiry": 5000}
+        assert kwargs["timeout"] == 7
+        assert kwargs["publish_timeout"] == 300
+
+    def test_env_failure_records_skipped_no_result(self):
+        rec = self._run_compute(
+            dict(
+                ok=False, http_status=None, curl_exit=7, publish_ok=None,
+                output_file=None, stdout="", env_failure=True,
+            )
+        )
+        assert rec["success"] is False
+        assert rec["outcome"] == "skipped-no-result"
+        assert rec["detail"]["curl_exit"] == 7
+
+    def test_http_failure_records_not_ok_with_detail(self):
+        rec = self._run_compute(
+            dict(
+                ok=False, http_status=500, curl_exit=0, publish_ok=None,
+                output_file=None, stdout="oops", env_failure=False,
+            )
+        )
+        assert rec["success"] is False
+        assert rec["outcome"] == "not-ok"
+        assert rec["detail"]["http_status"] == 500
+
+    def test_success_records_ok_with_publish_detail(self):
+        rec = self._run_compute(
+            dict(
+                ok=True, http_status=200, curl_exit=0, publish_ok=True,
+                output_file="logs/run/out.json", stdout="", env_failure=False,
+            )
+        )
+        assert rec["success"] is True
+        assert rec["outcome"] == "ok"
+        assert rec["detail"] == {
+            "http_status": 200,
+            "curl_exit": 0,
+            "publish_ok": True,
+            "output_file": "logs/run/out.json",
+        }
+
+
 class TestEventOutcomeRecords:
     """Non-content events emit outcome records into the results sink (K)."""
 
@@ -285,6 +397,38 @@ class TestEventOutcomeRecords:
         }
         records = self._run_one(event, lambda net, ev, ml, ctx: None)
         assert "repeat" not in records[0]["event"]
+
+    def test_handler_event_outcome_maps_to_record_fields(self):
+        from src.runtime.scheduler import EventOutcome
+
+        records = self._run_one(
+            {"at": 0.0, "type": "test"},
+            lambda net, ev, ml, ctx: EventOutcome(
+                success=False,
+                outcome="skipped-no-result",
+                detail={"reason": "no-external-connectivity", "curl_exit": 7},
+                error="endpoint unreachable",
+            ),
+        )
+        rec = records[0]
+        assert rec["success"] is False
+        assert rec["outcome"] == "skipped-no-result"
+        assert rec["detail"]["curl_exit"] == 7
+        assert rec["error"] == "endpoint unreachable"
+
+    def test_handler_event_outcome_success(self):
+        from src.runtime.scheduler import EventOutcome
+
+        records = self._run_one(
+            {"at": 0.0, "type": "test"},
+            lambda net, ev, ml, ctx: EventOutcome(
+                success=True, outcome="ok", detail={"http_status": 200}
+            ),
+        )
+        rec = records[0]
+        assert rec["success"] is True
+        assert rec["outcome"] == "ok"
+        assert rec["error"] is None
 
     def test_no_callback_is_noop(self):
         net = _make_net()

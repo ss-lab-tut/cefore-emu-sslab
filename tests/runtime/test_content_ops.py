@@ -32,7 +32,6 @@ def _make_runner(tmp_path, *, fake=None, sink=None, flap_state=None):
         run_dir=str(tmp_path),
         sink=sink,
         flap_state=flap,
-        seed_label="test",
         phase="event",
         runner=fake,
     )

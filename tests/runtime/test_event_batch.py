@@ -25,7 +25,6 @@ def _spec(tmp_path, events, **overrides):
         "mesh_links": [],
         "sink": RecordingSink(),
         "flap_state": flap_state,
-        "seed_label": "test-seed",
         "startup_grace": 0,
         **overrides,
     }

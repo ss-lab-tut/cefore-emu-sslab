@@ -159,7 +159,6 @@ def _make_runner(tmp_path, pub_lifetime_by_uri=None, runner=None):
         run_dir=tmp_path,
         sink=RecordingSink(),
         flap_state=flap_state,
-        seed_label="test",
         pub_lifetime_by_uri=pub_lifetime_by_uri,
         runner=runner,
     )
@@ -239,7 +238,6 @@ class TestPubsubFullPathFake:
             run_dir=tmp_path,
             sink=sink,
             flap_state=flap_state,
-            seed_label="test",
             startup_grace=0,
             runner=fake,
         )
@@ -268,7 +266,6 @@ class TestContentOperationRunnerPhase:
             run_dir="/tmp",
             sink=RecordingSink(),
             flap_state=MagicMock(),
-            seed_label="test",
         )
         assert runner._phase == "event"
 
@@ -278,7 +275,6 @@ class TestContentOperationRunnerPhase:
             run_dir="/tmp",
             sink=RecordingSink(),
             flap_state=MagicMock(),
-            seed_label="test",
             phase="warmup",
         )
         assert runner._phase == "warmup"
@@ -319,7 +315,6 @@ class TestContentOperationRunnerDeadline:
             run_dir=tmp_path,
             sink=RecordingSink(),
             flap_state=flap_state,
-            seed_label="test",
             startup_grace=0,
             runner=fake,
         )
@@ -379,7 +374,6 @@ class TestPubRecordPublisherDown:
             run_dir=tmp_path,
             sink=sink,
             flap_state=flap_state,
-            seed_label="test",
             startup_grace=0,
             runner=fake,
         )

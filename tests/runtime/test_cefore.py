@@ -10,8 +10,10 @@ from src.runtime.cefore import (
     run_cefgetfile,
     run_cefpubfile,
     run_cefputfile,
+    run_cefstatus,
     run_csmgrstatus,
     start_cefsubfile,
+    status_output,
 )
 from src.runtime.command_runner import CommandResult, FakeCommandRunner
 
@@ -303,13 +305,11 @@ class TestRunCsmgrstatus:
             patch.object(cefore_mod, "info") as mock_info,
         ):
             out = run_csmgrstatus(MagicMock(), 1, uri="ccnx:/", host="127.0.0.1")
-        assert out == "status output"
+        assert out.stdout == "status output"
         rec = fake.runs[0]
         assert rec["node"] == "h1"
         assert rec["argv"] == ["csmgrstatus", "ccnx:/", "-h", "127.0.0.1"]
-        # Redirection is owned by the seam, never present in argv.
         assert ">" not in _argv_str(rec["argv"])
-        # Non-quiet emits the command echo via info too; the output is among them.
         mock_info.assert_any_call("status output")
 
     def test_quiet_suppresses_print_and_info(self, capsys):
@@ -322,7 +322,7 @@ class TestRunCsmgrstatus:
             out = run_csmgrstatus(
                 MagicMock(), 1, uri="ccnx:/", host="127.0.0.1", quiet=True
             )
-        assert out == "status output"
+        assert out.stdout == "status output"
         mock_info.assert_not_called()
         assert "command:" not in capsys.readouterr().out
 
@@ -342,6 +342,81 @@ class TestRunCsmgrstatus:
         with patch.object(cefore_mod, "MininetCommandRunner", return_value=fake):
             run_csmgrstatus(MagicMock(), 1, host="127.0.0.1", quiet=True, timeout=10)
         assert fake.runs[0]["timeout"] == 10
+
+    def test_port_num_builds_two_token_argv(self):
+        fake = FakeCommandRunner()
+        with patch.object(cefore_mod, "MininetCommandRunner", return_value=fake):
+            run_csmgrstatus(MagicMock(), 1, port_num=9799, host="127.0.0.1", quiet=True)
+        argv = fake.runs[0]["argv"]
+        assert argv == ["csmgrstatus", "-p", "9799", "-h", "127.0.0.1"]
+
+    def test_timeout_returns_command_result_with_timed_out_flag(self):
+        fake = FakeCommandRunner()
+        fake.script_run(timed_out=True)
+        with patch.object(cefore_mod, "MininetCommandRunner", return_value=fake):
+            out = run_csmgrstatus(MagicMock(), 1, host="127.0.0.1", quiet=True)
+        assert out.timed_out is True
+        assert status_output(out) == "error: command timeout"
+
+
+# ---------------------------------------------------------------------------
+# run_cefstatus — 2026-07-12: quiet/timeout/timed_out->"error: command
+# timeout" shape aligned with run_csmgrstatus (run_csmgrstatus itself has
+# no runner= parameter; that injection seam is run_cefstatus-only).
+# ---------------------------------------------------------------------------
+
+
+class TestRunCefstatus:
+    def test_default_runs_argv_and_emits_output(self):
+        fake = FakeCommandRunner()
+        fake.script_run(stdout="fib output")
+        with (
+            patch.object(cefore_mod, "MininetCommandRunner", return_value=fake),
+            patch.object(cefore_mod, "info") as mock_info,
+        ):
+            out = run_cefstatus(MagicMock(), 1)
+        assert out.stdout == "fib output"
+        rec = fake.runs[0]
+        assert rec["node"] == "h1"
+        assert rec["argv"] == ["cefstatus", "-d", "./h1"]
+        mock_info.assert_any_call("h1 command: ['cefstatus', '-d', './h1']\n")
+        mock_info.assert_any_call("fib output")
+
+    def test_quiet_suppresses_print_and_info(self, capsys):
+        fake = FakeCommandRunner()
+        fake.script_run(stdout="fib output")
+        with (
+            patch.object(cefore_mod, "MininetCommandRunner", return_value=fake),
+            patch.object(cefore_mod, "info") as mock_info,
+        ):
+            out = run_cefstatus(MagicMock(), 1, quiet=True)
+        assert out.stdout == "fib output"
+        mock_info.assert_not_called()
+        assert "command:" not in capsys.readouterr().out
+
+    def test_timeout_forwarded(self):
+        fake = FakeCommandRunner()
+        with patch.object(cefore_mod, "MininetCommandRunner", return_value=fake):
+            run_cefstatus(MagicMock(), 1, quiet=True, timeout=10)
+        assert fake.runs[0]["timeout"] == 10
+
+    def test_timeout_returns_command_result_with_timed_out_flag(self):
+        fake = FakeCommandRunner()
+        fake.script_run(timed_out=True)
+        with patch.object(cefore_mod, "MininetCommandRunner", return_value=fake):
+            out = run_cefstatus(MagicMock(), 1, quiet=True)
+        assert out.timed_out is True
+        assert status_output(out) == "error: command timeout"
+
+    def test_runner_injection_skips_mininet_command_runner_construction(self):
+        fake = FakeCommandRunner()
+        fake.script_run(stdout="fib output")
+        with patch.object(cefore_mod, "MininetCommandRunner") as mock_ctor:
+            out = run_cefstatus(MagicMock(), 1, quiet=True, runner=fake)
+        mock_ctor.assert_not_called()
+        assert out.stdout == "fib output"
+        assert fake.runs[0]["node"] == "h1"
+        assert fake.runs[0]["argv"] == ["cefstatus", "-d", "./h1"]
 
 
 def test_start_cefnetd_removes_stale_socket_and_cefnetd_log_before_start():
@@ -379,20 +454,6 @@ def test_start_csmgrd_removes_only_stale_csmgrd_log_before_start():
     cleanup_csmgrd_log.assert_called_once_with("h1", 1)
     cleanup_cefnetd_log.assert_not_called()
     assert fake.runs[0]["node"] == "h1"
-
-    def test_port_num_builds_two_token_argv(self):
-        fake = FakeCommandRunner()
-        with patch.object(cefore_mod, "MininetCommandRunner", return_value=fake):
-            run_csmgrstatus(MagicMock(), 1, port_num=9799, host="127.0.0.1", quiet=True)
-        argv = fake.runs[0]["argv"]
-        assert argv == ["csmgrstatus", "-p", "9799", "-h", "127.0.0.1"]
-
-    def test_timeout_returns_diagnostic_string(self):
-        fake = FakeCommandRunner()
-        fake.script_run(timed_out=True)
-        with patch.object(cefore_mod, "MininetCommandRunner", return_value=fake):
-            out = run_csmgrstatus(MagicMock(), 1, host="127.0.0.1", quiet=True)
-        assert out == "error: command timeout"
 
 
 # ---------------------------------------------------------------------------

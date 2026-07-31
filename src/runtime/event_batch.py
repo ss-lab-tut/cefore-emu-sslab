@@ -24,7 +24,6 @@ class EventBatchSpec:
     mesh_links: Any
     sink: Any
     flap_state: Any
-    seed_label: str
 
     uri_publishers: dict | None = None
     startup_grace: float = 1.0
@@ -108,7 +107,6 @@ def run_event_batch(net, spec: EventBatchSpec) -> EventBatchResult:
             run_dir=spec.run_dir,
             sink=spec.sink,
             flap_state=spec.flap_state,
-            seed_label=spec.seed_label,
             uri_publishers=spec.uri_publishers,
             startup_grace=spec.startup_grace,
             pub_lifetime_by_uri=_pub_lifetime_by_uri(spec.events),

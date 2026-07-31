@@ -100,7 +100,7 @@ class BridgeManager:
         switch_name: str,
         root_ip: str,
         local_routes: str,
-    ) -> None:
+    ) -> bool:
         """Connect Mininet hosts to root namespace via switch.
 
         Args:
@@ -108,17 +108,37 @@ class BridgeManager:
             switch_name: Switch name to connect to root namespace.
             root_ip: IP address for root namespace node (e.g., "192.168.100.1/24").
             local_routes: Local Mininet host networks to route to.
+
+        Returns:
+            True when the root link is attached; False when the switch does
+            not exist. The caller must skip every follow-on operation for
+            the bridge entry on False — flows/routes/NAT against a missing
+            switch would mutate unrelated state and register bogus cleanup.
         """
-        switch = net.get(switch_name)
+        # 2026-07-16 review fix: the switches config value is an upper bound
+        # on the emergent topology, so a validator-accepted index can name a
+        # switch that was never built — and net.get raises KeyError for
+        # unknown names (the old `is None` guard was dead code).
+        try:
+            switch = net.get(switch_name)
+        except KeyError:
+            switch = None
         if switch is None:
             info(f"*** Warning: switch {switch_name} not found\n")
-            return
+            return False
 
         validate_static_ip(root_ip)
 
         root = self.get_or_create_root()
         link = net.addLink(root, switch)
         self.root_intf = link.intf1
+
+        # 2026-07-16 runtime fix: setup runs after net.start(), and addLink
+        # alone does not enroll the new veth into a running OVS switch — the
+        # port stayed off the bridge (ovs-vsctl list-ports lacked it), so
+        # every host↔root packet was silently dropped and connections could
+        # never be established. Explicitly attach the switch-side end.
+        switch.attach(link.intf2)
 
         root.setIP(root_ip, intf=self.root_intf)
 
@@ -137,6 +157,7 @@ class BridgeManager:
                 ),
             )
         )
+        return True
 
     def add_host_route(
         self,
@@ -619,16 +640,30 @@ def setup_bridges(
         scheme: AddressingScheme for IP generation (defaults to 192.168.0.0/16).
     """
     for config in bridge_configs:
+        # 2026-07-16 audit fix: YAML bridges give switch as an integer index
+        # (the config validator requires int), but Mininet switches are named
+        # sN — without translation net.get(0) raises KeyError. CLI-parsed
+        # configs already carry the sN string and pass through unchanged.
         switch = config["switch"]
+        if isinstance(switch, int):
+            switch = f"s{switch}"
         root_ip = _resolve_root_ip(
-            config["switch"], config.get("root_ip"), mesh_links, scheme=scheme
+            switch, config.get("root_ip"), mesh_links, scheme=scheme
         )
         if not root_ip:
             info(f"*** Warning: root_ip not set for switch {switch}\n")
             continue
         local_routes = config["local_routes"]
 
-        bridge_manager.connect_to_root_ns(net, switch, root_ip, local_routes)
+        # 2026-07-21 review fix: when attachment fails (emergent topology
+        # lacks the switch), skip the WHOLE entry — continuing would issue
+        # ovs-ofctl against the missing switch, register bogus cleanup
+        # actions, and mutate unrelated routing/NAT state.
+        if bridge_manager.connect_to_root_ns(
+            net, switch, root_ip, local_routes
+        ) is False:
+            info(f"*** Skipping bridge entry for missing switch {switch}\n")
+            continue
         bridge_manager.enable_normal_flow(net, switch)
 
         gateway = extract_gateway_from_ip(root_ip)

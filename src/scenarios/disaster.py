@@ -8,36 +8,29 @@ from pathlib import Path
 
 from mininet.log import info
 
-from ..core.addressing import AddressingScheme, DEFAULT_NETWORK_CIDR
 from ..core.artifacts import topo_png_default_name
 from ..core.events import extract_publications
 from ..core.flap_state import FlapState
 from ..core.paths import resolve_run_path
 
-from ..runtime.bridge_args import parse_bridge_args
-from ..runtime.bridge_root import BridgeManager
 from ..runtime.cache_strategy import KCentersStrategy, RandomCSModeStrategy
-from ..runtime.command_runner import MininetCommandRunner
 from ..runtime.content_ops import ContentOperationRunner
 from ..runtime.event_batch import EventBatchSpec, run_event_batch
-from ..runtime.monitoring import Monitor, make_monitor_record
+from ..runtime.monitoring import Monitor, derive_monitor_outcome, make_monitor_record
 from ..runtime.results_sink import ResultsSink
 from ..runtime.scenario_setup import (
-    MeshBuildSpec,
     ScenarioSetupSpec,
     TeardownSpec,
-    build_mesh_scenario,
-    create_tclink_mininet,
     setup_scenario,
     teardown_scenario,
 )
-from ..runtime.cefore import run_csmgrstatus, wait_for_cefnetd
+from ..runtime.cefore import run_cefstatus, run_csmgrstatus, status_output, wait_for_cefnetd
 from ..core.parsing import parse_int_list
-from ..runtime.daemon_logs import HostLogScope
 from ..runtime.failure_manager import FlexibleFailureManager, periodic_host_flap
 from ..runtime.net_config import apply_fib_routes
 
-from .base import BaseScenario, _propagate_failures
+from .base import _propagate_failures
+from .config_driven_mesh import ConfigDrivenMeshScenario
 
 
 def _artifact_path(run_dir: Path, raw_path, default_name):
@@ -53,58 +46,35 @@ def _resolve_results_path(args, run_dir: Path):
     return _artifact_path(run_dir, raw, "results.json")
 
 
-class DisasterScenario(BaseScenario):
+class DisasterScenario(ConfigDrivenMeshScenario):
     """Mesh topology with periodic host failure simulation.
 
-    Extends BaseScenario with:
-    - BridgeManager for root namespace bridging
+    Extends ConfigDrivenMeshScenario with:
     - Periodic host flapping
     - Autotest mode (--no-cli + results-json)
     - Per-URI FIB routing
+    - Monitoring / WebUI / dashboard
     """
 
     def __init__(self, args, run_dir: Path = None, log_context=None, debug_config=None):
-        self.args = args
-        self.daemon_log_collection_enabled = run_dir is not None and Path(
-            run_dir
-        ) != Path(".")
-        self.run_dir = (run_dir or Path("logs")).resolve()
-        self.run_dir.mkdir(parents=True, exist_ok=True)
-        self.log_context = log_context
-        self.debug_config = debug_config
-
-        addr_cfg = getattr(args, "addressing", {}) or {}
-        self.scheme = AddressingScheme(
-            addr_cfg.get("network_cidr", DEFAULT_NETWORK_CIDR)
-        )
+        super().__init__(args, run_dir=run_dir, log_context=log_context, debug_config=debug_config)
 
         self.rng = (
             random.Random(args.seed) if args.seed is not None else random.Random()
         )
         self.results_sink = ResultsSink()
         self._host_cmd_locks: dict[int, threading.Lock] = {}
-        self.bridge_manager = BridgeManager()
         self.stop_event = None
-        self.daemon_fleet = None
-        self.cache_node_set = set()
         self.flap_state = FlapState()
         self.uri_publishers = {}
         self.publisher_ids = set()
-        self.topo = None
-        self.seed_label = "none" if args.seed is None else str(args.seed)
         self.stop_thread = None
         self.event_scheduler = None
         self.content_runner = None
         self.monitor = None
         self.dashboard = None
         self.webui = None
-        self.generated_node_dirs = []
         self._fib_routes = []
-
-        # Parse bridge configs
-        self.bridge_configs = getattr(args, "bridges", None) or []
-        if not self.bridge_configs:
-            self.bridge_configs = parse_bridge_args(getattr(args, "bridge", None))
 
         self.results_path = _resolve_results_path(args, self.run_dir)
         self.autotest_mode = bool(
@@ -114,7 +84,12 @@ class DisasterScenario(BaseScenario):
             sys.exit("autotest mode forbids ext/bridge configuration")
 
         events = getattr(args, "events", None) or []
-        _, self.uri_publishers, publisher_ids = extract_publications(events)
+        # include_conditional: a compute_call with publish_uri republishes its
+        # result into the ICN — its host must be in the publisher metadata or
+        # FIB pre-programming leaves the republished content unreachable.
+        _, self.uri_publishers, publisher_ids = extract_publications(
+            events, include_conditional=True
+        )
         self.publisher_ids = set(publisher_ids)
 
     def _host_lock(self, host_idx: int) -> threading.Lock:
@@ -134,40 +109,6 @@ class DisasterScenario(BaseScenario):
             info(
                 f"[warning] pubsub_pub event for {uri} has no matching pubsub_sub event\n"
             )
-
-    def build_topology(self):
-        """Create mesh topology."""
-        args = self.args
-        spec = MeshBuildSpec(
-            host_count=args.hosts,
-            switch_limit=args.switches,
-            node_per_switch=args.node_per_switch,
-            host_degree_min=args.host_degree_min,
-            host_degree_max=args.host_degree_max,
-            switch_use_all=args.switch_use_all,
-            rng=self.rng,
-            publisher_ids=frozenset(self.publisher_ids),
-        )
-        result = build_mesh_scenario(spec)
-        self.generated_node_dirs = result.node_dirs
-        self.topo = result.topo
-        return self.topo
-
-    def create_mininet(self, topo, **kwargs):
-        """Create Mininet with TCLink."""
-        return create_tclink_mininet(topo, **kwargs)
-
-    def daemon_log_collection_scope(self):
-        """Describe daemon logs from generated hN directories for this run."""
-        return [
-            HostLogScope(
-                idx=i,
-                node_dir=self.generated_node_dirs[i],
-                has_csmgrd=i in self.cache_node_set,
-            )
-            for i in range(self.args.hosts)
-            if i < len(self.generated_node_dirs)
-        ]
 
     def configure(self, net):
         """Configure network: IP, bridges, bandwidth, daemons, FIB."""
@@ -223,18 +164,23 @@ class DisasterScenario(BaseScenario):
             self.results_sink.subscribe(self.dashboard.record_operation)
             info(f"[webui] dashboard: http://0.0.0.0:{webui_port}/\n")
             # Pre-populate initial host state before Monitor starts polling
-            webui_runner = MininetCommandRunner(net)
             for idx in range(args.hosts):
-                output = webui_runner.run(
-                    f"h{idx}", ["cefstatus", "-d", f"./h{idx}"]
-                ).stdout
+                result = run_cefstatus(net, idx, quiet=True)
                 self.dashboard.record_monitor(
-                    make_monitor_record(0.0, "cefstatus", idx, output)
+                    make_monitor_record(
+                        0.0, "cefstatus", idx,
+                        status_output(result),
+                        derive_monitor_outcome("cefstatus", result),
+                    )
                 )
             for idx in sorted(self.cache_node_set):
-                output = run_csmgrstatus(net, idx, host="127.0.0.1")
+                result = run_csmgrstatus(net, idx, host="127.0.0.1")
                 self.dashboard.record_monitor(
-                    make_monitor_record(0.0, "csmgrstatus", idx, output)
+                    make_monitor_record(
+                        0.0, "csmgrstatus", idx,
+                        status_output(result),
+                        derive_monitor_outcome("csmgrstatus", result),
+                    )
                 )
 
     def _build_cache_strategy(self):
@@ -283,7 +229,6 @@ class DisasterScenario(BaseScenario):
             run_dir=self.run_dir,
             sink=self.results_sink,
             flap_state=self.flap_state,
-            seed_label=self.seed_label,
             uri_publishers=self.uri_publishers,
             startup_grace=startup_grace,
             pub_lifetime_by_uri=pub_lifetime_by_uri,
@@ -412,7 +357,6 @@ class DisasterScenario(BaseScenario):
                 mesh_links=self.topo.mesh_links,
                 sink=self.results_sink,
                 flap_state=self.flap_state,
-                seed_label=self.seed_label,
                 uri_publishers=self.uri_publishers,
                 startup_grace=float(
                     getattr(self.args, "pubsub_sub_startup_grace", 1.0)
@@ -442,7 +386,6 @@ class DisasterScenario(BaseScenario):
                     mesh_links=self.topo.mesh_links,
                     sink=self.results_sink,
                     flap_state=self.flap_state,
-                    seed_label=self.seed_label,
                     uri_publishers=self.uri_publishers,
                     startup_grace=float(
                         getattr(self.args, "pubsub_sub_startup_grace", 1.0)
@@ -481,7 +424,6 @@ class DisasterScenario(BaseScenario):
                 mesh_links=self.topo.mesh_links,
                 sink=self.results_sink,
                 flap_state=self.flap_state,
-                seed_label=self.seed_label,
                 uri_publishers=self.uri_publishers,
                 startup_grace=float(
                     getattr(self.args, "pubsub_sub_startup_grace", 1.0)
@@ -518,29 +460,11 @@ class DisasterScenario(BaseScenario):
         elif not use_cli and self.event_scheduler is not None:
             self.event_scheduler.wait_all()
 
-    def should_run_cli(self):
-        """Skip the interactive CLI in autotest mode (--no-cli)."""
-        return not getattr(self.args, "no_cli", False)
-
     def before_cli(self, net):
-        """Switch monitoring to background and restore real stdout for the CLI.
-
-        The monitor stays running through the CLI but in background mode (quiet
-        + popen) so it neither prints to the terminal nor contends with the CLI
-        host shells. Idempotent: the monitor is already constructed in
-        background mode here.
-        """
+        """Switch monitoring to background, then restore stdout for the CLI."""
         if self.monitor is not None:
             self.monitor.enter_background()
-        if self.log_context:
-            sys.stdout = self.log_context["original_stdout"]
-            sys.stderr = self.log_context["original_stderr"]
-
-    def after_cli(self, net):
-        """Restore tee'd stdout/stderr after the CLI returns."""
-        if self.log_context:
-            sys.stdout = self.log_context["tee_stdout"]
-            sys.stderr = self.log_context["tee_stderr"]
+        super().before_cli(net)
 
     def shutdown_runtime_resources(self):
         """Stop monitor/webui/scheduler/content runner before teardown.

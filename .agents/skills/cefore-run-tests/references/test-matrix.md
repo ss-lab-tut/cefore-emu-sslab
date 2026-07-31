@@ -143,6 +143,18 @@
   - every ccninfo monitor entry has `output.parsed.reply_received == true`
     and `output.timed_out == false`
 
+### `min_compute`
+
+- File: `config/examples/min_compute.yaml`
+- compute_call の tri-state outcome 検証。autotest mode は ext/bridges を禁止する
+  ため外部経路が存在せず、TEST-NET-3 (203.0.113.1) 宛の curl は必ず接続失敗する
+  （到達不能の実保証は RFC 5737 そのものではなく、この topology isolation）。
+- Expected `results.json`: compute_call event row（success == false は仕様どおり）
+- Required checks:
+  - at least 1 `compute_call` event record
+  - every `compute_call` record has `outcome == "skipped-no-result"`
+    （環境要因が実験失敗 not-ok と区別されること — tri-state seam の回帰ガード）
+
 ### `connect`
 
 - Path: ConnectScenario via `ceforeemu-connect` (no config file). The helper runs

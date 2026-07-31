@@ -3,47 +3,93 @@
 import heapq
 import threading
 import time
+from dataclasses import dataclass
+from typing import Optional
 
 from mininet.log import info
 
 from ..core.events import content_event_types, event_priorities
 from .bandwidth import set_switch_bandwidth
-from .compute_client import check_external_connectivity
+from .command_runner import MininetCommandRunner
 from .compute_client import compute_call as _do_compute_call
 from .links import link_down, link_up
 from .net_config import cefroute_add, cefroute_del, cefroute_enable
 
 
-def _handle_compute_call(net, event, mesh_links, ctx):
-    """Handle compute_call event with connectivity check.
+@dataclass(frozen=True)
+class EventOutcome:
+    """Rich handler verdict: tri-state outcome + evidence for the sink.
 
-    Returns False on failure so the scheduler records an honest event Verdict.
+    Handlers that only know pass/fail keep returning bool (or None); handlers
+    with more to say return this so the EventRecord carries the S7 tri-state
+    (ok / not-ok / skipped-no-result) and a structured detail dict instead of
+    flattening everything into success=False.
+    """
+
+    success: bool
+    outcome: str
+    detail: Optional[dict] = None
+    error: Optional[str] = None
+
+
+def _handle_compute_call(net, event, mesh_links, ctx):
+    """Handle a compute_call event through the injected-runner client.
+
+    No pre-flight connectivity probe: the real request's curl exit code
+    already distinguishes an unreachable endpoint (env_failure) from an HTTP
+    failure, and a probe would double-hit the endpoint (a POST-only API
+    answers the probe GET with 405). Unreachable maps to skipped-no-result —
+    an environment problem, not an experiment result.
     """
     host_idx = event["host"]
-    endpoint = event["endpoint"]
 
-    if not check_external_connectivity(net, host_idx, endpoint):
-        info(
-            f"[scheduler] compute_call: h{host_idx} cannot reach {endpoint}. "
-            f"Ensure ext/bridges are configured for this host.\n"
-        )
-        return False
-
-    exit_code, stdout = _do_compute_call(
-        net,
+    result = _do_compute_call(
+        MininetCommandRunner(net),
         host_idx,
-        endpoint,
+        event["endpoint"],
         method=event.get("method", "GET"),
         payload=event.get("payload"),
+        headers=event.get("headers"),
         output_file=event.get("output_file"),
         publish_uri=event.get("publish_uri"),
+        pub_opts=event.get("pub_opts"),
         run_dir=ctx.get("run_dir"),
         timeout=event.get("timeout", 30),
+        # 2026-07-16 audit fix: the cefputfile deadline is its own field —
+        # publish speed is governed by pub_opts rate, not the HTTP timeout.
+        publish_timeout=event.get("publish_timeout"),
     )
-    if exit_code != 0:
-        info(f"[scheduler] compute_call failed for h{host_idx}: exit={exit_code}\n")
-        return False
-    return True
+    detail = {
+        "http_status": result.http_status,
+        "curl_exit": result.curl_exit,
+        "publish_ok": result.publish_ok,
+        "output_file": result.output_file,
+    }
+    if result.env_failure:
+        info(
+            f"[scheduler] compute_call: h{host_idx} cannot reach "
+            f"{event['endpoint']} (curl exit={result.curl_exit}). "
+            f"Ensure ext/bridges are configured for this host.\n"
+        )
+        return EventOutcome(
+            success=False,
+            outcome="skipped-no-result",
+            detail={**detail, "reason": "no-external-connectivity"},
+            error="endpoint unreachable",
+        )
+    if not result.ok:
+        info(
+            f"[scheduler] compute_call failed for h{host_idx}: "
+            f"exit={result.curl_exit} http={result.http_status} "
+            f"publish={result.publish_ok}\n"
+        )
+        return EventOutcome(
+            success=False,
+            outcome="not-ok",
+            detail=detail,
+            error="compute call failed",
+        )
+    return EventOutcome(success=True, outcome="ok", detail=detail)
 
 
 def _handle_content_op(op_type):
@@ -224,8 +270,16 @@ class EventScheduler:
             info(f"[scheduler] t={elapsed:.1f}s  {event_type} {event}\n")
             success = True
             error = None
+            outcome = None
+            detail = None
             try:
-                if handler(self.net, event, self.mesh_links, self._context) is False:
+                verdict = handler(self.net, event, self.mesh_links, self._context)
+                if isinstance(verdict, EventOutcome):
+                    success = verdict.success
+                    error = verdict.error
+                    outcome = verdict.outcome
+                    detail = verdict.detail
+                elif verdict is False:
                     success = False
                     error = "handler reported failure"
             except Exception as exc:
@@ -238,10 +292,14 @@ class EventScheduler:
                 )
                 break
 
-            self._record_event_outcome(event, event_type, at_sec, success, error)
+            self._record_event_outcome(
+                event, event_type, at_sec, success, error, outcome, detail
+            )
             self._handle_repeat(event, at_sec)
 
-    def _record_event_outcome(self, event, event_type, at_sec, success, error):
+    def _record_event_outcome(
+        self, event, event_type, at_sec, success, error, outcome=None, detail=None
+    ):
         """Emit an outcome record for a non-content event into the ResultsSink."""
         if self._sink is None or event_type in _CONTENT_EVENT_TYPES:
             return
@@ -253,6 +311,8 @@ class EventScheduler:
             scheduled_at=at_sec,
             actual_at=round(actual_at, 3),
             event={k: v for k, v in event.items() if k != "repeat"},
+            outcome=outcome,
+            detail=detail,
         )
 
     def start(self):

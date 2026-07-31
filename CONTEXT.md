@@ -16,6 +16,10 @@ _Avoid_: output, return tuple, proc result
 The token a CommandRunner returns for a still-running command. Callers wait/poll/terminate/kill it through the runner; they never hold a raw `Popen`.
 _Avoid_: proc, process handle, popen object
 
+**run_cefstatus / run_csmgrstatus**:
+`cefore.py` helpers that wrap one diagnostic command (cefstatus / csmgrstatus) through CommandRunner and normalize the result: `quiet` suppresses the argv-echo/output `info()` calls, `timeout` forwards to the runner, a `timed_out` CommandResult becomes `"error: command timeout"`, and the (possibly-converted) output is returned instead of only printed. Their test-injection seams differ: run_cefstatus takes an optional `runner=` kwarg (default: fresh `MininetCommandRunner(net)`); run_csmgrstatus has no such param — it always builds its own `MininetCommandRunner(net)` internally, so tests inject a fake by patching the `MininetCommandRunner` class itself, not by passing a kwarg. run_cefstatus was deepened to this shape (2026-07-12) to match run_csmgrstatus's proven quiet/timeout/timed_out/return-value behavior (not its construction seam); monitoring's cefstatus branch, disaster's webui pre-populate loop, and debug.dump_fib all now call run_cefstatus instead of hand-rolling the `["cefstatus","-d",f"./h{idx}"]` argv. run_csmgrstatus itself is deliberately unchanged.
+_Avoid_: hand-built `["cefstatus",...]` / `["csmgrstatus",...]` argv outside cefore.py, a caller constructing its own CommandRunner for this argv
+
 ## Host identity
 
 **Node name**:
@@ -91,7 +95,7 @@ _Avoid_: `_PUT_FIELDS`/`_GET_FIELDS`/`_PUTFILE_COLS`/`_GETFILE_COLS` literals (d
 
 **EventSchema**:
 The canonical, pure-data description of each scheduler/config event type. `EVENT_SCHEMA` maps a type name to an `EventSpec` carrying its `required_fields`, `is_content` flag, and same-time `priority`. Lives in `src/core/events.py`; intentionally pure (dataclass + constant, no `runtime` import) so both the config validator (`core`) and the scheduler (`runtime`) import it without breaking the core→runtime layering. Insertion order is load-bearing — `event_types()` derives the validator's valid-type tuple and the "must be one of: …" error order from it.
-Binding is asymmetric, by design: the config validator's missing-field checks are **bound** to `required_fields` (for `fib_*`/`compute_call`/`put`/`pubsub_pub`/`get`/`pubsub_sub`; `link_down`/`link_up`/`bw_set` keep their existing shape checks), and the scheduler derives `_EVENT_PRIORITY`/`_CONTENT_EVENT_TYPES` from it. The scheduler/content-runner handlers' field access (`ev["host"]`, `ev["prefix"]`, …) is **documented by convention** against `required_fields`, not mechanically enforced — so the schema⇄handler drift class is concentrated to one place to read, not eliminated. The publisher set (`is_publication=True` → `publication_event_types()`) is bound for `scenarios/disaster.py` and `scenarios/connect.py` publisher-metadata builders and for `loader.py`'s publication-validation branch, so the loader / scheduler / content_ops / scenarios quadrangle is now drift-free.
+Binding is asymmetric, by design: the config validator's missing-field checks are **bound** to `required_fields` (for `fib_*`/`compute_call`/`put`/`pubsub_pub`/`get`/`pubsub_sub`; `link_down`/`link_up`/`bw_set` keep their existing shape checks), and the scheduler derives `_EVENT_PRIORITY`/`_CONTENT_EVENT_TYPES` from it. The scheduler/content-runner handlers' field access (`ev["host"]`, `ev["prefix"]`, …) is **documented by convention** against `required_fields`, not mechanically enforced — so the schema⇄handler drift class is concentrated to one place to read, not eliminated. The publisher set (`is_publication=True` → `publication_event_types()`) is bound for `scenarios/disaster.py` and `scenarios/connect.py` publisher-metadata builders and for `loader.py`'s publication-validation branch, so the loader / scheduler / content_ops / scenarios quadrangle is now drift-free. Conditional publication: `EventSpec.publication_uri_field` names the event key that holds the published URI (`uri` for `put`/`pubsub_pub`, `publish_uri` for `compute_call`); `extract_publications(events, include_conditional=True)` additionally counts conditional publishers (a `compute_call` whose `publish_uri` is set) into `publishers_dict`/`publisher_ids` but never into the seedable `publications` list. Opt-in per scenario: `disaster.py` passes `include_conditional=True` so FIB pre-programming routes consumers toward compute hosts; `connect.py` keeps the default (its publication list is a seeding input and must stay put/pubsub_pub only). Duplicate-URI collisions resolve input-order last-wins across unconditional and conditional publishers alike (FIB computation accepts one host per URI).
 `ContentOperationRunner._HANDLERS` in `src/runtime/content_ops.py` maps each content event type name to its handler method name (`"put"→"_do_put"` etc.); an import-time `assert set(_HANDLERS) == content_event_types()` locks the dispatch table to EventSchema so drift is caught at module load, not at runtime.
 _Avoid_: `valid_event_types` literal, `_EVENT_PRIORITY`/`_CONTENT_EVENT_TYPES` literals, per-type required-field literals, `("put", "pubsub_pub")` tuple literal, "event type table", if/elif dispatch in content_ops
 
@@ -167,16 +171,61 @@ _Avoid_: per-entry-point bootstrap コピー, parser 無し merge_cli_and_config
 
 このセクションは domain glossary ではなく、未着手の deepening candidate を次のセッションで再提案されないよう pin する backlog。`/tmp/architecture-review-20260626-165236.html` のレポート由来。完了したら該当エントリを削除し、上の domain section に正式名を追記すること。
 
-**最終ゲート完了 (2026-07-08) — `fix/failure-defaults-forwarding-monitor` → PR to main 提出済み**:
-2026-07-07 architecture review 候補1〜3 の実装 (fb0a5d5..68aa618) に対し 4 ゲートを 2026-07-08 に完走: (1) cefore-run-tests full smoke (sudo) — pytest + 11 disaster config + connect 全 [OK]、`[flap]` は min_failure セクションのみ (暗黙flap根絶の実機証明)、min_monitoring は整形済み monitor.json を出力。追加で forwarding node-override A/B run (h1 のみ shortest_path 指定) を実施し、cefnetd log の FwdStr 非対称 (h1=s_path / h0,h2=flooding) で ForwardingConfigManager の per-node 書込が template 値と区別可能な形で実機到達することを証明 (template は main 由来の一様 flooding のため default 値だけでは判別不能だった)。(2) codex-review ブランチ全体レビュー approve、findings ゼロ (Phase 3〜5 重点 + 自走 474 focused tests + ruff)。(3) 監査は advisor 不可 → Codex MCP gpt-5.5 fallback。初回 NO-GO: doc drift 3件 (workshop 35 config の旧 down_* default 説明 / forwarding_config 未文書化 / pub・sub CSV 「動的抽出」記述の陳腐化) + nodes[].strategy 省略の silent-ignore 罠。修正 3 commits (412a4f0 strategy 必須 validation / 9732b25 workshop コメント一斉更新 / 4b91954 README・README_ja・example.yaml) で解消、full pytest 1239 passed / 6 skipped。(4) PR to main 提出。merge 後この エントリは削除可。関連の独立負債 (変わらず housekeeping 候補): repo 全体の `mypy src` 57 errors / 24 files・`ruff check` 38 errors (main 由来)。
-_Avoid_: mypy/ruff 既存負債の解消をこの PR に混ぜること、forwarding runtime 検証で default 値 run のみを証拠とすること (template と判別不能)
+**R10 backlog (2026-07-09 review 完了) — 次セッションの作業キュー**:
+feature/seam (= main, PR#13 マージ後) を対象に 8 subsystem 並列探索 + 候補ごと adversarial 検証を実施、21 raw 候補中 20 生存。bug 級 B1・B2 は 2026-07-09 に解消済み (下記)。Strong S1 (run_cefstatus deepening)・S2 (dead per-content label param 削除) は 2026-07-12 に実装完了、エントリ削除済み。残る優先順: (1) Strong S3〜S9、(2) Worth exploring W1〜W8 は余力で、Speculative P1〜P2 は保留。独立 housekeeping 負債は変わらず: repo 全体 `mypy src` 71 errors / 32 files (fresh-cache 実測 2026-07-12; 旧記載 57/24 は incremental-cache による過小計数)・`ruff check src tests` 14 errors (main 由来)。
+
+**解消済み (2026-07-09) — B1: validate_merged_args の present-but-empty structured config 素通し**:
+73ca40b で fix。structured-key 取り込みを truthiness から presence (`hasattr`) に変更し、`failure_scenarios: {}` / `null` が ADR-0002:21-24 通り validation error になった。presence が成立する根拠: config-only key は merge_cli_and_config が config 実在時のみ setattr する。bw/ext は argparse append (default `[]`) で常に attr が在るが、空リストは無害に検証通過。cache_config/forwarding_config は structured_option_keys() が special_config_merge を除外するため元々この経路外 — bootstrap raw revalidation が唯一の検証経路のまま (fold 不要と実証、exactly-once エラーを test で pin)。codex-review approve (findings ゼロ)。**発見した残課題 → R8 エントリに追記済み**: `failure_scenarios: "none"` (文字列) が現状 `'must be a dict'` で error になり、ADR-0002 の「省略と等価で許可」と矛盾する。
+_Avoid_: bw/ext の常時 presence を bug として再報告すること、"none" 許可を R8 の FailurePolicy 解決と切り離して実装すること
+
+**解消済み (2026-07-09) — B3: validate_merged_args の scalar 側 explicit-null 素通し (B1 完了監査で発見)**:
+d2680b1 で fix。B1 の gpt-5.5 完了監査が指摘した同型 bug — scalar loop の `val is not None or nullable` gate が non-nullable scalar の明示 null (`hosts: null` 等) を捨て、後段で生 TypeError になっていた。fix は scalar も presence forward 化。安全性の invariant: **non-nullable かつ cli_allowed=True の scalar は全て argparse default が非 None** (4 CLI block 全列挙で実証; これが崩れると素の CLI 実行が全部 validation error になる)。唯一の違反だった `num` (argparse default None・非 nullable) は nullable=True 化 — None は「実験番号なし」の正当な状態。cli_allowed=False scalar (cefnetd_timeout) は parser 非搭載なので hasattr が config-presence 証拠 (structured 側と同メカニズム)。no-flag+empty-config の false-positive guard test を disaster/connect 両 parser で pin。codex-review approve (findings ゼロ)。
+_Avoid_: 新規 scalar OptionSpec に「argparse default None かつ非 nullable かつ cli_allowed=True」の組合せを導入すること (invariant 違反 → 全デフォルト実行が error 化)
+
+**解消済み (2026-07-09) — B2: failure_manager cycle-mode の host 恒久除外**:
+7716a93 で fix。cycle-mode do_up の `shared_down.discard` を restored_hosts gate から down_set 無条件へ変更 (periodic_host_flap :80 と同 semantics)。復帰失敗 host も次 cycle の available pool へ戻り、monitoring down-set からも外れる (probe 再開は periodic と同じ既存挙動で意図通り)。`_record_flap` の success=False 記録は維持 — 失敗証拠は results.json に残る。regression test は up 失敗 host が次 cycle で再選択されることを pin (pre-fix fail 確認・20 連続 flake なし)。共有 primitive 抽出は意図的に不採用 (ADR-0002 R8 が periodic_host_flap を削除予定 → one-adapter seam 化するため)。
+_Avoid_: periodic_host_flap と cycle-mode の共有 primitive 抽出 (R8 で片側が消える)
+
+**S3 — Disaster/Connect wiring 重複 collapse**: lifecycle quartet の外側の glue — build_topology (17行 byte-identical) / create_mininet / daemon_log_collection_scope (11行) / should_run_cli / before_cli・after_cli の tee-swap / __init__ prologue — が両 scenario に copy。BaseScenario と両者の間に mesh-CLI-scenario 中間 base を置き hoist。注意: connect の rng init 位置、disaster の rng fallback (failure-manager scheduling 用に常に fresh Random()) の差は保持。
+
+**S4 — pub_lifetime_by_uri 二重導出**: `event_batch.py:55-64` の module-private helper を public 化し、`disaster.py:274-280` (_make_content_runner 内の inline 再実装) を置換。warmup 経路が seam 外なのは意図 (CONTEXT の EventBatchSpec 項) — 導出関数だけ共有する。
+
+**S5 — _validate_failure_scenarios の simple/cycles 重複検査 collapse**: `validator.py:729-878` が同一 flap-descriptor 検査を simple 用と cycles[idx] 用に 2 実装し、negative count/stagger は同一エラー文字列が 2 回返る (実測: 2 violation で 4 errors)。`_validate_flap_descriptor(errors, prefix, descriptor, *, allow_target=, allow_publishers=)` へ抽出。R8 が同関数の schema を変える予定 (duration/interval >= 1) なので R8 着手前に済ませるか R8 に同梱するかは着手時に判断。
+
+**S6 — bridge_external に CommandRunner seam**: attach_external_via_bridge / cleanup_external_bridges / attach_external_interface に optional `runner` param を追加し `_run_root_cmd_vec` (bridge_external.py:51-64 が MininetCommandRunner(None) を hardcode) へ thread。現行テストは internal patch 41 箇所 (_run_root_cmd_vec 37 + MininetCommandRunner 4: test 行 218/388/967/1015) — recording fake 注入へ移行可能に。bridge_root.py:74-89 BridgeManager の _root_runner/_host_runner pattern を mirror。
+
+**S7 — Monitor が CommandResult.returncode を捨て webui が text sniffing で liveness 再導出**: MONITOR_FIELDS (`monitoring.py:19`) に outcome field を追加し webui/state.py の hand-maintained keyword list を置換。tri-state 必須 (ok / not-ok / skipped-no-result — down-host skip :171-177 は CommandResult 自体が無い)。run_csmgrstatus が stdout str のみ返す interface も拡張が要る。ADR-0001 とは無関係 (stream 位置は変えない)。
+
+**S8 — fib.py の next-hop selection 3 重複 collapse**: `:75-95` (compute_fib inline) / `:125-150` (_add_routes closure) / `:227-247` (_add_ecmp closure) が同一の candidate-build + sort + next_hop_ip 解決。共有 primitive へ。variation 軸は 2 つ: k-selection 規則 (top-k slice vs all-tied-minimum) と `seen` cross-call dedup (compute_fib のみ持たない)。
+
+**S9 — adjacency-graph builder 2 重複 unify**: `viz.py:35-47` build_host_graph (sparse — 0-edge host を含まない) と `fib.py:30-47` build_graph_and_subnets (dense — 全 host pre-populate) が同じ TopologyModel.edges() walk。しかも CacheContext.host_graph は viz 経由 (`scenario_setup.py:265`) で、cache 配置の graph 出所が可視化 module になっている。TopologyModel.adjacency() 等へ一本化。注意: dense/sparse の挙動差は実在 — 統一時に 0-edge host の扱いを明示的に決めること。
+
+**W1 — Cefore conf key=value read の単一 owner**: `cefore_conf.py:6-22` / `daemon_logs.py:23-35` / `:38-54` の同形 3 loop + `template.py:145-181` の regex 版 (計 4 実装)。read 側を cefore_conf.py の `read_conf_value(path, key, default=None)` に集約。実測 divergence: manual loop は '=' 後の最初の whitespace token、regex は行末まで — 統一時に semantics を決める。_set_config_value の扱いは P1 と同時判断。
+
+**W2 — sub-artifact double-glob 解消**: `content_ops.py:409-414` (log 用) と `result_detect.py:66-67` (detect_sub_success) が同一 `RNP0x*.out` glob + non-empty filter。clear_sub_output_artifacts (:49) も同 glob の 3 つ目。候補6 (result_detect → Verdict 吸収) と同時に行うのが合理的。
+
+**W3 — daemon_log_collection_enabled の 4 __init__ copy hoist**: 同一 3-line 式が disaster/connect/mesh/linear の __init__ に copy、対応 test も 4 重複。base.py の helper へ。注意: mesh/linear は run_dir を resolve しないので、constraint の実体は「raw param のうちに計算」(disaster/connect のみ resolve 前後の話)。
+
+**W4 — cefroute_add/del/enable の boilerplate collapse**: `net_config.py:51-85` / `:154-177` / `:180-203` が verb 以外同形の 12 行 (drift 実在: add のみ非ゼロ returncode の failure logging を持つ)。verb-parametrized private helper へ。
+
+**W5 — auto-monitor dashboard-default policy の interface 化**: `disaster.py:373-402` _start_monitoring に inline の default-target/interval 正規化を pure function へ抽出。`tests/webui/test_webui.py:89-95` が現状 6 行を手 copy ("Simulate the disaster.py auto-monitor setup") しており、抽出後は import して直接テスト。
+
+**W6 — campaign.py/supervise.sh の job-done semantics 統一**: `supervise.sh:32` は ok/failed/skipped_memory を done 扱い、`campaign.py:303-304` _load_completed_job_ids は ok のみ — 2 プロセスが campaign 完了判定で食い違う。単純に ok-only へ寄せると deterministically-broken job で infinite-relaunch になるため、per-job give-up status の永続化とセットで `campaign.py --check-done` 等の単一判定点を作る。
+
+**W7 — topo_fingerprint.py を MeshBuildSpec seam 経由に**: `topo_fingerprint.py:116-126` が rng→assign_roles→MeshTopo の RNG-order invariant を手写し (docstring 自身が fragility を明記)。scenario_setup.py に filesystem-free な rng-only sub-step (または provision skip flag) を作り両者が呼ぶ。
+
+**W8 — plots.py の job-discovery layer 分離**: 1095 LOC に dataviz chrome + Job/discovery layer (:153-310、加えて _m1_jobs_by_seed/_m1_groups は fig セクション内に混在) + 10 fig_* が同居。`report.py:37` は discovery 到達のためだけに matplotlib ごと import し、underscore 4 関数 × 12 call sites が実質 interface。matplotlib-free な campaign_jobs.py へ抽出。
+
+**P1 (保留) — template.py `_set_config_value` の underscore 解消**: cache_manager.py:8/159・forwarding.py:6/50 が外部 import 済みだが、検証側は「package 内 sibling 共有の単一 underscore は _propagate_failures と同じ通常 pattern」と減衰評価。W1 (read 側集約) と同時にだけ判断。
+
+**P2 (保留) — campaign.py retry policy の injectable seam**: `_run_job_attempts` が _mem_available_fraction/_run_job_subprocess を hardwire、tools/ 配下は現状テストゼロ。seam 欠如がテスト不在の blocker とは未立証 — tools/ のテスト方針決定とセットで。
 
 **候補6 — `runtime/result_detect.py` を Verdict に吸収**:
 74 LOC の薄い adapter。`detect_*` 5 関数は `from_runtime_*` Verdict factory の evidence-unpacking wrapper で、CONTEXT.md の Verdict `_Avoid_` リスト ("detect result") に名前が抵触。5 関数を `src/core/verdict.py` の runtime-adapter section に移管 + `timestamp_utc` は `src/core/paths.py` 等に分離 → `result_detect.py` 削除。Worth exploring。
 _Avoid_: 名前を `result_detect` のまま残すこと、Verdict factory と別モジュールに散らすこと
 
 **R8候補 — legacy 障害サイクル (down_\*) + legacy キャッシュ設定 (cache_count) の廃止**:
-2026-07-02 の R7-1 grilling で user が廃止意向を表明、behavior-preserving な OptionSpec 統合と混ぜると differential gate が無意味になるため分離した。2026-07-07 の即時fixで `down_interval`/`down_duration` の省略 default は 0/0 になり、no-failure config は暗黙 flap を起動しなくなった。残るR8決定は [ADR-0002](docs/adr/0002-failure-config-resolves-to-explicit-policy.md): bootstrap 時に `FailurePolicy` へ一度だけ解決し、legacy `down_*` OptionSpec 4つ・`periodic_host_flap`・summarizer legacy metadata・`min_failure.yaml` smoke 証拠・`cache_count`/`down_count+1` fallback を同時に整理する。`down_count=5` は cache fallback の二役が残るため即時fixでは維持した。
+2026-07-02 の R7-1 grilling で user が廃止意向を表明、behavior-preserving な OptionSpec 統合と混ぜると differential gate が無意味になるため分離した。2026-07-07 の即時fixで `down_interval`/`down_duration` の省略 default は 0/0 になり、no-failure config は暗黙 flap を起動しなくなった。残るR8決定は [ADR-0002](docs/adr/0002-failure-config-resolves-to-explicit-policy.md): bootstrap 時に `FailurePolicy` へ一度だけ解決し、legacy `down_*` OptionSpec 4つ・`periodic_host_flap`・summarizer legacy metadata・`min_failure.yaml` smoke 証拠・`cache_count`/`down_count+1` fallback を同時に整理する。追記 (2026-07-09, B1 fix 時に発見): `failure_scenarios: "none"` (文字列リテラル) は ADR-0002 が「省略と等価で許可」と定めるのに、現状 `_validate_failure_scenarios` が `'must be a dict'` で reject する — ADR 未実装ギャップ。"none" 許可は FailurePolicy 解決 (mode=none) の一部として R8 で実装すること。`down_count=5` は cache fallback の二役が残るため即時fixでは維持した。
 _Avoid_: `down_count` default だけを単独で 0 化すること、legacy down_\* 廃止を cache fallback 再設計なしで進めること、min_failure の gate 証拠を代替なしで消すこと
 
 **修正案 — `swhich_num` typo の是正 (semantic 名 `switch_limit` へ)**:
@@ -217,6 +266,22 @@ definitive True と判定するよう更新済み (src/core/verdict.py) — mark
 (0-byte FAILURE ログ) の log-only 判定は依然 unknown のままで、これはログ欠損と
 区別不能という構造的限界であり today の fix では解消しない。
 _Avoid_: 実験 config の pubsub を無検証で 10+ hosts に置くこと
+
+**発見 (2026-07-14 M5e 時系列実験) — 障害窓中の get 可用性は「FIB 経路上の csmgrd」で決まる**:
+機構を対照実験で確定: (1) 非cacheノードは CS_MODE=0 (テンプレ既定) で一切キャッシュを
+持たず、他ホストの取得は誰にも再供給されない (2) csmgrd が複製を持つのは「そのノード
+自身が取得した場合」または「consumer→publisher の FIB 経路上にいて取得が通過した場合」
+のみ (3) publisher 停止中に get が成功する必要十分条件 ≒ 経路上の csmgrd に複製がある
+こと。flooding (FwdStr) は実質 FIB 経路のみで、経路外の csmgrd 複製は救わない。
+m5a の 85〜96% の正体もこれ (5秒間隔ポーリングの直近複製が経路上に生きていた)。
+オフライン再現: k_centers 配置は topo_fingerprint の隣接 + src/core/graph.select_k_centers
+で実行時と完全一致 (seed 1101 で実測検証済) → per-seed の役割選定
+(tools/workshop/gen_m5e_config.py) が可能になった。
+failure_scenarios cycles の罠: interval は前 cycle の down 時点起点で、down 中の
+target は skip される → **interval > 前 cycle の duration が必須** (でないと後続窓が
+無言で消える)。
+_Avoid_: 「一度取得した content は網内キャッシュに乗る」と仮定した実験設計
+(非cacheノードの取得は乗らない)。cycles の interval ≤ duration。
 
 **deferred (2026-07-27 external review) — ccninfo/monitoring known gaps**:
 - `.inf` が monitoring.interval validation を通過した後 monitor thread を無限待機で殺す (pre-existing class; isfinite guard は command_timeout のみ適用済み)

@@ -11,8 +11,8 @@ must never import from ``runtime`` or the core->runtime layering would break.
 
 Scope: the canonical source for valid types, required fields, content
 classification, publication classification, and same-timestamp priority.
-Loader, scheduler, content_ops, and the scenario publisher-metadata builders
-(``disaster.py``/``connect.py``) all derive from this module.
+Every consumer of per-type event facts derives them from this module
+instead of keeping its own table.
 """
 
 from dataclasses import dataclass
@@ -31,12 +31,20 @@ class EventSpec:
         means "no special ordering"; the ordering-sensitive content ops carry
         explicit priorities so pubsub_sub precedes pubsub_pub and put precedes
         get. Other content ops (ccninfo) take the default.
+    publication_uri_field: the event key holding the URI this event publishes
+        under, or None for non-publishing types. For unconditional publishers
+        (is_publication=True) this is "uri"; for *conditional* publishers
+        (compute_call) the field is optional per event — the event publishes
+        only when the key is present. Kept separate from is_publication so
+        publication_event_types() (validator's uri/file requirements, seeding
+        policies) is untouched by conditional types.
     """
 
     required_fields: tuple[str, ...]
     is_content: bool = False
     is_publication: bool = False
     priority: int = 5
+    publication_uri_field: str | None = None
 
 
 # Insertion order is load-bearing: ``loader`` derives its valid-type tuple from
@@ -49,10 +57,10 @@ EVENT_SCHEMA: dict[str, EventSpec] = {
     "fib_del":      EventSpec(("host", "prefix", "next_hop")),
     "fib_enable":   EventSpec(("host", "prefix", "next_hop")),
     "bw_set":       EventSpec(("nodes", "bandwidth")),
-    "compute_call": EventSpec(("host", "endpoint")),
-    "put":          EventSpec(("host", "uri", "file"), is_content=True, is_publication=True, priority=1),
+    "compute_call": EventSpec(("host", "endpoint"), publication_uri_field="publish_uri"),
+    "put":          EventSpec(("host", "uri", "file"), is_content=True, is_publication=True, priority=1, publication_uri_field="uri"),
     "get":          EventSpec(("host", "uri"), is_content=True, priority=3),
-    "pubsub_pub":   EventSpec(("host", "uri", "file"), is_content=True, is_publication=True, priority=2),
+    "pubsub_pub":   EventSpec(("host", "uri", "file"), is_content=True, is_publication=True, priority=2, publication_uri_field="uri"),
     "pubsub_sub":   EventSpec(("host", "uri"), is_content=True, priority=0),
     "ccninfo":      EventSpec(("host", "uri"), is_content=True),
 }
@@ -91,17 +99,56 @@ def event_priorities() -> dict[str, int]:
 
 def extract_publications(
     events: list[dict],
+    include_conditional: bool = False,
 ) -> tuple[list[dict], dict[str, int], frozenset[int]]:
     """Pure extraction of publisher metadata from a raw events list.
 
+    Args:
+        events: raw event dicts from config.
+        include_conditional: also count conditional publishers — events whose
+            spec carries a publication_uri_field without is_publication (a
+            compute_call with publish_uri set). They join publishers_dict /
+            publisher_ids (so FIB pre-programming routes consumers toward the
+            publishing host) but never the publications list: that list is a
+            seeding input (seeding scenarios execute it as content ops), and
+            a compute_call there would crash on the missing "uri". Opt-in per
+            scenario policy: pass True where compute_call events actually
+            execute (so their republished URIs get FIB metadata); keep the
+            default where the publications list is a seeding input.
+
     Returns:
         publications: events whose type is in publication_event_types().
-        publishers_dict: {uri: host_idx} for each publication event.
+        publishers_dict: {uri: host_idx} for each (counted) publication event.
         publisher_ids: publisher host indices as ints, matching
             ScenarioSetupSpec.publisher_ids: set[int].
     """
     pub_types = publication_event_types()
     publications = [ev for ev in events if ev.get("type") in pub_types]
-    publishers_dict = {ev["uri"]: ev["host"] for ev in publications}
-    publisher_ids = frozenset(ev["host"] for ev in publications)
+
+    def _counts(ev) -> bool:
+        """True when this event contributes publisher metadata: any
+        unconditional publication, or (opt-in) a conditional publisher
+        whose publication_uri_field is present and truthy."""
+        if ev.get("type") in pub_types:
+            return True
+        if not include_conditional:
+            return False
+        spec = EVENT_SCHEMA.get(ev.get("type", ""))
+        return (
+            spec is not None
+            and spec.publication_uri_field is not None
+            and bool(ev.get(spec.publication_uri_field))
+        )
+
+    # 2026-07-16 review fix: counted was unconditional-then-conditional, so a
+    # compute_call's publish_uri always overwrote a put on the same URI. One
+    # pass over events keeps duplicate-URI precedence input-order last-wins —
+    # FIB computation accepts one host per URI, and conditional publishers
+    # must not silently outrank a later unconditional one.
+    counted = [ev for ev in events if _counts(ev)]
+    publishers_dict = {
+        ev[EVENT_SCHEMA[ev["type"]].publication_uri_field]: ev["host"]
+        for ev in counted
+    }
+    publisher_ids = frozenset(ev["host"] for ev in counted)
     return publications, publishers_dict, publisher_ids

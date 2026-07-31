@@ -116,6 +116,8 @@ class ResultsSink:
         actual_at=None,
         event=None,
         host=None,
+        outcome=None,
+        detail=None,
     ):
         """Record one non-content outcome (scheduler event or host flap)."""
         record = EventRecord(
@@ -127,6 +129,8 @@ class ResultsSink:
             actual_at=actual_at,
             event=event,
             host=host,
+            outcome=outcome,
+            detail=detail,
         )
         self._append(record.to_dict())
 

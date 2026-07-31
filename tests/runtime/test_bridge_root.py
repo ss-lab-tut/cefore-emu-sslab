@@ -181,6 +181,167 @@ class TestSetupBridgesSchemeWiring:
         assert resolved_ips and resolved_ips[0] == "192.168.3.254/24"
 
 
+class TestConnectToRootNsAttachesSwitchPort:
+    """setup_bridges runs after net.start(), and Mininet's addLink alone does
+    not enroll the new veth into a running OVS switch — without an explicit
+    switch.attach() the root-side port carries no traffic and every
+    host↔root packet is silently dropped (2026-07-16 runtime-proven:
+    ovs-vsctl list-ports lacked the port; manual add-port fixed h1→root)."""
+
+    def test_switch_side_interface_is_attached(self):
+        """connect_to_root_ns must attach the switch-side link interface."""
+        from src.runtime.bridge_root import BridgeManager
+
+        mgr = BridgeManager(runner=FakeCommandRunner())
+        mgr.root_node = MagicMock()
+        switch = MagicMock()
+        net = MagicMock()
+        net.get = MagicMock(return_value=switch)
+        link = MagicMock()
+        net.addLink = MagicMock(return_value=link)
+
+        mgr.connect_to_root_ns(net, "s0", "192.168.1.254/24", "192.168.0.0/16")
+
+        switch.attach.assert_called_once_with(link.intf2)
+
+
+class TestConnectToRootNsMissingSwitch:
+    """The switches config value is an upper bound on the emergent topology
+    (seed-dependent), so a validator-accepted index can still name a switch
+    that was never built. Mininet's net.get raises KeyError for unknown
+    names — the old `if switch is None` guard was dead code (2026-07-16
+    review fix)."""
+
+    def test_missing_switch_warns_and_returns_without_addlink(self):
+        """A KeyError from net.get degrades to the documented warning and
+        reports failure so the caller can skip the whole bridge entry."""
+        from src.runtime.bridge_root import BridgeManager
+
+        mgr = BridgeManager(runner=FakeCommandRunner())
+        net = MagicMock()
+        net.get = MagicMock(side_effect=KeyError("s2"))
+
+        with patch("src.runtime.bridge_root.info") as mock_info:
+            ok = mgr.connect_to_root_ns(
+                net, "s2", "192.168.3.254/24", "192.168.0.0/16"
+            )
+
+        assert ok is False
+        net.addLink.assert_not_called()
+        assert mgr.cleanup_actions == []
+        assert any(
+            "s2 not found" in str(c.args[0]) for c in mock_info.call_args_list
+        )
+
+    def test_successful_connect_reports_true(self):
+        """The bool distinguishes attachment success from a missing switch
+        so every follow-on mutation can be keyed off it."""
+        from src.runtime.bridge_root import BridgeManager
+
+        mgr = BridgeManager(runner=FakeCommandRunner())
+        mgr.root_node = MagicMock()
+        net = MagicMock()
+        net.get = MagicMock(return_value=MagicMock())
+        net.addLink = MagicMock(return_value=MagicMock())
+
+        ok = mgr.connect_to_root_ns(
+            net, "s0", "192.168.1.254/24", "192.168.0.0/16"
+        )
+
+        assert ok is True
+
+
+class TestSetupBridgesIntegerSwitchIndex:
+    """YAML bridges give switch as an integer index (the config validator
+    requires it), but Mininet switches are named sN — setup_bridges must
+    translate, or net.get(0) raises KeyError (2026-07-16 audit fix: the
+    YAML bridges path had never been exercised end-to-end)."""
+
+    def test_integer_switch_translates_to_switch_name(self):
+        """switch: 1 in config reaches BridgeManager as "s1"."""
+        bridge_configs = [
+            {"switch": 1, "root_ip": "auto", "local_routes": "192.168.3.0/24"},
+        ]
+        mesh_links = _mesh_links_with_switch("s1", subnet=3)
+        net = MagicMock()
+        bridge_manager = MagicMock()
+        bridge_manager.connect_to_root_ns.return_value = None
+        bridge_manager.enable_normal_flow.return_value = None
+
+        try:
+            setup_bridges(net, bridge_manager, bridge_configs, 2, mesh_links)
+        except Exception:
+            pass  # host-route internals may fail on the MagicMock net
+        args = bridge_manager.connect_to_root_ns.call_args[0]
+        assert args[1] == "s1"
+        bridge_manager.enable_normal_flow.assert_called_once_with(net, "s1")
+
+
+class TestSetupBridgesSkipsEntryOnAttachFailure:
+    """2026-07-21 review fix: when the switch cannot be attached, the whole
+    bridge entry must be skipped — continuing with enable_normal_flow /
+    routes / NAT would issue ovs-ofctl against a missing switch, register
+    bogus cleanup actions, and mutate unrelated routing state."""
+
+    def test_no_follow_on_operations_after_failed_connect(self):
+        """connect_to_root_ns=False stops flow/route/NAT processing."""
+        # external_routes + gateway + nat + proxy_arp make every follow-on
+        # branch reachable, so each assert_not_called can actually fail if
+        # the early skip regresses.
+        bridge_configs = [
+            {
+                "switch": 2,
+                "root_ip": "192.168.3.254/24",
+                "local_routes": "192.168.0.0/16",
+                "external_routes": "10.0.0.0/24",
+                "gateway": "192.168.3.1",
+                "nat": True,
+                "proxy_arp": True,
+            }
+        ]
+        net = MagicMock()
+        bridge_manager = MagicMock()
+        bridge_manager.connect_to_root_ns.return_value = False
+
+        setup_bridges(net, bridge_manager, bridge_configs, 2, None)
+
+        bridge_manager.connect_to_root_ns.assert_called_once()
+        bridge_manager.enable_normal_flow.assert_not_called()
+        bridge_manager.add_root_route.assert_not_called()
+        bridge_manager.add_host_route.assert_not_called()
+        bridge_manager.enable_ip_forwarding.assert_not_called()
+        bridge_manager.enable_nat.assert_not_called()
+        bridge_manager.enable_proxy_arp.assert_not_called()
+
+    def test_follow_ons_reachable_when_connect_succeeds(self):
+        """Sanity for the fixture above: with attachment succeeding, the same
+        config drives the route/NAT/proxy follow-ons — proving the
+        not-called asserts are behavior-sensitive, not vacuous."""
+        bridge_configs = [
+            {
+                "switch": 2,
+                "root_ip": "192.168.3.254/24",
+                "local_routes": "192.168.0.0/16",
+                "external_routes": "10.0.0.0/24",
+                "gateway": "192.168.3.1",
+                "nat": True,
+                "proxy_arp": True,
+            }
+        ]
+        net = MagicMock()
+        bridge_manager = MagicMock()
+        bridge_manager.connect_to_root_ns.return_value = True
+
+        setup_bridges(net, bridge_manager, bridge_configs, 2, None)
+
+        bridge_manager.enable_normal_flow.assert_called_once()
+        bridge_manager.add_root_route.assert_called_once()
+        assert bridge_manager.add_host_route.call_count == 2
+        bridge_manager.enable_ip_forwarding.assert_called_once()
+        bridge_manager.enable_nat.assert_called_once()
+        bridge_manager.enable_proxy_arp.assert_called_once()
+
+
 class TestSetupBridgesCommandRunnerWiring:
     """Verify setup_bridges reaches bridge root/host paths through one runner."""
 

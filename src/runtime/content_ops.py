@@ -61,7 +61,6 @@ class ContentOperationRunner:
         run_dir,
         sink,
         flap_state,
-        seed_label,
         uri_publishers=None,
         startup_grace=1.0,
         pub_lifetime_by_uri=None,
@@ -73,7 +72,6 @@ class ContentOperationRunner:
         self._run_dir = Path(run_dir)
         self._sink = sink
         self._flap_state = flap_state
-        self._seed_label = seed_label
         self._uri_publishers = uri_publishers or {}
         self._startup_grace = float(startup_grace)
         self._pub_lifetime_by_uri = pub_lifetime_by_uri or {}

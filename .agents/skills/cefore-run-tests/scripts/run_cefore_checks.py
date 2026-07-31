@@ -29,6 +29,7 @@ SMOKE_CONFIGS = (
     "min_event_link",
     "min_monitoring",
     "min_ccninfo",
+    "min_compute",
     "connect",
 )
 
@@ -339,6 +340,25 @@ def build_smoke_cases() -> list[SmokeCase]:
                 },
             },
         ),
+        SmokeCase(
+            # compute_call tri-state: autotest mode forbids bridges/ext, so
+            # topology isolation (no external route at all) guarantees the
+            # endpoint is unreachable — TEST-NET-3 just adds safety if a
+            # route ever existed. The record must be skipped-no-result
+            # (environment), never a plain failure.
+            #
+            # Deliberately no "all_success": the compute_call row is expected to
+            # carry success == false. Harmonising this with min_ccninfo's
+            # all_success=True would make the case assert the opposite of its
+            # own premise.
+            "min_compute",
+            config_relpath="config/examples/min_compute.yaml",
+            expect={
+                "min_rows": 1,
+                "require_event_types": ("compute_call",),
+                "event_outcomes": {"compute_call": "skipped-no-result"},
+            },
+        ),
         SmokeCase("connect", kind="connect"),
     ]
 
@@ -386,6 +406,8 @@ def validate_results(
     - ``require_event_types``: at least one ``op_type == "event"`` record per
       listed event_type (scheduler / failure-cycle outcome records).
     - ``all_events_success``: every event record must have truthy ``success``.
+    - ``event_outcomes``: per-event_type required ``outcome`` value; every
+      event record of that type must carry exactly that tri-state outcome.
     - ``monitor_json``: a monitor.json with at least ``min_entries`` entries
       must exist under the case output directory.
     - ``summarizer_min_rows``: ceforeemu-log module-form stdout must produce at
@@ -434,6 +456,18 @@ def validate_results(
         r.get("success") for r in event_rows
     ):
         fail("contains a failed event record")
+    for event_type, want_outcome in expect.get("event_outcomes", {}).items():
+        # 2026-07-16 audit fix: zero matching rows must fail, not vacuously
+        # pass — the outcome expectation implies the event happened at all.
+        matching = [r for r in event_rows if r.get("event_type") == event_type]
+        if not matching:
+            fail(f"expected at least 1 {event_type} record to check outcome")
+        for row in matching:
+            if row.get("outcome") != want_outcome:
+                fail(
+                    f"{event_type} record outcome is {row.get('outcome')!r}, "
+                    f"expected {want_outcome!r}"
+                )
     monitor_spec = expect.get("monitor_json")
     if monitor_spec:
         matches = sorted(case_output_dir.rglob("monitor.json"))

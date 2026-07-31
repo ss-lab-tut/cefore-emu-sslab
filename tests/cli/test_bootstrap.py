@@ -133,6 +133,162 @@ def test_malformed_forwarding_config_exits_with_raw_config_error(tmp_path, capsy
     assert "config error: forwarding_config must be a dict\n" in capsys.readouterr().err
 
 
+def test_forwarding_config_empty_dict_error_reported_exactly_once(tmp_path, capsys):
+    """forwarding_config keeps special_config_merge (excluded from
+    structured_option_keys()), so bootstrap's raw special-key revalidation
+    loop stays its only validation path even after the B1 presence fix in
+    validate_merged_args — confirm that path fires once, not twice.
+    """
+    args = _parse_disaster_args(
+        tmp_path,
+        "hosts: 3\nswitches: 4\nforwarding_config: {}\n",
+        ["--output-dir", str(tmp_path / "out"), "--no-script-log"],
+    )
+
+    with pytest.raises(SystemExit):
+        _run_bootstrap(args)
+
+    stderr = capsys.readouterr().err
+    assert stderr.count("config error: forwarding_config must not be empty") == 1
+
+
+def test_malformed_cache_config_exits_with_raw_config_error_exactly_once(
+    tmp_path, capsys
+):
+    """cache_config is likewise special_config_merge and only raw-validated
+    by bootstrap's dedicated loop; pin single-occurrence reporting the same
+    way as forwarding_config above.
+    """
+    args = _parse_disaster_args(
+        tmp_path,
+        "hosts: 3\nswitches: 4\ncache_config:\n  strategy: invalid\n",
+        ["--output-dir", str(tmp_path / "out"), "--no-script-log"],
+    )
+
+    with pytest.raises(SystemExit):
+        _run_bootstrap(args)
+
+    stderr = capsys.readouterr().err
+    expected = (
+        "cache_config.strategy must be one of: k_centers, manual, degree_based, random"
+    )
+    assert stderr.count(f"config error: {expected}") == 1
+
+
+@pytest.mark.parametrize(
+    ("failure_yaml", "expected_error"),
+    [
+        (
+            "failure_scenarios: {}\n",
+            "failure_scenarios with strategy 'simple' requires 'simple' block",
+        ),
+        (
+            "failure_scenarios: null\n",
+            "failure_scenarios must be a dict",
+        ),
+    ],
+)
+def test_malformed_failure_scenarios_exits_with_config_error(
+    tmp_path, capsys, failure_yaml, expected_error
+):
+    """2026-07-09 regression test for B1: present-but-empty failure_scenarios
+    ({} / null) previously reached validate_merged_args and got silently
+    dropped by its truthiness check, so bootstrap exited 0 despite an
+    unfinished failure_scenarios block (ADR-0002 requires both to error).
+    """
+    args = _parse_disaster_args(
+        tmp_path,
+        f"hosts: 3\nswitches: 4\n{failure_yaml}",
+        ["--output-dir", str(tmp_path / "out"), "--no-script-log"],
+    )
+
+    with pytest.raises(SystemExit) as exc_info:
+        _run_bootstrap(args)
+
+    assert exc_info.value.code == 1
+    assert f"config error: {expected_error}\n" in capsys.readouterr().err
+
+
+# ---------------------------------------------------------------------------
+# validate_merged_args scalar-key presence vs. truthiness (B3)
+#
+# 2026-07-09 bug fix (audit follow-up to 73ca40b): the scalar sibling of the
+# B1 structured-key fix above. A present None for a non-nullable scalar
+# (e.g. "hosts: null") used to be dropped by validate_merged_args's old
+# `val is not None` gate, so bootstrap exited 0 on a config validate_config
+# itself rejects. "num" is the false-positive trap this fix had to clear
+# first: its argparse default is None (not a real experiment number), so it
+# is now nullable=True to keep the ordinary no-flag run error-free.
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("key", "expected_error"),
+    [
+        ("hosts", "hosts must be an integer >= 3"),
+        ("switches", "switches must be an integer >= 2"),
+    ],
+)
+def test_null_non_nullable_scalar_exits_with_config_error(
+    tmp_path, capsys, key, expected_error
+):
+    """Regression test for the B3 bug: an explicit config null for a
+    non-nullable scalar must surface as a validate_config error at the
+    bootstrap level, not be silently dropped.
+    """
+    config_yaml = {"hosts": 3, "switches": 4}
+    config_yaml[key] = None
+    yaml_lines = "".join(
+        f"{k}: {'null' if v is None else v}\n" for k, v in config_yaml.items()
+    )
+    args = _parse_disaster_args(
+        tmp_path,
+        yaml_lines,
+        ["--output-dir", str(tmp_path / "out"), "--no-script-log"],
+    )
+
+    with pytest.raises(SystemExit) as exc_info:
+        _run_bootstrap(args)
+
+    assert exc_info.value.code == 1
+    assert f"config error: {expected_error}\n" in capsys.readouterr().err
+
+
+def test_num_null_in_config_does_not_error(tmp_path):
+    """num is nullable (its argparse default is already None, meaning "no
+    experiment number"), so an explicit "num: null" in config must behave
+    identically to omitting it entirely — no validation error, no crash.
+    """
+    args = _parse_disaster_args(
+        tmp_path,
+        "hosts: 3\nswitches: 4\nnum: null\n",
+        ["--output-dir", str(tmp_path / "out"), "--no-script-log"],
+    )
+
+    record = _run_bootstrap(args)
+
+    assert record["args"].num is None
+
+
+def test_no_flags_empty_config_validates_cleanly(tmp_path):
+    """The false-positive guard at the bootstrap level: a plain run with no
+    CLI flags and an empty config file must not trip any scalar key,
+    including "num" whose argparse default of None could otherwise be
+    mistaken for an explicit config null.
+    """
+    args = _parse_disaster_args(
+        tmp_path,
+        "",
+        ["--output-dir", str(tmp_path / "out"), "--no-script-log"],
+    )
+
+    record = _run_bootstrap(args)
+
+    assert record["args"].num is None
+    assert record["args"].hosts == 5
+    assert record["args"].switches == 10
+
+
 def test_meta_json_written_with_exact_disaster_keys(tmp_path):
     args = _parse_disaster_args(
         tmp_path,

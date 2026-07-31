@@ -131,6 +131,36 @@ class TestEventRecordWireFormat:
         assert "error" in d
         assert d["error"] is None
 
+    def test_outcome_and_detail_serialize_when_set(self):
+        """Deliberate wire-format extension: optional tri-state outcome.
+
+        ``outcome`` uses the S7 vocabulary (ok / not-ok / skipped-no-result)
+        and ``detail`` carries handler-specific evidence. Both are variant
+        fields in the None-suppressed style, so records that do not set them
+        stay byte-identical (covered by the key-set tests above).
+        """
+        record = EventRecord(
+            event_type="compute_call",
+            ts="t",
+            success=False,
+            error=None,
+            scheduled_at=1.0,
+            actual_at=1.001,
+            event={"at": 1, "type": "compute_call"},
+            outcome="skipped-no-result",
+            detail={"reason": "no-external-connectivity", "curl_exit": 7},
+        )
+        d = record.to_dict()
+        assert set(d.keys()) == SCHEDULER_EVENT_KEYS | {"outcome", "detail"}
+        assert d["outcome"] == "skipped-no-result"
+        assert d["detail"]["curl_exit"] == 7
+
+    def test_outcome_and_detail_absent_by_default(self):
+        record = EventRecord(event_type="link_down", ts="t", success=True, error=None)
+        d = record.to_dict()
+        assert "outcome" not in d
+        assert "detail" not in d
+
 
 def _ccninfo_record(**overrides):
     fields = dict(

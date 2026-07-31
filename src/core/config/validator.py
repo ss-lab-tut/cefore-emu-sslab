@@ -209,6 +209,22 @@ OPTION_SPECS = {
         "num",
         "int",
         minimum=1,
+        # 2026-07-09 bug fix (audit follow-up to 73ca40b): num has no argparse
+        # default (parser default is None, not a real experiment number), and
+        # None is num's genuine "no numbered run" state throughout the
+        # codebase (see experiment_dir_name/resolve_run_dir treating num=None
+        # as omission). nullable=True documents that and is required by the
+        # scalar-forwarding fix below: without it, a plain run with no --num
+        # flag and no "num" key in config would forward None into
+        # validate_config and be flagged as invalid, breaking every default
+        # run. This was the one non-nullable-looking CLI scalar whose
+        # argparse default was None; every other non-nullable cli_allowed=True
+        # scalar key defaults to a real value, which is the invariant
+        # validate_merged_args's scalar loop relies on (nullable scalars are
+        # exempt — they tolerate None; cli_allowed=False scalars like
+        # cefnetd_timeout never enter a parser, so presence on args already
+        # means "was in the config").
+        nullable=True,
         flag="--num",
         help="experiment number (enables log directory output)",
         block=("common", "linear", "connect"),
@@ -890,8 +906,24 @@ def _validate_bridges(errors, config):
                     continue
                 if "switch" not in bridge:
                     errors.append(f"bridges[{idx}] missing required field 'switch'")
-                elif not _is_int(bridge["switch"]):
-                    errors.append(f"bridges[{idx}].switch must be an integer")
+                elif not _is_int(bridge["switch"]) or bridge["switch"] < 0:
+                    # 2026-07-16 review fix: a negative index would translate
+                    # to a nonexistent switch name (s-1) at setup time.
+                    errors.append(
+                        f"bridges[{idx}].switch must be a non-negative integer"
+                    )
+                elif _is_int(config.get("switches")) and bridge[
+                    "switch"
+                ] >= config["switches"]:
+                    # Coarse bound only: switches is an upper bound on the
+                    # emergent (seed-dependent) topology, so indices >= it
+                    # can never exist; an in-bound index may still be
+                    # missing at runtime, which bridge setup degrades to a
+                    # warning.
+                    errors.append(
+                        f"bridges[{idx}].switch is out-of-range: "
+                        f"{bridge['switch']} (switches: {config['switches']})"
+                    )
                 if "root_ip" not in bridge:
                     errors.append(f"bridges[{idx}] missing required field 'root_ip'")
                 elif not isinstance(bridge["root_ip"], str):
@@ -948,6 +980,41 @@ def _validate_get_options(errors, prefix, event):
             f"{prefix}.sg must be a boolean (true to send Long Life Interest)"
         )
     _validate_algo_option(errors, prefix, event, "valid_algo")
+
+
+# The exact option keys cefputfile republishing forwards; anything else is
+# either cefpubfile-only (lifetime/retry_limit/target) or a typo, and a key
+# that would be silently dropped at runtime must fail at config time instead.
+_PUTFILE_OPTION_KEYS = frozenset(
+    {"rate", "block_size", "expiry", "cache_time", "valid_algo", "port_num"}
+)
+
+
+def _validate_putfile_options(errors, prefix, event):
+    """Validate a ``pub_opts`` dict holding cefputfile options.
+
+    The option set and its bounds are exactly the put event's cefputfile
+    flags — delegated to ``_validate_put_options`` so the two can never
+    diverge (e.g. block_size >= 60 is the cefputfile minimum). Unknown keys
+    are rejected, and a falsy non-dict ([]/false/0/"") must not coerce to
+    an empty dict and bypass the type check.
+    """
+    if "pub_opts" not in event:
+        return
+    options = event["pub_opts"]
+    if not isinstance(options, dict):
+        errors.append(f"{prefix}.pub_opts must be a dict")
+        return
+    option_prefix = f"{prefix}.pub_opts"
+    # 2026-07-16 audit fix: keys may be arbitrary YAML scalars; sorting a
+    # mixed-type key set raises TypeError, so normalize to str before sorting.
+    unknown = sorted(str(k) for k in set(options) - _PUTFILE_OPTION_KEYS)
+    if unknown:
+        errors.append(
+            f"{option_prefix} has unsupported keys: {', '.join(map(str, unknown))} "
+            f"(allowed: {', '.join(sorted(_PUTFILE_OPTION_KEYS))})"
+        )
+    _validate_put_options(errors, option_prefix, options)
 
 
 def _validate_pubsub_options(errors, prefix, event, op_type):
@@ -1041,6 +1108,13 @@ def _validate_ccninfo_options(errors, prefix, options):
 
 
 def _validate_events(errors, config):
+    """Validate the ``events`` list: per-type required fields and field shapes.
+
+    Missing-field checks are bound to ``EVENT_SCHEMA.required_fields``; the
+    per-type branches add the field-shape and cross-field rules a handler
+    cannot express there (see CONTEXT.md EventSchema for the binding
+    asymmetry). Appends messages to ``errors``; never raises on config data.
+    """
     if "events" in config:
         if not isinstance(config["events"], list):
             errors.append("events must be a list")
@@ -1129,6 +1203,66 @@ def _validate_events(errors, config):
                                 errors.append(
                                     f"events[{idx}].timeout must be a positive number"
                                 )
+                        for field in ("payload", "output_file", "publish_uri"):
+                            if field in event and not isinstance(
+                                event[field], str
+                            ):
+                                errors.append(
+                                    f"events[{idx}].{field} must be a string"
+                                )
+                        if "headers" in event:
+                            headers = event["headers"]
+                            if not isinstance(headers, dict) or not all(
+                                isinstance(k, str) and isinstance(v, str)
+                                for k, v in headers.items()
+                            ):
+                                errors.append(
+                                    f"events[{idx}].headers must be a dict of "
+                                    f"string keys to string values"
+                                )
+                        # cefputfile needs a saved response body to publish;
+                        # publish_uri without output_file can never publish.
+                        if event.get("publish_uri") and not event.get(
+                            "output_file"
+                        ):
+                            errors.append(
+                                f"events[{idx}].publish_uri requires "
+                                f"output_file to be set"
+                            )
+                        # 2026-07-16 audit fix: repeat restore forms merge a
+                        # synthesized event at runtime, bypassing this
+                        # validator and the pre-run conditional-publication
+                        # (FIB) extraction — a restored publish_uri would
+                        # publish content no consumer can reach. compute has
+                        # no natural "restore", so repeat is an allowlist:
+                        # anything but interval/count (restore forms, typos)
+                        # is rejected rather than silently ignored.
+                        repeat = event.get("repeat")
+                        if isinstance(repeat, dict):
+                            extra = sorted(
+                                str(k) for k in set(repeat) - {"interval", "count"}
+                            )
+                            if extra:
+                                errors.append(
+                                    f"events[{idx}].repeat for compute_call "
+                                    f"allows only interval/count; got: "
+                                    f"{', '.join(extra)}"
+                                )
+                        # 2026-07-16 audit fix: publishing speed is governed
+                        # by pub_opts rate, not the HTTP request, so the
+                        # cefputfile deadline is its own field.
+                        if "publish_timeout" in event:
+                            if (
+                                not _is_number(event["publish_timeout"])
+                                or event["publish_timeout"] <= 0
+                            ):
+                                errors.append(
+                                    f"events[{idx}].publish_timeout must be "
+                                    f"a positive number"
+                                )
+                        _validate_putfile_options(
+                            errors, f"events[{idx}]", event
+                        )
                     elif etype in ("fib_add", "fib_del", "fib_enable"):
                         for field in EVENT_SCHEMA[etype].required_fields:
                             if field not in event:
@@ -1532,18 +1666,50 @@ def validate_merged_args(args: Any) -> list[str]:
     """
     scalar_keys = scalar_option_keys()
     structured_keys = structured_option_keys()
-    nullable_keys = nullable_option_keys()
 
     config: dict[str, Any] = {}
     for key in scalar_keys:
+        # 2026-07-09 bug fix (audit follow-up to 73ca40b): this loop used to
+        # gate on `val is not None or key in nullable_keys`, so a present
+        # None for a NON-nullable scalar (e.g. "hosts: null" in YAML) was
+        # silently dropped before validate_config ever saw it — bootstrap
+        # exited 0 on a config that validate_config({"hosts": None}) rejects
+        # outright. Scalar keys can't use B1's plain hasattr-is-presence
+        # reasoning directly: most are argparse CLI options (cli_allowed=True)
+        # whose attribute always exists post-parse regardless of whether the
+        # value came from CLI, config, or the parser's own default, so
+        # hasattr alone doesn't distinguish "provided" from "never touched".
+        # What makes forwarding safe here is a table invariant, verified
+        # empirically across every CLI block (linear/mesh/disaster/connect):
+        # every non-nullable cli_allowed=True scalar OptionSpec has a real
+        # (non-None) argparse default, so args.<key> can be None post-merge
+        # only if merge_cli_and_config copied an explicit config null onto
+        # it. The one violation was "num" (argparse default None, not marked
+        # nullable), fixed above by marking it nullable=True — None is num's
+        # genuine "no experiment number" state, not a validation error.
+        # cli_allowed=False scalars (e.g. cefnetd_timeout) never enter any
+        # parser, so for them hasattr IS genuine config-presence evidence —
+        # the same mechanism the structured loop below relies on.
+        # Nullable keys already tolerate None in validate_config, so
+        # forwarding is a no-op for them; non-nullable keys now correctly
+        # surface an explicit config null as an error instead of losing it.
         if hasattr(args, key):
-            val = getattr(args, key)
-            if val is not None or key in nullable_keys:
-                config[key] = val
+            config[key] = getattr(args, key)
     for key in structured_keys:
+        # 2026-07-09 bug fix: present-but-empty structured blocks ({} / null /
+        # []) must reach validate_config — ADR-0002 requires rejecting
+        # failure_scenarios: {} and failure_scenarios: null because they look
+        # like unfinished configuration blocks. The old `if val:` truthiness
+        # check silently dropped every falsy-but-present value (empty dict,
+        # None, empty list) before validate_config ever saw it, so bootstrap
+        # exited 0 on a config that should have failed. Presence on args
+        # (hasattr) is the correct gate: for the config-only, cli_allowed=False
+        # keys, merge_cli_and_config only sets the attribute when the key is
+        # actually present in the loaded config file, so hasattr is genuine
+        # evidence of presence. The exceptions are bw/ext (CLI append options
+        # whose argparse default [] makes the attribute always exist); their
+        # empty list validates vacuously, so forwarding it is harmless.
         if hasattr(args, key):
-            val = getattr(args, key)
-            if val:
-                config[key] = val
+            config[key] = getattr(args, key)
 
     return validate_config(config)

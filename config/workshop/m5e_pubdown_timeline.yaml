@@ -1,0 +1,126 @@
+# =============================================================================
+# M5e TIMELINE CONFIG: publisher down x3 windows -- "fail -> acquire cache ->
+# survive" arc for the workshop's headline timeline figure.
+# Usage: driven by tools/workshop/campaign.py (kind: disaster); values below
+# for seed/num are placeholders overridden per job.
+#
+# Story (event-time targets; actual window times are read back from
+# results.json host_down/host_up records, never assumed):
+#   seed phase : h0 puts BOTH URIs (autotest runs all puts before warmup).
+#   warmup     : explicit warmup_gets warms ONLY ccnx:/m5e/cached on h7.
+#                ccnx:/m5e/fresh deliberately stays publisher-only -- this is
+#                what makes window1 failures possible at all. Without the
+#                explicit list, warmup would prefetch every put URI onto the
+#                cache nodes and erase the valley (disaster._run_warmup).
+#   window1 [~20,50]: h3 starts polling fresh at t=30 -> FAILS (no cache
+#                anywhere, publisher down).
+#   gap [50,65]: h3's poll succeeds once -> path caches + csmgrd now hold it.
+#   window2 [~65,85]: h3 keeps succeeding (cache). h5 -- a consumer that has
+#                NEVER fetched fresh -- starts at t=70 and succeeds from
+#                in-network cache while the publisher is down.
+#   window3 [~100,120]: both keep succeeding -> resilience is durable.
+#   control    : h7 polls the warmup-cached URI the whole run (flat line).
+#
+# 2026-07-14 note: failure-manager window timing drifts relative to the eval
+# scheduler origin (observed on m5a). The smoke gate therefore classifies
+# every get by its recorded publisher_down flag and checks the ARC PATTERN
+# (fail-in-w1 -> success-in-gap -> success-in-w2+), not wall-clock times.
+# Get start times below were calibrated against smoke before the 5-seed run.
+# =============================================================================
+
+hosts: 15
+switches: 48
+seed: 42                # placeholder; overridden per job
+k: 2
+host_degree_min: 2
+host_degree_max: 6
+
+num: 1                  # placeholder; overridden per job
+output_dir: "logs"
+no_cli: true
+duration: 150
+results_json: "results.json"
+publisher_host: 0
+
+# 5 csmgrd nodes via farthest-first (smoke found 3 leaves some consumer paths
+# uncovered: a pre-fetched consumer still failed during the outage).
+cache_config:
+  strategy: "k_centers"
+  default:
+    count: 5
+    capacity: 819200
+    default_rct_ms: 1800000
+    algorithm: "LRU"
+    type: "memory"
+
+# Warm ONLY the control URI, and only on the control consumer h7. The fresh
+# URI must not appear here -- see header.
+warmup_gets:
+  - host: 7
+    uri: "ccnx:/m5e/cached"
+
+# Three sequential publisher-down windows. Cycles run back-to-back in one
+# worker: wait `interval`, down for `duration`, then the next cycle waits.
+# Config-time windows: [20,50], [65,85], [100,120].
+# 2026-07-14 smoke fix: each cycle's `interval` counts from the PREVIOUS
+# cycle's down moment, and a target still down is skipped -- so interval MUST
+# exceed the previous cycle's duration or later windows silently vanish
+# (smoke: only 1 of 3 windows fired with interval 15 < duration 30).
+# Windows: [20,40], [50,70], [80,100].
+failure_scenarios:
+  strategy: "manual"
+  cycles:
+    - interval: 20
+      duration: 20
+      target: [0]
+      allow_publishers: true
+    - interval: 30
+      duration: 20
+      target: [0]
+      allow_publishers: true
+    - interval: 30
+      duration: 20
+      target: [0]
+      allow_publishers: true
+
+events:
+  # Both puts execute in the autotest seed phase regardless of `at`.
+  - at: 0
+    type: put
+    host: 0
+    uri: "ccnx:/m5e/cached"
+    file: "./sample-putfile"
+  - at: 1
+    type: put
+    host: 0
+    uri: "ccnx:/m5e/fresh"
+    file: "./sample-putfile"
+
+  # Control line: h7 polls the warmup-cached URI across the whole run.
+  - at: 5
+    type: get
+    host: 7
+    uri: "ccnx:/m5e/cached"
+    repeat:
+      interval: 5
+      count: 23            # t=5..115
+
+  # Protagonist: h3 starts INSIDE window1 -> valley, then acquires the cache.
+  - at: 25
+    type: get
+    host: 3
+    uri: "ccnx:/m5e/fresh"
+    repeat:
+      interval: 4
+      count: 24            # t=25..117; failing gets take ~10s (timeout), so
+                           # in-window samples are sparse -- that is expected
+
+  # New consumer: h5 first touches fresh inside window2 -> proves the copy is
+  # served by the NETWORK cache, not by h5's own earlier fetch.
+  - at: 58
+    type: get
+    host: 5
+    uri: "ccnx:/m5e/fresh"
+    repeat:
+      interval: 4
+      count: 16            # t=58..118; first touch lands inside window2
