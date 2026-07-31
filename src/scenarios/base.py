@@ -2,6 +2,7 @@
 
 from abc import ABC, abstractmethod
 from pathlib import Path
+from typing import cast
 
 from mininet.cli import CLI
 from mininet.log import info
@@ -41,7 +42,7 @@ def _propagate_failures(
     excs = [f[1] for f in cleanup_failures]
     if any(not isinstance(e, Exception) for e in excs):
         raise BaseExceptionGroup("cleanup failures", excs)
-    raise ExceptionGroup("cleanup failures", excs)
+    raise ExceptionGroup("cleanup failures", cast(list[Exception], excs))
 
 
 class BaseScenario(ABC):

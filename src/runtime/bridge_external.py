@@ -6,7 +6,7 @@ setup_bridges) lives in bridge_root.py; argument parsing in bridge_args.py.
 """
 
 from dataclasses import dataclass
-from typing import Callable
+from typing import Callable, cast
 
 from mininet.log import info
 from mininet.net import Mininet
@@ -190,6 +190,7 @@ def attach_external_via_bridge(
     success, link_data, err = _inspect_link(phy_intf)
     if not success:
         raise RuntimeError(f"cannot inspect {phy_intf}: {err}")
+    link_data = cast(dict, link_data)
 
     master = link_data.get("master") or link_data.get("bridge")
     if master:

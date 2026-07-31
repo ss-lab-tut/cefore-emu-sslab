@@ -5,7 +5,7 @@ import json
 import sys
 from collections import defaultdict
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from ..core.artifacts import parse_content_log_name
 from .parser import PARSERS
@@ -261,7 +261,7 @@ def summarize(
             write_csv(records, command, stdout=True)
             print()
         else:
-            csv_path = output_dir / f"{command}.csv"
+            csv_path = cast(Path, output_dir) / f"{command}.csv"
             result = write_csv(records, command, output=csv_path)
             if result:
                 written.append(result)

@@ -22,7 +22,7 @@ smoke 12/12, then removed.
 import random
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from ..core.roles import NodeRole, assign_roles
 from mininet.log import info
@@ -251,7 +251,7 @@ def setup_scenario(net, spec: ScenarioSetupSpec) -> SetupResult:
     if spec.bridge_configs:
         setup_bridges(
             net,
-            spec.bridge_manager,
+            cast(BridgeManager, spec.bridge_manager),
             spec.bridge_configs,
             spec.host_count,
             spec.mesh_links,

@@ -6,7 +6,7 @@ live in bridge_external.py; argument parsing/validation in bridge_args.py.
 """
 
 from dataclasses import dataclass
-from typing import Any, Callable
+from typing import Any, Callable, cast
 
 from mininet.log import info
 from mininet.net import Mininet
@@ -152,8 +152,11 @@ class BridgeManager:
                 description=f"remove route: {' '.join(del_argv)}",
                 category="route",
                 mandatory=False,
-                execute=lambda r=runner, a=del_argv: _result_to_rc_detail(
-                    r.run(ROOT_SENTINEL, a, capture_stderr=True)
+                execute=cast(
+                    Callable[[], tuple[int, str]],
+                    lambda r=runner, a=del_argv: _result_to_rc_detail(
+                        r.run(ROOT_SENTINEL, a, capture_stderr=True)
+                    ),
                 ),
             )
         )
@@ -202,8 +205,11 @@ class BridgeManager:
                 description=f"remove host route: {' '.join(del_argv)}",
                 category="route",
                 mandatory=False,
-                execute=lambda r=runner, name=host_name, a=del_argv: (
-                    _result_to_rc_detail(r.run(name, a, capture_stderr=True))
+                execute=cast(
+                    Callable[[], tuple[int, str]],
+                    lambda r=runner, name=host_name, a=del_argv: _result_to_rc_detail(
+                        r.run(name, a, capture_stderr=True)
+                    ),
                 ),
             )
         )
@@ -221,8 +227,11 @@ class BridgeManager:
                 description=f"remove root route: {' '.join(del_argv)}",
                 category="route",
                 mandatory=False,
-                execute=lambda r=runner, a=del_argv: _result_to_rc_detail(
-                    r.run(ROOT_SENTINEL, a, capture_stderr=True)
+                execute=cast(
+                    Callable[[], tuple[int, str]],
+                    lambda r=runner, a=del_argv: _result_to_rc_detail(
+                        r.run(ROOT_SENTINEL, a, capture_stderr=True)
+                    ),
                 ),
             )
         )
@@ -264,17 +273,20 @@ class BridgeManager:
                 description=f"restore ip_forward to {prior}",
                 category="sysctl",
                 mandatory=True,
-                execute=lambda r=runner, pv=prior: _result_to_rc_detail(
-                    r.run(
-                        ROOT_SENTINEL,
-                        ["sysctl", "-w", f"net.ipv4.ip_forward={pv}"],
-                        capture_stderr=True,
-                    )
+                execute=cast(
+                    Callable[[], tuple[int, str]],
+                    lambda r=runner, pv=prior: _result_to_rc_detail(
+                        r.run(
+                            ROOT_SENTINEL,
+                            ["sysctl", "-w", f"net.ipv4.ip_forward={pv}"],
+                            capture_stderr=True,
+                        )
+                    ),
                 ),
             )
         )
 
-    def enable_nat(self, local_routes: str, out_intf: str = None) -> None:
+    def enable_nat(self, local_routes: str, out_intf: str | None = None) -> None:
         """Enable NAT (masquerade) for local routes via outbound interface.
 
         Transactional: if any rule fails to install, previously-installed
@@ -374,8 +386,11 @@ class BridgeManager:
                     description=f"delete NAT rule: {' '.join(del_argv)}",
                     category="nat",
                     mandatory=True,
-                    execute=lambda r=runner, a=del_argv: _result_to_rc_detail(
-                        r.run(ROOT_SENTINEL, a, capture_stderr=True)
+                    execute=cast(
+                        Callable[[], tuple[int, str]],
+                        lambda r=runner, a=del_argv: _result_to_rc_detail(
+                            r.run(ROOT_SENTINEL, a, capture_stderr=True)
+                        ),
                     ),
                 )
             )
@@ -392,8 +407,11 @@ class BridgeManager:
                 description=f"remove OVS flow: {' '.join(del_argv)}",
                 category="flow",
                 mandatory=False,
-                execute=lambda r=runner, a=del_argv: _result_to_rc_detail(
-                    r.run(ROOT_SENTINEL, a, capture_stderr=True)
+                execute=cast(
+                    Callable[[], tuple[int, str]],
+                    lambda r=runner, a=del_argv: _result_to_rc_detail(
+                        r.run(ROOT_SENTINEL, a, capture_stderr=True)
+                    ),
                 ),
             )
         )
@@ -470,12 +488,19 @@ class BridgeManager:
             description=f"restore proxy_arp {root_intf_name} to {prior_iface}",
             category="proxy_arp",
             mandatory=True,
-            execute=lambda r=runner, pv=prior_iface: _result_to_rc_detail(
-                r.run(
-                    ROOT_SENTINEL,
-                    ["sysctl", "-w", f"net.ipv4.conf.{root_intf_name}.proxy_arp={pv}"],
-                    capture_stderr=True,
-                )
+            execute=cast(
+                Callable[[], tuple[int, str]],
+                lambda r=runner, pv=prior_iface: _result_to_rc_detail(
+                    r.run(
+                        ROOT_SENTINEL,
+                        [
+                            "sysctl",
+                            "-w",
+                            f"net.ipv4.conf.{root_intf_name}.proxy_arp={pv}",
+                        ],
+                        capture_stderr=True,
+                    )
+                ),
             ),
         )
         self.cleanup_actions.append(iface_restore)
@@ -522,12 +547,15 @@ class BridgeManager:
                 description=f"restore proxy_arp all to {prior_all}",
                 category="proxy_arp",
                 mandatory=True,
-                execute=lambda r=runner, pv=prior_all: _result_to_rc_detail(
-                    r.run(
-                        ROOT_SENTINEL,
-                        ["sysctl", "-w", f"net.ipv4.conf.all.proxy_arp={pv}"],
-                        capture_stderr=True,
-                    )
+                execute=cast(
+                    Callable[[], tuple[int, str]],
+                    lambda r=runner, pv=prior_all: _result_to_rc_detail(
+                        r.run(
+                            ROOT_SENTINEL,
+                            ["sysctl", "-w", f"net.ipv4.conf.all.proxy_arp={pv}"],
+                            capture_stderr=True,
+                        )
+                    ),
                 ),
             )
         )

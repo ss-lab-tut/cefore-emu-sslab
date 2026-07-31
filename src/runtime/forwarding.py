@@ -23,7 +23,7 @@ def resolve_forwarding_config(config: dict[str, Any] | None) -> dict[str, Any]:
 class ForwardingConfigManager:
     """Apply a resolved forwarding policy to every generated host config."""
 
-    def __init__(self, config: dict[str, Any]):
+    def __init__(self, config: dict[str, Any] | None):
         self.config = resolve_forwarding_config(config)
         self.default_strategy = self.config["default"]
         self.node_overrides = self._parse_node_overrides(self.config.get("nodes", []))

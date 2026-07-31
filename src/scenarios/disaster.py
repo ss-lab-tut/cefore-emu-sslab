@@ -5,6 +5,7 @@ import sys
 import threading
 import time
 from pathlib import Path
+from typing import Any
 
 from mininet.log import info
 
@@ -56,7 +57,7 @@ class DisasterScenario(ConfigDrivenMeshScenario):
     - Monitoring / WebUI / dashboard
     """
 
-    def __init__(self, args, run_dir: Path = None, log_context=None, debug_config=None):
+    def __init__(self, args, run_dir: Path | None = None, log_context=None, debug_config=None):
         super().__init__(args, run_dir=run_dir, log_context=log_context, debug_config=debug_config)
 
         self.rng = (
@@ -66,15 +67,15 @@ class DisasterScenario(ConfigDrivenMeshScenario):
         self._host_cmd_locks: dict[int, threading.Lock] = {}
         self.stop_event = None
         self.flap_state = FlapState()
-        self.uri_publishers = {}
-        self.publisher_ids = set()
+        self.uri_publishers: dict[str, int] = {}
+        self.publisher_ids: set[int] = set()
         self.stop_thread = None
         self.event_scheduler = None
         self.content_runner = None
         self.monitor = None
         self.dashboard = None
         self.webui = None
-        self._fib_routes = []
+        self._fib_routes: list[Any] = []
 
         self.results_path = _resolve_results_path(args, self.run_dir)
         self.autotest_mode = bool(

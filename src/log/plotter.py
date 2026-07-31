@@ -190,8 +190,12 @@ def _grouped_bar_by_cycle(
                 )
             else:
                 nums = [_get_metric(record, *metric_keys) for record in cycle_records]
-                nums = [value / divisor for value in nums if value is not None]
-                values.append(sum(nums) / len(nums) if nums else 0.0)
+                numeric_values: list[float] = [
+                    value / divisor for value in nums if value is not None
+                ]
+                values.append(
+                    sum(numeric_values) / len(numeric_values) if numeric_values else 0.0
+                )
 
         x_pos = [pos + index * bar_width for pos in range(len(cycles))]
         axis.bar(x_pos, values, width=bar_width, label=prefix, color=_color_for(prefix))
@@ -355,10 +359,12 @@ def plot_cefpubfile(records: list[dict[str, Any]], output_dir: Path) -> list[Pat
     success_pcts: list[float] = []
     for uri in uris:
         records_for_uri = by_uri[uri]
-        rate_values = [
+        raw_rate_values = [
             _safe_float(record.get(CEFPUB_RATE)) for record in records_for_uri
         ]
-        rate_values = [value for value in rate_values if value is not None]
+        rate_values: list[float] = [
+            value for value in raw_rate_values if value is not None
+        ]
         rates.append(sum(rate_values) / len(rate_values) if rate_values else 0.0)
 
         known = _known_success(records_for_uri)

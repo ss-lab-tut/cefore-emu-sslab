@@ -1,7 +1,7 @@
 """Common path constants."""
 
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from .artifacts import experiment_dir_name
 
@@ -81,7 +81,7 @@ def resolve_run_path(
             raise ValueError("path is required")
         rel = Path(default_name)
     else:
-        rel = Path(raw_path)
+        rel = Path(cast(str | Path, raw_path))
 
     root = run_dir.resolve()
     if rel.is_absolute():

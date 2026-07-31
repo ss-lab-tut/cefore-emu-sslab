@@ -2,6 +2,7 @@
 
 import re
 import sys
+from collections.abc import Callable
 from typing import Any
 
 from ..core.verdict import from_log
@@ -145,7 +146,7 @@ def _parse_pubsub(text: str, command: str) -> dict[str, Any]:
 
 # ---------- dispatcher ----------
 
-PARSERS: dict[str, callable] = {
+PARSERS: dict[str, Callable[[str], dict[str, Any]]] = {
     "cefputfile": parse_cefputfile,
     "cefgetfile": parse_cefgetfile,
     "cefpubfile": parse_cefpubfile,
