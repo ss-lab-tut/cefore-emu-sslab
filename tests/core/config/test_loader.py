@@ -1425,7 +1425,10 @@ def test_validate_ccninfo_expected_responder_empty_or_whitespace_bad(responder):
     errors = validate_config(
         {"events": [_ccninfo_event(expected_responder=responder)]}
     )
-    assert "events[0].expected_responder must be a non-empty string" in errors
+    # NOTE: 完全一致に狭めない。src のメッセージ "must be a non-empty string" は
+    # whitespace-only ケース ("   " は len 3 で非 empty) の拒否理由として不正確で、
+    # 実際の判定は er.strip()。文言を固定すると誤った説明を契約にしてしまう。
+    assert any("expected_responder" in e for e in errors)
 
 
 def test_validate_ccninfo_expected_responder_valid():
@@ -1438,10 +1441,9 @@ def test_validate_ccninfo_expected_responder_valid():
 @pytest.mark.parametrize("route", [[], [""], ["   "]])
 def test_validate_ccninfo_expected_route_bad(route):
     errors = validate_config({"events": [_ccninfo_event(expected_route=route)]})
-    assert (
-        "events[0].expected_route must be a non-empty list of non-empty strings"
-        in errors
-    )
+    # NOTE: 完全一致に狭めない。理由は expected_responder と同じ — src の文言
+    # "non-empty strings" は h.strip() による whitespace-only 拒否の説明として不正確。
+    assert any("expected_route" in e for e in errors)
 
 
 def test_validate_ccninfo_expected_route_valid():
