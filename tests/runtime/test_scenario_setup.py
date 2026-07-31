@@ -617,3 +617,33 @@ def test_create_tclink_mininet_uses_lazy_mininet_import(monkeypatch):
             "autoSetMacs": True,
         }
     ]
+
+
+# -- bridge pair invariant ----------------------------------------------------
+
+
+def test_setup_scenario_rejects_bridge_configs_without_manager():
+    """bridge_configs を渡すなら bridge_manager も対で渡す契約の fail-fast 検証。
+
+    2026-08-01 review fix: 旧実装は cast(BridgeManager, None) で invariant を
+    隠したまま setup_bridges へ None を流していた。ガードは apply_ip_addr より
+    前に走るので、side effect ゼロで ValueError になることも同時に固定する。
+    """
+    spec = ScenarioSetupSpec(
+        mesh_links=[("h0", "h1", "s0")],
+        scheme=MagicMock(name="scheme"),
+        host_count=2,
+        publisher_ids=set(),
+        cache_strategy=_FakeCacheStrategy(result=set()),
+        fleet_run_dir=Path("/tmp/run_dir"),
+        fib_k=1,
+        bridge_manager=None,
+        bridge_configs=[{"bridge": "br0"}],
+    )
+    net = MagicMock(name="net")
+
+    with pytest.raises(ValueError, match="bridge_manager"):
+        setup_scenario(net, spec)
+
+    # fail-fast: ネットワークへの一切の操作前に落ちる
+    net.get.assert_not_called()

@@ -6,7 +6,7 @@ setup_bridges) lives in bridge_root.py; argument parsing in bridge_args.py.
 """
 
 from dataclasses import dataclass
-from typing import Callable, cast
+from typing import Callable
 
 from mininet.log import info
 from mininet.net import Mininet
@@ -96,7 +96,15 @@ def _inspect_link(phy_intf: str) -> tuple[bool, dict | None, str]:
         data = _json.loads(out)
         if not isinstance(data, list) or not data:
             return False, None, f"ip link show {phy_intf} returned empty result"
-        return True, data[0], ""
+        entry = data[0]
+        if not isinstance(entry, dict):
+            # 2026-08-01 review fix: `[null]` やスカラ要素の JSON を success で
+            # 通すと、下流が dict を仮定したまま処理して型嘘になる。構造の検証は
+            # この境界が唯一の責任者。
+            return False, None, (
+                f"ip link show {phy_intf} returned non-object entry: {entry!r}"
+            )
+        return True, entry, ""
     except (_json.JSONDecodeError, ValueError) as exc:
         return False, None, f"ip link show {phy_intf} parse error: {exc}"
 
@@ -188,9 +196,11 @@ def attach_external_via_bridge(
     host_runner = MininetCommandRunner(net)
 
     success, link_data, err = _inspect_link(phy_intf)
-    if not success:
+    if not success or link_data is None:
+        # link_data is None は success=False と同値 (_inspect_link の契約)。
+        # mypy が tuple 相関を追えないため、挙動を変えずに narrowing する形で
+        # 条件に含める (2026-08-01 review fix: 旧 cast(dict, ...) を置換)。
         raise RuntimeError(f"cannot inspect {phy_intf}: {err}")
-    link_data = cast(dict, link_data)
 
     master = link_data.get("master") or link_data.get("bridge")
     if master:

@@ -152,6 +152,10 @@ class BridgeManager:
                 description=f"remove route: {' '.join(del_argv)}",
                 category="route",
                 mandatory=False,
+                # このファイルの cleanup lambda 全部に共通の identity cast:
+                # default 引数で値を束縛した lambda を mypy は optional 引数付き
+                # signature に推論し、引数ゼロの execute 型と照合できない。
+                # 実行時は引数なしで呼ばれ、束縛済みの既定値が使われる。
                 execute=cast(
                     Callable[[], tuple[int, str]],
                     lambda r=runner, a=del_argv: _result_to_rc_detail(

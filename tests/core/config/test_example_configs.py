@@ -17,8 +17,9 @@ from src.core.config.loader import load_config, validate_config
 
 EXAMPLES_DIR = Path(__file__).resolve().parents[3] / "config" / "examples"
 
-# .yaml だけでなく .yml/.json も対象にする。example.json は YAML glob から
-# 漏れて消失しても green のままだった前歴があるため、拡張子を列挙して拾う。
+# .yaml だけでなく .yml/.json も対象にする。2026-08-01 レビュー実測: example.json
+# は *.yaml glob から漏れ、消えても suite が green のままになる穴があった —
+# 拡張子の列挙と下の期待 inventory の両方で塞ぐ。
 _PATTERNS = ("*.yaml", "*.yml", "*.json")
 
 EXAMPLE_FILES = sorted(
@@ -47,13 +48,30 @@ _SMOKE_EXAMPLES = frozenset(
 )
 
 
+# 期待 inventory は意図的に完全固定 (2026-08-01 review fix: 非空 + smoke 13 本
+# だけの assert では example.json や非-smoke example の消失が素通りだった)。
+# example の追加/削除は必ずこの manifest の更新を伴う = 意図的な変更であること
+# を強制する。
+_EXPECTED_EXAMPLES = _SMOKE_EXAMPLES | frozenset(
+    {
+        "autotest_hot.yaml",
+        "autotest_minimal.yaml",
+        "disaster_auto_min.yaml",
+        "disaster_bandwidth.yaml",
+        "example.json",
+        "example.yaml",
+        "flexible_cache.yaml",
+    }
+)
+
+
 def test_example_discovery_is_complete():
-    """glob の空振り・smoke 用 example の消失を検出する。"""
+    """glob の空振り・example inventory の増減を検出する。"""
     names = {path.name for path in EXAMPLE_FILES}
-    assert names, f"no example configs found under {EXAMPLES_DIR}"
-    missing_smoke = _SMOKE_EXAMPLES - names
-    assert not missing_smoke, (
-        f"smoke examples missing from config/examples/: {sorted(missing_smoke)}"
+    assert names == _EXPECTED_EXAMPLES, (
+        "config/examples inventory drifted: "
+        f"missing={sorted(_EXPECTED_EXAMPLES - names)} "
+        f"unexpected={sorted(names - _EXPECTED_EXAMPLES)}"
     )
 
 

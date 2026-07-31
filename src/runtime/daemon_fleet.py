@@ -144,6 +144,9 @@ class DaemonFleet:
                 stop_csmgrd(self._net, _host_idx(name), runner=self._runner)
             except BaseException as exc:
                 failures.append((f"stop_csmgrd {name}", exc))
+        # 変数名が exc でないのは意図的: `except ... as exc` が束縛した名前は
+        # block 終了時に削除され、mypy は block 外での同名再代入を misc error
+        # として拒否する。
         for stage, failure_exc in failures:
             info(f"[daemon-fleet] warning: {stage} failed: {failure_exc}\n")
         return failures

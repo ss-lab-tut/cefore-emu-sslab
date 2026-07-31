@@ -526,6 +526,25 @@ class TestInspectionDefects:
         assert data is None
         assert len(err) > 0
 
+    def test_inspect_link_non_object_entry_returns_failure(self):
+        """_inspect_link() must reject a non-dict first element at the boundary.
+
+        2026-08-01 review fix: `ip -j link show` の出力が `[null]` やスカラ要素
+        だった場合、旧実装は success=True のまま非 dict を返し、呼び出し側の
+        cast(dict, ...) が型嘘になっていた。境界で構造化失敗に落とす。
+        """
+        from src.runtime.bridge_external import _inspect_link
+
+        with patch(
+            "src.runtime.bridge_external._run_root_cmd_vec",
+            return_value=(0, "[null]", ""),
+        ):
+            success, data, err = _inspect_link("eth0")
+
+        assert success is False
+        assert data is None
+        assert "non-object" in err
+
     def test_inspect_addresses_rc_nonzero_returns_failure(self):
         """_inspect_addresses() non-zero exit code returns structured failure."""
         from src.runtime.bridge_external import _inspect_addresses
