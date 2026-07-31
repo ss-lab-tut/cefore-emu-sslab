@@ -32,10 +32,6 @@ def _make_runner(tmp_path, *, fake=None, sink=None, flap_state=None):
         run_dir=str(tmp_path),
         sink=sink,
         flap_state=flap,
-        # No seed_label: the parameter was a dead thread through
-        # content_ops/event_batch/scenarios and was removed. This file arrived
-        # on the ccninfo branch, which still had it — a merge-time adaptation,
-        # not a change in what these tests assert.
         phase="event",
         runner=fake,
     )

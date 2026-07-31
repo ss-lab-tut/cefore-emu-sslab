@@ -26,10 +26,10 @@ from .cefore import (
     run_csmgrstatus,
     status_output,
 )
-# MininetCommandRunner is used directly by _collect_ccninfo (the ccninfo probe
-# builds its own argv rather than going through a cefore.py wrapper), so this
-# import must survive even though every other target type now routes through
-# the run_* helpers.
+# The ccninfo probe assembles its own argv and needs the raw stdout back, so it
+# drives the runner directly instead of going through a cefore.py run_* wrapper
+# the way every other target type does. That asymmetry is why the runner class
+# itself is imported here and not just the wrappers above.
 from .command_runner import MininetCommandRunner
 
 # Default per-command timeout (seconds) for background popen collection.
