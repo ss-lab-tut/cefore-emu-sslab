@@ -30,6 +30,8 @@ dev = [
     { name = "pytest" },
     { name = "pytest-cov" },
     { name = "ruff" },
+    { name = "types-networkx" },
+    { name = "types-pyyaml" },
 ]
 
 [package.metadata]
@@ -48,6 +50,8 @@ dev = [
     { name = "pytest", specifier = ">=8.0" },
     { name = "pytest-cov", specifier = ">=6.0" },
     { name = "ruff", specifier = ">=0.1" },
+    { name = "types-networkx", specifier = ">=3.6.1.20260728" },
+    { name = "types-pyyaml", specifier = ">=6.0.12.20260724" },
 ]
 
 [[package]]
@@ -995,6 +999,27 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/94/e7/b2c673351809dca68a0e064b6af791aa332cf192da575fd474ed7d6f16a2/six-1.17.0.tar.gz", hash = "sha256:ff70335d468e7eb6ec65b95b99d3a2836546063f63acc5171de367e834932a81", size = 34031, upload-time = "2024-12-04T17:35:28.174Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/b7/ce/149a00dd41f10bc29e5921b496af8b574d8413afcd5e30dfa0ed46c2cc5e/six-1.17.0-py2.py3-none-any.whl", hash = "sha256:4721f391ed90541fddacab5acf947aa0d3dc7d27b2e1e8eda2be8970586c3274", size = 11050, upload-time = "2024-12-04T17:35:26.475Z" },
+]
+
+[[package]]
+name = "types-networkx"
+version = "3.6.1.20260728"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "numpy" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/ed/8e/9c80373fd5a33c82ac25cbe868afae25c2babf050b65468464933c5f2854/types_networkx-3.6.1.20260728.tar.gz", hash = "sha256:f193e4fc6a41c973c7d687fa3c12f8008d8e7dcd22b0ab62f0300cc47b65eb28", size = 75720, upload-time = "2026-07-28T04:51:49.37Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/c2/4a/619f72e3f149b9291c1537ff3aceaecef8ed36877db13ea3698b2841663d/types_networkx-3.6.1.20260728-py3-none-any.whl", hash = "sha256:0be72ff7625dbdfcd2d76ed7662de96987d0d5433b7055c320065d5b3621f9f6", size = 167078, upload-time = "2026-07-28T04:51:48.071Z" },
+]
+
+[[package]]
+name = "types-pyyaml"
+version = "6.0.12.20260724"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/3f/6f/a28f44bcd56bebed42b028a2894c79853e2f5e6b5279e633cb3f287a05e7/types_pyyaml-6.0.12.20260724.tar.gz", hash = "sha256:3c1ce1bb73cd5ec02e90390c2b1f00e810d241d8825fd73ff359696839271b6b", size = 17893, upload-time = "2026-07-24T04:58:43.453Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/8b/42/0337fefc615e20ee55d1c8f71b774a9b2b734a04669139c20753b27a2a3a/types_pyyaml-6.0.12.20260724-py3-none-any.whl", hash = "sha256:d57db930a4b2efbc57cf430ec8882765d246929432fa253092f383902329a453", size = 20312, upload-time = "2026-07-24T04:58:42.486Z" },
 ]
 
 [[package]]
