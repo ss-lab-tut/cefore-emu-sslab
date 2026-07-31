@@ -55,6 +55,17 @@ def test_content_log_name_round_trips_representative_uri():
     assert meta.label == "test_example4_test.py"
 
 
+def test_content_log_name_round_trips_ccninfo_event():
+    name = content_log_name("ccninfo", "event", 0, "ccnx:/test/event_sample")
+    assert name == "ccninfo_event_h0_test_event_sample.log"
+    meta = parse_content_log_name(name)
+    assert meta is not None
+    assert meta.command == "ccninfo"
+    assert meta.phase == "event"
+    assert meta.host == 0
+    assert meta.label == "test_event_sample"
+
+
 def test_parse_content_log_name_rejects_legacy_shapes():
     assert parse_content_log_name("cefputfile_h9.log") is None
     assert parse_content_log_name("cefgetfile-h0.log") is None

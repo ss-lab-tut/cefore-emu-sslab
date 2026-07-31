@@ -155,7 +155,7 @@ events:
 
 サポートされるイベントタイプ: `link_down`, `link_up`, `fib_add`, `fib_del`,
 `fib_enable`, `bw_set`, `compute_call`, `put`, `get`, `pubsub_sub`,
-`pubsub_pub`。
+`pubsub_pub`, `ccninfo`。
 
 disaster の通常 `put` event では、`expiry` と `cache_time` の省略時に
 どちらも `3000` を Cefore コマンドへ渡し、events 移行前の挙動を保ちます。
@@ -163,9 +163,9 @@ disaster の通常 `put` event では、`expiry` と `cache_time` の省略時�
 省略時は Cefore コマンドの既定値を使います。
 
 `ceforeemu-connect` は `put` と `pubsub_pub` event のみを publisher 判定、
-URI 別 FIB 設定、CLI 開始前の publication seed に使います。`get` と
-`pubsub_sub` は自動実行せず warning を出します。トップレベルの legacy
-content key は復活しません。
+URI 別 FIB 設定、CLI 開始前の publication seed に使います。`get`、
+`pubsub_sub`、`ccninfo` は自動実行せず warning を出します。トップレベルの
+legacy content key は復活しません。
 
 **モニタリング:**
 ```yaml
@@ -176,6 +176,7 @@ monitoring:
   targets:
     - {type: cefstatus, hosts: "all"}
     - {type: csmgrstatus, hosts: "cache"}
+    - {type: ccninfo, hosts: [0], uri: "ccnx:/test/sample", cache_info: true}
 ```
 
 **キャッシュ設定 (`cache_config`):**

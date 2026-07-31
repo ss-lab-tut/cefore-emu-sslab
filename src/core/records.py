@@ -5,6 +5,7 @@ frozen — every reader (autotest analyze, the smoke checker, the webui
 dashboard) depends on them:
 
 - ``ContentRecord`` always serializes its 14 keys (``None`` -> ``null``).
+- ``CcninfoRecord`` always serializes its 21 keys (``None`` -> ``null``).
 - ``EventRecord`` always serializes ``op_type``/``event_type``/``ts``/
   ``success``/``error`` and includes a variant field only when it is not
   ``None``: ``scheduled_at``/``actual_at``/``event`` for scheduler events,
@@ -87,4 +88,42 @@ class EventRecord:
         return record
 
 
-ResultsRecord = ContentRecord | EventRecord
+@dataclass(frozen=True)
+class CcninfoRecord:
+    """One ccninfo judgment row (21 fixed keys, CcninfoVerdict factors inline).
+
+    Kept separate from ContentRecord: ccninfo carries route/responder evidence
+    and match factors that no put/get/pub/sub row has, and ContentRecord's
+    publisher_down/has_completed_log/has_output_file factors are meaningless for
+    a cache-discovery probe. Forcing both into one shape would mean always-None
+    columns in every row of one or the other variant.
+    """
+
+    op_type: str  # always "ccninfo"
+    ts: str
+    phase: str
+    host: int
+    uri: str
+    log_file: str | None
+    down_hosts: list[int]
+    exit_code: int | None
+    timed_out: bool
+    cancelled: bool
+    success: bool
+    reply_received: bool
+    responder: str | None
+    result: str | None
+    rtt_ms: float | None
+    route: tuple[dict, ...]
+    cache_lines: tuple[str, ...]
+    expected_responder: str | None
+    expected_route: tuple[str, ...] | None
+    responder_matched: bool | None
+    route_matched: bool | None
+
+    def to_dict(self) -> dict:
+        """Serialize with all 21 keys present, in field order."""
+        return asdict(self)
+
+
+ResultsRecord = ContentRecord | CcninfoRecord | EventRecord

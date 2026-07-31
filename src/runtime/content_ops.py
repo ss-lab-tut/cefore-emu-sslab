@@ -1,4 +1,4 @@
-"""Content operation runner for timed put/get/pubsub events."""
+"""Content operation runner for timed put/get/pubsub/ccninfo events."""
 
 import queue
 import threading
@@ -7,9 +7,14 @@ from pathlib import Path
 
 from mininet.log import info
 
+import os
+
 from ..core.artifacts import content_log_name, safe_uri_label
+from ..core.ccninfo_parse import CcninfoReply
 from ..core.events import content_event_types
+from ..core.verdict import CcninfoVerdict, from_runtime_ccninfo
 from .cefore import (
+    run_ccninfo,
     run_cefgetfile,
     run_cefpubfile,
     run_cefputfile,
@@ -18,6 +23,7 @@ from .cefore import (
 from .command_runner import MininetCommandRunner
 from .result_detect import (
     clear_sub_output_artifacts,
+    detect_ccninfo_success,
     detect_get_success,
     detect_pub_success,
     detect_put_success,
@@ -26,8 +32,9 @@ from .result_detect import (
 
 
 class ContentOperationRunner:
-    """Execute timed content operations (put/get/pubsub_pub/pubsub_sub) in a
-    background worker thread so the EventScheduler timer thread is never blocked.
+    """Execute timed content operations (put/get/pubsub_pub/pubsub_sub/ccninfo)
+    in a background worker thread so the EventScheduler timer thread is never
+    blocked.
 
     Pub/sub ordering:
       - pubsub_sub events spawn cefsubfile immediately and store the pending handle.
@@ -37,6 +44,7 @@ class ContentOperationRunner:
 
     get events run cefgetfile and record results.
     put events run cefputfile and record a put Verdict row (exit code only).
+    ccninfo events run ccninfo and record a CcninfoVerdict row.
     """
 
     _HANDLERS: dict[str, str] = {
@@ -44,6 +52,7 @@ class ContentOperationRunner:
         "get": "_do_get",
         "pubsub_sub": "_do_pubsub_sub",
         "pubsub_pub": "_do_pubsub_pub",
+        "ccninfo": "_do_ccninfo",
     }
 
     def __init__(
@@ -415,6 +424,89 @@ class ContentOperationRunner:
                 f"exit_code={result.returncode} artifacts={len(non_empty)}\n"
             )
             self.record_sub_result(item, result)
+
+    # ------------------------------------------------------------------
+    # ccninfo
+    # ------------------------------------------------------------------
+
+    def _do_ccninfo(self, event):
+        """Execute a ccninfo query and record the result.
+
+        EVERY-DISPATCH-ONE-RECORD contract: wrap only execution+detection in
+        try/except; on exception normalize to a failure verdict and fall through
+        to the SINGLE record_ccninfo call site. ResultsSink._append appends
+        before invoking subscribers — a second record from an except path would
+        double-record.
+        """
+        host = int(event["host"])
+        uri = event["uri"]
+        log_path = self._log_path("ccninfo", host, uri)
+        down_hosts = self._flap_state.snapshot()
+
+        # Normalize expected_route list→tuple at the event boundary so both
+        # detect and record receive the correct type.
+        expected_responder = event.get("expected_responder")
+        raw_route = event.get("expected_route")
+        expected_route = tuple(raw_route) if raw_route is not None else None
+
+        # The .cefore_env directory is provisioned by provision_node_dirs under
+        # the node's working directory — always CWD-relative, not under run_dir
+        # (which holds log/artifact output).
+        cefore_env_dir = os.path.abspath(f"./h{host}/.cefore_env")
+
+        info(f"[content_runner] ccninfo h{host} uri={uri}\n")
+
+        # Execution+detection in one try block; failure normalizes below.
+        verdict: CcninfoVerdict
+        reply: CcninfoReply
+        try:
+            cmd_result = run_ccninfo(
+                self._runner,
+                host,
+                uri,
+                log_name=str(log_path),
+                cache_info=event.get("cache_info", False),
+                owner_only=event.get("owner_only", False),
+                hop_count=event.get("hop_count"),
+                skip_hop=event.get("skip_hop"),
+                valid_algo=event.get("valid_algo"),
+                cancel_event=self._cancel_event,
+                cefore_env_dir=cefore_env_dir,
+            )
+            verdict, reply = detect_ccninfo_success(
+                log_path, cmd_result, expected_responder, expected_route,
+            )
+        except Exception as exc:
+            info(f"[content_runner] ccninfo h{host} exception: {exc}\n")
+            # Normalize to failure via the verdict factory so expectations
+            # produce matched=False (known failure), not matched=None
+            # (assertion-absent). The tri-state contract reserves None for
+            # "no expectation was set."
+            verdict = from_runtime_ccninfo(
+                None, False, False, False, None, (),
+                expected_responder, expected_route,
+            )
+            reply = CcninfoReply(
+                reply_received=False,
+                responder=None,
+                result=None,
+                rtt_ms=None,
+                route=(),
+                cache_lines=(),
+            )
+
+        # Single record call site — never duplicated by the except path.
+        self._sink.record_ccninfo(
+            verdict,
+            reply,
+            host=host,
+            uri=uri,
+            phase=self._phase,
+            log_file=str(log_path),
+            down_hosts=down_hosts,
+            expected_responder=expected_responder,
+            expected_route=expected_route,
+        )
 
     def record_sub_result(self, item, result):
         """Record a cefsubfile result via the ResultsSink."""

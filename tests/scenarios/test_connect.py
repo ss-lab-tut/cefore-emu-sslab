@@ -85,6 +85,17 @@ def test_fib_debug_collection_uses_connect_host_count(tmp_path):
     )
 
 
+def test_ignored_retrieval_warning_includes_ccninfo(tmp_path):
+    """ConnectScenario does not execute ccninfo events (no CLI/thread runs
+    content ops for it), so it must join get/pubsub_sub in the
+    ignored-events warning rather than silently dropping the event."""
+    event = {"at": 0, "type": "ccninfo", "host": 0, "uri": "ccnx:/x"}
+    with patch("src.scenarios.connect.info") as mock_info:
+        _make_scenario(tmp_path, events=[event])
+    mock_info.assert_called_once()
+    assert "ccninfo" in mock_info.call_args.args[0]
+
+
 def test_run_experiment_without_events_is_noop(tmp_path):
     scenario = _make_scenario(tmp_path)
     with patch("src.scenarios.connect.run_event_batch") as run_batch:

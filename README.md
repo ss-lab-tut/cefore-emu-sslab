@@ -163,7 +163,7 @@ events:
 
 Supported event types: `link_down`, `link_up`, `fib_add`, `fib_del`,
 `fib_enable`, `bw_set`, `compute_call`, `put`, `get`, `pubsub_sub`,
-`pubsub_pub`.
+`pubsub_pub`, `ccninfo`.
 
 For a disaster `put` event, omitted `expiry` and `cache_time` are both sent
 as `3000` to preserve the pre-events disaster behavior. Pub/sub publication
@@ -195,8 +195,9 @@ rejected).
 
 `ceforeemu-connect` uses `put` and `pubsub_pub` events only to identify
 publishers, program URI-specific FIB entries, and seed publications before
-opening its CLI. It warns and does not automatically execute `get` or
-`pubsub_sub` events. Legacy top-level content keys are not restored.
+opening its CLI. It warns and does not automatically execute `get`,
+`pubsub_sub`, or `ccninfo` events. Legacy top-level content keys are not
+restored.
 
 **Monitoring:**
 ```yaml
@@ -207,6 +208,7 @@ monitoring:
   targets:
     - {type: cefstatus, hosts: "all"}
     - {type: csmgrstatus, hosts: "cache"}
+    - {type: ccninfo, hosts: [0], uri: "ccnx:/test/sample", cache_info: true}
 ```
 
 **Cache configuration (`cache_config`):**

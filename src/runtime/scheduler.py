@@ -131,6 +131,7 @@ _EVENT_HANDLERS = {
     "get": _handle_content_op("get"),
     "pubsub_sub": _handle_content_op("pubsub_sub"),
     "pubsub_pub": _handle_content_op("pubsub_pub"),
+    "ccninfo": _handle_content_op("ccninfo"),
 }
 
 # Same-time priority (lower value fires first; pubsub_sub before pubsub_pub,

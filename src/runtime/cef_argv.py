@@ -120,6 +120,78 @@ def build_cefsubfile_argv(
     )
 
 
+def build_ccninfo_argv(
+    uri: str,
+    *,
+    node_name: str,
+    cache_info: bool = False,
+    owner_only: bool = False,
+    hop_count: Optional[int] = None,
+    skip_hop: Optional[int] = None,
+    valid_algo: Optional[str] = None,
+    port_num: Optional[int] = None,
+) -> List[str]:
+    """Build the argv for ``ccninfo`` (network cache/path discovery).
+
+    This builder is intentionally a pure passthrough: it does not validate
+    ``hop_count``/``skip_hop`` against the real binary's constraints even
+    though the binary is picky about them:
+      - an explicit ``-s`` rejects the value 0 (0 is the *default* when ``-s``
+        is omitted, but passing "-s 0" on the command line is itself rejected);
+      - ``-s`` (skip_hop) must be strictly less than ``-r`` (hop_count) when
+        both are given;
+      - on any argument error the binary prints a usage message and exits 0,
+        not a nonzero code, so a caller cannot detect a bad invocation from
+        the exit status alone.
+    Why not validate here: the config validator (upstream of this call) is
+    the single place that owns "is this ccninfo invocation well-formed";
+    duplicating that logic in the builder would let the two drift apart
+    silently. The builder's only job is byte-exact argv assembly.
+
+    Args:
+        uri: Content name prefix to query.
+        node_name: Cefore node directory name (e.g. "h0"); becomes the
+            ``-d ./<node_name>`` config-dir argument.
+        cache_info: If True, add the bare ``-c`` flag (request cache
+            information/RTT from the content forwarder).
+        owner_only: If True, add the bare ``-o`` flag (owner-only query).
+        hop_count: Max number of routers to trace (``-r``). The builder
+            passes 0 through verbatim, but the validator (and the real
+            binary) reject explicit 0 — only the implicit default when
+            ``-r`` is omitted is valid as 0.
+        skip_hop: Number of upstream routers to skip (``-s``). Same
+            0-vs-omitted distinction as ``hop_count``.
+        valid_algo: Validation algorithm (crc32c or rsa-sha256).
+        port_num: Port number. Note: ``-p`` is ineffective in Cefore 0.12.0
+            due to the client parse-order bug (cef_client_init reads
+            cefnetd.conf before ``-p`` is parsed — same upstream Bug1 that
+            affects all cef_client tools). Kept in the pure builder for
+            argv completeness; callers should NOT pass it (the config
+            validator rejects ``port_num`` on ccninfo events and monitor
+            targets).
+    """
+    head = []
+    # Bare flags belong in head (not opts) so their truthiness maps directly
+    # to presence/absence, mirroring cefgetfile's "-o" handling; cache_info is
+    # checked before owner_only to keep -c ahead of -o, matching cefinfo's own
+    # documented option order.
+    if cache_info:
+        head.append("-c")
+    if owner_only:
+        head.append("-o")
+    return _build_argv(
+        "ccninfo",
+        [uri, *head],
+        [
+            ("-r", hop_count),
+            ("-s", skip_hop),
+            ("-v", valid_algo),
+            ("-p", port_num),
+        ],
+        node_name,
+    )
+
+
 def build_cefpubfile_argv(
     uri: str,
     file_path: str,

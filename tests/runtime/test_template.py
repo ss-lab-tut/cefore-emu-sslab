@@ -52,6 +52,41 @@ class TestProvisionNodeDirs:
         assert not (tmp_path / "h0" / "stale-marker").exists()
         assert (tmp_path / "h0" / STAMP_FILENAME).exists()
 
+    def test_provisions_cefore_env_with_rewritten_local_sock_id(self, tmp_path):
+        """The .cefore_env/cefore/cefnetd.conf copy must be a faithful mirror
+        of the node's cefnetd.conf at provisioning time — in particular, it
+        must carry the rewritten LOCAL_SOCK_ID, not the template's default.
+        This ordering invariant is the whole point of the upstream-bug
+        workaround.
+        """
+        roles = {0: CONSUMER, 1: ROUTER}
+        provision_node_dirs(roles, base_dir=tmp_path)
+        env_conf = tmp_path / "h1" / ".cefore_env" / "cefore" / "cefnetd.conf"
+        assert env_conf.exists(), ".cefore_env/cefore/cefnetd.conf was not created"
+        # Byte-exact mirror pins the ordering invariant without depending on
+        # any particular template sock-id value.
+        assert env_conf.read_text() == (tmp_path / "h1" / "cefnetd.conf").read_text()
+
+    def test_provisions_node_name_in_both_conf_and_cefore_env(self, tmp_path):
+        """NODE_NAME=hN must land in both the node's cefnetd.conf and the
+        .cefore_env mirror.  The two files must be byte-identical at
+        provisioning time (mirrors the existing LOCAL_SOCK_ID invariant).
+        """
+        roles = {0: CONSUMER, 1: ROUTER, 2: PUBLISHER}
+        provision_node_dirs(roles, base_dir=tmp_path)
+        for idx in range(3):
+            node_conf = tmp_path / f"h{idx}" / "cefnetd.conf"
+            env_conf = (
+                tmp_path / f"h{idx}" / ".cefore_env" / "cefore" / "cefnetd.conf"
+            )
+            node_text = node_conf.read_text()
+            assert f"NODE_NAME=h{idx}" in node_text, (
+                f"h{idx}/cefnetd.conf missing NODE_NAME=h{idx}"
+            )
+            assert env_conf.read_text() == node_text, (
+                f"h{idx} .cefore_env mirror diverged from node conf"
+            )
+
     def test_partial_failure_rolls_back_dirs_created_by_this_call(self, tmp_path):
         # h2 exists unmanaged -> the guard trips at idx 2, after h0/h1 were
         # created by this call. Provisioning must be atomic: remove h0/h1 and

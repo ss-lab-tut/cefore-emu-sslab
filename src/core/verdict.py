@@ -24,6 +24,12 @@ Pinned semantics:
   produce a 0-byte cefpubfile log (process killed before any output), which
   is indistinguishable from a lost/partial log. That asymmetry is
   structural, not a gap to be closed here.
+
+CcninfoVerdict (below) judges cefinfo/ccninfo runs and is deliberately kept
+separate from Verdict: ccninfo has no log-CSV pipeline membership (no
+from_log/from_record variant, no COMMAND_OP_TYPES entry) — its evidence is
+runtime-only (reply/responder/route), so there is nothing for the log-only
+path to parse.
 """
 
 from __future__ import annotations
@@ -191,3 +197,150 @@ def failure_reasons(verdict: Verdict) -> dict[str, bool]:
         "missing_completed_log": verdict.has_completed_log is False,
         "missing_output_file": verdict.has_output_file is False,
     }
+
+
+@dataclass(frozen=True)
+class CcninfoVerdict:
+    """Judgment of one cefinfo (ccninfo) run.
+
+    Kept as its own dataclass rather than a Verdict op_type variant: ccninfo
+    carries evidence (responder identity, hop route) that no other op type
+    has a slot for, and its two match Factors (responder_matched,
+    route_matched) are each conditioned on an *expected* value the caller
+    supplies per-run, not on a fixed per-op-type rule the way get/put/pub/sub
+    are. Matching is exact equality (``==``), not substring. Forcing it into
+    Verdict's shape would mean bolting on fields every other op_type carries
+    as always-None.
+    """
+
+    success: bool
+    reply_received: bool
+    responder_matched: bool | None
+    route_matched: bool | None
+    exit_code: int | None
+    timed_out: bool
+    cancelled: bool
+    responder: str | None
+    route_nodes: tuple[str, ...]
+
+
+def _route_is_ordered_subsequence(
+    expected: tuple[str, ...], observed: tuple[str, ...]
+) -> bool:
+    """True iff each ``expected`` token equals an ``observed`` hop's node
+    string exactly, in order, with gaps allowed (an ordered-subsequence
+    check with exact per-hop equality, not substring matching).
+
+    # 2026-07-27 external review: NODE_NAME=hN is guaranteed by provisioning
+    # (template.py _set_config_value), so exact equality is unambiguous;
+    # bare substring false-greened "h1" against "h10". Changed from `in` to
+    # `==`.
+
+    A greedy left-to-right two-pointer scan is sufficient here: for
+    subsequence existence, matching a token to the *earliest* remaining
+    observed hop can never make a later token harder to match than matching
+    it to a later hop would (matching later only removes options for tokens
+    still to come). This is why we advance ``pos`` past a matched hop and
+    never backtrack.
+    """
+    pos = 0
+    for token in expected:
+        while pos < len(observed) and token != observed[pos]:
+            pos += 1
+        if pos == len(observed):
+            return False
+        pos += 1  # this hop is consumed by `token`; later tokens must match after it
+    return True
+
+
+def from_runtime_ccninfo(
+    exit_code: int | None,
+    timed_out: bool,
+    cancelled: bool,
+    reply_received: bool,
+    responder: str | None,
+    route_nodes: tuple[str, ...],
+    expected_responder: str | None,
+    expected_route: tuple[str, ...] | None,
+) -> CcninfoVerdict:
+    """Judge a cefinfo (ccninfo) run from runtime evidence and (optional) expectations.
+
+    ``expected_responder``/``expected_route`` are ``None`` when the caller made
+    no claim about them — in that case the corresponding match Factor stays
+    ``None`` (unknown/not-applicable) and, per the tri-state rule shared with
+    Verdict, never drags ``success`` down. When an expectation *is* given,
+    matching is exact equality (``==``), not substring: NODE_NAME=hN is
+    guaranteed by provisioning, so exact equality is unambiguous. Only an
+    explicit mismatch (``False``) can fail the run; a ``None`` match factor
+    from the *other* expectation still can't.
+    """
+    responder_matched: bool | None
+    if expected_responder is None:
+        responder_matched = None
+    else:
+        # 2026-07-27 external review: exact equality replaces substring
+        # matching (NODE_NAME=hN is guaranteed by provisioning, so exact
+        # equality is unambiguous; bare substring false-greened "h1" against
+        # "h10"). A None responder (no reply attributed) is a definite
+        # mismatch (False), not an open question.
+        responder_matched = (responder == expected_responder)
+
+    route_matched: bool | None
+    if expected_route is None:
+        route_matched = None
+    else:
+        # An empty expected_route (()) is trivially a subsequence of anything
+        # — the ordered-subsequence loop below simply never runs and returns
+        # True. We don't special-case or reject it here: the caller-facing
+        # validator is responsible for rejecting a meaningless empty
+        # expectation before it reaches this pure judgment function, and
+        # duplicating that guard here would just be two places to keep in
+        # sync for no judgment-logic benefit.
+        route_matched = _route_is_ordered_subsequence(expected_route, route_nodes)
+
+    success = (
+        exit_code == 0
+        and not timed_out
+        and not cancelled
+        and reply_received
+        and responder_matched is not False
+        and route_matched is not False
+    )
+
+    return CcninfoVerdict(
+        success=success,
+        reply_received=reply_received,
+        responder_matched=responder_matched,
+        route_matched=route_matched,
+        exit_code=exit_code,
+        timed_out=timed_out,
+        cancelled=cancelled,
+        responder=responder,
+        route_nodes=route_nodes,
+    )
+
+
+def ccninfo_failure_reasons(v: CcninfoVerdict) -> dict[str, bool]:
+    """Known-bad factors only; a key appears iff that factor actually failed.
+
+    Unlike ``failure_reasons()`` above (which always emits all its keys, with
+    ``False`` standing in for "not this reason"), ccninfo has six independent
+    judgment inputs rather than three, so a verdict that failed for one
+    reason would otherwise force callers to filter a wall of ``False``s to
+    find it. ``None`` (unset expectation) still never counts as bad, matching
+    the tri-state rule shared with ``failure_reasons()``.
+    """
+    reasons: dict[str, bool] = {}
+    if v.exit_code is not None and v.exit_code != 0:
+        reasons["exit_code_nonzero"] = True
+    if v.timed_out:
+        reasons["timed_out"] = True
+    if v.cancelled:
+        reasons["cancelled"] = True
+    if not v.reply_received:
+        reasons["no_reply"] = True
+    if v.responder_matched is False:
+        reasons["responder_mismatch"] = True
+    if v.route_matched is False:
+        reasons["route_mismatch"] = True
+    return reasons

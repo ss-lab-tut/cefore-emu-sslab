@@ -21,6 +21,7 @@ from src.core.config.loader import (
     merge_cli_and_config,
     validate_config,
     validate_merged_args,
+    warn_ccninfo_monitor_interval,
     warn_ignored_legacy_content_keys,
 )
 
@@ -642,6 +643,26 @@ def test_validate_events_non_dict_entry():
     assert any("events[0]" in e for e in errors)
 
 
+def test_validate_events_ccninfo_requires_host_and_uri():
+    errors = validate_config({"events": [{"at": 0, "type": "ccninfo"}]})
+    assert any("host" in e for e in errors)
+    assert any("uri" in e for e in errors)
+
+
+def test_validate_events_ccninfo_valid():
+    errors = validate_config({
+        "events": [{"at": 0, "type": "ccninfo", "host": 0, "uri": "ccnx:/test/a"}]
+    })
+    assert errors == []
+
+
+def test_validate_events_ccninfo_host_must_be_int():
+    errors = validate_config({
+        "events": [{"at": 0, "type": "ccninfo", "host": "zero", "uri": "ccnx:/test/a"}]
+    })
+    assert any("host" in e and "integer" in e for e in errors)
+
+
 def test_validate_events_protocol_invalid():
     errors = validate_config(
         {
@@ -662,7 +683,7 @@ def test_validate_events_protocol_invalid():
 
 def test_validate_cache_config_non_dict():
     errors = validate_config({"cache_config": "bad"})
-    assert any("cache_config" in e for e in errors)
+    assert "cache_config must be a dict" in errors
 
 
 def test_validate_cache_config_default_non_dict():
@@ -740,6 +761,11 @@ def test_validate_cache_config_nodes_type_invalid():
         (
             {"forwarding_config": {"nodes": [{"id": [1]}]}},
             "forwarding_config.nodes[0].strategy is required",
+        ),
+        (
+            {"forwarding_config": {"nodes": [{"id": [1], "strategy": "bogus"}]}},
+            "forwarding_config.nodes[0].strategy must be one of: "
+            "default, flooding, shortest_path",
         ),
     ],
 )
@@ -1700,3 +1726,378 @@ def test_validate_bridges_switch_range_checked_when_switch_count_known():
         )
         == []
     )
+
+
+# ── ccninfo option validation (events) ──
+
+
+def _ccninfo_event(**extra):
+    return {"at": 0, "type": "ccninfo", "host": 0, "uri": "ccnx:/x", **extra}
+
+
+@pytest.mark.parametrize("hop_count", [1, 255])
+def test_validate_ccninfo_hop_count_boundary_ok(hop_count):
+    errors = validate_config({"events": [_ccninfo_event(hop_count=hop_count)]})
+    assert not any("hop_count" in e for e in errors)
+
+
+@pytest.mark.parametrize("hop_count", [0, 256])
+def test_validate_ccninfo_hop_count_boundary_bad(hop_count):
+    errors = validate_config({"events": [_ccninfo_event(hop_count=hop_count)]})
+    assert "events[0].hop_count must be an integer 1..255" in errors
+
+
+@pytest.mark.parametrize("skip_hop", [1, 15])
+def test_validate_ccninfo_skip_hop_boundary_ok(skip_hop):
+    errors = validate_config({"events": [_ccninfo_event(skip_hop=skip_hop)]})
+    assert not any("skip_hop" in e for e in errors)
+
+
+@pytest.mark.parametrize("skip_hop", [0, 16])
+def test_validate_ccninfo_skip_hop_boundary_bad(skip_hop):
+    # 2026-07-27 characterization: the real ccninfo binary rejects an
+    # explicit `-s 0` with usage text and exit 0 (same exit code as
+    # success) -- exit codes cannot catch this at runtime, so it must be
+    # rejected here, before the binary ever runs.
+    errors = validate_config({"events": [_ccninfo_event(skip_hop=skip_hop)]})
+    assert "events[0].skip_hop must be an integer 1..15" in errors
+
+
+def test_validate_ccninfo_skip_hop_equal_hop_count_bad():
+    errors = validate_config(
+        {"events": [_ccninfo_event(hop_count=5, skip_hop=5)]}
+    )
+    assert "events[0].skip_hop must be less than hop_count" in errors
+
+
+def test_validate_ccninfo_skip_hop_less_than_hop_count_ok():
+    errors = validate_config(
+        {"events": [_ccninfo_event(hop_count=5, skip_hop=3)]}
+    )
+    assert errors == []
+
+
+def test_validate_ccninfo_valid_algo_rejected():
+    errors = validate_config({"events": [_ccninfo_event(valid_algo="sha1")]})
+    assert any("valid_algo" in e for e in errors)
+
+
+def test_validate_ccninfo_valid_algo_accepted():
+    errors = validate_config({"events": [_ccninfo_event(valid_algo="crc32c")]})
+    assert errors == []
+
+
+def test_validate_ccninfo_port_num_rejected():
+    # Even a valid port_num is rejected — Cefore 0.12.0 parse-order bug
+    # makes -p ineffective for ccninfo.
+    errors = validate_config({"events": [_ccninfo_event(port_num=9799)]})
+    assert any("port_num" in e and "parse-order bug" in e for e in errors)
+
+
+def test_validate_ccninfo_port_num_zero_still_rejected():
+    errors = validate_config({"events": [_ccninfo_event(port_num=0)]})
+    assert any("port_num" in e for e in errors)
+
+
+def test_validate_ccninfo_cache_info_non_bool_rejected():
+    errors = validate_config({"events": [_ccninfo_event(cache_info="yes")]})
+    assert any("cache_info" in e for e in errors)
+
+
+def test_validate_ccninfo_owner_only_non_bool_rejected():
+    errors = validate_config({"events": [_ccninfo_event(owner_only=1)]})
+    assert any("owner_only" in e for e in errors)
+
+
+@pytest.mark.parametrize("responder", ["", "   "])
+def test_validate_ccninfo_expected_responder_empty_or_whitespace_bad(responder):
+    errors = validate_config(
+        {"events": [_ccninfo_event(expected_responder=responder)]}
+    )
+    # NOTE: 完全一致に狭めない。src のメッセージ "must be a non-empty string" は
+    # whitespace-only ケース ("   " は len 3 で非 empty) の拒否理由として不正確で、
+    # 実際の判定は er.strip()。文言を固定すると誤った説明を契約にしてしまう。
+    assert any("expected_responder" in e for e in errors)
+
+
+def test_validate_ccninfo_expected_responder_valid():
+    errors = validate_config(
+        {"events": [_ccninfo_event(expected_responder="h1")]}
+    )
+    assert errors == []
+
+
+@pytest.mark.parametrize("route", [[], [""], ["   "]])
+def test_validate_ccninfo_expected_route_bad(route):
+    errors = validate_config({"events": [_ccninfo_event(expected_route=route)]})
+    # NOTE: 完全一致に狭めない。理由は expected_responder と同じ — src の文言
+    # "non-empty strings" は h.strip() による whitespace-only 拒否の説明として不正確。
+    assert any("expected_route" in e for e in errors)
+
+
+def test_validate_ccninfo_expected_route_valid():
+    errors = validate_config({"events": [_ccninfo_event(expected_route=["h1"])]})
+    assert errors == []
+
+
+def test_validate_ccninfo_uri_root_only_rejected():
+    # 2026-07-27: a root-only "ccnx:/" URI resolves to an empty
+    # safe_uri_label(), which would break the per-command log-name
+    # round-trip content_ops.py relies on to find this event's own log.
+    errors = validate_config(
+        {"events": [{"at": 0, "type": "ccninfo", "host": 0, "uri": "ccnx:/"}]}
+    )
+    assert any("uri" in e for e in errors)
+
+
+# ── ccninfo monitoring targets ──
+
+
+def test_validate_ccninfo_monitor_type_accepted():
+    errors = validate_config(
+        {"monitoring": {"targets": [{"type": "ccninfo", "uri": "ccnx:/x"}]}}
+    )
+    assert errors == []
+
+
+def test_validate_ccninfo_monitor_requires_uri():
+    errors = validate_config({"monitoring": {"targets": [{"type": "ccninfo"}]}})
+    assert any("uri" in e for e in errors)
+
+
+def test_validate_ccninfo_monitor_rejects_expected_responder():
+    errors = validate_config(
+        {
+            "monitoring": {
+                "targets": [
+                    {
+                        "type": "ccninfo",
+                        "uri": "ccnx:/x",
+                        "expected_responder": "h1",
+                    }
+                ]
+            }
+        }
+    )
+    assert any("expected_responder" in e for e in errors)
+
+
+def test_validate_ccninfo_monitor_rejects_expected_route():
+    errors = validate_config(
+        {
+            "monitoring": {
+                "targets": [
+                    {"type": "ccninfo", "uri": "ccnx:/x", "expected_route": ["h1"]}
+                ]
+            }
+        }
+    )
+    assert any("expected_route" in e for e in errors)
+
+
+def test_validate_ccninfo_monitor_shares_event_option_checks():
+    """Monitor targets reuse the same option-validation core as events, so a
+    binary-rejected skip_hop=0 must be caught on a monitor target too."""
+    errors = validate_config(
+        {
+            "monitoring": {
+                "targets": [{"type": "ccninfo", "uri": "ccnx:/x", "skip_hop": 0}]
+            }
+        }
+    )
+    assert any("skip_hop" in e for e in errors)
+
+
+@pytest.mark.parametrize("uri", ["", "   "])
+def test_validate_ccninfo_monitor_empty_uri_rejected(uri):
+    """ccninfo monitor target uri must be non-empty/non-whitespace."""
+    errors = validate_config(
+        {"monitoring": {"targets": [{"type": "ccninfo", "uri": uri}]}}
+    )
+    assert any("uri" in e and "non-empty" in e for e in errors)
+
+
+def test_validate_ccninfo_monitor_port_num_rejected():
+    """port_num is rejected on ccninfo monitor targets (upstream parse-order bug)."""
+    errors = validate_config(
+        {
+            "monitoring": {
+                "targets": [{"type": "ccninfo", "uri": "ccnx:/x", "port_num": 9799}]
+            }
+        }
+    )
+    assert any("port_num" in e and "parse-order bug" in e for e in errors)
+
+
+# ── timeout-key rejection ──
+
+
+def test_validate_ccninfo_event_timeout_rejected():
+    """timeout is not a supported ccninfo event option."""
+    errors = validate_config(
+        {"events": [_ccninfo_event(timeout=10)]}
+    )
+    assert any("timeout" in e and "not a supported" in e for e in errors)
+
+
+def test_validate_monitor_target_command_timeout_rejected():
+    """command_timeout is a monitoring-level key, not per-target."""
+    errors = validate_config(
+        {"monitoring": {"targets": [{"type": "cefstatus", "command_timeout": 5}]}}
+    )
+    assert any("command_timeout" in e and "monitoring-level" in e for e in errors)
+
+
+def test_validate_command_timeout_huge_int_no_crash():
+    """math.isfinite(10**309) raises OverflowError; validation must not crash."""
+    errors = validate_config({"monitoring": {"command_timeout": 10**309}})
+    assert any("command_timeout" in e for e in errors)
+
+
+# ── monitoring.targets[].hosts (generic across all target types) ──
+
+
+@pytest.mark.parametrize("hosts", ["all", "cache", [0]])
+def test_validate_monitor_target_hosts_valid(hosts):
+    errors = validate_config(
+        {"monitoring": {"targets": [{"type": "cefstatus", "hosts": hosts}]}}
+    )
+    assert errors == []
+
+
+def test_validate_monitor_target_hosts_bool_rejected():
+    errors = validate_config(
+        {"monitoring": {"targets": [{"type": "cefstatus", "hosts": True}]}}
+    )
+    assert any("hosts" in e for e in errors)
+
+
+def test_validate_monitor_target_hosts_list_of_bool_rejected():
+    errors = validate_config(
+        {"monitoring": {"targets": [{"type": "cefstatus", "hosts": [True]}]}}
+    )
+    assert any("hosts" in e for e in errors)
+
+
+def test_validate_monitor_target_hosts_typo_rejected():
+    errors = validate_config(
+        {"monitoring": {"targets": [{"type": "cefstatus", "hosts": "typo"}]}}
+    )
+    assert any("hosts" in e for e in errors)
+
+
+def test_validate_monitor_target_hosts_out_of_range_rejected_when_host_count_known():
+    errors = validate_config(
+        {
+            "hosts": 3,
+            "monitoring": {"targets": [{"type": "cefstatus", "hosts": [5]}]},
+        }
+    )
+    assert any("hosts" in e for e in errors)
+
+
+def test_validate_monitor_target_hosts_in_range_ok_when_host_count_known():
+    errors = validate_config(
+        {
+            "hosts": 3,
+            "monitoring": {"targets": [{"type": "cefstatus", "hosts": [0, 2]}]},
+        }
+    )
+    assert errors == []
+
+
+# ── monitoring.command_timeout ──
+
+
+@pytest.mark.parametrize("value", [True, -1, 0])
+def test_validate_monitoring_command_timeout_bad(value):
+    errors = validate_config({"monitoring": {"command_timeout": value}})
+    assert any("command_timeout" in e for e in errors)
+
+
+def test_validate_monitoring_command_timeout_valid():
+    errors = validate_config({"monitoring": {"command_timeout": 2.5}})
+    assert errors == []
+
+
+# ── warn_ccninfo_monitor_interval ──
+
+
+def test_warn_ccninfo_monitor_interval_monitoring_not_dict_noop():
+    assert warn_ccninfo_monitor_interval({"monitoring": "bad"}) is False
+
+
+def test_warn_ccninfo_monitor_interval_targets_not_list_noop():
+    assert warn_ccninfo_monitor_interval({"monitoring": {"targets": "bad"}}) is False
+
+
+def test_warn_ccninfo_monitor_interval_non_dict_target_noop():
+    assert warn_ccninfo_monitor_interval({"monitoring": {"targets": ["bad"]}}) is False
+
+
+def test_warn_ccninfo_monitor_interval_interval_bool_treated_as_absent():
+    # bool is an int subclass -- `interval: true` must not silently become
+    # interval=1; it falls back to the runtime default (5), which is not
+    # below the 5s threshold, so no warning fires.
+    warned = warn_ccninfo_monitor_interval(
+        {
+            "monitoring": {
+                "interval": True,
+                "targets": [{"type": "ccninfo", "uri": "ccnx:/x"}],
+            }
+        }
+    )
+    assert warned is False
+
+
+def test_warn_ccninfo_monitor_interval_wrong_type_treated_as_absent():
+    warned = warn_ccninfo_monitor_interval(
+        {
+            "monitoring": {
+                "interval": "bad",
+                "targets": [{"type": "ccninfo", "uri": "ccnx:/x"}],
+            }
+        }
+    )
+    assert warned is False
+
+
+def test_warn_ccninfo_monitor_interval_absent_uses_runtime_default():
+    warned = warn_ccninfo_monitor_interval(
+        {"monitoring": {"targets": [{"type": "ccninfo", "uri": "ccnx:/x"}]}}
+    )
+    assert warned is False
+
+
+def test_warn_ccninfo_monitor_interval_no_ccninfo_target_silent_even_at_low_interval():
+    warned = warn_ccninfo_monitor_interval(
+        {"monitoring": {"interval": 1, "targets": [{"type": "cefstatus"}]}}
+    )
+    assert warned is False
+
+
+def test_warn_ccninfo_monitor_interval_low_interval_warns(capsys):
+    warned = warn_ccninfo_monitor_interval(
+        {
+            "monitoring": {
+                "interval": 2,
+                "targets": [{"type": "ccninfo", "uri": "ccnx:/x"}],
+            }
+        }
+    )
+    captured = capsys.readouterr()
+    assert warned is True
+    assert "ccninfo" in captured.err
+    assert "5" in captured.err
+
+
+def test_warn_ccninfo_monitor_interval_at_default_silent():
+    warned = warn_ccninfo_monitor_interval(
+        {
+            "monitoring": {
+                "interval": 5,
+                "targets": [{"type": "ccninfo", "uri": "ccnx:/x"}],
+            }
+        }
+    )
+    assert warned is False

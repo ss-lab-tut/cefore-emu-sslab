@@ -1,6 +1,6 @@
 """Contract tests for the frozen ResultsRecord wire format (CONTEXT.md)."""
 
-from src.core.records import ContentRecord, EventRecord
+from src.core.records import CcninfoRecord, ContentRecord, EventRecord
 
 # The frozen on-disk key sets. Every results.json reader (autotest analyze,
 # the smoke checker, the webui dashboard) depends on these.
@@ -31,6 +31,29 @@ SCHEDULER_EVENT_KEYS = {
     "event",
 }
 FLAP_EVENT_KEYS = {"op_type", "event_type", "ts", "host", "success", "error"}
+CCNINFO_KEYS = [
+    "op_type",
+    "ts",
+    "phase",
+    "host",
+    "uri",
+    "log_file",
+    "down_hosts",
+    "exit_code",
+    "timed_out",
+    "cancelled",
+    "success",
+    "reply_received",
+    "responder",
+    "result",
+    "rtt_ms",
+    "route",
+    "cache_lines",
+    "expected_responder",
+    "expected_route",
+    "responder_matched",
+    "route_matched",
+]
 
 
 def _content_record(**overrides):
@@ -137,3 +160,61 @@ class TestEventRecordWireFormat:
         d = record.to_dict()
         assert "outcome" not in d
         assert "detail" not in d
+
+
+def _ccninfo_record(**overrides):
+    fields = dict(
+        op_type="ccninfo",
+        ts="2026-07-27T00:00:00+00:00",
+        phase="event",
+        host=0,
+        uri="ccnx:/test/a",
+        log_file="/tmp/ccninfo.log",
+        down_hosts=[],
+        exit_code=0,
+        timed_out=False,
+        cancelled=False,
+        success=True,
+        reply_received=True,
+        responder="h1",
+        result="NO_ERROR",
+        rtt_ms=5.562,
+        route=({"index": 1, "node": "h1", "delay_ms": 5.463},),
+        cache_lines=(" 1 c ccnx:/test/a\t423 KB",),
+        expected_responder="h1",
+        expected_route=("h1",),
+        responder_matched=True,
+        route_matched=True,
+    )
+    fields.update(overrides)
+    return CcninfoRecord(**fields)
+
+
+class TestCcninfoRecordWireFormat:
+    def test_serializes_exactly_twentyone_keys_in_order(self):
+        """Pin the wire-contract key set and ordering for ccninfo records."""
+        assert list(_ccninfo_record().to_dict().keys()) == CCNINFO_KEYS
+
+    def test_none_values_stay_present(self):
+        """Missing expectations serialize as null, not as absent keys."""
+        record = _ccninfo_record(
+            expected_responder=None,
+            expected_route=None,
+            responder_matched=None,
+            route_matched=None,
+        )
+        d = record.to_dict()
+        assert list(d.keys()) == CCNINFO_KEYS
+        assert d["expected_responder"] is None
+        assert d["expected_route"] is None
+
+    def test_route_serializes_as_json_primitive_dicts(self):
+        """Route hops must be plain dicts with JSON-primitive values."""
+        d = _ccninfo_record().to_dict()
+        assert isinstance(d["route"], (list, tuple))
+        hop = d["route"][0]
+        assert isinstance(hop, dict)
+        assert hop == {"index": 1, "node": "h1", "delay_ms": 5.463}
+
+    def test_op_type_is_always_ccninfo(self):
+        assert _ccninfo_record().to_dict()["op_type"] == "ccninfo"

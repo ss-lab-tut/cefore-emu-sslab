@@ -30,9 +30,9 @@ from .config_driven_mesh import ConfigDrivenMeshScenario
 class ConnectScenario(ConfigDrivenMeshScenario):
     """Mesh topology with external bridge support.
 
-    Seeds publication-only events before the CLI (get/pubsub_sub events are
-    warned about, not executed). Caching uses k-centers without excluding
-    publishers (unlike DisasterScenario).
+    Seeds publication-only events before the CLI (get/pubsub_sub/ccninfo
+    events are warned about, not executed). Caching uses k-centers without
+    excluding publishers (unlike DisasterScenario).
     """
 
     def __init__(
@@ -50,12 +50,14 @@ class ConnectScenario(ConfigDrivenMeshScenario):
         ) = extract_publications(events)
         self.publisher_ids = set(publisher_ids)
         ignored_retrievals = [
-            event for event in events if event.get("type") in ("get", "pubsub_sub")
+            event
+            for event in events
+            if event.get("type") in ("get", "pubsub_sub", "ccninfo")
         ]
         if ignored_retrievals:
             info(
-                "[warning] ceforeemu-connect does not execute get/pubsub_sub events; "
-                "use disaster or interactive commands for retrieval\n"
+                "[warning] ceforeemu-connect does not execute get/pubsub_sub/ccninfo "
+                "events; use disaster or interactive commands for retrieval\n"
             )
 
     def configure(self, net):

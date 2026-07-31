@@ -28,6 +28,7 @@ SMOKE_CONFIGS = (
     "min_failure",
     "min_event_link",
     "min_monitoring",
+    "min_ccninfo",
     "min_compute",
     "connect",
 )
@@ -314,11 +315,42 @@ def build_smoke_cases() -> list[SmokeCase]:
             },
         ),
         SmokeCase(
+            "min_ccninfo",
+            config_relpath="config/examples/min_ccninfo.yaml",
+            expect={
+                "min_rows": 1,
+                "all_success": True,
+                "require_op_types": ("put", "get", "ccninfo"),
+                "op_factors": {
+                    "ccninfo": {
+                        "reply_received": True,
+                        "responder_matched": True,
+                        "route_matched": True,
+                    },
+                },
+                "monitor_json": {
+                    "min_entries": 1,
+                    "require_types": ("ccninfo",),
+                    "value_checks": {
+                        "ccninfo": {
+                            "output.parsed.reply_received": True,
+                            "output.timed_out": False,
+                        },
+                    },
+                },
+            },
+        ),
+        SmokeCase(
             # compute_call tri-state: autotest mode forbids bridges/ext, so
             # topology isolation (no external route at all) guarantees the
             # endpoint is unreachable — TEST-NET-3 just adds safety if a
             # route ever existed. The record must be skipped-no-result
             # (environment), never a plain failure.
+            #
+            # Deliberately no "all_success": the compute_call row is expected to
+            # carry success == false. Harmonising this with min_ccninfo's
+            # all_success=True would make the case assert the opposite of its
+            # own premise.
             "min_compute",
             config_relpath="config/examples/min_compute.yaml",
             expect={
@@ -346,6 +378,16 @@ def find_results_json(output_dir: Path) -> Path:
 def load_results(results_path: Path) -> list[dict]:
     """Load the scenario results JSON."""
     return json.loads(results_path.read_text(encoding="utf-8"))
+
+
+def _resolve_dotpath(obj, dotpath: str):
+    """Resolve a dotted path like 'output.parsed.reply_received' on a dict."""
+    for key in dotpath.split("."):
+        if isinstance(obj, dict):
+            obj = obj.get(key)
+        else:
+            return None
+    return obj
 
 
 def validate_results(
@@ -395,6 +437,15 @@ def validate_results(
                 elif want == "falsy":
                     if row.get(key):
                         fail(f"{op_type} row should keep {key} falsy")
+                elif isinstance(want, bool):
+                    # Strict boolean check: True must be exactly True
+                    # (isinstance bool + is True), not truthy (1, "true").
+                    val = row.get(key)
+                    if not (isinstance(val, bool) and val is want):
+                        fail(
+                            f"{op_type} row {key}={val!r} (type {type(val).__name__}), "
+                            f"expected exactly {want!r}"
+                        )
                 elif not row.get(key):
                     fail(f"{op_type} row missing {key}")
     event_rows = [r for r in data if r.get("op_type") == "event"]
@@ -426,6 +477,36 @@ def validate_results(
         min_entries = monitor_spec.get("min_entries", 1)
         if len(entries) < min_entries:
             fail(f"monitor.json has {len(entries)} entries, expected >= {min_entries}")
+        for req_type in monitor_spec.get("require_types", ()):
+            if not any(e.get("type") == req_type for e in entries):
+                fail(f"monitor.json has no entry with type={req_type!r}")
+        for check_type, checks in monitor_spec.get("value_checks", {}).items():
+            typed_entries = [e for e in entries if e.get("type") == check_type]
+            if not typed_entries:
+                fail(f"monitor.json value_checks: no entries with type={check_type!r}")
+            # At least one entry of this type must pass ALL checks.
+            # Early monitor cycles can legitimately fire before content is
+            # published (a pre-publish no-reply entry must not fail the
+            # smoke), so only require that at least one entry passes.
+            any_passed = False
+            per_entry_reasons: list[str] = []
+            for entry in typed_entries:
+                entry_ok = True
+                for dotpath, want in checks.items():
+                    val = _resolve_dotpath(entry, dotpath)
+                    if val != want:
+                        entry_ok = False
+                        per_entry_reasons.append(
+                            f"{dotpath}={val!r}, expected {want!r}"
+                        )
+                if entry_ok:
+                    any_passed = True
+                    break
+            if not any_passed:
+                fail(
+                    f"monitor.json: no {check_type} entry passes all checks; "
+                    f"mismatches: {'; '.join(per_entry_reasons)}"
+                )
 
 
 def validate_summarizer_stdout(

@@ -1,9 +1,11 @@
 """Validation helpers for cefore-emu configuration dictionaries."""
 
 import ipaddress
+import math
 from dataclasses import dataclass
 from typing import Any
 
+from ..artifacts import safe_uri_label
 from ..events import EVENT_SCHEMA, event_types, publication_event_types
 from ..protocols import VALID_ROUTE_PROTOCOLS, normalize_route_protocol
 
@@ -1048,6 +1050,63 @@ def _validate_pubsub_options(errors, prefix, event, op_type):
             _validate_algo_option(errors, option_prefix, options, field)
 
 
+def _validate_ccninfo_options(errors, prefix, options):
+    """Validate ccninfo option fields shared by ccninfo events and ccninfo
+    monitor targets.
+
+    Both a ccninfo event dict and a ccninfo monitor target dict carry these
+    option fields flat at the top level (no pub_opts/sub_opts-style nesting,
+    unlike pubsub), so one dict-shape helper covers both call sites without
+    duplicating the per-field rules.
+    """
+    if "cache_info" in options and not isinstance(options["cache_info"], bool):
+        errors.append(f"{prefix}.cache_info must be a boolean")
+    if "owner_only" in options and not isinstance(options["owner_only"], bool):
+        errors.append(f"{prefix}.owner_only must be a boolean")
+
+    hop_count = options.get("hop_count")
+    hop_count_valid = _is_int(hop_count) and 1 <= hop_count <= 255
+    if "hop_count" in options and not hop_count_valid:
+        errors.append(f"{prefix}.hop_count must be an integer 1..255")
+
+    # 2026-07-27 characterization: the real ccninfo binary rejects an
+    # explicit `-s 0` with usage text and exit 0 (the same exit code as
+    # success), so a bad skip_hop cannot be caught by watching the exit
+    # status at runtime -- it must be rejected here, before the binary ever
+    # runs. skip_hop=0 is only valid as the *implicit* default when -s is
+    # omitted entirely (the key absent from the event/target dict), never as
+    # an explicit value.
+    skip_hop = options.get("skip_hop")
+    skip_hop_valid = _is_int(skip_hop) and 1 <= skip_hop <= 15
+    if "skip_hop" in options and not skip_hop_valid:
+        errors.append(f"{prefix}.skip_hop must be an integer 1..15")
+
+    if (
+        "hop_count" in options
+        and "skip_hop" in options
+        and _is_int(hop_count)
+        and _is_int(skip_hop)
+        and skip_hop >= hop_count
+    ):
+        # Same binary-rejection rationale as skip_hop=0: the real ccninfo
+        # binary rejects skip_hop >= hop_count with usage text and exit 0.
+        errors.append(f"{prefix}.skip_hop must be less than hop_count")
+
+    _validate_algo_option(errors, prefix, options, "valid_algo")
+    # 2026-07-27 external review: ccninfo's -p flag is ineffective in
+    # Cefore 0.12.0 due to the client parse-order bug (cef_client_init
+    # reads cefnetd.conf before -p is parsed, so the socket identity
+    # always comes from the provisioned .cefore_env mirror, not from -p).
+    # Reject port_num so users don't silently get a no-op.
+    if "port_num" in options:
+        errors.append(
+            f"{prefix}.port_num is not supported for ccninfo "
+            "(Cefore 0.12.0 parse-order bug: -p is parsed after "
+            "cef_client_init, so socket identity always comes from "
+            "the provisioned .cefore_env mirror)"
+        )
+
+
 def _validate_events(errors, config):
     """Validate the ``events`` list: per-type required fields and field shapes.
 
@@ -1247,6 +1306,60 @@ def _validate_events(errors, config):
                             _validate_pubsub_options(
                                 errors, f"events[{idx}]", event, etype
                             )
+                    elif etype == "ccninfo":
+                        for field in EVENT_SCHEMA[etype].required_fields:
+                            if field not in event:
+                                errors.append(
+                                    f"events[{idx}] missing required field '{field}'"
+                                )
+                        if "host" in event and not _is_int(event["host"]):
+                            errors.append(f"events[{idx}].host must be an integer")
+                        # timeout is not a supported ccninfo event option
+                        # (ccninfo self-terminates via CCNINFO_REPLY_TIMEOUT).
+                        if "timeout" in event:
+                            errors.append(
+                                f"events[{idx}].timeout is not a supported "
+                                "ccninfo event option (ccninfo self-terminates "
+                                "via CCNINFO_REPLY_TIMEOUT)"
+                            )
+                        if "uri" in event:
+                            if not isinstance(event["uri"], str):
+                                errors.append(f"events[{idx}].uri must be a string")
+                            elif not safe_uri_label(event["uri"]):
+                                # A root-only "ccnx:/" URI resolves to an
+                                # empty safe_uri_label(), which would break
+                                # the per-command log-name round-trip
+                                # (content_log_name/parse_content_log_name)
+                                # content_ops.py relies on to find this
+                                # event's own log file.
+                                errors.append(
+                                    f"events[{idx}].uri must not resolve to an "
+                                    "empty log label (e.g. bare 'ccnx:/' root)"
+                                )
+                        _validate_ccninfo_options(errors, f"events[{idx}]", event)
+                        if "expected_responder" in event:
+                            er = event["expected_responder"]
+                            # Empty/whitespace-only would never match any
+                            # responder name (exact equality), making the
+                            # opt-in assert always-fail — reject up front.
+                            if not isinstance(er, str) or not er.strip():
+                                errors.append(
+                                    f"events[{idx}].expected_responder must be "
+                                    "a non-empty string"
+                                )
+                        if "expected_route" in event:
+                            route = event["expected_route"]
+                            if (
+                                not isinstance(route, list)
+                                or not route
+                                or not all(
+                                    isinstance(h, str) and h.strip() for h in route
+                                )
+                            ):
+                                errors.append(
+                                    f"events[{idx}].expected_route must be a "
+                                    "non-empty list of non-empty strings"
+                                )
                     elif etype in ("get", "pubsub_sub"):
                         for field in EVENT_SCHEMA[etype].required_fields:
                             if field not in event:
@@ -1369,8 +1482,25 @@ def validate_config(config: dict[str, Any]) -> list[str]:
             if "interval" in mon:
                 if not _is_number(mon["interval"]) or mon["interval"] <= 0:
                     errors.append("monitoring.interval must be a positive number")
-            valid_monitor_types = ("cefstatus", "csmgrstatus")
+            if "command_timeout" in mon:
+                ct = mon["command_timeout"]
+                # isfinite excludes inf/nan: a non-finite per-command timeout
+                # passed straight through to subprocess would either hang
+                # forever or raise deep inside the collection thread instead
+                # of failing validation up front.
+                # math.isfinite(10**309) raises OverflowError (huge int →
+                # float overflow), so wrap in try/except.
+                try:
+                    is_finite = _is_number(ct) and math.isfinite(ct) and ct > 0
+                except OverflowError:
+                    is_finite = False
+                if not is_finite:
+                    errors.append(
+                        "monitoring.command_timeout must be a positive finite number"
+                    )
+            valid_monitor_types = ("cefstatus", "csmgrstatus", "ccninfo")
             targets = mon.get("targets", [])
+            host_count = config.get("hosts")
             if not isinstance(targets, list):
                 errors.append("monitoring.targets must be a list")
             else:
@@ -1392,6 +1522,77 @@ def validate_config(config: dict[str, Any]) -> list[str]:
                         if not isinstance(th, str) or not th:
                             errors.append(
                                 f"monitoring.targets[{idx}].target_host must be a non-empty string"
+                            )
+                    # command_timeout is a monitoring-level key, not a
+                    # per-target key. Reject it on any target to prevent
+                    # silent misconfiguration.
+                    if "command_timeout" in target:
+                        errors.append(
+                            f"monitoring.targets[{idx}].command_timeout is a "
+                            "monitoring-level key, not a per-target key"
+                        )
+
+                    # hosts: generic to every target type. A bad shape here
+                    # today either silently collects nothing (_resolve_hosts
+                    # returns []) or crashes the monitor thread, so shape and
+                    # bool-exclusion are always checked; the 0..hosts-1 range
+                    # check only runs when host_count is itself a known
+                    # integer (config["hosts"] may be absent/invalid when
+                    # monitoring is validated standalone).
+                    if "hosts" in target:
+                        hosts_val = target["hosts"]
+                        if hosts_val in ("all", "cache"):
+                            pass
+                        elif not isinstance(hosts_val, list) or not all(
+                            _is_int(h) for h in hosts_val
+                        ):
+                            errors.append(
+                                f"monitoring.targets[{idx}].hosts must be "
+                                "'all', 'cache', or a list of integers"
+                            )
+                        elif _is_int(host_count):
+                            for h in hosts_val:
+                                if h < 0 or h >= host_count:
+                                    errors.append(
+                                        f"monitoring.targets[{idx}].hosts contains "
+                                        f"out-of-range host index {h}"
+                                    )
+
+                    if target.get("type") == "ccninfo":
+                        if "uri" not in target:
+                            errors.append(
+                                f"monitoring.targets[{idx}] missing required field 'uri'"
+                            )
+                        elif not isinstance(target["uri"], str):
+                            errors.append(
+                                f"monitoring.targets[{idx}].uri must be a string"
+                            )
+                        elif not target["uri"].strip():
+                            errors.append(
+                                f"monitoring.targets[{idx}].uri must be a "
+                                "non-empty/non-whitespace string"
+                            )
+                        _validate_ccninfo_options(
+                            errors, f"monitoring.targets[{idx}]", target
+                        )
+                        # expected_responder/expected_route are opt-in
+                        # per-event asserts (content_ops.py records a
+                        # responder_matched/route_matched verdict for a
+                        # single ccninfo event); a recurring monitor target
+                        # has no per-call "expected" outcome to assert
+                        # against, so these fields are rejected here rather
+                        # than silently ignored at runtime.
+                        if "expected_responder" in target:
+                            errors.append(
+                                f"monitoring.targets[{idx}].expected_responder is "
+                                "not supported on monitor targets (assert options "
+                                "are event-only)"
+                            )
+                        if "expected_route" in target:
+                            errors.append(
+                                f"monitoring.targets[{idx}].expected_route is not "
+                                "supported on monitor targets (assert options are "
+                                "event-only)"
                             )
 
     if "addressing" in config:

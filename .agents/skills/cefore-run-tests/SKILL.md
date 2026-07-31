@@ -1,6 +1,6 @@
 ---
 name: cefore-run-tests
-description: Run the CeforeEmu regression checks — the full unit pytest suite (root/env-gated tests auto-skip), plus minimal end-to-end `src disaster --config ... --no-cli` smoke runs with `config/examples/min_putget.yaml`, `min_putget_class_a.yaml` (Class A 10.0.0.0/16 addressing — guards the ifconfig classful-netmask bug), `min_pubsub.yaml`, `min_pubsub_verify.yaml`, `min_empty.yaml`, `min_mixed.yaml`, `min_event_putget.yaml`, `min_event_pubsub.yaml`, `min_failure.yaml` (host_down/host_up cycle evidence), `min_event_link.yaml` (link_down/link_up outcome records), and `min_monitoring.yaml` (monitor.json), and `min_compute.yaml` (compute_call tri-state: unreachable endpoint records outcome=skipped-no-result), plus a `connect` ConnectScenario (ceforeemu-connect) plain-mesh smoke run. Use when Codex needs to validate recent code changes, reproduce a failing test, or sanity-check this repository before or after edits.
+description: Run the CeforeEmu regression checks — the full unit pytest suite (root/env-gated tests auto-skip), plus minimal end-to-end `src disaster --config ... --no-cli` smoke runs with `config/examples/min_putget.yaml`, `min_putget_class_a.yaml` (Class A 10.0.0.0/16 addressing — guards the ifconfig classful-netmask bug), `min_pubsub.yaml`, `min_pubsub_verify.yaml`, `min_empty.yaml`, `min_mixed.yaml`, `min_event_putget.yaml`, `min_event_pubsub.yaml`, `min_failure.yaml` (host_down/host_up cycle evidence), `min_event_link.yaml` (link_down/link_up outcome records), `min_monitoring.yaml` (monitor.json), `min_ccninfo.yaml` (ccninfo path/cache trace + ccninfo monitoring), and `min_compute.yaml` (compute_call tri-state — unreachable endpoint records outcome=skipped-no-result), plus a `connect` ConnectScenario (ceforeemu-connect) plain-mesh smoke run. Use when Codex needs to validate recent code changes, reproduce a failing test, or sanity-check this repository before or after edits.
 ---
 
 # Cefore Run Tests
@@ -45,6 +45,7 @@ For the home-skill copy:
 - `config/examples/min_mixed.yaml`
 - `config/examples/min_event_putget.yaml`
 - `config/examples/min_event_pubsub.yaml`
+- `config/examples/min_ccninfo.yaml` (ccninfo path/cache trace + ccninfo monitoring)
 - `config/examples/min_compute.yaml` (compute_call tri-state: with no bridges/ext the topology-isolated TEST-NET-3 endpoint is unreachable and must record `outcome=skipped-no-result`)
 - `connect` — ConnectScenario plain-mesh run (`ceforeemu-connect`, no config)
 

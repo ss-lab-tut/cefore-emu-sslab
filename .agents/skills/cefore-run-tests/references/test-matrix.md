@@ -128,6 +128,21 @@
   - every row has `success == true`
   - `monitor.json` exists with at least 1 entry
 
+### `min_ccninfo`
+
+- File: `config/examples/min_ccninfo.yaml`
+- ccninfo (path/cache trace) の最小検証。originator (h1) は CS_MODE=0 (Bug2 回避)。
+  cache_count=1 で h0 のみキャッシュノード。NODE_NAME 注入でトークンはノード名。
+- Expected `results.json`: put + get + ccninfo rows
+- Required checks:
+  - every row has `success == true`
+  - at least 1 `op_type == "ccninfo"` row
+  - every ccninfo row has `reply_received == true`, `responder_matched == true`,
+    `route_matched == true`
+  - `monitor.json` exists with at least 1 entry of `type == "ccninfo"`
+  - every ccninfo monitor entry has `output.parsed.reply_received == true`
+    and `output.timed_out == false`
+
 ### `min_compute`
 
 - File: `config/examples/min_compute.yaml`

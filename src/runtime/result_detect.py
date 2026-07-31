@@ -8,8 +8,11 @@ output artifacts) into plain values for it.
 from datetime import datetime, timezone
 from pathlib import Path
 
+from ..core.ccninfo_parse import CcninfoReply, parse_ccninfo
 from ..core.verdict import (
+    CcninfoVerdict,
     Verdict,
+    from_runtime_ccninfo,
     from_runtime_get,
     from_runtime_pub,
     from_runtime_put,
@@ -72,3 +75,51 @@ def detect_sub_success(result, output_dir: Path, log_path: Path) -> Verdict:
         bool(non_empty),
         artifact_path=str(non_empty[0]) if non_empty else None,
     )
+
+
+def detect_ccninfo_success(
+    log_path: Path | str | None,
+    result,
+    expected_responder: str | None,
+    expected_route: tuple[str, ...] | None,
+) -> tuple[CcninfoVerdict, CcninfoReply]:
+    """Evaluate a ccninfo run from its log file and CommandResult.
+
+    Reads the log text (missing/unreadable file degrades to an empty string,
+    producing reply_received=False from parse_ccninfo), then delegates to the
+    pure verdict function for judgment.
+
+    Args:
+        log_path: Path to the ccninfo log file, or None if no log was written.
+        result: CommandResult from run_ccninfo.
+        expected_responder: Expected responder node name, or None if no
+            expectation is set by the event.
+        expected_route: Expected ordered subsequence of route node names,
+            or None if no expectation is set by the event.
+
+    Returns:
+        (CcninfoVerdict, CcninfoReply) tuple so the caller can pass both to
+        the ResultsSink for full record construction.
+    """
+    log_text = ""
+    if log_path is not None:
+        try:
+            log_text = Path(log_path).read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            # Missing/unreadable file → empty text → reply_received False.
+            pass
+
+    reply = parse_ccninfo(log_text)
+    route_nodes = tuple(hop.node for hop in reply.route)
+
+    verdict = from_runtime_ccninfo(
+        exit_code=result.returncode,
+        timed_out=result.timed_out,
+        cancelled=result.cancelled,
+        reply_received=reply.reply_received,
+        responder=reply.responder,
+        route_nodes=route_nodes,
+        expected_responder=expected_responder,
+        expected_route=expected_route,
+    )
+    return verdict, reply
