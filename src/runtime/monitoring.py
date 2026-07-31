@@ -249,7 +249,13 @@ class Monitor:
                             info(f"[monitor] on_record callback failed: {exc}\n")
 
     def _collect_target(self, target_type, host_idx, target):
-        """Collect a single target and return (output_str, outcome)."""
+        """Collect a single target and return ``(output, outcome)``.
+
+        The output half is a str for every target type except ccninfo, which
+        returns a structured dict — hence the json.dumps branch in
+        _write_outputs. The outcome half is always one of
+        ``{"ok", "not-ok", "skipped"}``.
+        """
         bg = self._background.is_set()
         if (
             self._down_hosts_getter is not None
