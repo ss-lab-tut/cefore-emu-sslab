@@ -12,7 +12,7 @@ import re
 from typing import Any
 
 _CONTENT_LOG_RE = re.compile(
-    r"^(cefputfile|cefgetfile|cefpubfile|cefsubfile)_([a-z]+)_h(\d+)_(.+)\.log$"
+    r"^(cefputfile|cefgetfile|cefpubfile|cefsubfile|ccninfo)_([a-z]+)_h(\d+)_(.+)\.log$"
 )
 
 

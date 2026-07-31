@@ -20,6 +20,7 @@ logs/
 config/ex*.yaml
 out/
 cefore_emu.egg-info
+projects/
 
 # node-modules
 node_modules
@@ -34,3 +35,4 @@ package.json
 .claude/settings.local.json
 .codex/settings.local.json
 .agents/settings.local.json
+.opencode/

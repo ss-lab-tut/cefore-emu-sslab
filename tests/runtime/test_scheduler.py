@@ -254,6 +254,29 @@ class TestEventOutcomeRecords:
         )
         assert records == []
 
+    def test_ccninfo_routes_to_content_runner_and_emits_no_outcome_record(self):
+        """ccninfo is a content event: the scheduler delegates to the
+        ContentOperationRunner and does NOT emit its own outcome record.
+        """
+        submitted = []
+        mock_runner = MagicMock()
+        mock_runner.submit = lambda op, ev: submitted.append((op, ev))
+
+        sink = RecordingSink()
+        net = _make_net()
+        event = {"at": 0.0, "type": "ccninfo", "host": 0, "uri": "ccnx:/test/a"}
+        sched = EventScheduler(
+            net, [event], sink=sink, content_runner=mock_runner
+        )
+        sched.start()
+        sched.wait_all(timeout=3)
+
+        # The event was submitted to the content runner.
+        assert len(submitted) == 1
+        assert submitted[0][0] == "ccninfo"
+        # No outcome record from the scheduler itself.
+        assert sink.records == []
+
     def test_repeat_key_excluded_from_record(self):
         event = {
             "at": 0.0,

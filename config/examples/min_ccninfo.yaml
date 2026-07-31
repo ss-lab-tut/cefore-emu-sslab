@@ -1,0 +1,78 @@
+# ccninfo (path/cache trace) の最小検証
+# Usage: sudo .venv/bin/python3 -m src disaster --config config/examples/min_ccninfo.yaml
+#
+# ---- Cache-node / originator reasoning (Bug2 workaround) ----
+# Upstream Cefore 0.12.0 Bug2: when the ccninfo originator's cefnetd has
+# a csmgrd cache hit (CS_MODE=2) and -c is NOT set, cefnetd sends a
+# corrupt reply (network-byte-order pkt_len in the else-branch of
+# cef_netd_external_cache_seek, cef_netd.c:5487).
+#   -> Originator must NOT be a cache node (CS_MODE=0).
+#
+# With the defaults (down_count=5, cache_count=0), the legacy fallback
+# selects count = down_count + 1 = 6 cache nodes — more than the eligible
+# set (h0, h1 with h2 excluded as publisher), making BOTH h0 and h1 cache
+# nodes. Pinning cache_count: 1 forces exactly one cache node (h0 via
+# k_centers first-sorted), leaving h1 at CS_MODE=0 as the ccninfo originator.
+#
+# cache_info: true is safe regardless — it exercises the if-branch of
+# cef_netd_external_cache_seek, which reads pkt_len correctly. The
+# originator is CS_MODE=0 anyway, so Bug2 does not apply here, but we
+# include cache_info to exercise the cache block parse path in the smoke.
+#
+# NODE_NAME and CEFORE_DIR are injected by provisioning (template.py)
+# automatically — no manual template edits needed.
+# ---------------------------------------------------------------
+
+hosts: 3
+switches: 3
+seed: 42
+k: 1
+num: 9916
+output_dir: "logs/verify"
+no_cli: true
+duration: 30
+results_json: "results.json"
+
+# Pin cache_count to 1 so only h0 becomes a cache node.
+# See reasoning above.
+cache_count: 1
+
+events:
+  # Seed content from the publisher (h2) so caches have something to report.
+  - at: 0
+    type: put
+    host: 2
+    uri: "ccnx:/test/ccninfo_sample"
+    file: "./sample-putfile"
+    expiry: 3000
+    cache_time: 3000
+
+  # Warm the path: h1 retrieves content so intermediate caches fill.
+  - at: 5
+    type: get
+    host: 1
+    uri: "ccnx:/test/ccninfo_sample"
+
+  # ccninfo probe from h1 (non-cache originator, CS_MODE=0).
+  # With NODE_NAME injection, responder/route tokens are node names.
+  # Responder is the publisher h2 (CS_MODE=1 Localcache), not cache
+  # node h0 — h0 is off-path in this topology (h1--s0--h2 direct).
+  # This smoke does NOT cover the csmgrd/Excache responder path.
+  - at: 12
+    type: ccninfo
+    host: 1
+    uri: "ccnx:/test/ccninfo_sample"
+    cache_info: true
+    expected_responder: "h2"
+    expected_route: ["h1", "h2"]
+
+# Monitoring: periodic ccninfo probe from h1.
+# interval >= 6 to stay above the 5s warning threshold (loader.py).
+monitoring:
+  interval: 6
+  output_json: "monitor.json"
+  targets:
+    - type: ccninfo
+      hosts: [1]
+      uri: "ccnx:/test/ccninfo_sample"
+      cache_info: true

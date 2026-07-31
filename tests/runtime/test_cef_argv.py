@@ -6,6 +6,7 @@ carry no shell redirection (``>``/``2>&1``) and no ``shlex.quote`` artifacts
 """
 
 from src.runtime.cef_argv import (
+    build_ccninfo_argv,
     build_cefgetfile_argv,
     build_cefpubfile_argv,
     build_cefputfile_argv,
@@ -189,3 +190,72 @@ class TestPubfileArgv:
         assert argv[argv.index("-p") + 1] == "9695"
         assert argv[-2:] == ["-d", "./h2"]
         _assert_no_shell_artifacts(argv)
+
+
+# ---------------------------------------------------------------------------
+# ccninfo
+# ---------------------------------------------------------------------------
+
+
+class TestCcninfoArgv:
+    def test_minimal(self):
+        argv = build_ccninfo_argv("ccnx:/x", node_name="h0")
+        assert argv == ["ccninfo", "ccnx:/x", "-d", "./h0"]
+
+    def test_all_flags(self):
+        argv = build_ccninfo_argv(
+            "ccnx:/x",
+            node_name="h0",
+            cache_info=True,
+            owner_only=True,
+            hop_count=8,
+            skip_hop=2,
+            valid_algo="crc32c",
+            port_num=9695,
+        )
+        # Byte-exact: pins head order (-c before -o), opt order (-r,-s,-v,-p),
+        # and the trailing -d in one assertion so a reorder anywhere fails.
+        assert argv == [
+            "ccninfo", "ccnx:/x", "-c", "-o",
+            "-r", "8", "-s", "2", "-v", "crc32c", "-p", "9695",
+            "-d", "./h0",
+        ]
+        _assert_no_shell_artifacts(argv)
+
+    def test_omitted_flags_absent(self):
+        argv = build_ccninfo_argv("ccnx:/x", node_name="h0")
+        for flag in ("-c", "-o", "-r", "-s", "-v", "-p"):
+            assert flag not in argv
+
+    def test_cache_info_bare_flag_alone(self):
+        argv = build_ccninfo_argv("ccnx:/x", node_name="h0", cache_info=True)
+        assert argv == ["ccninfo", "ccnx:/x", "-c", "-d", "./h0"]
+
+    def test_owner_only_bare_flag_alone(self):
+        argv = build_ccninfo_argv("ccnx:/x", node_name="h0", owner_only=True)
+        assert argv == ["ccninfo", "ccnx:/x", "-o", "-d", "./h0"]
+
+    def test_zero_value_passthrough_for_hop_count_and_skip_hop(self):
+        # 0 is a real value the real binary treats distinctly from "omitted"
+        # (an explicit -s rejects 0 upstream); the builder must not conflate
+        # "0" with "None" and silently drop the flag.
+        argv = build_ccninfo_argv(
+            "ccnx:/x", node_name="h0", hop_count=0, skip_hop=0
+        )
+        assert argv[argv.index("-r") + 1] == "0"
+        assert argv[argv.index("-s") + 1] == "0"
+
+    def test_d_node_dir_always_last_two_elements(self):
+        # Regardless of which options are set, "-d ./<node_name>" must be the
+        # final two argv elements (matches the four existing builders).
+        argv = build_ccninfo_argv(
+            "ccnx:/x",
+            node_name="h3",
+            cache_info=True,
+            owner_only=True,
+            hop_count=5,
+            skip_hop=1,
+            valid_algo="rsa-sha256",
+            port_num=1234,
+        )
+        assert argv[-2:] == ["-d", "./h3"]

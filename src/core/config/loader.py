@@ -38,6 +38,71 @@ def warn_ignored_legacy_content_keys(config: dict[str, Any], stream=None) -> boo
     return True
 
 
+# Runtime default applied by Monitor callers (e.g. DisasterScenario) when
+# monitoring.interval is absent from config -- see
+# src/scenarios/disaster.py `monitoring_config.get("interval", 5)`. Kept
+# here as the fallback this warning compares against so the two defaults
+# cannot silently drift apart.
+_MONITOR_INTERVAL_RUNTIME_DEFAULT = 5
+
+
+def warn_ccninfo_monitor_interval(config: dict[str, Any], stream=None) -> bool:
+    """Warn once when monitoring.interval is too low for a ccninfo target.
+
+    A ccninfo probe self-terminates on reply or on CCNINFO_REPLY_TIMEOUT+1
+    (cefnetd.conf default 4s + 1s grace = ~5s, see
+    src/runtime/cefore.py CCNINFO_GUARD_TIMEOUT comment) -- so it costs ~5s
+    per call *even on success*. Monitor._run sleeps `interval` seconds after
+    each full collection pass (a fixed post-cycle delay, not a minimum
+    spacing enforced between probes), so an interval shorter than that
+    per-probe cost means collection immediately falls behind schedule for
+    every ccninfo target.
+
+    This runs over the RAW config, before validate_config, so it must never
+    raise regardless of what shape the YAML/JSON handed it -- every branch
+    below degrades to "no warning" rather than crashing on a malformed
+    monitoring/targets/interval value.
+
+    Returns:
+        True iff the warning was printed.
+    """
+    monitoring = config.get("monitoring")
+    if not isinstance(monitoring, dict):
+        return False
+    targets = monitoring.get("targets")
+    if not isinstance(targets, list):
+        return False
+    has_ccninfo = any(
+        isinstance(t, dict) and t.get("type") == "ccninfo" for t in targets
+    )
+    if not has_ccninfo:
+        return False
+
+    interval = monitoring.get("interval")
+    # bool is an int subclass -- check it FIRST so a stray `interval: true`
+    # isn't silently treated as interval=1. Any other non-numeric shape
+    # (missing key, string, None, ...) also falls back to the runtime
+    # default rather than being treated as an (incorrectly) low interval.
+    if isinstance(interval, bool) or not isinstance(interval, (int, float)):
+        interval = _MONITOR_INTERVAL_RUNTIME_DEFAULT
+
+    if interval >= _MONITOR_INTERVAL_RUNTIME_DEFAULT:
+        return False
+
+    if stream is None:
+        stream = sys.stderr
+    print(
+        f"[warning] monitoring.interval ({interval}) is below "
+        f"~{_MONITOR_INTERVAL_RUNTIME_DEFAULT}s but a ccninfo target takes "
+        "~5s per probe (REPLY_TIMEOUT+1) even on success, and "
+        "monitoring.interval is a fixed post-cycle delay, not a minimum "
+        "spacing between probes -- expect ccninfo collection to fall "
+        "behind schedule.",
+        file=stream,
+    )
+    return True
+
+
 def load_config(path: str | Path | None) -> dict[str, Any]:
     """Load configuration from a JSON or YAML file.
 

@@ -70,7 +70,7 @@ One named piece of Verdict evidence (`has_completed_log`, `has_output_file`, exi
 _Avoid_: flag, boolean column
 
 **ResultsRecord**:
-One judgment entry in results.json — a tagged union of two shapes: ContentRecord (one per put/get/pub/sub; 14 fixed keys carrying the Verdict Factors) and EventRecord (one per non-content scheduler event or host flap). Defined in `src/core/records.py`; the on-disk key sets are frozen — every reader (autotest analyze, smoke checker, webui) depends on them.
+One judgment entry in results.json — a tagged union of three shapes: ContentRecord (one per put/get/pub/sub; 14 fixed keys carrying the Verdict Factors), CcninfoRecord (one per ccninfo probe; 21 fixed keys carrying route/responder evidence and match Factors), and EventRecord (one per non-content scheduler event or host flap). Defined in `src/core/records.py`; the on-disk key sets are frozen — every reader (autotest analyze, smoke checker, webui) depends on them.
 _Avoid_: result dict, record dict, results entry
 
 **ResultsSink**:
@@ -98,6 +98,14 @@ _Avoid_: `valid_event_types` literal, `_EVENT_PRIORITY`/`_CONTENT_EVENT_TYPES` l
 **extract_publications**:
 The single owner of "which events introduce content into the network and who publishes them". Pure function in `src/core/events.py`: `extract_publications(events: list[dict]) → (publications, publishers_dict, publisher_ids)` where `publications` is the filtered list, `publishers_dict` is `{uri: host_idx}`, and `publisher_ids` is `frozenset[int]` (integer host indices, matching `ScenarioSetupSpec.publisher_ids: set[int]`). Both `DisasterScenario` and `ConnectScenario` derive their publisher state from it; `runtime/external_net.py` re-exports it as the public surface.
 _Avoid_: `_prepare_event_publishers` (removed), `_publication_metadata` (removed), per-scenario iteration over `publication_event_types()`
+
+**ccninfo event**:
+A content event type that runs a CCNinfo path/cache trace (RFC 9344) from a designated host. Opt-in assert fields `expected_responder` and `expected_route` pin the responder node name and the ordered route token list respectively; mismatches are recorded as `responder_matched`/`route_matched` Factors in the CcninfoRecord.
+_Avoid_: calling ccninfo from a CS_MODE=2 originator without `-c` (upstream Bug2 produces corrupt replies)
+
+**ccninfo monitor target**:
+A monitoring target (`type: ccninfo`) that periodically runs a CCNinfo probe from specified hosts. Each collection cycle produces a structured dict (not a string) in `monitor.json` with `parsed.reply_received`, `parsed.route`, `parsed.responder`, `timed_out`, and `elapsed_ms`. The monitor `output` field is a dict for successful ccninfo probes but stays a plain string for host-down skips and exception wraps (the existing `_collect_once` contract), so the output type for any monitor entry is `dict | str`.
+_Avoid_: monitoring ccninfo at intervals below the 5s warning threshold
 
 ## Scenario setup
 
@@ -183,6 +191,10 @@ _Avoid_: 単独でこのリネームに取り掛かること (他の deepening �
 11 slice / 11 commit (fc6abe8..c8687e0) で +212 tests、全体 76%→89%。ゼロカバレッジだった plotter/log-cli/parsing/tee/links/topo と「spy 化で本体未実行」だった bandwidth/viz/cleanup、および monitoring lifecycle / webui state・server / CLI dispatch / base hooks / mesh・linear init 検証を direct test 化。到達不能分岐は file:line 根拠付きでテスト対象外として各テストファイルと commit message に明文化。残る意図的低カバレッジ: disaster.py 59% 等の Mininet-live 経路 (cefore-run-tests smoke が integration gate)。
 _Avoid_: 到達不能と記録済みの分岐に fake-rng/import-hook で無理にテストを足すこと、Mininet-live 経路の unit test 化
 
+**完了 (2026-07-31) — mutation testing 第1回 (`src/core/config/validator.py`, base 86f6f90)**:
+mutmut 2.5.1 で 1568 mutant。raw score 58.67%→59.18% (killed 920→928、退行 0)。既存テストメソッドへの 5 パターン追加 (parametrize タプル 1 + 完全一致アサートへの狭化 4) で 8 体 kill。5 パターンは全て leave-one-out (そのパターンだけ外すと生存に戻る) を pytest 出力つきで実証、副次 3 体 (728/729/1242) は DB 差分からの推論と明記。**生存メカニズムは 2 つある: (A) 分岐そのものが未到達 — mutant 727 の `validator.py:725` は baseline で UNCOVERED、(B) 実行されているが検証が緩い — `validate_config()` の戻り値である診断文に対し、base の `test_loader.py` は部分一致 (`for e in errors`) 140 箇所 / 完全一致 (`assert ... in errors`) 11 箇所。mutmut は文字列を `XX…XX` で包むので部分一致は素通しする**。完全一致は本文だけでなく prefix 組み立て (`_validate_ccninfo_options(errors, f"events[{idx}]", ...)`) まで固定する。併せて `tests/core/test_fib.py` の `assert ... or True` (恒真＝ループ本体が無検証) を除去 — ただし残る `source != next_hop` は `test_compute_fib_no_self_routes` の `source != dest` とは**別の不変条件**なので redundant ではない。`expected_responder`/`expected_route` は狭化を見送った: src の文言 "non-empty" が実際の判定 (`.strip()`) と食い違い、`"   "` は len 3 で非 empty — 不正確な文言を契約化するとテストが誤った説明を保護する (src 修正禁止のため指摘に留めた)。`routing` バリデーション (`validator.py:1494/1496`) は UNCOVERED だが**到達可能**で、単に検証テストが無いだけ。残 640 生存は未分類 (うち 50 が uncovered 行)。**再現に必要な情報はこのエントリに集約してある** (base commit / ツール版 / runner 構成 / _Avoid_)。GitHub issue・PR 化は PAT に `issues=write`/`pull_requests=write` が無く 403 (repo は public なので可視性の問題ではない)。
+_Avoid_: **mutmut 3.6.0** をこの runbook で使うこと (`record_trampoline_hit` の `assert not name.startswith("src.")` が literal `src` パッケージを拒否、かつ `--paths-to-mutate`/`--runner`/`--use-coverage`/`result-ids` が無い別方言 — 静的確認のみ、実行 TB 未採取。3.x 更新時はこの 2 点を再検証すること)、`mutmut result-ids` の出力を正規化せず `while read` に渡すこと (全 ID が 1 行スペース区切りで来るのでループが 1 回しか回らず、部分集合判定が等号で偽陽性合格する)、**キャッシュ済み** `mutmut run <id>` の status を単独の判定根拠にすること (生存する mutant に `ok_killed` を返した実測あり — fresh cache か直接 A/B で確認する)、A/B の判定を returncode だけで行うこと (**落ちたテストの node ID が期待したものか必ず突き合わせる** — 本 campaign 自身が worktree 汚染で 1046 の A アームに hop_count テストの失敗を見て誤判定しかけた)、in-place mutation を共有ツリーで走らせること (専用 detached worktree で実行する)、スコープ内テストだけの runner で得た survived を全被覆確認なしに gap として報告すること (実測で 790 件中 143 件が偽の生存者だった)、UNCOVERED であることだけを根拠に「新規テストメソッド無しでは埋められない」と結論すること (mutant 727 は UNCOVERED 行だが既存 parametrize へのケース追加だけで到達・kill できた)
+
 **解消済み (2026-07-07) — down_\* default の「暗黙の flap 有効」即時fix**:
 workshop smoke で no-failure のつもりの m1_smoke が `[flap] down h1` を発生させ、eval get が exit 1、repeat get の 5s 間隔も flap 由来の scheduler 遅延で 1s 連発に崩れる問題を実測した。即時fixとして `down_interval`/`down_duration` の OptionSpec default を 0/0 に変更し、省略 config は legacy failure manager を起動しないようにした。`down_count=5` は cache_count=0 の legacy cache fallback (`down_count + 1`) も兼ねるため default 維持。R8候補は legacy down_\* と cache_count fallback の廃止として残す。また関連の罠として、repeat 付き get は同一 host+uri だと content log が同名で上書きされ、失敗した実行のログが後続成功で消える（判定比較は results.json を使うこと）。
 _Avoid_: down_count default だけを単独で 0 化すること、legacy down_\* 廃止を cache fallback 再設計なしで進めること
@@ -205,3 +217,10 @@ definitive True と判定するよう更新済み (src/core/verdict.py) — mark
 (0-byte FAILURE ログ) の log-only 判定は依然 unknown のままで、これはログ欠損と
 区別不能という構造的限界であり today の fix では解消しない。
 _Avoid_: 実験 config の pubsub を無検証で 10+ hosts に置くこと
+
+**deferred (2026-07-27 external review) — ccninfo/monitoring known gaps**:
+- `.inf` が monitoring.interval validation を通過した後 monitor thread を無限待機で殺す (pre-existing class; isfinite guard は command_timeout のみ適用済み)
+- monitor の per-cycle timestamps は cycle 先頭で 1 回だけ打刻 → 後続 serial targets は stale な elapsed_sec を持つ
+- webui は ccninfo monitor entries を表示しない; ccninfo を success rate に含めない
+- Monitor.stop() の残余 unbounded paths: on_record callback タイムアウトなし; post-kill proc.wait(); fg cefstatus/csmgrstatus timeout=None
+- dense ccninfo timeline 下の serial content worker occupancy (ccninfo ~5s/probe が content op latency を圧迫する可能性)

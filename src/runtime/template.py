@@ -114,8 +114,39 @@ def provision_node_dirs(roles, base_dir: Path = Path(".")) -> list[Path]:
                 shutil.rmtree(node_dir)
             shutil.copytree(template, node_dir)
             (node_dir / STAMP_FILENAME).touch()
-            update_local_sock_id(str(node_dir), idx)
+            # Register for rollback immediately after copytree+stamp so a
+            # failure during NODE_NAME injection or .cefore_env creation
+            # still rolls the stamped directory back (previously a failure
+            # there leaked a stamped half-provisioned dir).
             generated.append(node_dir)
+            update_local_sock_id(str(node_dir), idx)
+            # 2026-07-27 characterization — without NODE_NAME each cefnetd
+            # names itself by first-found IPv4; ccninfo responder/route
+            # tokens then render as IPs (unreadable asserts) and duplicate
+            # names (multi-interface nodes, or template reuse beyond 3
+            # hosts) can break ccninfo's name-keyed loop check / reply PIT
+            # reconstruction. Static template NODE_NAME would collide for
+            # >3 hosts — hence dynamic injection.
+            _set_config_value(node_dir / "cefnetd.conf", "NODE_NAME", f"h{idx}")
+            # 2026-07-27 upstream bug workaround: ccninfo parses -d AFTER
+            # cef_client_init(), so CEFORE_DIR is the only way to point the
+            # binary at the correct cefnetd.conf. cef_client_init expects
+            # $CEFORE_DIR/cefore/cefnetd.conf, so we mirror the node's conf
+            # into that directory shape.
+            #
+            # This copy must happen AFTER update_local_sock_id and
+            # NODE_NAME injection so the mirrored conf carries both.
+            #
+            # Only socket-identity keys (LOCAL_SOCK_ID, PORT_NUM) are
+            # load-bearing for cef_client_init; later mutations to the live
+            # hN/cefnetd.conf (CS_MODE via apply_cache_node_settings
+            # / apply_cs_modes) are intentionally NOT mirrored — they do
+            # not affect ccninfo's client socket lookup.
+            cefore_env = node_dir / ".cefore_env" / "cefore"
+            cefore_env.mkdir(parents=True, exist_ok=True)
+            src_conf = node_dir / "cefnetd.conf"
+            if src_conf.exists():
+                shutil.copy2(str(src_conf), str(cefore_env / "cefnetd.conf"))
     except BaseException:
         # Atomic: undo only the directories this call created. The unmanaged
         # directory that tripped the guard is never in ``generated``.

@@ -2,13 +2,16 @@
 
 import csv
 import json
+import threading
+import time
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
 
-from src.runtime.command_runner import FakeCommandRunner
+from src.runtime.command_runner import CommandResult, FakeCommandRunner
 from src.runtime.monitoring import (
+    DEFAULT_COMMAND_TIMEOUT,
     MONITOR_FIELDS,
     Monitor,
     _resolve_hosts,
@@ -668,3 +671,479 @@ class TestCollectOnceUsesFactory:
         monkeypatch.setattr(monitor, "_collect_target", lambda t, h, tgt: "out")
         monitor._collect_once(0.5)
         assert tuple(monitor._records[0].keys()) == MONITOR_FIELDS
+
+
+# ---------------------------------------------------------------------------
+# Fixture loading — reuses the same directory as test_ccninfo_parse.py
+# ---------------------------------------------------------------------------
+
+_FIXTURES_DIR = Path(__file__).resolve().parents[1] / "fixtures" / "ccninfo"
+
+
+def _load_fixture(name: str) -> str:
+    """Read a ccninfo fixture verbatim (no stripping)."""
+    return (_FIXTURES_DIR / name).read_text()
+
+
+def _ccninfo_target(**kwargs):
+    return {"type": "ccninfo", "uri": "ccnx:/test/mon", **kwargs}
+
+
+# ---------------------------------------------------------------------------
+# _collect_target — ccninfo branch
+# ---------------------------------------------------------------------------
+
+class TestCollectTargetCcninfo:
+    """ccninfo branch of _collect_target: builds argv via build_ccninfo_argv,
+    prepends CEFORE_DIR, runs via MininetCommandRunner, and parses stdout
+    into a structured dict with uri/raw/parsed/elapsed_ms/timed_out.
+    """
+
+    def _make_monitor(self, tmp_path, **kwargs):
+        return Monitor(
+            _make_net(2),
+            targets=[_ccninfo_target()],
+            interval=1,
+            output_dir=tmp_path,
+            host_count=2,
+            background=True,
+            **kwargs,
+        )
+
+    def test_ccninfo_success_produces_structured_dict_output(self, tmp_path):
+        """A successful ccninfo run returns a 4-field dict with uri, raw,
+        parsed (structured reply fields including route as list of dicts),
+        elapsed_ms, and timed_out=False.
+        """
+        fixture_text = _load_fixture("reply_named_cache.out")
+        fake = FakeCommandRunner()
+        fake.script_run(stdout=fixture_text)
+        monitor = self._make_monitor(tmp_path, command_timeout=5)
+        target = _ccninfo_target()
+        with patch("src.runtime.monitoring.MininetCommandRunner", return_value=fake):
+            out = monitor._collect_target("ccninfo", 1, target)
+
+        # output is a dict, not a string
+        assert isinstance(out, dict)
+        assert out["uri"] == "ccnx:/test/mon"
+        assert out["raw"] == fixture_text
+        assert isinstance(out["elapsed_ms"], int)
+        assert out["elapsed_ms"] >= 0
+        assert out["timed_out"] is False
+
+        # parsed sub-dict carries the ccninfo reply fields
+        parsed = out["parsed"]
+        assert parsed["reply_received"] is True
+        assert parsed["responder"] == "h1"
+        assert parsed["result"] == "NO_ERROR"
+        assert parsed["rtt_ms"] == 5.562
+
+        # route is a list of plain dicts (JSON-primitive contract), not
+        # dataclass objects or tuples
+        assert isinstance(parsed["route"], list)
+        assert len(parsed["route"]) == 1
+        hop = parsed["route"][0]
+        assert isinstance(hop, dict)
+        assert hop == {"index": 1, "node": "h1", "delay_ms": 5.463}
+
+        # cache_lines is a list of strings
+        assert isinstance(parsed["cache_lines"], list)
+        assert len(parsed["cache_lines"]) == 1
+
+    def test_ccninfo_timeout_produces_dict_with_timed_out_true(self, tmp_path):
+        """A timed-out ccninfo run returns a dict with timed_out=True and
+        parsed.reply_received=False (empty stdout).
+        """
+        fake = FakeCommandRunner()
+        fake.script_run(stdout="", timed_out=True)
+        monitor = self._make_monitor(tmp_path, command_timeout=5)
+        target = _ccninfo_target()
+        with patch("src.runtime.monitoring.MininetCommandRunner", return_value=fake):
+            out = monitor._collect_target("ccninfo", 0, target)
+
+        assert isinstance(out, dict)
+        assert out["timed_out"] is True
+        assert out["parsed"]["reply_received"] is False
+
+    def test_ccninfo_host_down_returns_skip_string(self, tmp_path):
+        """A ccninfo target on a downed host returns the plain-string
+        'skipped: host down', same as cefstatus/csmgrstatus.
+        """
+        monitor = self._make_monitor(tmp_path)
+        monitor._down_hosts_getter = lambda: [0]
+        target = _ccninfo_target()
+        out = monitor._collect_target("ccninfo", 0, target)
+        assert out == "skipped: host down"
+
+    def test_ccninfo_always_passes_timeout(self, tmp_path):
+        """Unlike fg cefstatus (which passes timeout=None), ccninfo always
+        passes command_timeout — in both fg and bg modes — because a
+        reply-less ccninfo blocks ~5s per host and would stall the monitor.
+        """
+        # Background mode
+        fake_bg = FakeCommandRunner()
+        fake_bg.script_run(stdout="")
+        monitor_bg = self._make_monitor(tmp_path, command_timeout=7)
+        target = _ccninfo_target()
+        with patch("src.runtime.monitoring.MininetCommandRunner", return_value=fake_bg):
+            monitor_bg._collect_target("ccninfo", 0, target)
+        assert fake_bg.runs[0]["timeout"] == 7
+
+        # Foreground mode
+        fake_fg = FakeCommandRunner()
+        fake_fg.script_run(stdout="")
+        monitor_fg = Monitor(
+            _make_net(2),
+            targets=[_ccninfo_target()],
+            interval=1,
+            output_dir=tmp_path,
+            host_count=2,
+            command_timeout=7,
+        )
+        with patch("src.runtime.monitoring.MininetCommandRunner", return_value=fake_fg):
+            monitor_fg._collect_target("ccninfo", 0, target)
+        # ccninfo fg timeout is NOT None (unlike cefstatus fg which is None)
+        assert fake_fg.runs[0]["timeout"] == 7
+
+    def test_cefstatus_fg_still_passes_timeout_none(self, tmp_path):
+        """Complementary pin: cefstatus in foreground mode still passes
+        timeout=None. This test documents the intentional asymmetry between
+        cefstatus (timeout=None in fg) and ccninfo (always bounded).
+        """
+        fake = FakeCommandRunner()
+        fake.script_run(stdout="cef out")
+        monitor = Monitor(
+            MagicMock(),
+            targets=[_cefstatus_target(hosts="all")],
+            interval=1,
+            output_dir=tmp_path,
+            host_count=3,
+        )
+        with patch("src.runtime.monitoring.MininetCommandRunner", return_value=fake):
+            monitor._collect_target("cefstatus", 0, {"type": "cefstatus"})
+        assert fake.runs[0]["timeout"] is None
+
+    def test_ccninfo_argv_carries_cefore_dir_prefix(self, tmp_path):
+        """The ccninfo argv must be prefixed with env CEFORE_DIR=... so
+        cef_client_init reads the correct node's cefnetd.conf socket ID.
+        """
+        fake = FakeCommandRunner()
+        fake.script_run(stdout="")
+        monitor = self._make_monitor(tmp_path)
+        target = _ccninfo_target()
+        with patch("src.runtime.monitoring.MininetCommandRunner", return_value=fake):
+            monitor._collect_target("ccninfo", 0, target)
+        argv = fake.runs[0]["argv"]
+        assert argv[0] == "env"
+        assert "CEFORE_DIR=" in argv[1]
+        assert ".cefore_env" in argv[1]
+        # The actual ccninfo command follows the env prefix
+        assert argv[2] == "ccninfo"
+
+    def test_unknown_type_fallback_unchanged_with_ccninfo_present(self, tmp_path):
+        """The unknown-type fallback must still work now that ccninfo is
+        wired as an elif branch before the else.
+        """
+        monitor = self._make_monitor(tmp_path)
+        out = monitor._collect_target("bogus", 0, {"type": "bogus"})
+        assert out == "unknown monitor type: bogus"
+
+    def test_ccninfo_passthrough_options_forwarded(self, tmp_path):
+        """Optional ccninfo flags (cache_info, hop_count, etc.) from the
+        target dict are forwarded to build_ccninfo_argv.
+        """
+        fake = FakeCommandRunner()
+        fake.script_run(stdout="")
+        monitor = self._make_monitor(tmp_path)
+        target = _ccninfo_target(
+            cache_info=True,
+            owner_only=True,
+            hop_count=5,
+            skip_hop=2,
+            valid_algo="crc32c",
+            port_num=9876,
+        )
+        with patch("src.runtime.monitoring.MininetCommandRunner", return_value=fake):
+            monitor._collect_target("ccninfo", 0, target)
+        argv = fake.runs[0]["argv"]
+        # After the env prefix, the ccninfo argv should contain the flags
+        ccninfo_argv = argv[2:]  # skip ["env", "CEFORE_DIR=..."]
+        assert "-c" in ccninfo_argv
+        assert "-o" in ccninfo_argv
+        assert "-r" in ccninfo_argv
+        idx_r = ccninfo_argv.index("-r")
+        assert ccninfo_argv[idx_r + 1] == "5"
+        idx_s = ccninfo_argv.index("-s")
+        assert ccninfo_argv[idx_s + 1] == "2"
+
+
+# ---------------------------------------------------------------------------
+# CSV round-trip: dict outputs get json.dumps'd, string outputs stay plain
+# ---------------------------------------------------------------------------
+
+class TestCsvDictSerialization:
+    """CSV rows with dict-valued outputs must be JSON-serialized so they
+    round-trip through json.loads; string outputs stay untouched.
+    """
+
+    def _monitor(self, tmp_path, **kwargs):
+        return Monitor(
+            _make_net(1),
+            targets=[],
+            interval=1,
+            output_dir=tmp_path,
+            host_count=1,
+            **kwargs,
+        )
+
+    def test_dict_output_csv_roundtrips_via_json(self, tmp_path):
+        """A record whose output is a dict must be written as JSON in CSV
+        so json.loads on the cell round-trips to the original dict.
+        """
+        dict_output = {
+            "uri": "ccnx:/test",
+            "raw": "some output",
+            "parsed": {
+                "reply_received": True,
+                "responder": "h1",
+                "result": "NO_ERROR",
+                "rtt_ms": 5.0,
+                "route": [{"index": 1, "node": "h1", "delay_ms": 3.0}],
+                "cache_lines": [],
+            },
+            "elapsed_ms": 42,
+            "timed_out": False,
+        }
+        monitor = self._monitor(
+            tmp_path, output_csv="monitor.csv", output_json="monitor.json"
+        )
+        monitor._records = [
+            {"elapsed_sec": 0.0, "type": "ccninfo", "host": 0, "output": dict_output},
+        ]
+        monitor._write_outputs()
+
+        # CSV round-trip: json.loads on the output cell recovers the dict
+        with open(tmp_path / "monitor.csv", newline="", encoding="utf-8") as f:
+            rows = list(csv.DictReader(f))
+        assert len(rows) == 1
+        recovered = json.loads(rows[0]["output"])
+        assert recovered == dict_output
+
+        # JSON file keeps the nested dict as-is (not double-encoded)
+        json_data = json.loads((tmp_path / "monitor.json").read_text(encoding="utf-8"))
+        assert json_data[0]["output"] == dict_output
+
+    def test_string_output_csv_stays_plain(self, tmp_path):
+        """A record whose output is a plain string (e.g. cefstatus output)
+        must NOT be json.dumps'd — it stays as the raw string in CSV.
+        """
+        monitor = self._monitor(tmp_path, output_csv="monitor.csv")
+        monitor._records = [
+            {"elapsed_sec": 0.0, "type": "cefstatus", "host": 0, "output": "faces: 1"},
+        ]
+        monitor._write_outputs()
+        with open(tmp_path / "monitor.csv", newline="", encoding="utf-8") as f:
+            rows = list(csv.DictReader(f))
+        assert rows[0]["output"] == "faces: 1"
+
+    def test_mixed_string_and_dict_outputs_serialize_correctly(self, tmp_path):
+        """A CSV with both string and dict output rows serializes each
+        independently: dicts get JSON, strings stay plain.
+        """
+        dict_output = {"uri": "ccnx:/x", "raw": "", "parsed": {}, "elapsed_ms": 0, "timed_out": False}
+        monitor = self._monitor(tmp_path, output_csv="monitor.csv")
+        monitor._records = [
+            {"elapsed_sec": 0.0, "type": "cefstatus", "host": 0, "output": "plain text"},
+            {"elapsed_sec": 1.0, "type": "ccninfo", "host": 1, "output": dict_output},
+        ]
+        monitor._write_outputs()
+        with open(tmp_path / "monitor.csv", newline="", encoding="utf-8") as f:
+            rows = list(csv.DictReader(f))
+        assert rows[0]["output"] == "plain text"
+        assert json.loads(rows[1]["output"]) == dict_output
+
+
+# ---------------------------------------------------------------------------
+# stop() — join budget and late-thread safety
+# ---------------------------------------------------------------------------
+
+class TestStopContract:
+    """stop() join budget is computed from command_timeout, not a fixed 10s.
+    A blocking fake runner pins the contract: the worker thread blocks on
+    a ccninfo run for exactly its timeout duration, and stop() returns
+    with the thread dead within the budget.
+    """
+
+    def test_stop_returns_with_thread_dead_after_blocking_ccninfo(self, tmp_path):
+        """A fake runner that blocks until its timeout elapses simulates a
+        worst-case ccninfo cycle. stop() must join within the budget and
+        the thread must be dead.
+        """
+        # command_timeout=1 -> budget = 1 + 2 + 3 = 6s
+        # Use an Event to synchronize instead of a fixed sleep: the fake
+        # signals when it has entered its blocking run, and the test waits
+        # on that before calling stop().
+        entered = threading.Event()
+        fake = FakeCommandRunner()
+
+        def blocking_run(node, argv, *, log_path=None, cwd=None, timeout=None,
+                         cancel_event=None, capture=True, capture_stderr=False):
+            entered.set()
+            if timeout is not None:
+                time.sleep(timeout)
+            return CommandResult(0, "", "")
+        fake.run = blocking_run
+
+        monitor = Monitor(
+            _make_net(2),
+            targets=[_ccninfo_target()],
+            interval=60,  # long interval so only one cycle runs
+            output_dir=tmp_path,
+            host_count=2,
+            background=True,
+            command_timeout=1,
+        )
+        with patch("src.runtime.monitoring.MininetCommandRunner", return_value=fake):
+            monitor.start()
+            assert entered.wait(timeout=5), "fake never entered blocking_run"
+            t0 = time.monotonic()
+            monitor.stop()
+            elapsed = time.monotonic() - t0
+
+        assert not monitor._thread.is_alive()
+        # Budget is 1+2+3=6s; the actual wait should be well under that
+        # (the thread sleeps for ~1s per host then the join is near-instant).
+        # With hosts=[0,1] (default "all" for ccninfo), worst case is ~2s.
+        assert elapsed < 8
+
+    def test_stop_join_budget_scales_with_command_timeout(self, tmp_path):
+        """The join timeout must be command_timeout + 5, not a fixed 10s.
+        Directly asserts the _join_budget() formula.
+        """
+        monitor = Monitor(
+            _make_net(2),
+            targets=[_ccninfo_target()],
+            interval=1,
+            output_dir=tmp_path,
+            host_count=2,
+            command_timeout=20,
+        )
+        assert monitor._join_budget() == 20 + 2 + 3  # 25, not 10
+
+    def test_join_budget_uses_default_when_command_timeout_is_default(self, tmp_path):
+        """_join_budget with the default command_timeout (10) yields 15."""
+        monitor = Monitor(
+            _make_net(2),
+            targets=[_ccninfo_target()],
+            interval=1,
+            output_dir=tmp_path,
+            host_count=2,
+        )
+        assert monitor._join_budget() == DEFAULT_COMMAND_TIMEOUT + 2 + 3  # 15
+
+    def test_stop_joins_with_budget_and_warns_when_thread_survives(self, tmp_path):
+        """When the thread is still alive after the join budget, stop() must:
+        (1) pass _join_budget() as the join timeout,
+        (2) warn about the surviving thread,
+        (3) still write outputs from the locked snapshot.
+        Uses command_timeout=4 so the budget (4+2+3=9) is distinguishable
+        from the old fixed 10.
+        """
+
+        class SurvivingThread:
+            """Fake thread that never dies — always reports is_alive()=True."""
+
+            def __init__(self):
+                self.join_timeout = None
+
+            def join(self, timeout=None):
+                self.join_timeout = timeout
+
+            def is_alive(self):
+                return True
+
+        monitor = Monitor(
+            _make_net(2),
+            targets=[_ccninfo_target()],
+            interval=1,
+            output_dir=tmp_path,
+            host_count=2,
+            command_timeout=4,
+            output_json="monitor.json",
+        )
+        monitor._records.append(
+            {"elapsed_sec": 0.0, "type": "ccninfo", "host": 0, "output": "seed"}
+        )
+        surviving = SurvivingThread()
+        monitor._thread = surviving
+
+        with patch("src.runtime.monitoring.warn") as mock_warn:
+            monitor.stop()
+
+        # (1) stop() must pass _join_budget() to join(), not a fixed 10
+        assert surviving.join_timeout == monitor._join_budget()  # 9
+        assert surviving.join_timeout == 4 + 2 + 3  # explicit arithmetic pin
+
+        # (2) a warning must be logged
+        mock_warn.assert_called_once()
+        assert "join budget" in mock_warn.call_args[0][0]
+
+        # (3) outputs must still be written despite the surviving thread
+        assert (tmp_path / "monitor.json").exists()
+
+
+# ---------------------------------------------------------------------------
+# Lock-protected snapshot — deterministic test (no threads, no timing)
+# ---------------------------------------------------------------------------
+
+class TestRecordsLock:
+    """The _records_lock protects append in _collect_once and snapshot in
+    _write_outputs so a late-returning thread cannot race _write_outputs.
+    """
+
+    def test_append_and_snapshot_hold_records_lock(self, tmp_path, monkeypatch):
+        """Instrument _records with a list subclass that records whether
+        _records_lock was held during append and list() snapshot.
+        """
+
+        class InstrumentedList(list):
+            def __init__(self, *args, lock=None, **kwargs):
+                super().__init__(*args, **kwargs)
+                self._lock = lock
+                self.append_locked = []
+                self.iter_locked = []
+
+            def append(self, item):
+                self.append_locked.append(self._lock.locked())
+                super().append(item)
+
+            def __iter__(self):
+                self.iter_locked.append(self._lock.locked())
+                return super().__iter__()
+
+        monitor = Monitor(
+            _make_net(2),
+            targets=[_cefstatus_target(hosts=[0])],
+            interval=1,
+            output_dir=tmp_path,
+            host_count=2,
+            output_json="monitor.json",
+        )
+        monkeypatch.setattr(monitor, "_collect_target", lambda t, h, tgt: "ok")
+
+        instrumented = InstrumentedList(lock=monitor._records_lock)
+        monitor._records = instrumented
+
+        # Trigger an append via _collect_once
+        monitor._collect_once(0.0)
+        assert len(instrumented.append_locked) == 1
+        assert instrumented.append_locked[0] is True, (
+            "_records.append must be called with _records_lock held"
+        )
+
+        # Trigger a snapshot via _write_outputs
+        monitor._write_outputs()
+        assert len(instrumented.iter_locked) >= 1
+        assert instrumented.iter_locked[0] is True, (
+            "list(self._records) snapshot must be called with _records_lock held"
+        )

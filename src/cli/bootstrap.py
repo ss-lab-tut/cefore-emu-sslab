@@ -14,6 +14,7 @@ from ..core.config.loader import (
     merge_cli_and_config,
     validate_config,
     validate_merged_args,
+    warn_ccninfo_monitor_interval,
     warn_ignored_legacy_content_keys,
 )
 from ..core.artifacts import topo_png_default_name
@@ -63,6 +64,7 @@ def bootstrap_scenario(
     """
     config_data = load_config(args.config)
     warn_ignored_legacy_content_keys(config_data)
+    warn_ccninfo_monitor_interval(config_data)
 
     # This parser is not used to parse argv; it tells the config merger which
     # values were argparse defaults so config may fill them without overriding

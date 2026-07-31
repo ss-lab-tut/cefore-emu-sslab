@@ -111,7 +111,7 @@ failure_scenarios:
 # -----------------------------------------------------------------------------
 # ネットワーク系イベント type: link_down, link_up, fib_add, fib_del, fib_enable,
 #                              bw_set, compute_call
-# コンテンツ操作イベント type: put, get, pubsub_pub, pubsub_sub
+# コンテンツ操作イベント type: put, get, pubsub_pub, pubsub_sub, ccninfo
 #   put       : host, uri, file が必須。フラッピング中など任意のタイミングで put。
 #   get       : host, uri が必須。results.json に記録される。
 #   pubsub_sub: host, uri が必須。sub_opts (wait 等) で購読待機時間を指定。
@@ -243,11 +243,27 @@ events:
 #     timeout: 30
 #     # publish_uri: "ccnx:/compute/result1"  # 結果をCeforeで配信
 
+  # --- ccninfo イベント (パス・キャッシュトレース) ---
+  # ccninfo: host, uri が必須。originator の cefnetd が CS_MODE=2 の場合、
+  #          -c なしでは Bug2 により破損応答が返るため、originator は
+  #          CS_MODE=0 のホストにすること。
+  #          NODE_NAME と CEFORE_DIR は provisioning が自動注入する。
+#   - at: 100
+#     type: ccninfo
+#     host: 0                        # ccninfo 発行ホスト (CS_MODE=0 推奨)
+#     uri: "ccnx:/test/event_data"
+#     cache_info: true               # -c: キャッシュ情報取得 [オプション]
+#     # skip_hop: 1                  # -s: スキップホップ数 (1..15) [オプション]
+#     # hop_count: 32                # -r: 最大ホップ数 [オプション]
+#     # expected_responder: "h3"     # アサート: 応答者ノード名 [オプション]
+#     # expected_route: ["h0", "h3"] # アサート: 経路ノード名リスト [オプション]
+
 # -----------------------------------------------------------------------------
 # モニタリング (定期収集)
 # -----------------------------------------------------------------------------
 monitoring:
-  interval: 5                    # 収集間隔 (秒)
+  interval: 5                    # 固定 post-cycle delay (秒); 実効周期は
+                                  # collection_time + interval (~5s/ccninfo probe)
   output_json: "monitor.json"    # JSON出力ファイル名
   output_csv: "monitor.csv"      # CSV出力ファイル名
   targets:
@@ -256,6 +272,12 @@ monitoring:
     - type: csmgrstatus          # csmgrstatus出力収集
       hosts: "cache"             # キャッシュノードのみ
       uri: "ccnx:/"             # クエリURI [オプション]
+    # - type: ccninfo            # ccninfo パス・キャッシュトレース収集
+    #   hosts: [0]               # 発行ホスト (CS_MODE=0 推奨; Bug2 回避)
+    #   uri: "ccnx:/test/sample" # トレース対象プレフィクス
+    #   cache_info: true         # -c: キャッシュ情報取得 [オプション]
+    #   # skip_hop: 1            # -s: スキップホップ数 [オプション]
+    #   # hop_count: 32          # -r: 最大ホップ数 [オプション]
 
 # -----------------------------------------------------------------------------
 # 実行制御
