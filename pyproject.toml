@@ -28,7 +28,22 @@ dev = [
     "ruff>=0.1",
     "pytest>=8.0",
     "pytest-cov>=6.0",
+    "types-pyyaml>=6.0.12.20260724",
+    "types-networkx>=3.6.1.20260728",
 ]
+
+[tool.mypy]
+# CI typecheck gate はこの default 設定での `mypy src` = 0 errors を守る。
+# --strict mode は不採用（別次元の負債になる）。baseline/ratchet 機構も持たない —
+# 抑制は個別の `# type: ignore[code]` + 理由コメントのみ、腐敗は下の
+# warn_unused_ignores が検知する。
+python_version = "3.12"
+warn_unused_ignores = true
+
+[[tool.mypy.overrides]]
+# mininet wheel (2.3.0.dev6) は型情報を持たず stubs も存在しない
+module = "mininet.*"
+ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

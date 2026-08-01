@@ -246,9 +246,19 @@ def _render_png(spec: ScenarioSetupSpec) -> None:
 
 def setup_scenario(net, spec: ScenarioSetupSpec) -> SetupResult:
     """Run the common scenario setup recipe in order, return SetupResult."""
+    if spec.bridge_configs and spec.bridge_manager is None:
+        # 2026-08-01 review fix: bridge_configs と bridge_manager は対で渡す
+        # 契約 (旧 cast(BridgeManager, None) が隠していた invariant)。cast の
+        # ままだと setup_bridges の奥で不明瞭に死ぬため、side effect が一切
+        # 走る前にここで fail-fast する。
+        raise ValueError("ScenarioSetupSpec.bridge_configs requires bridge_manager")
+
     apply_ip_addr(net, spec.mesh_links, scheme=spec.scheme)
 
     if spec.bridge_configs:
+        # 上の pair-invariant guard により到達時は必ず非 None — assert は
+        # mypy narrowing のためで、実行時には到達不能。
+        assert spec.bridge_manager is not None
         setup_bridges(
             net,
             spec.bridge_manager,

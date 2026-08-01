@@ -6,7 +6,6 @@ from mininet.log import info
 from mininet.topo import Topo
 from mininet.util import irange
 
-from ..core.graph import UnionFind
 
 
 def max_possible_links(host_num):

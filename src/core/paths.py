@@ -1,7 +1,7 @@
 """Common path constants."""
 
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from .artifacts import experiment_dir_name
 
@@ -81,7 +81,9 @@ def resolve_run_path(
             raise ValueError("path is required")
         rel = Path(default_name)
     else:
-        rel = Path(raw_path)
+        # 上の `raw_path in (None, "")` は membership 判定のため mypy の
+        # narrowing が効かない。else 側は非 None が保証済みの identity cast。
+        rel = Path(cast(str | Path, raw_path))
 
     root = run_dir.resolve()
     if rel.is_absolute():

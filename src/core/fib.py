@@ -3,7 +3,7 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
-from .addressing import AddressingScheme, DEFAULT_NETWORK_CIDR
+from .addressing import AddressingScheme
 from .graph import dijkstra_all
 from .topology import TopologyModel
 

@@ -96,7 +96,7 @@ class CacheConfigManager:
                 overrides[int(node_id)] = settings
         return overrides
 
-    def select_cache_nodes(self, exclude: set = None, rng=None) -> list:
+    def select_cache_nodes(self, exclude: set | None = None, rng=None) -> list:
         """Select cache node indices based on the configured strategy.
 
         Args:

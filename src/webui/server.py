@@ -4,10 +4,14 @@ import json
 import os
 import threading
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flask import Flask, Response, send_from_directory
 
 from .state import DashboardState
+
+if TYPE_CHECKING:
+    from werkzeug.serving import BaseWSGIServer
 
 _ASSETS_DIR = Path(__file__).parent / "assets"
 
@@ -62,8 +66,8 @@ class WebUIServer:
     def __init__(self, state: DashboardState, port: int = 5080):
         self._state = state
         self._port = port
-        self._server = None
-        self._thread = None
+        self._server: BaseWSGIServer | None = None
+        self._thread: threading.Thread | None = None
         self._stop_event = threading.Event()
 
     def start(self) -> None:

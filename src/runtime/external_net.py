@@ -14,7 +14,7 @@ from ..core.events import extract_publications  # noqa: F401 (re-export)
 from ..scenarios.connect import ConnectScenario
 
 
-def run_connect(args, run_dir: Path = None, log_context=None, debug_config=None):
+def run_connect(args, run_dir: Path | None = None, log_context=None, debug_config=None):
     """Run mesh topology with external bridge support.
 
     Thin wrapper over ConnectScenario; the lifecycle (build/configure/run/CLI/

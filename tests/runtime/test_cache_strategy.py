@@ -7,9 +7,7 @@ seam calls .place(ctx) -> set[int].
 """
 
 from dataclasses import dataclass
-from unittest.mock import patch
 
-import pytest
 
 from src.runtime.cache_strategy import (
     CacheContext,
