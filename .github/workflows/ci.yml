@@ -34,7 +34,10 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
-      - uses: astral-sh/setup-uv@v9
+      # setup-uv は floating major tag (v9) を公開していない — 存在するのは
+      # 正確な version tag のみ (git ls-remote 実測 2026-08-01)。checkout /
+      # upload-artifact の @v7 は floating major tag が実在する。
+      - uses: astral-sh/setup-uv@v9.0.0
         with:
           version: "0.10.11"
           enable-cache: true
@@ -65,7 +68,10 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v7
-      - uses: astral-sh/setup-uv@v9
+      # setup-uv は floating major tag (v9) を公開していない — 存在するのは
+      # 正確な version tag のみ (git ls-remote 実測 2026-08-01)。checkout /
+      # upload-artifact の @v7 は floating major tag が実在する。
+      - uses: astral-sh/setup-uv@v9.0.0
         with:
           version: "0.10.11"
           enable-cache: true
@@ -78,7 +84,10 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
-      - uses: astral-sh/setup-uv@v9
+      # setup-uv は floating major tag (v9) を公開していない — 存在するのは
+      # 正確な version tag のみ (git ls-remote 実測 2026-08-01)。checkout /
+      # upload-artifact の @v7 は floating major tag が実在する。
+      - uses: astral-sh/setup-uv@v9.0.0
         with:
           version: "0.10.11"
           enable-cache: true
@@ -93,7 +102,10 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
-      - uses: astral-sh/setup-uv@v9
+      # setup-uv は floating major tag (v9) を公開していない — 存在するのは
+      # 正確な version tag のみ (git ls-remote 実測 2026-08-01)。checkout /
+      # upload-artifact の @v7 は floating major tag が実在する。
+      - uses: astral-sh/setup-uv@v9.0.0
         with:
           version: "0.10.11"
           enable-cache: true

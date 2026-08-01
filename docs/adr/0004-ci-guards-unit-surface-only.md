@@ -51,8 +51,11 @@ Gate semantics:
   `uv sync --locked`, then `uv run --no-sync`. A bare `uv run` auto-locks and
   auto-syncs, which would self-heal a stale lock and defeat the lock gate.
   uv itself is pinned (0.10.11) so the toolchain cannot drift away from local
-  measurements; actions are pinned by major tag only (trusted publishers —
-  SHA pinning declined as maintenance the repo doesn't need yet).
+  measurements. Actions are pinned by floating major tag where the publisher
+  maintains one (checkout@v7, upload-artifact@v7 — verified to exist);
+  setup-uv publishes no floating major tag, so it is pinned to the exact
+  version tag (v9.0.0). Full SHA pinning declined as maintenance the repo
+  doesn't need yet (trusted publishers only).
 - **packaging** — `uv sync` never installs the project itself (virtual
   project), so `[project.scripts]` breakage is invisible to the unit suite;
   the job does an editable install and requires exit code 0 from each CLI's
