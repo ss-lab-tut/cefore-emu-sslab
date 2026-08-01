@@ -16,8 +16,9 @@ Two constraints shape what CI can guard here:
 1. The end-to-end smoke evidence (cefore-run-tests) needs root + Mininet +
    Cefore binaries; a GitHub-hosted runner has none of them, and a self-hosted
    runner on a public repository would execute fork-PR code on lab hardware.
-2. The unit suite is hermetic: 1493 tests in ~15 s, non-root, with mininet
-   satisfied by the PyPI wheel — nothing about it needs the lab environment.
+2. The unit suite is hermetic — measured 2026-08-01: 1516 passed / 6 skipped
+   in ~15 s, non-root, with mininet satisfied by the PyPI wheel — nothing
+   about it needs the lab environment.
 
 ## Decision
 

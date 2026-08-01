@@ -27,6 +27,11 @@ permissions:
 #   3. uv run --no-sync ... — never let the runner re-resolve
 # uv itself is pinned to the locally measured 0.10.11 so the toolchain does
 # not float independently of the repo.
+#
+# Python is pinned by the tracked .python-version (3.12): uv resolves and
+# installs that managed CPython during sync, independent of the runner's
+# system python. Deliberately no python-version input here — a second pin
+# would be a drift source against .python-version.
 
 jobs:
   test:
@@ -48,12 +53,12 @@ jobs:
           --cov=src --cov-context=test
           --cov-report=term
           tests
-      # The .coverage artifact feeds the mutation-campaign covering-set
-      # derivation via CoverageData.contexts_by_lineno() — the reproduction
-      # path issue 16 documents. It already carries the test contexts and
-      # relative_files makes it portable; a show_contexts cov.json of the same
-      # data measured 142 MB, so no JSON report is generated here. .coverage
-      # is a hidden file — upload-artifact excludes hidden files by default.
+      # The .coverage artifact feeds mutation-campaign covering-set
+      # derivation: test contexts are read straight from this SQLite data
+      # file via CoverageData.contexts_by_lineno(), and relative_files makes
+      # it portable off-runner. A show_contexts cov.json of the same data
+      # measured 142 MB, so no JSON report is generated here. .coverage is a
+      # hidden file — upload-artifact excludes hidden files by default.
       - uses: actions/upload-artifact@v7
         if: ${{ !cancelled() }}
         with:
