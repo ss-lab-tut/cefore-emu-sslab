@@ -1,0 +1,110 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+# PR runs are grouped per PR number and cancel superseded runs. push runs are
+# grouped per SHA — a shared group would let GitHub's one-pending-run limit
+# replace queued runs during rapid merges, silently skipping intermediate main
+# SHAs, which defeats "every main push is verified".
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+# Declaring a permissions map sets every unlisted scope (id-token, etc.) to
+# none — no explicit denial needed.
+permissions:
+  contents: read
+
+# uv discipline shared by every job: a bare `uv run` auto-locks and auto-syncs
+# before executing, which would self-heal a stale uv.lock and turn the lock
+# gate into a false positive. Therefore, always:
+#   1. uv lock --check      — freshness gate (fails on stale lock)
+#   2. uv sync --locked     — install exactly the lock, fail if it drifts
+#   3. uv run --no-sync ... — never let the runner re-resolve
+# uv itself is pinned to the locally measured 0.10.11 so the toolchain does
+# not float independently of the repo.
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v9
+        with:
+          version: "0.10.11"
+          enable-cache: true
+      - run: uv lock --check
+      - run: uv sync --locked --group dev
+      - run: >
+          uv run --no-sync pytest -p no:cacheprovider
+          --cov=src --cov-context=test
+          --cov-report=term
+          tests
+      # The .coverage artifact feeds the mutation-campaign covering-set
+      # derivation via CoverageData.contexts_by_lineno() — the reproduction
+      # path issue 16 documents. It already carries the test contexts and
+      # relative_files makes it portable; a show_contexts cov.json of the same
+      # data measured 142 MB, so no JSON report is generated here. .coverage
+      # is a hidden file — upload-artifact excludes hidden files by default.
+      - uses: actions/upload-artifact@v7
+        if: ${{ !cancelled() }}
+        with:
+          name: coverage-${{ github.sha }}
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 14
+          path: .coverage
+
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v9
+        with:
+          version: "0.10.11"
+          enable-cache: true
+      - run: uv lock --check
+      - run: uv sync --locked --group dev
+      - run: uv run --no-sync ruff check src tests
+
+  typecheck:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v9
+        with:
+          version: "0.10.11"
+          enable-cache: true
+      - run: uv lock --check
+      - run: uv sync --locked --group dev
+      # Zero-error gate on default mypy config (pyproject [tool.mypy]) — not
+      # --strict mode. See ADR-0004.
+      - run: uv run --no-sync mypy src
+
+  packaging:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v9
+        with:
+          version: "0.10.11"
+          enable-cache: true
+      - run: uv lock --check
+      - run: uv sync --locked --group dev
+      # `uv sync` installs dependencies but NOT the project itself (virtual
+      # project, no build-system) — [project.scripts] entry points only exist
+      # after an editable install, so no unit test can catch their breakage.
+      # --no-deps: dependencies came from the locked sync; do not re-resolve.
+      - run: uv pip install --no-deps -e .
+      # Pass criterion is exit code 0 only — help text is not a contract.
+      - run: uv run --no-sync ceforeemu --help
+      - run: uv run --no-sync ceforeemu-log --help
+      - run: uv run --no-sync ceforeemu-connect --help
