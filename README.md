@@ -35,6 +35,17 @@ uv sync   # Install dependencies
 
 After modifying `[project.scripts]` in `pyproject.toml`, run `uv pip install -e .` to register new CLI entry points.
 
+## Continuous Integration
+
+Every PR to `main` and every push on `main` runs the unit-surface gates on
+GitHub Actions (`.github/workflows/ci.yml`): pytest with a coverage floor
+(`fail_under=85`), ruff, mypy (zero errors on the default config),
+`uv lock --check`, and an entry-points install check. Mininet-live
+end-to-end evidence is deliberately *not* part of CI — it stays with the
+local root smoke battery (cefore-run-tests). See
+[docs/adr/0004](docs/adr/0004-ci-guards-unit-surface-only.md) for the
+decision record.
+
 ## Quick Start
 
 ```bash

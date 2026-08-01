@@ -32,6 +32,23 @@ dev = [
     "types-networkx>=3.6.1.20260728",
 ]
 
+[tool.coverage.run]
+# artifact (.coverage/cov.json) を runner 外で解析するため絶対 path を残さない
+relative_files = true
+
+[tool.coverage.report]
+# 85 は outage floor (大規模なカバレッジ後退の検知) — 回帰追跡器ではない。
+# タイト床 89 は運用ノイズとして不採用 (ADR-0004)。実測ベースライン 89.9%。
+fail_under = 85
+# 既定 precision=0 は 84.6% を「85」に丸めて pass させる
+precision = 2
+
+[tool.coverage.json]
+# ローカルで --cov-report=json を明示指定した時に context 付きで出すための設定。
+# CI の artifact は .coverage (SQLite) のみ — context はそこに内蔵されており、
+# show_contexts 付き JSON は同一データで 142MB に膨らむ実測があるため。
+show_contexts = true
+
 [tool.mypy]
 # CI typecheck gate はこの default 設定での `mypy src` = 0 errors を守る。
 # --strict mode は不採用（別次元の負債になる）。baseline/ratchet 機構も持たない —
