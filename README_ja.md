@@ -27,6 +27,16 @@ CeforeEmu は、Ubuntu 22.04 上で Cefore（コンテンツ指向ネットワ�
 uv sync   # 依存パッケージのインストール
 ```
 
+## 継続的インテグレーション (CI)
+
+main への PR と main への push ごとに、GitHub Actions
+(`.github/workflows/ci.yml`) が unit 面のゲートを実行する: coverage 床
+(`fail_under=85`) 付き pytest、ruff、mypy (default 設定で 0 errors)、
+`uv lock --check`、entry-points インストール検査。Mininet 実機系の e2e 証跡は
+意図的に CI に含めない — ローカルの root smoke バッテリー (cefore-run-tests)
+が引き続きその gate を担う。決定の記録は
+[docs/adr/0004](docs/adr/0004-ci-guards-unit-surface-only.md) を参照。
+
 ## クイックスタート
 
 ```bash
