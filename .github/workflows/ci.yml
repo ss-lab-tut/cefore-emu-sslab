@@ -5,6 +5,11 @@ on:
     branches: [main]
   push:
     branches: [main]
+  # release.yml が `uses: ./.github/workflows/ci.yml` で呼ぶための入口。
+  # ゲート定義 (pytest+coverage / ruff / mypy / uv lock --check / entry-points)
+  # の owner はこのファイルだけ — release 側にジョブを複製しない (ADR-0004)。
+  # 呼ばれた場合の checkout ref は呼び出し元のイベントに従う (release.yml 参照)。
+  workflow_call:
 
 # PR runs are grouped per PR number and cancel superseded runs. push runs are
 # grouped per SHA — a shared group would let GitHub's one-pending-run limit
