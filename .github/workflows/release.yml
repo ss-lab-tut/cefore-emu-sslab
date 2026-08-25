@@ -1,0 +1,100 @@
+name: Release
+
+# GitHub Release を作る唯一の経路。ユーザーの PAT では `gh release create` が
+# org 制限で 403 になるため、Actions の GITHUB_TOKEN (別 principal) で作る。
+#
+# 2 つの入口:
+#   push tags v*     — 通常経路。タグ push で自動起動 (v0.2.1 以降)。
+#   workflow_dispatch — 既に push 済みのタグに後から Release を付ける経路
+#                       (v0.2.0 は本 workflow 導入前に push されていた)。
+#
+# 設計上の割り切り (2026-08-25): checkout と CI ゲートは「起動イベントの ref」に
+# 対して走る。push 経路なら tag の tree、dispatch 経路なら起動ブランチ (main) の
+# tree。dispatch で入力した tag の tree はゲートされない。許容する理由は、
+# 下の "Assert tag is on main" で tag が main の祖先であることを機械的に要求し、
+# main は required checks で常に green だから。docs/releases/<tag>.md が
+# dispatch 経路で読めるのも main の tree を checkout しているため。
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: '既に push 済みのタグ名 (例: v0.2.0)'
+        required: true
+        type: string
+
+# Release 作成には contents: write が要る。repo 既定の Workflow permissions は
+# Read only だが、workflow 側の permissions 宣言で昇格できる (org が禁止して
+# いない限り)。昇格が拒否されたら release ジョブが 403 で落ちる — その場合は
+# Web UI で手動作成に切り替える。
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.event.inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  # Q9 (2026-08-25): Release 前に unit-surface gate を再実行する。再利用であって
+  # 複製ではない — ゲートの定義は ci.yml のみ。
+  ci:
+    uses: ./.github/workflows/ci.yml
+
+  release:
+    needs: ci
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # merge-base 判定に main の履歴と tag object が要る。shallow clone だと
+          # `--is-ancestor` が常に偽になる。
+          fetch-depth: 0
+
+      - name: Resolve tag
+        id: tag
+        env:
+          INPUT_TAG: ${{ github.event.inputs.tag }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          set -eu
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            TAG="$INPUT_TAG"
+          else
+            TAG="$REF_NAME"
+          fi
+          # dispatch 経路では checkout が main なので tag を明示的に取得する。
+          git fetch --no-tags origin "refs/tags/${TAG}:refs/tags/${TAG}"
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+
+      - name: Assert tag is on main
+        env:
+          TAG: ${{ steps.tag.outputs.tag }}
+        run: |
+          set -eu
+          # annotated tag は tag object を指すので commit まで peel しないと
+          # merge-base が tag object を commit として解釈できず失敗する。
+          SHA="$(git rev-parse "${TAG}^{commit}")"
+          git fetch --no-tags origin main
+          if ! git merge-base --is-ancestor "$SHA" origin/main; then
+            echo "::error::${TAG} (${SHA}) is not an ancestor of origin/main — release only tags cut from main" >&2
+            exit 1
+          fi
+          echo "${TAG} -> ${SHA} (on main)"
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.tag.outputs.tag }}
+        run: |
+          set -eu
+          # docs/releases/<tag>.md があれば手書き要約を本文の先頭に置き、その後ろに
+          # GitHub の自動生成ノート (merged PR 一覧) を続ける。無ければ自動生成のみ。
+          # --verify-tag: origin に無いタグ名で Release を作らせない。
+          NOTES="docs/releases/${TAG}.md"
+          if [ -f "$NOTES" ]; then
+            gh release create "$TAG" --title "$TAG" --verify-tag --generate-notes --notes-file "$NOTES"
+          else
+            gh release create "$TAG" --title "$TAG" --verify-tag --generate-notes
+          fi
