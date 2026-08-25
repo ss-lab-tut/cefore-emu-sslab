@@ -804,18 +804,55 @@ def test_validate_failure_scenarios_simple_non_dict():
     assert any("simple" in e and "dict" in e for e in errors)
 
 
-def test_validate_failure_scenarios_simple_count_negative():
+def test_validate_failure_scenarios_simple_negative_fields_emit_once():
     errors = validate_config(
-        {"failure_scenarios": {"strategy": "simple", "simple": {"count": -1}}}
+        {
+            "failure_scenarios": {
+                "strategy": "simple",
+                "simple": {"count": -1, "stagger": -1},
+            }
+        }
     )
-    assert any("count" in e for e in errors)
+
+    assert errors == [
+        "failure_scenarios.simple.count must be an integer >= 0",
+        "failure_scenarios.simple.stagger must be an integer >= 0",
+    ]
 
 
-def test_validate_failure_scenarios_simple_stagger_negative():
-    errors = validate_config(
-        {"failure_scenarios": {"strategy": "simple", "simple": {"stagger": -1}}}
-    )
-    assert any("stagger" in e for e in errors)
+@pytest.mark.parametrize(
+    "failure_scenarios",
+    [
+        {
+            "strategy": "simple",
+            "simple": {
+                "interval": 0,
+                "duration": 0,
+                "count": 0,
+                "stagger": 0,
+                "target": "ignored for simple",
+                "allow_publishers": "ignored for simple",
+            },
+        },
+        {
+            "strategy": "cyclic",
+            "cycles": [
+                {
+                    "interval": 0,
+                    "duration": 0,
+                    "count": 0,
+                    "stagger": 0,
+                    "target": [0],
+                    "allow_publishers": False,
+                }
+            ],
+        },
+    ],
+)
+def test_validate_flap_descriptor_preserves_current_zero_and_field_policy(
+    failure_scenarios,
+):
+    assert validate_config({"failure_scenarios": failure_scenarios}) == []
 
 
 def test_validate_failure_scenarios_simple_exclude_invalid():
@@ -878,12 +915,14 @@ def test_validate_failure_scenarios_cyclic_entry_fields():
             }
         }
     )
-    assert any("interval" in e for e in errors)
-    assert any("count" in e for e in errors)
-    assert any("stagger" in e for e in errors)
-    assert any("exclude" in e for e in errors)
-    assert any("target" in e for e in errors)
-    assert any("allow_publishers" in e for e in errors)
+    assert errors == [
+        "failure_scenarios.cycles[0].interval must be an integer",
+        "failure_scenarios.cycles[0].count must be an integer >= 0",
+        "failure_scenarios.cycles[0].stagger must be an integer >= 0",
+        "failure_scenarios.cycles[0].exclude must be a list of integers",
+        "failure_scenarios.cycles[0].target must be a list of integers",
+        "failure_scenarios.cycles[0].allow_publishers must be a boolean",
+    ]
 
 
 def test_validate_failure_scenarios_cyclic_interval_duration_null():

@@ -744,6 +744,57 @@ def _validate_forwarding_config(errors, config):
             )
 
 
+def _validate_flap_descriptor(
+    errors: list[str],
+    prefix: str,
+    descriptor: dict,
+    *,
+    allow_target: bool,
+    allow_publishers: bool,
+) -> None:
+    """Validate the schema shared by simple and cyclic host-flap entries.
+
+    Zero remains valid for the four numeric fields because tightening interval
+    and duration to ``>= 1`` belongs to the deferred FailurePolicy migration.
+    The allow flags preserve the current asymmetry: only cyclic entries validate
+    ``target`` and ``allow_publishers``; simple entries continue to ignore them.
+    """
+    for field in ("interval", "duration"):
+        if field in descriptor and descriptor[field] is None:
+            errors.append(f"{prefix}.{field} must not be null")
+
+    # 2026-08-24 duplicate-diagnostic fix: numeric validation has one owner so
+    # one invalid count or stagger cannot emit the same error a second time.
+    for field in ("interval", "duration", "count", "stagger"):
+        if field not in descriptor or descriptor[field] is None:
+            continue
+        value = descriptor[field]
+        if not _is_int(value):
+            errors.append(f"{prefix}.{field} must be an integer")
+        elif value < 0:
+            errors.append(f"{prefix}.{field} must be an integer >= 0")
+
+    if "exclude" in descriptor and descriptor["exclude"] is not None:
+        excluded = descriptor["exclude"]
+        if not isinstance(excluded, list) or not all(
+            _is_int(host) for host in excluded
+        ):
+            errors.append(f"{prefix}.exclude must be a list of integers")
+
+    if allow_target and "target" in descriptor and descriptor["target"] is not None:
+        target = descriptor["target"]
+        if not isinstance(target, list) or not all(_is_int(host) for host in target):
+            errors.append(f"{prefix}.target must be a list of integers")
+
+    if (
+        allow_publishers
+        and "allow_publishers" in descriptor
+        and descriptor["allow_publishers"] is not None
+        and not isinstance(descriptor["allow_publishers"], bool)
+    ):
+        errors.append(f"{prefix}.allow_publishers must be a boolean")
+
+
 def _validate_failure_scenarios(errors, config):
     if "failure_scenarios" in config:
         fs = config["failure_scenarios"]
@@ -766,52 +817,13 @@ def _validate_failure_scenarios(errors, config):
                 elif not isinstance(simple, dict):
                     errors.append("failure_scenarios.simple must be a dict")
                 else:
-                    for field in ("interval", "duration"):
-                        if field in simple and simple[field] is None:
-                            errors.append(
-                                f"failure_scenarios.simple.{field} must not be null"
-                            )
-                    for field in ("interval", "duration", "count", "stagger"):
-                        if (
-                            field in simple
-                            and simple[field] is not None
-                            and not _is_int(simple[field])
-                        ):
-                            errors.append(
-                                f"failure_scenarios.simple.{field} must be an integer"
-                            )
-                        elif (
-                            field in simple
-                            and simple[field] is not None
-                            and simple[field] < 0
-                        ):
-                            errors.append(
-                                f"failure_scenarios.simple.{field} must be an integer >= 0"
-                            )
-                    if (
-                        "count" in simple
-                        and _is_int(simple.get("count"))
-                        and simple["count"] < 0
-                    ):
-                        errors.append(
-                            "failure_scenarios.simple.count must be an integer >= 0"
-                        )
-                    if (
-                        "stagger" in simple
-                        and _is_int(simple.get("stagger"))
-                        and simple["stagger"] < 0
-                    ):
-                        errors.append(
-                            "failure_scenarios.simple.stagger must be an integer >= 0"
-                        )
-                    if "exclude" in simple and simple["exclude"] is not None:
-                        ex = simple["exclude"]
-                        if not isinstance(ex, list) or not all(
-                            _is_int(host) for host in ex
-                        ):
-                            errors.append(
-                                "failure_scenarios.simple.exclude must be a list of integers"
-                            )
+                    _validate_flap_descriptor(
+                        errors,
+                        "failure_scenarios.simple",
+                        simple,
+                        allow_target=False,
+                        allow_publishers=False,
+                    )
             else:
                 cycles = fs.get("cycles")
                 if cycles is None:
@@ -831,68 +843,13 @@ def _validate_failure_scenarios(errors, config):
                                 f"failure_scenarios.cycles[{idx}] must be a dict"
                             )
                             continue
-                        for field in ("interval", "duration"):
-                            if field in cycle and cycle[field] is None:
-                                errors.append(
-                                    f"failure_scenarios.cycles[{idx}].{field} must not be null"
-                                )
-                        for field in ("interval", "duration", "count", "stagger"):
-                            if (
-                                field in cycle
-                                and cycle[field] is not None
-                                and not _is_int(cycle[field])
-                            ):
-                                errors.append(
-                                    f"failure_scenarios.cycles[{idx}].{field} must be an integer"
-                                )
-                            elif (
-                                field in cycle
-                                and cycle[field] is not None
-                                and cycle[field] < 0
-                            ):
-                                errors.append(
-                                    f"failure_scenarios.cycles[{idx}].{field} must be an integer >= 0"
-                                )
-                        if (
-                            "count" in cycle
-                            and _is_int(cycle.get("count"))
-                            and cycle["count"] < 0
-                        ):
-                            errors.append(
-                                f"failure_scenarios.cycles[{idx}].count must be an integer >= 0"
-                            )
-                        if (
-                            "stagger" in cycle
-                            and _is_int(cycle.get("stagger"))
-                            and cycle["stagger"] < 0
-                        ):
-                            errors.append(
-                                f"failure_scenarios.cycles[{idx}].stagger must be an integer >= 0"
-                            )
-                        if "exclude" in cycle and cycle["exclude"] is not None:
-                            ex = cycle["exclude"]
-                            if not isinstance(ex, list) or not all(
-                                _is_int(host) for host in ex
-                            ):
-                                errors.append(
-                                    f"failure_scenarios.cycles[{idx}].exclude must be a list of integers"
-                                )
-                        if "target" in cycle and cycle["target"] is not None:
-                            tgt = cycle["target"]
-                            if not isinstance(tgt, list) or not all(
-                                _is_int(host) for host in tgt
-                            ):
-                                errors.append(
-                                    f"failure_scenarios.cycles[{idx}].target must be a list of integers"
-                                )
-                        if (
-                            "allow_publishers" in cycle
-                            and cycle["allow_publishers"] is not None
-                        ):
-                            if not isinstance(cycle["allow_publishers"], bool):
-                                errors.append(
-                                    f"failure_scenarios.cycles[{idx}].allow_publishers must be a boolean"
-                                )
+                        _validate_flap_descriptor(
+                            errors,
+                            f"failure_scenarios.cycles[{idx}]",
+                            cycle,
+                            allow_target=True,
+                            allow_publishers=True,
+                        )
 
 
 def _validate_bridges(errors, config):
