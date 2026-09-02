@@ -286,7 +286,7 @@ _Avoid_: 「一度取得した content は網内キャッシュに乗る」と�
 (非cacheノードの取得は乗らない)。cycles の interval ≤ duration。
 
 **deferred (2026-07-27 external review) — ccninfo/monitoring known gaps**:
-- `.inf` が monitoring.interval validation を通過した後 monitor thread を無限待機で殺す (pre-existing class; isfinite guard は command_timeout のみ適用済み)
+- 修正済み (2026-09-02, validator isfinite + Monitor ctor guard): `.inf` が monitoring.interval validation を通過した後 monitor thread を無限待機で殺す (command_timeout と同じ isfinite guard を interval にも適用)
 - monitor の per-cycle timestamps は cycle 先頭で 1 回だけ打刻 → 後続 serial targets は stale な elapsed_sec を持つ
 - webui は ccninfo monitor entries を表示しない; ccninfo を success rate に含めない
 - Monitor.stop() の残余 unbounded paths: on_record callback タイムアウトなし; post-kill proc.wait(); fg cefstatus/csmgrstatus timeout=None

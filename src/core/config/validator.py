@@ -1437,8 +1437,20 @@ def validate_config(config: dict[str, Any]) -> list[str]:
             errors.append("monitoring must be a dict")
         else:
             if "interval" in mon:
-                if not _is_number(mon["interval"]) or mon["interval"] <= 0:
-                    errors.append("monitoring.interval must be a positive number")
+                iv = mon["interval"]
+                # 2026-09-02 fail-closed fix: `.inf` used to pass the
+                # "positive number" check and then reach
+                # Monitor._stop_event.wait(timeout=inf), which never wakes,
+                # so the monitor collected once and then hung forever. Mirror
+                # the command_timeout guard below: isfinite excludes inf/nan,
+                # and math.isfinite(10**309) raises OverflowError (huge int →
+                # float overflow), so wrap in try/except.
+                try:
+                    iv_ok = _is_number(iv) and math.isfinite(iv) and iv > 0
+                except OverflowError:
+                    iv_ok = False
+                if not iv_ok:
+                    errors.append("monitoring.interval must be a positive finite number")
             if "command_timeout" in mon:
                 ct = mon["command_timeout"]
                 # isfinite excludes inf/nan: a non-finite per-command timeout

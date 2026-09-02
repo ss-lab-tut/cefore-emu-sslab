@@ -9,6 +9,7 @@ grace) on top of the configured interval.
 
 import csv
 import json
+import math
 import os
 import threading
 import time
@@ -180,6 +181,19 @@ class Monitor:
     ):
         self.net = net
         self.targets = targets
+        # 2026-09-02 fail-closed fix: refuse non-finite intervals here, not
+        # just in config validation. max(1, inf) is inf, and the run loop's
+        # _stop_event.wait(timeout=inf) then never wakes, so the monitor
+        # collects once and hangs forever without any error; max(1, nan) is
+        # comparison-order dependent. math.isfinite(10**309) raises
+        # OverflowError (huge int → float overflow), which we fold into the
+        # same ValueError so callers see one failure mode.
+        try:
+            interval_finite = math.isfinite(interval)
+        except OverflowError:
+            interval_finite = False
+        if not interval_finite:
+            raise ValueError(f"monitoring interval must be finite, got {interval!r}")
         self.interval = max(1, interval)
         self.output_dir = Path(output_dir)
         self.host_count = host_count

@@ -7,6 +7,8 @@ import time
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 
 from src.runtime.command_runner import CommandResult, FakeCommandRunner
 from src.runtime.monitoring import (
@@ -46,7 +48,41 @@ def _cefstatus_target(**kwargs):
 # ---------------------------------------------------------------------------
 
 class TestMonitorInitValidation:
-    """Monitor.__init__ always succeeds; missing resolver defaults to 127.0.0.1."""
+    """Resolver is optional (missing one defaults to 127.0.0.1); interval must be a
+    positive finite number."""
+
+    # 2026-09-02 fail-closed fix: a non-finite interval must be refused at
+    # construction. max(1, inf) yields inf (the monitor never fires) and
+    # max(1, nan) yields nan (comparison-order dependent), so the guard has
+    # to be an explicit isfinite check rather than the clamp alone.
+    @pytest.mark.parametrize(
+        "interval",
+        [float("inf"), float("nan")],
+        ids=["inf", "nan"],
+    )
+    def test_non_finite_interval_raises_value_error(self, tmp_path, interval):
+        with pytest.raises(ValueError):
+            Monitor(
+                _make_net(),
+                targets=[_cefstatus_target(hosts="all")],
+                interval=interval,
+                output_dir=tmp_path,
+                host_count=2,
+                csmgr_host_resolver=None,
+            )
+
+    def test_int_overflow_interval_raises_value_error_not_overflow_error(self, tmp_path):
+        # math.isfinite(10**309) raises OverflowError; the guard must convert
+        # that into the same ValueError callers already handle.
+        with pytest.raises(ValueError):
+            Monitor(
+                _make_net(),
+                targets=[_cefstatus_target(hosts="all")],
+                interval=10**309,
+                output_dir=tmp_path,
+                host_count=2,
+                csmgr_host_resolver=None,
+            )
 
     def test_no_resolver_accepted_for_csmgrstatus(self, tmp_path):
         # Should not raise even without a resolver.
