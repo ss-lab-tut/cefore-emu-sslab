@@ -150,6 +150,14 @@ sudo .venv/bin/python3 -m src disaster --hosts 10 --switches 15 --seed 42 \
 }
 ```
 
+> **既知の制約:** 上の pubsub ペアは例示です。15 ホスト / 48 スイッチの mesh では
+> `cefpubfile` / `cefsubfile` が決定的に失敗します（publisher が Trigger Interest を
+> 受信できないまま deadline で終了）。同じトポロジで put/get は成功します。
+> 成功率は hop 距離とともに下がります（hop 1 は成功、hop 3 は一度も成功せず）。
+> pubsub が検証済みなのは 3〜5 ホストの mesh だけなので、この失敗を意図的に再現する
+> 場合を除き、pubsub 実験はその範囲で行ってください。
+> CONTEXT.md の「pubsub が 15-host mesh で系統的に失敗」を参照。
+
 **タイムドイベント（YAML）:**
 ```yaml
 hosts: 10
@@ -370,9 +378,10 @@ cefore-emu/
 │   ├── templates/                 # ホストテンプレート（h0, h1, h2）
 │   └── examples/                  # 設定例（YAML/JSON）
 ├── tools/
-│   └── autotest/                  # バッチ実験ランナー
-│       ├── run.py                 # バッチ実行スクリプト
-│       └── analyze.py             # 結果解析
+│   ├── autotest/                  # バッチ実験ランナー
+│   │   ├── run.py                 # バッチ実行スクリプト
+│   │   └── analyze.py             # 結果解析
+│   └── workshop/                  # ワークショップ campaign runner, plots, report
 │
 ├── sample-putfile                 # テストデータ（root 例外）
 ├── buffer.sh                      # UDP バッファ設定（root 例外）
