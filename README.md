@@ -159,6 +159,13 @@ for all content operations.
 }
 ```
 
+> **Known limitation:** the pubsub pair above is illustrative. On meshes of
+> roughly 10 or more hosts, `cefpubfile`/`cefsubfile` fail systematically
+> (the publisher never receives the Trigger Interest and is terminated at the
+> deadline), even though put/get succeed on the same topology. Keep pubsub
+> experiments at 3 to 5 hosts unless you are deliberately reproducing that
+> failure. See CONTEXT.md, "pubsub が 15-host mesh で系統的に失敗".
+
 **Timed events (YAML):**
 ```yaml
 hosts: 10
@@ -455,9 +462,10 @@ cefore-emu/
 │   ├── templates/                 # Host templates (h0, h1, h2)
 │   └── examples/                  # Example configurations (YAML/JSON)
 ├── tools/
-│   └── autotest/                  # Batch experiment runner
-│       ├── run.py                 # Batch runner script
-│       └── analyze.py             # Result analysis
+│   ├── autotest/                  # Batch experiment runner
+│   │   ├── run.py                 # Batch runner script
+│   │   └── analyze.py             # Result analysis
+│   └── workshop/                  # Workshop campaign runner, plots, report
 │
 ├── sample-putfile                 # Test data (root exception)
 ├── buffer.sh                      # UDP buffer configuration (root exception)
