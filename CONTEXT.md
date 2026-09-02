@@ -291,3 +291,4 @@ _Avoid_: 「一度取得した content は網内キャッシュに乗る」と�
 - webui は ccninfo monitor entries を表示しない; ccninfo を success rate に含めない
 - Monitor.stop() の残余 unbounded paths: on_record callback タイムアウトなし; post-kill proc.wait(); fg cefstatus/csmgrstatus timeout=None
 - dense ccninfo timeline 下の serial content worker occupancy (ccninfo ~5s/probe が content op latency を圧迫する可能性)
+- 修正済み (2026-09-02): monitor target ccninfo の outcome が returncode/cancelled を見ず false-green になり得た (event 側 from_runtime_ccninfo と基準を揃えた)

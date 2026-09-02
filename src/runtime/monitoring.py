@@ -318,8 +318,9 @@ class Monitor:
         into a CcninfoReply.
 
         The output half is a dict (not a string) with keys: uri, raw, parsed,
-        elapsed_ms, timed_out.  The ``parsed`` sub-dict carries plain
-        JSON-primitive types (lists of dicts, not dataclass objects).
+        elapsed_ms, timed_out, returncode, cancelled.  The ``parsed`` sub-dict
+        carries plain JSON-primitive types (lists of dicts, not dataclass
+        objects).
 
         The pair shape is not optional: _collect_target unpacks every branch
         as two values, and returning the bare dict would raise a ValueError
@@ -355,7 +356,19 @@ class Monitor:
         # keys its marker tables by target type and has no "ccninfo" entry, so
         # its fail-closed default would stamp every healthy reply "not-ok".
         # A parsed reply is stronger evidence than a stdout marker scan anyway.
-        outcome = "ok" if reply.reply_received and not result.timed_out else "not-ok"
+        # returncode/cancelled follow the same fail-closed criteria as
+        # verdict.from_runtime_ccninfo: exit code is the process's own verdict
+        # and outranks parseable stdout; None (unconfirmed exit) is not-ok.
+        # 2026-09-02 fail-closed fix: previously a nonzero exit or a cancelled
+        # run whose residual stdout still parsed as a reply was stamped "ok".
+        outcome = (
+            "ok"
+            if reply.reply_received
+            and not result.timed_out
+            and not result.cancelled
+            and result.returncode == 0
+            else "not-ok"
+        )
         payload = {
             "uri": target["uri"],
             "raw": result.stdout,
@@ -372,6 +385,8 @@ class Monitor:
             },
             "elapsed_ms": elapsed_ms,
             "timed_out": bool(result.timed_out),
+            "returncode": result.returncode,
+            "cancelled": bool(result.cancelled),
         }
         return payload, outcome
 
