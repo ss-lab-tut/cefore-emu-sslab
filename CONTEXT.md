@@ -108,7 +108,7 @@ A content event type that runs a CCNinfo path/cache trace (RFC 9344) from a desi
 _Avoid_: calling ccninfo from a CS_MODE=2 originator without `-c` (upstream Bug2 produces corrupt replies)
 
 **ccninfo monitor target**:
-A monitoring target (`type: ccninfo`) that periodically runs a CCNinfo probe from specified hosts. Each collection cycle produces a structured dict (not a string) in `monitor.json` with `parsed.reply_received`, `parsed.route`, `parsed.responder`, `timed_out`, and `elapsed_ms`. The monitor `output` field is a dict for successful ccninfo probes but stays a plain string for host-down skips and exception wraps (the existing `_collect_once` contract), so the output type for any monitor entry is `dict | str`.
+A monitoring target (`type: ccninfo`) that periodically runs a CCNinfo probe from specified hosts. Each collection cycle produces a structured dict (not a string) in `monitor.json` with `parsed.reply_received`, `parsed.route`, `parsed.responder`, `timed_out`, `returncode`, `cancelled`, and `elapsed_ms` (returncode/cancelled added 2026-09-02; outcome is "ok" only when returncode == 0 and neither flag is set). The monitor `output` field is a dict for successful ccninfo probes but stays a plain string for host-down skips and exception wraps (the existing `_collect_once` contract), so the output type for any monitor entry is `dict | str`.
 _Avoid_: monitoring ccninfo at intervals below the 5s warning threshold
 
 ## Scenario setup
@@ -195,7 +195,7 @@ _Avoid_: periodic_host_flap と cycle-mode の共有 primitive 抽出 (R8 で片
 **S6 — bridge_external に CommandRunner seam**: attach_external_via_bridge / cleanup_external_bridges / attach_external_interface に optional `runner` param を追加し `_run_root_cmd_vec` (bridge_external.py:51-64 が MininetCommandRunner(None) を hardcode) へ thread。現行テストは internal patch 41 箇所 (_run_root_cmd_vec 37 + MininetCommandRunner 4: test 行 218/388/967/1015) — recording fake 注入へ移行可能に。bridge_root.py:74-89 BridgeManager の _root_runner/_host_runner pattern を mirror。
 追記 (2026-09-02): `_run_root_cmd_vec`/`_run_host_cmd_vec` が returncode None を 0 に変換し timed_out/cancelled を見ない fail-open を修正 (None/timed_out/cancelled は rc=-1 で rollback へ)。runner seam 自体は未着手。
 
-**解消済み (2026-07-16) — S7: Monitor が CommandResult.returncode を捨て webui が text sniffing で liveness 再導出**: f93245a で MONITOR_FIELDS に tri-state outcome (ok / not-ok / skipped-no-result) を追加、webui/state.py は outcome を authoritative に利用、run_csmgrstatus は full CommandResult を返す。Monitor.stop の残余問題は下の deferred block に分離 (2026-09-02 再確認)。
+**解消済み (2026-07-16) — S7: Monitor が CommandResult.returncode を捨て webui が text sniffing で liveness 再導出**: f93245a で MONITOR_FIELDS に tri-state outcome (ok / not-ok / skipped。monitor 語彙の skipped は EventOutcome の skipped-no-result とは別) を追加、webui/state.py は outcome を authoritative に利用、run_csmgrstatus は full CommandResult を返す。Monitor.stop の残余問題は下の deferred block に分離 (2026-09-02 再確認)。
 
 **S8 — fib.py の next-hop selection 3 重複 collapse**: `:75-95` (compute_fib inline) / `:125-150` (_add_routes closure) / `:227-247` (_add_ecmp closure) が同一の candidate-build + sort + next_hop_ip 解決。共有 primitive へ。variation 軸は 2 つ: k-selection 規則 (top-k slice vs all-tied-minimum) と `seen` cross-call dedup (compute_fib のみ持たない)。
 
@@ -226,7 +226,7 @@ _Avoid_: periodic_host_flap と cycle-mode の共有 primitive 抽出 (R8 で片
 _Avoid_: core/verdict.py に Path/glob/file IO を持ち込むこと
 
 **R8候補 — legacy 障害サイクル (down_\*) + legacy キャッシュ設定 (cache_count) の廃止**:
-2026-07-02 の R7-1 grilling で user が廃止意向を表明、behavior-preserving な OptionSpec 統合と混ぜると differential gate が無意味になるため分離した。2026-07-07 の即時fixで `down_interval`/`down_duration` の省略 default は 0/0 になり、no-failure config は暗黙 flap を起動しなくなった。残るR8決定は [ADR-0002](docs/adr/0002-failure-config-resolves-to-explicit-policy.md): bootstrap 時に `FailurePolicy` へ一度だけ解決し、legacy `down_*` OptionSpec 4つ・`periodic_host_flap`・summarizer legacy metadata・`min_failure.yaml` smoke 証拠・`cache_count`/`down_count+1` fallback を同時に整理する。追記 (2026-07-09, B1 fix 時に発見): `failure_scenarios: "none"` (文字列リテラル) は ADR-0002 が「省略と等価で許可」と定めるのに、現状 `_validate_failure_scenarios` が `'must be a dict'` で reject する — ADR 未実装ギャップ。"none" 許可は FailurePolicy 解決 (mode=none) の一部として R8 で実装すること。`down_count=5` は cache fallback の二役が残るため即時fixでは維持した。
+2026-07-02 の R7-1 grilling で user が廃止意向を表明、behavior-preserving な OptionSpec 統合と混ぜると differential gate が無意味になるため分離した。2026-07-07 の即時fixで `down_interval`/`down_duration` の省略 default は 0/0 になり、no-failure config は暗黙 flap を起動しなくなった。残るR8決定は [ADR-0002](docs/adr/0002-failure-config-resolves-to-explicit-policy.md): bootstrap 時に `FailurePolicy` へ一度だけ解決し、legacy `down_*` OptionSpec 5つ (down_stagger 含む、2026-09-02 訂正)・`periodic_host_flap`・summarizer legacy metadata・`min_failure.yaml` smoke 証拠・`cache_count`/`down_count+1` fallback を同時に整理する。追記 (2026-07-09, B1 fix 時に発見): `failure_scenarios: "none"` (文字列リテラル) は ADR-0002 が「省略と等価で許可」と定めるのに、現状 `_validate_failure_scenarios` が `'must be a dict'` で reject する — ADR 未実装ギャップ。"none" 許可は FailurePolicy 解決 (mode=none) の一部として R8 で実装すること。`down_count=5` は cache fallback の二役が残るため即時fixでは維持した。
 _Avoid_: `down_count` default だけを単独で 0 化すること、legacy down_\* 廃止を cache fallback 再設計なしで進めること、min_failure の gate 証拠を代替なしで消すこと
 
 **修正案 — `swhich_num` typo の是正 (semantic 名 `switch_limit` へ)**:

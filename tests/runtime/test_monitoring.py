@@ -758,9 +758,9 @@ class TestCollectTargetCcninfo:
         )
 
     def test_ccninfo_success_produces_structured_dict_output(self, tmp_path):
-        """A successful ccninfo run returns a 4-field dict with uri, raw,
-        parsed (structured reply fields including route as list of dicts),
-        elapsed_ms, and timed_out=False.
+        """A successful ccninfo run returns a dict with uri, raw, parsed
+        (structured reply fields including route as list of dicts),
+        elapsed_ms, timed_out=False, returncode and cancelled.
         """
         fixture_text = _load_fixture("reply_named_cache.out")
         fake = FakeCommandRunner()

@@ -129,7 +129,8 @@ class Monitor:
     * **ccninfo**: output is a dict with keys ``uri``, ``raw`` (stdout),
       ``parsed`` (structured CcninfoReply fields with route as list of plain
       dicts and cache_lines as list of strings), ``elapsed_ms`` (int wall
-      time), and ``timed_out`` (bool from CommandResult). Host-down skips
+      time), ``timed_out`` / ``cancelled`` (bools from CommandResult) and
+      ``returncode`` (int | None from CommandResult). Host-down skips
       and exception wrapping stay STRING outputs (the existing _collect_once
       contract), so the output type for any target is ``dict | str``.
 

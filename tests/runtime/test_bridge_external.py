@@ -1784,6 +1784,23 @@ class TestRunCmdVecFailClosed:
         fake.script_run(returncode=None)
         assert self._root(fake) != 0
 
+    def test_root_timed_out_with_zero_returncode_is_failure_and_explains(self):
+        """timed_out alone (exit status 0 reaped after the kill) is a failure,
+        and the reason is surfaced on stderr so rollback logs can explain it.
+        Isolated from the returncode=None case above so a regression that
+        only honours None is caught."""
+        from src.runtime.bridge_external import _run_root_cmd_vec
+
+        fake = FakeCommandRunner()
+        fake.script_run(returncode=0, stderr="partial", timed_out=True)
+        with patch(
+            "src.runtime.bridge_external.MininetCommandRunner", return_value=fake
+        ):
+            rc, _out, err = _run_root_cmd_vec(list(self._ROOT_ARGV))
+        assert rc != 0
+        assert "partial" in err
+        assert "command timed out" in err
+
     # ---- _run_host_cmd_vec --------------------------------------------------
 
     def _host(self, fake):
