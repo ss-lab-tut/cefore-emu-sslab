@@ -108,7 +108,7 @@ A content event type that runs a CCNinfo path/cache trace (RFC 9344) from a desi
 _Avoid_: calling ccninfo from a CS_MODE=2 originator without `-c` (upstream Bug2 produces corrupt replies)
 
 **ccninfo monitor target**:
-A monitoring target (`type: ccninfo`) that periodically runs a CCNinfo probe from specified hosts. Each collection cycle produces a structured dict (not a string) in `monitor.json` with `parsed.reply_received`, `parsed.route`, `parsed.responder`, `timed_out`, and `elapsed_ms`. The monitor `output` field is a dict for successful ccninfo probes but stays a plain string for host-down skips and exception wraps (the existing `_collect_once` contract), so the output type for any monitor entry is `dict | str`.
+A monitoring target (`type: ccninfo`) that periodically runs a CCNinfo probe from specified hosts. Each collection cycle produces a structured dict (not a string) in `monitor.json` with `parsed.reply_received`, `parsed.route`, `parsed.responder`, `timed_out`, `returncode`, `cancelled`, and `elapsed_ms` (returncode/cancelled added 2026-09-02; outcome is "ok" only when returncode == 0 and neither flag is set). The monitor `output` field is a dict for successful ccninfo probes but stays a plain string for host-down skips and exception wraps (the existing `_collect_once` contract), so the output type for any monitor entry is `dict | str`.
 _Avoid_: monitoring ccninfo at intervals below the 5s warning threshold
 
 ## Scenario setup
@@ -186,15 +186,16 @@ _Avoid_: 新規 scalar OptionSpec に「argparse default None かつ非 nullable
 7716a93 で fix。cycle-mode do_up の `shared_down.discard` を restored_hosts gate から down_set 無条件へ変更 (periodic_host_flap :80 と同 semantics)。復帰失敗 host も次 cycle の available pool へ戻り、monitoring down-set からも外れる (probe 再開は periodic と同じ既存挙動で意図通り)。`_record_flap` の success=False 記録は維持 — 失敗証拠は results.json に残る。regression test は up 失敗 host が次 cycle で再選択されることを pin (pre-fix fail 確認・20 連続 flake なし)。共有 primitive 抽出は意図的に不採用 (ADR-0002 R8 が periodic_host_flap を削除予定 → one-adapter seam 化するため)。
 _Avoid_: periodic_host_flap と cycle-mode の共有 primitive 抽出 (R8 で片側が消える)
 
-**S3 — Disaster/Connect wiring 重複 collapse**: lifecycle quartet の外側の glue — build_topology (17行 byte-identical) / create_mininet / daemon_log_collection_scope (11行) / should_run_cli / before_cli・after_cli の tee-swap / __init__ prologue — が両 scenario に copy。BaseScenario と両者の間に mesh-CLI-scenario 中間 base を置き hoist。注意: connect の rng init 位置、disaster の rng fallback (failure-manager scheduling 用に常に fresh Random()) の差は保持。
+**解消済み (2026-07-16) — S3: Disaster/Connect wiring 重複 collapse**: b94eb97 で `ConfigDrivenMeshScenario` (src/scenarios/config_driven_mesh.py) を中間 base として抽出し、build_topology / create_mininet / daemon_log_collection_scope / should_run_cli / tee-swap / __init__ prologue を hoist。connect の rng init 位置と disaster の rng fallback の差は保持。Mesh/Linear まで寄せるのは別再設計 (2026-09-02 再確認)。
 
 **S4 — pub_lifetime_by_uri 二重導出**: `event_batch.py:55-64` の module-private helper を public 化し、`disaster.py:274-280` (_make_content_runner 内の inline 再実装) を置換。warmup 経路が seam 外なのは意図 (CONTEXT の EventBatchSpec 項) — 導出関数だけ共有する。
 
-**S5 — _validate_failure_scenarios の simple/cycles 重複検査 collapse**: `validator.py:729-878` が同一 flap-descriptor 検査を simple 用と cycles[idx] 用に 2 実装し、negative count/stagger は同一エラー文字列が 2 回返る (実測: 2 violation で 4 errors)。`_validate_flap_descriptor(errors, prefix, descriptor, *, allow_target=, allow_publishers=)` へ抽出。R8 が同関数の schema を変える予定 (duration/interval >= 1) なので R8 着手前に済ませるか R8 に同梱するかは着手時に判断。
+**解消済み (2026-08-25) — S5: _validate_failure_scenarios の simple/cycles 重複検査 collapse**: 7a545f8 で `_validate_flap_descriptor` (src/core/config/validator.py) へ抽出し、simple / cycles[idx] の双方が利用、重複 diagnostic も除去。duration/interval >= 1 への tightening は S5 ではなく R8 の scope (2026-09-02 再確認)。
 
 **S6 — bridge_external に CommandRunner seam**: attach_external_via_bridge / cleanup_external_bridges / attach_external_interface に optional `runner` param を追加し `_run_root_cmd_vec` (bridge_external.py:51-64 が MininetCommandRunner(None) を hardcode) へ thread。現行テストは internal patch 41 箇所 (_run_root_cmd_vec 37 + MininetCommandRunner 4: test 行 218/388/967/1015) — recording fake 注入へ移行可能に。bridge_root.py:74-89 BridgeManager の _root_runner/_host_runner pattern を mirror。
+追記 (2026-09-02): `_run_root_cmd_vec`/`_run_host_cmd_vec` が returncode None を 0 に変換し timed_out/cancelled を見ない fail-open を修正 (None/timed_out/cancelled は rc=-1 で rollback へ)。runner seam 自体は未着手。
 
-**S7 — Monitor が CommandResult.returncode を捨て webui が text sniffing で liveness 再導出**: MONITOR_FIELDS (`monitoring.py:19`) に outcome field を追加し webui/state.py の hand-maintained keyword list を置換。tri-state 必須 (ok / not-ok / skipped-no-result — down-host skip :171-177 は CommandResult 自体が無い)。run_csmgrstatus が stdout str のみ返す interface も拡張が要る。ADR-0001 とは無関係 (stream 位置は変えない)。
+**解消済み (2026-07-16) — S7: Monitor が CommandResult.returncode を捨て webui が text sniffing で liveness 再導出**: f93245a で MONITOR_FIELDS に tri-state outcome (ok / not-ok / skipped。monitor 語彙の skipped は EventOutcome の skipped-no-result とは別) を追加、webui/state.py は outcome を authoritative に利用、run_csmgrstatus は full CommandResult を返す。Monitor.stop の残余問題は下の deferred block に分離 (2026-09-02 再確認)。
 
 **S8 — fib.py の next-hop selection 3 重複 collapse**: `:75-95` (compute_fib inline) / `:125-150` (_add_routes closure) / `:227-247` (_add_ecmp closure) が同一の candidate-build + sort + next_hop_ip 解決。共有 primitive へ。variation 軸は 2 つ: k-selection 規則 (top-k slice vs all-tied-minimum) と `seen` cross-call dedup (compute_fib のみ持たない)。
 
@@ -204,7 +205,7 @@ _Avoid_: periodic_host_flap と cycle-mode の共有 primitive 抽出 (R8 で片
 
 **W2 — sub-artifact double-glob 解消**: `content_ops.py:409-414` (log 用) と `result_detect.py:66-67` (detect_sub_success) が同一 `RNP0x*.out` glob + non-empty filter。clear_sub_output_artifacts (:49) も同 glob の 3 つ目。候補6 (result_detect → Verdict 吸収) と同時に行うのが合理的。
 
-**W3 — daemon_log_collection_enabled の 4 __init__ copy hoist**: 同一 3-line 式が disaster/connect/mesh/linear の __init__ に copy、対応 test も 4 重複。base.py の helper へ。注意: mesh/linear は run_dir を resolve しないので、constraint の実体は「raw param のうちに計算」(disaster/connect のみ resolve 前後の話)。
+**W3 — daemon_log_collection_enabled の 3 __init__ copy hoist (低優先)**: 同一 3-line 式が config_driven_mesh/mesh/linear の __init__ に copy (disaster/connect 分は S3 で config_driven_mesh に統合済み、2026-09-02 訂正)。base.py の helper へ。注意: mesh/linear は run_dir を resolve しないので、constraint の実体は「raw param のうちに計算」。ConfigDriven の default logs / resolve 前 sentinel と Mesh/Linear の raw Path(.) は policy が違うため、3 行 helper は shallow になりがち。現状維持か pure predicate 化かの二案。
 
 **W4 — cefroute_add/del/enable の boilerplate collapse**: `net_config.py:51-85` / `:154-177` / `:180-203` が verb 以外同形の 12 行 (drift 実在: add のみ非ゼロ returncode の failure logging を持つ)。verb-parametrized private helper へ。
 
@@ -214,22 +215,22 @@ _Avoid_: periodic_host_flap と cycle-mode の共有 primitive 抽出 (R8 で片
 
 **W7 — topo_fingerprint.py を MeshBuildSpec seam 経由に**: `topo_fingerprint.py:116-126` が rng→assign_roles→MeshTopo の RNG-order invariant を手写し (docstring 自身が fragility を明記)。scenario_setup.py に filesystem-free な rng-only sub-step (または provision skip flag) を作り両者が呼ぶ。
 
-**W8 — plots.py の job-discovery layer 分離**: 1095 LOC に dataviz chrome + Job/discovery layer (:153-310、加えて _m1_jobs_by_seed/_m1_groups は fig セクション内に混在) + 10 fig_* が同居。`report.py:37` は discovery 到達のためだけに matplotlib ごと import し、underscore 4 関数 × 12 call sites が実質 interface。matplotlib-free な campaign_jobs.py へ抽出。
+**W8 — plots.py の job-discovery layer 分離**: 1354 LOC (2026-09-02 再測、以下の行範囲は 1095 LOC 時点のもので要再測) に dataviz chrome + Job/discovery layer (:153-310、加えて _m1_jobs_by_seed/_m1_groups は fig セクション内に混在) + 10 fig_* が同居。`report.py:37` は discovery 到達のためだけに matplotlib ごと import し、underscore 4 関数 × 12 call sites が実質 interface。matplotlib-free な campaign_jobs.py へ抽出。
 
 **P1 (保留) — template.py `_set_config_value` の underscore 解消**: cache_manager.py:8/159・forwarding.py:6/50 が外部 import 済みだが、検証側は「package 内 sibling 共有の単一 underscore は _propagate_failures と同じ通常 pattern」と減衰評価。W1 (read 側集約) と同時にだけ判断。
 
 **P2 (保留) — campaign.py retry policy の injectable seam**: `_run_job_attempts` が _mem_available_fraction/_run_job_subprocess を hardwire、tools/ 配下は現状テストゼロ。seam 欠如がテスト不在の blocker とは未立証 — tools/ のテスト方針決定とセットで。
 
-**候補6 — `runtime/result_detect.py` を Verdict に吸収**:
-74 LOC の薄い adapter。`detect_*` 5 関数は `from_runtime_*` Verdict factory の evidence-unpacking wrapper で、CONTEXT.md の Verdict `_Avoid_` リスト ("detect result") に名前が抵触。5 関数を `src/core/verdict.py` の runtime-adapter section に移管 + `timestamp_utc` は `src/core/paths.py` 等に分離 → `result_detect.py` 削除。Worth exploring。
-_Avoid_: 名前を `result_detect` のまま残すこと、Verdict factory と別モジュールに散らすこと
+**撤回 (2026-09-02) — 候補6: `runtime/result_detect.py` を Verdict に吸収**:
+原案は `detect_*` 5 関数を `src/core/verdict.py` の runtime-adapter section へ移管して `result_detect.py` を削除するものだったが、`core/verdict.py` の docstring が「pure (no Mininet, no file IO)、runtime adapter は `src/runtime/result_detect`」と契約を明記しており、log/artifact/file IO/CommandResult/ccninfo を unpack する adapter を core へ入れるのはこの契約に反する。result_detect.py (現 125 LOC) は runtime adapter として維持。W2 の glob 整理は runtime 内で行う。名前が気になるなら `verdict_adapter` へ rename + compat shim までに留める。
+_Avoid_: core/verdict.py に Path/glob/file IO を持ち込むこと
 
 **R8候補 — legacy 障害サイクル (down_\*) + legacy キャッシュ設定 (cache_count) の廃止**:
-2026-07-02 の R7-1 grilling で user が廃止意向を表明、behavior-preserving な OptionSpec 統合と混ぜると differential gate が無意味になるため分離した。2026-07-07 の即時fixで `down_interval`/`down_duration` の省略 default は 0/0 になり、no-failure config は暗黙 flap を起動しなくなった。残るR8決定は [ADR-0002](docs/adr/0002-failure-config-resolves-to-explicit-policy.md): bootstrap 時に `FailurePolicy` へ一度だけ解決し、legacy `down_*` OptionSpec 4つ・`periodic_host_flap`・summarizer legacy metadata・`min_failure.yaml` smoke 証拠・`cache_count`/`down_count+1` fallback を同時に整理する。追記 (2026-07-09, B1 fix 時に発見): `failure_scenarios: "none"` (文字列リテラル) は ADR-0002 が「省略と等価で許可」と定めるのに、現状 `_validate_failure_scenarios` が `'must be a dict'` で reject する — ADR 未実装ギャップ。"none" 許可は FailurePolicy 解決 (mode=none) の一部として R8 で実装すること。`down_count=5` は cache fallback の二役が残るため即時fixでは維持した。
+2026-07-02 の R7-1 grilling で user が廃止意向を表明、behavior-preserving な OptionSpec 統合と混ぜると differential gate が無意味になるため分離した。2026-07-07 の即時fixで `down_interval`/`down_duration` の省略 default は 0/0 になり、no-failure config は暗黙 flap を起動しなくなった。残るR8決定は [ADR-0002](docs/adr/0002-failure-config-resolves-to-explicit-policy.md): bootstrap 時に `FailurePolicy` へ一度だけ解決し、legacy `down_*` OptionSpec 5つ (down_stagger 含む、2026-09-02 訂正)・`periodic_host_flap`・summarizer legacy metadata・`min_failure.yaml` smoke 証拠・`cache_count`/`down_count+1` fallback を同時に整理する。追記 (2026-07-09, B1 fix 時に発見): `failure_scenarios: "none"` (文字列リテラル) は ADR-0002 が「省略と等価で許可」と定めるのに、現状 `_validate_failure_scenarios` が `'must be a dict'` で reject する — ADR 未実装ギャップ。"none" 許可は FailurePolicy 解決 (mode=none) の一部として R8 で実装すること。`down_count=5` は cache fallback の二役が残るため即時fixでは維持した。
 _Avoid_: `down_count` default だけを単独で 0 化すること、legacy down_\* 廃止を cache fallback 再設計なしで進めること、min_failure の gate 証拠を代替なしで消すこと
 
 **修正案 — `swhich_num` typo の是正 (semantic 名 `switch_limit` へ)**:
-`MeshTopo(swhich_num=...)` は typo (`switch_num` が正) であるうえ、意味的には「emergent に生成される switch 数の上限」— 超過すると ValueError (`runtime/topo.py` の `switch count N exceeds limit M`)。つまり名前は綴りと意味の両方で実態とズレている。修正案 (2026-07-06, user 提案 `limit_sw_num` 系 → 採用候補 `switch_limit`): 新規コードは最初から semantic 名を使う — R9-2 の `MeshBuildSpec` は field 名 `switch_limit` を採用し、docstring で legacy kwarg `swhich_num` への対応を記す。既存 chain (config `switches:` → `args.switches` → scenario 属性 `swhich_num` → `MeshTopo(swhich_num=)`) の一括リネームは CLI/config 互換に触るため独立 housekeeping — 候補7 (topo.py リネーム) と同じ pass でまとめて行うのが合理的。
+`MeshTopo(swhich_num=...)` は legacy 綴りで (`switch_num` を正とする根拠は repo に無く、semantic 名は `switch_limit`。2026-09-02 訂正)、意味的には「emergent に生成される switch 数の上限」— 超過すると ValueError (`runtime/topo.py` の `switch count N exceeds limit M`)。つまり名前は綴りと意味の両方で実態とズレている。修正案 (2026-07-06, user 提案 `limit_sw_num` 系 → 採用候補 `switch_limit`): 新規コードは最初から semantic 名を使う — R9-2 の `MeshBuildSpec` は field 名 `switch_limit` を採用し、docstring で legacy kwarg `swhich_num` への対応を記す。既存 chain (config `switches:` → `args.switches` → scenario 属性 `swhich_num` → `MeshTopo(swhich_num=)`) の一括リネームは CLI/config 互換に触るため独立 housekeeping — 候補7 (topo.py リネーム) と同じ pass でまとめて行うのが合理的。
 _Avoid_: 新規 interface に `swhich_num` 綴りを伝播させること、R9-2 の fold と既存 chain リネームを混ぜること
 
 **候補7 — `runtime/topo.py` を `runtime/mesh_topo.py` にリネーム**:
@@ -241,7 +242,7 @@ _Avoid_: 単独でこのリネームに取り掛かること (他の deepening �
 _Avoid_: 到達不能と記録済みの分岐に fake-rng/import-hook で無理にテストを足すこと、Mininet-live 経路の unit test 化
 
 **完了 (2026-07-31) — mutation testing 第1回 (`src/core/config/validator.py`, base 86f6f90)**:
-mutmut 2.5.1 で 1568 mutant。raw score 58.67%→59.18% (killed 920→928、退行 0)。既存テストメソッドへの 5 パターン追加 (parametrize タプル 1 + 完全一致アサートへの狭化 4) で 8 体 kill。5 パターンは全て leave-one-out (そのパターンだけ外すと生存に戻る) を pytest 出力つきで実証、副次 3 体 (728/729/1242) は DB 差分からの推論と明記。**生存メカニズムは 2 つある: (A) 分岐そのものが未到達 — mutant 727 の `validator.py:725` は baseline で UNCOVERED、(B) 実行されているが検証が緩い — `validate_config()` の戻り値である診断文に対し、base の `test_loader.py` は部分一致 (`for e in errors`) 140 箇所 / 完全一致 (`assert ... in errors`) 11 箇所。mutmut は文字列を `XX…XX` で包むので部分一致は素通しする**。完全一致は本文だけでなく prefix 組み立て (`_validate_ccninfo_options(errors, f"events[{idx}]", ...)`) まで固定する。併せて `tests/core/test_fib.py` の `assert ... or True` (恒真＝ループ本体が無検証) を除去 — ただし残る `source != next_hop` は `test_compute_fib_no_self_routes` の `source != dest` とは**別の不変条件**なので redundant ではない。`expected_responder`/`expected_route` は狭化を見送った: src の文言 "non-empty" が実際の判定 (`.strip()`) と食い違い、`"   "` は len 3 で非 empty — 不正確な文言を契約化するとテストが誤った説明を保護する (src 修正禁止のため指摘に留めた)。`routing` バリデーション (`validator.py:1494/1496`) は UNCOVERED だが**到達可能**で、単に検証テストが無いだけ。残 640 生存は未分類 (うち 50 が uncovered 行)。**再現に必要な情報はこのエントリに集約してある** (base commit / ツール版 / runner 構成 / _Avoid_)。GitHub issue・PR 化は PAT に `issues=write`/`pull_requests=write` が無く 403 (repo は public なので可視性の問題ではない)。
+(このエントリの validator.py の file:line は 7a545f8 以前の基準。2026-09-02 注記) mutmut 2.5.1 で 1568 mutant。raw score 58.67%→59.18% (killed 920→928、退行 0)。既存テストメソッドへの 5 パターン追加 (parametrize タプル 1 + 完全一致アサートへの狭化 4) で 8 体 kill。5 パターンは全て leave-one-out (そのパターンだけ外すと生存に戻る) を pytest 出力つきで実証、副次 3 体 (728/729/1242) は DB 差分からの推論と明記。**生存メカニズムは 2 つある: (A) 分岐そのものが未到達 — mutant 727 の `validator.py:725` は baseline で UNCOVERED、(B) 実行されているが検証が緩い — `validate_config()` の戻り値である診断文に対し、base の `test_loader.py` は部分一致 (`for e in errors`) 140 箇所 / 完全一致 (`assert ... in errors`) 11 箇所。mutmut は文字列を `XX…XX` で包むので部分一致は素通しする**。完全一致は本文だけでなく prefix 組み立て (`_validate_ccninfo_options(errors, f"events[{idx}]", ...)`) まで固定する。併せて `tests/core/test_fib.py` の `assert ... or True` (恒真＝ループ本体が無検証) を除去 — ただし残る `source != next_hop` は `test_compute_fib_no_self_routes` の `source != dest` とは**別の不変条件**なので redundant ではない。`expected_responder`/`expected_route` は狭化を見送った: src の文言 "non-empty" が実際の判定 (`.strip()`) と食い違い、`"   "` は len 3 で非 empty — 不正確な文言を契約化するとテストが誤った説明を保護する (src 修正禁止のため指摘に留めた)。`routing` バリデーション (`validator.py:1494/1496`) は UNCOVERED だが**到達可能**で、単に検証テストが無いだけ。残 640 生存は未分類 (うち 50 が uncovered 行)。**再現に必要な情報はこのエントリに集約してある** (base commit / ツール版 / runner 構成 / _Avoid_)。GitHub issue・PR 化は PAT に `issues=write`/`pull_requests=write` が無く 403 (repo は public なので可視性の問題ではない)。
 _Avoid_: **mutmut 3.6.0** をこの runbook で使うこと (`record_trampoline_hit` の `assert not name.startswith("src.")` が literal `src` パッケージを拒否、かつ `--paths-to-mutate`/`--runner`/`--use-coverage`/`result-ids` が無い別方言 — 静的確認のみ、実行 TB 未採取。3.x 更新時はこの 2 点を再検証すること)、`mutmut result-ids` の出力を正規化せず `while read` に渡すこと (全 ID が 1 行スペース区切りで来るのでループが 1 回しか回らず、部分集合判定が等号で偽陽性合格する)、**キャッシュ済み** `mutmut run <id>` の status を単独の判定根拠にすること (生存する mutant に `ok_killed` を返した実測あり — fresh cache か直接 A/B で確認する)、A/B の判定を returncode だけで行うこと (**落ちたテストの node ID が期待したものか必ず突き合わせる** — 本 campaign 自身が worktree 汚染で 1046 の A アームに hop_count テストの失敗を見て誤判定しかけた)、in-place mutation を共有ツリーで走らせること (専用 detached worktree で実行する)、スコープ内テストだけの runner で得た survived を全被覆確認なしに gap として報告すること (実測で 790 件中 143 件が偽の生存者だった)、UNCOVERED であることだけを根拠に「新規テストメソッド無しでは埋められない」と結論すること (mutant 727 は UNCOVERED 行だが既存 parametrize へのケース追加だけで到達・kill できた)
 
 **解消済み (2026-07-07) — down_\* default の「暗黙の flap 有効」即時fix**:
@@ -265,7 +266,8 @@ schema 化した (src/log/schema.py)。`from_log` は marker 存在時のみ pub
 definitive True と判定するよう更新済み (src/core/verdict.py) — marker 不在側
 (0-byte FAILURE ログ) の log-only 判定は依然 unknown のままで、これはログ欠損と
 区別不能という構造的限界であり today の fix では解消しない。
-_Avoid_: 実験 config の pubsub を無検証で 10+ hosts に置くこと
+追記 (2026-09-02): config/workshop/m3_scale_h15/h30/h45/h60 の pubsub pair は scale sweep として意図的に残した例外。plots.py の M3 success は get のみ集計で pubsub 失敗を隠すため、M3 の数値を pubsub 健全性と読まないこと。
+_Avoid_: 実験 config の pubsub を無検証で 10+ hosts に置くこと (上記 m3_scale 系は既知の例外)
 
 **発見 (2026-07-14 M5e 時系列実験) — 障害窓中の get 可用性は「FIB 経路上の csmgrd」で決まる**:
 機構を対照実験で確定: (1) 非cacheノードは CS_MODE=0 (テンプレ既定) で一切キャッシュを
@@ -284,8 +286,9 @@ _Avoid_: 「一度取得した content は網内キャッシュに乗る」と�
 (非cacheノードの取得は乗らない)。cycles の interval ≤ duration。
 
 **deferred (2026-07-27 external review) — ccninfo/monitoring known gaps**:
-- `.inf` が monitoring.interval validation を通過した後 monitor thread を無限待機で殺す (pre-existing class; isfinite guard は command_timeout のみ適用済み)
+- 修正済み (2026-09-02, validator isfinite + Monitor ctor guard): `.inf` が monitoring.interval validation を通過した後 monitor thread を無限待機で殺す (command_timeout と同じ isfinite guard を interval にも適用)
 - monitor の per-cycle timestamps は cycle 先頭で 1 回だけ打刻 → 後続 serial targets は stale な elapsed_sec を持つ
 - webui は ccninfo monitor entries を表示しない; ccninfo を success rate に含めない
 - Monitor.stop() の残余 unbounded paths: on_record callback タイムアウトなし; post-kill proc.wait(); fg cefstatus/csmgrstatus timeout=None
 - dense ccninfo timeline 下の serial content worker occupancy (ccninfo ~5s/probe が content op latency を圧迫する可能性)
+- 修正済み (2026-09-02): monitor target ccninfo の outcome が returncode/cancelled を見ず false-green になり得た (event 側 from_runtime_ccninfo と基準を揃えた)

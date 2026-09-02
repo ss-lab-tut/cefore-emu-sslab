@@ -7,6 +7,8 @@ import time
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 
 from src.runtime.command_runner import CommandResult, FakeCommandRunner
 from src.runtime.monitoring import (
@@ -46,7 +48,41 @@ def _cefstatus_target(**kwargs):
 # ---------------------------------------------------------------------------
 
 class TestMonitorInitValidation:
-    """Monitor.__init__ always succeeds; missing resolver defaults to 127.0.0.1."""
+    """Resolver is optional (missing one defaults to 127.0.0.1); interval must be a
+    positive finite number."""
+
+    # 2026-09-02 fail-closed fix: a non-finite interval must be refused at
+    # construction. max(1, inf) yields inf (the monitor never fires) and
+    # max(1, nan) yields nan (comparison-order dependent), so the guard has
+    # to be an explicit isfinite check rather than the clamp alone.
+    @pytest.mark.parametrize(
+        "interval",
+        [float("inf"), float("nan")],
+        ids=["inf", "nan"],
+    )
+    def test_non_finite_interval_raises_value_error(self, tmp_path, interval):
+        with pytest.raises(ValueError):
+            Monitor(
+                _make_net(),
+                targets=[_cefstatus_target(hosts="all")],
+                interval=interval,
+                output_dir=tmp_path,
+                host_count=2,
+                csmgr_host_resolver=None,
+            )
+
+    def test_int_overflow_interval_raises_value_error_not_overflow_error(self, tmp_path):
+        # math.isfinite(10**309) raises OverflowError; the guard must convert
+        # that into the same ValueError callers already handle.
+        with pytest.raises(ValueError):
+            Monitor(
+                _make_net(),
+                targets=[_cefstatus_target(hosts="all")],
+                interval=10**309,
+                output_dir=tmp_path,
+                host_count=2,
+                csmgr_host_resolver=None,
+            )
 
     def test_no_resolver_accepted_for_csmgrstatus(self, tmp_path):
         # Should not raise even without a resolver.
@@ -722,9 +758,9 @@ class TestCollectTargetCcninfo:
         )
 
     def test_ccninfo_success_produces_structured_dict_output(self, tmp_path):
-        """A successful ccninfo run returns a 4-field dict with uri, raw,
-        parsed (structured reply fields including route as list of dicts),
-        elapsed_ms, and timed_out=False.
+        """A successful ccninfo run returns a dict with uri, raw, parsed
+        (structured reply fields including route as list of dicts),
+        elapsed_ms, timed_out=False, returncode and cancelled.
         """
         fixture_text = _load_fixture("reply_named_cache.out")
         fake = FakeCommandRunner()
@@ -780,6 +816,71 @@ class TestCollectTargetCcninfo:
         # a timeout is a genuine failure, distinct from the "skipped" a
         # downed host produces
         assert outcome == "not-ok"
+
+    # 2026-09-02 fail-closed fix: the three tests below pin that a parsed
+    # reply is NOT sufficient evidence of "ok". A healthy-looking stdout can
+    # accompany a non-zero exit (ccninfo reports an error after printing),
+    # a cancelled run (stop requested mid-probe), or a missing returncode
+    # (runner never observed exit). The event-side twin,
+    # verdict.from_runtime_ccninfo, already requires exit_code == 0 and not
+    # cancelled; the monitor path must agree or the same probe would be
+    # graded differently depending on which pipeline consumed it.
+
+    def test_ccninfo_nonzero_returncode_is_not_ok(self, tmp_path):
+        """Healthy reply text + returncode=1 must be "not-ok": the exit code
+        is the process's own verdict and outranks a parseable stdout. The
+        output dict must also surface returncode/cancelled so a consumer can
+        see why a reply-bearing probe was graded not-ok.
+        """
+        fixture_text = _load_fixture("reply_named_cache.out")
+        fake = FakeCommandRunner()
+        fake.script_run(stdout=fixture_text, returncode=1)
+        monitor = self._make_monitor(tmp_path, command_timeout=5)
+        target = _ccninfo_target()
+        with patch("src.runtime.monitoring.MininetCommandRunner", return_value=fake):
+            out, outcome = monitor._collect_target("ccninfo", 1, target)
+
+        # the reply did parse — that is exactly what makes this a trap
+        assert out["parsed"]["reply_received"] is True
+        assert outcome == "not-ok"
+        assert out["returncode"] == 1
+        assert out["cancelled"] is False
+
+    def test_ccninfo_cancelled_is_not_ok(self, tmp_path):
+        """Healthy reply text + returncode=0 + cancelled=True must be
+        "not-ok": a cancelled run's stdout is whatever was flushed before the
+        kill, not a completed probe, so it cannot certify reachability.
+        """
+        fixture_text = _load_fixture("reply_named_cache.out")
+        fake = FakeCommandRunner()
+        fake.script_run(stdout=fixture_text, returncode=0, cancelled=True)
+        monitor = self._make_monitor(tmp_path, command_timeout=5)
+        target = _ccninfo_target()
+        with patch("src.runtime.monitoring.MininetCommandRunner", return_value=fake):
+            out, outcome = monitor._collect_target("ccninfo", 1, target)
+
+        assert out["parsed"]["reply_received"] is True
+        assert outcome == "not-ok"
+        assert out["returncode"] == 0
+        assert out["cancelled"] is True
+
+    def test_ccninfo_missing_returncode_is_not_ok(self, tmp_path):
+        """Healthy reply text + returncode=None must be "not-ok": an absent
+        exit code means the runner never confirmed the process finished, and
+        fail-closed semantics treat unknown as failure rather than success.
+        """
+        fixture_text = _load_fixture("reply_named_cache.out")
+        fake = FakeCommandRunner()
+        fake.script_run(stdout=fixture_text, returncode=None)
+        monitor = self._make_monitor(tmp_path, command_timeout=5)
+        target = _ccninfo_target()
+        with patch("src.runtime.monitoring.MininetCommandRunner", return_value=fake):
+            out, outcome = monitor._collect_target("ccninfo", 1, target)
+
+        assert out["parsed"]["reply_received"] is True
+        assert outcome == "not-ok"
+        assert out["returncode"] is None
+        assert out["cancelled"] is False
 
     def test_ccninfo_host_down_returns_skip_string(self, tmp_path):
         """A ccninfo target on a downed host returns the plain-string

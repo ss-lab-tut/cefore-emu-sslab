@@ -50,3 +50,17 @@ Scenario code gets a narrow failure interface, and omitted failure configuration
 stays visibly inert. The migration is intentionally bundled because failure
 defaults, legacy cache fallback, smoke evidence, and metadata columns are coupled
 today; changing only one of them would create silent behavior drift.
+
+## Status note (2026-09-02)
+
+Implementation is still deferred. Two points where the code has drifted from
+the wording above, to be settled when R8 starts:
+
+- The legacy `down_*` `OptionSpec` entries are five, not four:
+  `down_interval`, `down_duration`, `down_exclude`, `down_count`,
+  `down_stagger`.
+- The validator's current `failure_scenarios.strategy` set is
+  `simple / cyclic / random / manual`. The decision names the cycle mode
+  `cycles`; `random` and `manual` are not mentioned. R8 must decide whether
+  they become `FailurePolicy` modes or a separate policy, and reconcile the
+  spelling.

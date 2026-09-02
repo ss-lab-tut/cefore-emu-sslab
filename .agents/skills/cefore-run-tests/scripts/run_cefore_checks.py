@@ -335,6 +335,10 @@ def build_smoke_cases() -> list[SmokeCase]:
                         "ccninfo": {
                             "output.parsed.reply_received": True,
                             "output.timed_out": False,
+                            # 2026-09-02: outcome now also requires
+                            # returncode == 0 and not cancelled; a healthy
+                            # live ccninfo must still stamp "ok".
+                            "outcome": "ok",
                         },
                     },
                 },

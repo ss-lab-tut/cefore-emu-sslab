@@ -162,6 +162,20 @@ def test_validate_monitoring():
     assert any("interval" in e for e in errors)
 
 
+# 2026-09-02 fail-closed fix: inf/nan/overflowing interval must be rejected
+# by validation, not silently accepted and then passed to Monitor (where
+# inf would never fire and nan sorts unpredictably). The exact message is
+# asserted so the diagnostic stays stable for users grepping output.
+@pytest.mark.parametrize(
+    "interval",
+    [float("inf"), float("nan"), 10**309],
+    ids=["inf", "nan", "int_overflow"],
+)
+def test_validate_monitoring_interval_non_finite(interval):
+    errors = validate_config({"monitoring": {"interval": interval}})
+    assert "monitoring.interval must be a positive finite number" in errors
+
+
 def test_validate_monitoring_targets_invalid_type():
     errors = validate_config({"monitoring": {"targets": [{"type": "nonexistent"}]}})
     assert any("type" in e for e in errors)
