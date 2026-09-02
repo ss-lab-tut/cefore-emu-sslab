@@ -52,7 +52,8 @@ def _fail_closed_rc(result) -> tuple[int, str]:
     """Map a CommandResult to (rc, stderr) that never reads as success unless
     the process actually completed with exit status 0.
 
-    Fail-closed ladder (mirrors monitoring.derive_monitor_outcome):
+    Fail-closed ladder (same criteria as monitoring._collect_ccninfo and
+    verdict.from_runtime_ccninfo: flags outrank the exit status):
     1. timed_out            → rc=-1, stderr += "command timed out"
     2. cancelled            → rc=-1, stderr += "command cancelled"
     3. returncode is None   → rc=-1, stderr += "no exit status"
