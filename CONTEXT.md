@@ -193,6 +193,7 @@ _Avoid_: periodic_host_flap と cycle-mode の共有 primitive 抽出 (R8 で片
 **解消済み (2026-08-25) — S5: _validate_failure_scenarios の simple/cycles 重複検査 collapse**: 7a545f8 で `_validate_flap_descriptor` (src/core/config/validator.py) へ抽出し、simple / cycles[idx] の双方が利用、重複 diagnostic も除去。duration/interval >= 1 への tightening は S5 ではなく R8 の scope (2026-09-02 再確認)。
 
 **S6 — bridge_external に CommandRunner seam**: attach_external_via_bridge / cleanup_external_bridges / attach_external_interface に optional `runner` param を追加し `_run_root_cmd_vec` (bridge_external.py:51-64 が MininetCommandRunner(None) を hardcode) へ thread。現行テストは internal patch 41 箇所 (_run_root_cmd_vec 37 + MininetCommandRunner 4: test 行 218/388/967/1015) — recording fake 注入へ移行可能に。bridge_root.py:74-89 BridgeManager の _root_runner/_host_runner pattern を mirror。
+追記 (2026-09-02): `_run_root_cmd_vec`/`_run_host_cmd_vec` が returncode None を 0 に変換し timed_out/cancelled を見ない fail-open を修正 (None/timed_out/cancelled は rc=-1 で rollback へ)。runner seam 自体は未着手。
 
 **解消済み (2026-07-16) — S7: Monitor が CommandResult.returncode を捨て webui が text sniffing で liveness 再導出**: f93245a で MONITOR_FIELDS に tri-state outcome (ok / not-ok / skipped-no-result) を追加、webui/state.py は outcome を authoritative に利用、run_csmgrstatus は full CommandResult を返す。Monitor.stop の残余問題は下の deferred block に分離 (2026-09-02 再確認)。
 

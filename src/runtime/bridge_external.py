@@ -48,6 +48,35 @@ class ExternalBridgeError(RuntimeError):
 # ---------------------------------------------------------------------------
 
 
+def _fail_closed_rc(result) -> tuple[int, str]:
+    """Map a CommandResult to (rc, stderr) that never reads as success unless
+    the process actually completed with exit status 0.
+
+    Fail-closed ladder (mirrors monitoring.derive_monitor_outcome):
+    1. timed_out            → rc=-1, stderr += "command timed out"
+    2. cancelled            → rc=-1, stderr += "command cancelled"
+    3. returncode is None   → rc=-1, stderr += "no exit status"
+    4. otherwise            → rc=returncode, stderr unchanged
+    """
+    # 2026-09-02 fail-closed fix: None was coerced to 0 and the timed_out /
+    # cancelled flags were ignored, so a killed ``ip link`` passed as success
+    # and the bridge state machine kept going on a half-applied network.
+    # -1 is a nonzero sentinel; every caller only tests ``rc != 0``. The
+    # appended reason lets the rollback log explain *why* the step failed.
+    if result.timed_out:
+        reason = "command timed out"
+    elif result.cancelled:
+        reason = "command cancelled"
+    elif result.returncode is None:
+        reason = "no exit status"
+    else:
+        return result.returncode, result.stderr
+    stderr = result.stderr or ""
+    if stderr and not stderr.endswith("\n"):
+        stderr += "\n"
+    return -1, stderr + reason
+
+
 def _run_root_cmd_vec(args: list[str]) -> tuple[int, str, str]:
     """Execute a command in the root namespace through the CommandRunner seam.
 
@@ -60,8 +89,8 @@ def _run_root_cmd_vec(args: list[str]) -> tuple[int, str, str]:
     result = MininetCommandRunner(None).run(
         ROOT_SENTINEL, list(args), capture_stderr=True
     )
-    rc = result.returncode if result.returncode is not None else 0
-    return rc, result.stdout, result.stderr
+    rc, stderr = _fail_closed_rc(result)
+    return rc, result.stdout, stderr
 
 
 def _run_host_cmd_vec(runner, host_name: str, argv: list[str]) -> tuple[str, str, int]:
@@ -76,8 +105,8 @@ def _run_host_cmd_vec(runner, host_name: str, argv: list[str]) -> tuple[str, str
         Tuple of (stdout, stderr, returncode).
     """
     result = runner.run(host_name, argv, capture_stderr=True)
-    rc = result.returncode if result.returncode is not None else 0
-    return result.stdout, result.stderr, rc
+    rc, stderr = _fail_closed_rc(result)
+    return result.stdout, stderr, rc
 
 
 # ---------------------------------------------------------------------------

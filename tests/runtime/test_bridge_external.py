@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from src.runtime.command_runner import CommandResult, FakeCommandRunner
+from src.runtime.command_runner import ROOT_SENTINEL, CommandResult, FakeCommandRunner
 
 
 def _pexec_runner(holder):
@@ -1733,3 +1733,79 @@ class TestDefect5DuplicatePhyIntfRejection:
             assert "h0" not in _created_bridges
         finally:
             _created_bridges.clear()
+
+
+# ---------------------------------------------------------------------------
+# Status-aware command helpers must fail closed
+# ---------------------------------------------------------------------------
+
+
+class TestRunCmdVecFailClosed:
+    """The rc returned by _run_root_cmd_vec / _run_host_cmd_vec must never
+    read as success when the underlying command did not complete normally.
+
+    # 2026-09-02 fail-closed fix: CommandResult.returncode is None when the
+    process was killed/never reaped, and timed_out/cancelled are separate
+    flags that may coexist with returncode 0. Coercing None to 0 (or
+    ignoring the flags) lets a killed ``ip link`` pass as success and the
+    bridge state machine proceeds on a half-applied network state.
+    """
+
+    _ROOT_ARGV = ["ip", "link", "show", "dev", "eth0"]
+    _HOST_ARGV = ["ip", "addr", "add", "10.0.0.2/24", "dev", "veth-h1"]
+
+    # ---- _run_root_cmd_vec --------------------------------------------------
+
+    def _root(self, fake):
+        from src.runtime.bridge_external import _run_root_cmd_vec
+
+        with patch(
+            "src.runtime.bridge_external.MininetCommandRunner", return_value=fake
+        ):
+            rc, _out, _err = _run_root_cmd_vec(list(self._ROOT_ARGV))
+        # The helper must still forward the argv unchanged to the root namespace.
+        assert len(fake.runs) == 1
+        assert fake.runs[0]["node"] == ROOT_SENTINEL
+        assert fake.runs[0]["argv"] == self._ROOT_ARGV
+        return rc
+
+    def test_root_none_returncode_with_timeout_is_failure(self):
+        fake = FakeCommandRunner()
+        fake.script_run(returncode=None, timed_out=True)
+        assert self._root(fake) != 0
+
+    def test_root_cancelled_with_zero_returncode_is_failure(self):
+        fake = FakeCommandRunner()
+        fake.script_run(returncode=0, cancelled=True)
+        assert self._root(fake) != 0
+
+    def test_root_none_returncode_is_failure(self):
+        fake = FakeCommandRunner()
+        fake.script_run(returncode=None)
+        assert self._root(fake) != 0
+
+    # ---- _run_host_cmd_vec --------------------------------------------------
+
+    def _host(self, fake):
+        from src.runtime.bridge_external import _run_host_cmd_vec
+
+        _out, _err, rc = _run_host_cmd_vec(fake, "h1", list(self._HOST_ARGV))
+        assert len(fake.runs) == 1
+        assert fake.runs[0]["node"] == "h1"
+        assert fake.runs[0]["argv"] == self._HOST_ARGV
+        return rc
+
+    def test_host_none_returncode_with_timeout_is_failure(self):
+        fake = FakeCommandRunner()
+        fake.script_run(returncode=None, timed_out=True)
+        assert self._host(fake) != 0
+
+    def test_host_cancelled_with_zero_returncode_is_failure(self):
+        fake = FakeCommandRunner()
+        fake.script_run(returncode=0, cancelled=True)
+        assert self._host(fake) != 0
+
+    def test_host_none_returncode_is_failure(self):
+        fake = FakeCommandRunner()
+        fake.script_run(returncode=None)
+        assert self._host(fake) != 0
