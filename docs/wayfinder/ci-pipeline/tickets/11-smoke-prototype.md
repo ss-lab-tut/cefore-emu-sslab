@@ -44,7 +44,7 @@ workflow は `ci/smoke-prototype` の b258b5d（warm run は空コミット 4b7b
 | 35202408130 (cold) | miss ×3 | 4–15s | 13s | 1–2s | 8–11s | 46–47s | 89–109s | 3/3 green |
 | 35202670896 (warm) | hit ×3 | skip | skip | 2–7s | 7–11s | 45–46s | 69–81s | 3/3 green |
 
-- **ビルド時間**: configure + make で 17–28 秒。キャッシュの効果は job あたり 20 秒程度で小さい。
+- **ビルド時間**: configure + make で 17–28 秒。job 全体の平均は cold 97 秒 → warm 76 秒で 21 秒減り、warm では configure/make が skip された。差は別 runner 上の 2 run の比較で、全部がキャッシュによるとは言えない。
 - **キャッシュヒット率**: warm で 3/3。
   - cold では 3 本が並列にビルドし、保存に成功したのは 1 本だけだった（残りは "Unable to reserve cache" の警告で続行）。想定どおり。
   - warm の install ログにある `libtool: install: (… --mode=relink …)` は csmgrd プラグイン 4 つの relink で、再ビルドではない（autoreconf も compile もなし）。
