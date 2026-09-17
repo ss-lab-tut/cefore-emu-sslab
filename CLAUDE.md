@@ -53,6 +53,11 @@ sudo python3 -m src ...              # wrong: system python lacks yaml, networkx
 
 After modifying `[project.scripts]`, run `uv pip install -e .` to register new entry points.
 
+**Testing policy:**
+- Branches recorded as unreachable (see the test file / commit message that recorded them) get no fake-rng / import-hook tests.
+- Mininet-live paths (e.g. `disaster.py` run loop) are not unit-tested; `cefore-run-tests` smoke is their gate.
+- Assert diagnostics by exact match (`assert msg in errors`), not substring loops: mutation testing showed substring asserts let mutants through. Runbook: `docs/runbooks/mutation-testing.md`.
+
 ## Security Notes
 
 - `config/templates/h*/default-private-key` files contain sensitive cryptographic material — do not commit changes or share.
@@ -62,3 +67,20 @@ After modifying `[project.scripts]`, run `uv pip install -e .` to register new e
 ## MCP Tool Settings
 
 When using Codex MCP, specify model `gpt-5.6-sol` (reasoning high, summaries auto).
+
+## Agent skills
+
+The engineering skills these docs refer to (`domain-modeling`, `grill-with-docs`, `improve-codebase-architecture`, `codebase-design`, `to-tickets`, `to-spec`, `triage`, `wayfinder`, …) come from the external [mattpocock/skills](https://github.com/mattpocock/skills) pack and are not vendored in this repo (`.agents/skills/` holds only the repo's own skills).
+If they are not installed, install the pack per its README — Claude Code plugin: `claude plugins install mattpocock-skills` (or `/plugin install mattpocock-skills` inside a session); editable copy instead: `npx skills@latest add mattpocock/skills` (pick one, not both) — then run `/setup-matt-pocock-skills` once per repo.
+
+### Issue tracker
+
+Two-tier local markdown: wayfinder maps/tickets under `docs/wayfinder/<effort>/` (committed, YAML frontmatter); `to-tickets`/`triage` output under `.scratch/<feature>/issues/` (ephemeral, gitignored). See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Default vocabulary: `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: `CONTEXT.md` + `docs/adr/` at the repo root. See `docs/agents/domain.md`.

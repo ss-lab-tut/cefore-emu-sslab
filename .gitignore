@@ -36,3 +36,6 @@ package.json
 .codex/settings.local.json
 .agents/settings.local.json
 .opencode/
+
+# Matt Pocock skills: ephemeral to-tickets/triage output (see docs/agents/issue-tracker.md)
+.scratch/

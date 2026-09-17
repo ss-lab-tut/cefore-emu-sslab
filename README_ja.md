@@ -156,7 +156,7 @@ sudo .venv/bin/python3 -m src disaster --hosts 10 --switches 15 --seed 42 \
 > 成功率は hop 距離とともに下がります（hop 1 は成功、hop 3 は一度も成功せず）。
 > pubsub が検証済みなのは 3〜5 ホストの mesh だけなので、この失敗を意図的に再現する
 > 場合を除き、pubsub 実験はその範囲で行ってください。
-> CONTEXT.md の「pubsub が 15-host mesh で系統的に失敗」を参照。
+> [docs/known-cefore-behaviors.md](docs/known-cefore-behaviors.md) の「pubsub が 15-host mesh で系統的に失敗」を参照。
 
 **タイムドイベント（YAML）:**
 ```yaml
