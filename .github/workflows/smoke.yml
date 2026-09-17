@@ -1,0 +1,152 @@
+name: Smoke (prototype)
+
+# ci-pipeline ticket 11 の試作。GitHub-hosted runner で Cefore 0.12.0 ソースビルド
+# + apt mininet + min_putget smoke が成立するかを計測する。このファイルは
+# ci/smoke-prototype ブランチ専用で main にはマージしない。成立したら release.yml
+# から `uses:` で呼ぶ形を別 ticket で決める (ユーザー決定 2026-09-17: 最終形は
+# release 時のみ起動)。
+#
+# pull_request トリガーを付けないのは意図的: public repo で fork PR の任意コードを
+# sudo 付き runner で走らせない (ticket 05)。
+on:
+  push:
+    branches: [ci/smoke-prototype]
+  workflow_call:
+
+# concurrency を置かない: ci.yml の cancel-in-progress を真似ると連続 push で
+# 計測サンプルが打ち切られる。
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    # OS を明示: ラボ (Debian 13) と差がある前提で、計測結果をどの image で
+    # 取ったかを固定する。ubuntu-latest の繰り上がりでキャッシュ key と
+    # 数値の意味が変わるのを防ぐ。
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    strategy:
+      # 1 本の失敗で残りを止めると flakiness のサンプルが取れない。
+      fail-fast: false
+      matrix:
+        attempt: [1, 2, 3]
+    steps:
+      - uses: actions/checkout@v7
+
+      # DESTDIR ステージングは使えない: Cefore の config/ と utils/ の独自
+      # install: レシピが DESTDIR を無視して /usr/local に直接書く。代わりに
+      # make 済みのソースツリーを cache し、各 job で `sudo make install` する。
+      - name: Restore Cefore build tree
+        id: cache
+        uses: actions/cache/restore@v6
+        with:
+          path: _cefore
+          # key は source SHA + configure フラグ + image。どれかが変われば
+          # 別ビルドとして扱う。
+          key: cefore-a9564bb-csmgr-cache-debug-ubuntu24.04
+
+      - name: Record cache hit
+        run: echo "attempt=${{ matrix.attempt }} cache-hit=${{ steps.cache.outputs.cache-hit }}" | tee -a "$GITHUB_STEP_SUMMARY"
+
+      # hit 時も入れる: make install が relink や Makefile 再生成を起こした場合に
+      # ツールチェーンが無いと install 自体が落ちる。
+      - name: Install Cefore build deps
+        run: sudo apt-get update && sudo apt-get install -y libssl-dev autoconf automake libtool
+
+      - name: Checkout Cefore v0.12.0
+        if: steps.cache.outputs.cache-hit != 'true'
+        uses: actions/checkout@v7
+        with:
+          repository: cefore/cefore
+          ref: a9564bb1b4448ff983a7a1b73848caeb281ff81a
+          path: _cefore
+
+      # フラグはラボの config.log と同一。--enable-debug を外すと cefnetd の
+      # ログ出力が変わり、ラボと数値・挙動を比較できなくなる。
+      - name: Configure Cefore
+        if: steps.cache.outputs.cache-hit != 'true'
+        working-directory: _cefore
+        run: ./configure --enable-csmgr --enable-cache --enable-debug
+
+      - name: Build Cefore
+        if: steps.cache.outputs.cache-hit != 'true'
+        working-directory: _cefore
+        run: make -j"$(nproc)"
+
+      # job 末尾ではなく make 直後に保存: smoke が落ちてもビルド成果を次の push
+      # で再利用できるようにする (actions/cache の自動保存は job 成功時のみ)。
+      # 並列 job が同じ key を保存しようとした場合、負けた側は警告だけで続行する。
+      - name: Save Cefore build tree
+        if: steps.cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: _cefore
+          key: cefore-a9564bb-csmgr-cache-debug-ubuntu24.04
+
+      # ldconfig: csmgrd の共有ライブラリを解決させるため (Cefore Readme 指定)。
+      - name: Install Cefore
+        working-directory: _cefore
+        run: |
+          sudo make install
+          sudo ldconfig
+          test -x /usr/local/bin/cefnetdstart
+          test -x /usr/local/bin/csmgrdstart
+          test -f /usr/local/cefore/cefnetd.conf
+
+      # controller はラボのパッチ版 openflow `controller` ではなく
+      # ovs-testcontroller を使う (Mininet DefaultController のフォールバック先)。
+      # ラボのパッチは GCC14 ビルド修正と MAX_SWITCHES 16→4096 だけで、3 switch の
+      # min_putget には機能差がない。apt が自動起動する testcontroller サービスは
+      # 6653 番を握り Mininet の起動を妨げるので止める。
+      - name: Install Mininet and Open vSwitch
+        run: |
+          sudo apt-get install -y mininet openvswitch-switch openvswitch-testcontroller
+          sudo systemctl stop openvswitch-testcontroller || true
+          sudo systemctl disable openvswitch-testcontroller || true
+          sudo systemctl start openvswitch-switch
+
+      # ラボの buffer.sh 相当。UDP バッファ不足で Cefore の転送が落ちる差を
+      # 計測に混ぜないため。
+      - name: Raise UDP buffers
+        run: sudo sysctl -w net.core.{r,w}mem_{default,max}=10000000
+
+      # uv discipline は ci.yml と同じ (lock を自己修復させない)。
+      - uses: astral-sh/setup-uv@v9.0.0
+        with:
+          version: "0.10.11"
+          enable-cache: true
+      - run: uv sync --locked --group dev
+
+      # 合否判定はローカルの cefore-run-tests と同一の判定器を使う。ADR-0004 が
+      # 却下したのは unit gate をこの runner 経由にする案で、smoke 判定器としての
+      # 利用とは別。
+      - name: Smoke min_putget
+        run: >
+          uv run --no-sync python
+          .agents/skills/cefore-run-tests/scripts/run_cefore_checks.py
+          --skip-pytest --configs min_putget
+          --output-base "$RUNNER_TEMP/smoke"
+
+      - name: Diagnostics
+        if: failure()
+        run: |
+          ps aux | grep -E 'cefnetd|csmgrd|ovs|controller' | grep -v grep || true
+          sudo ovs-vsctl show || true
+
+      # 出力は root 所有なので upload 前に読めるようにする。
+      - name: Make smoke output readable
+        if: ${{ !cancelled() }}
+        run: sudo chmod -R a+rX "$RUNNER_TEMP/smoke" || true
+
+      # 除外は保険: min_putget は node dir をアーカイブしない設定だが、
+      # config/templates/h*/default-private-key が混入したら公開 artifact になる。
+      - uses: actions/upload-artifact@v7
+        if: ${{ !cancelled() }}
+        with:
+          name: smoke-${{ matrix.attempt }}
+          if-no-files-found: warn
+          retention-days: 14
+          path: |
+            ${{ runner.temp }}/smoke
+            !${{ runner.temp }}/smoke/**/*private-key*
