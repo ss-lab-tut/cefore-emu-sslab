@@ -19,3 +19,7 @@ blocked-by: []
 - 機械的返済 30 件と CI 設計を同一 diff にするとレビューで本質が埋もれるため
   1 PR 案は却下。両 PR とも opencode/codex 外部レビュー（10 分 → codex MCP 代替）
 - PR 作成は人間（gh 401 のため）。push は SSH
+
+## Status (2026-09-17)
+
+- done: PR A = PR #18 `chore/ci-debt-payoff`（merge 63608b7、b2fc5d1..b63b516）、PR B = PR #19 `feat/ci-pipeline`（merge 8c346c5、832ffe3 / b41938c / b335f1d / c9255ee）。

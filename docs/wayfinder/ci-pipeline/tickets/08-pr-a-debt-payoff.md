@@ -15,10 +15,14 @@ blocked-by: []
 
 ## Question
 
-PR A（負債返済）を実装しマージする — PLAN.md §3 の 6 項目:
+PR A（負債返済）を実装しマージする — 当時の ephemeral な PLAN.md（未コミット）の第 3 節の 6 項目:
 stubs 追加 / mypy 設定 / mypy ~30 件返済（codex-main 委譲）/ ruff F401 autofix /
 config examples pytest テスト（全 20 examples の clean 通過を先に実測）/
-CONTEXT.md:175 数値更新。
+CONTEXT.md の mypy/ruff 負債数値更新（a45b456）。
 
 受け入れ条件: `mypy src`=0、`ruff check src tests`=0、full pytest green、
 挙動変更ゼロ（型注釈・ignore・import 削除のみ）。
+
+## Status (2026-09-17)
+
+- done: PR #18 merge 63608b7（6 commits: b2fc5d1 / 2cb815b / a940011 / f021c81 / a45b456 / b63b516）。

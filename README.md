@@ -165,7 +165,7 @@ for all content operations.
 > deadline), even though put/get succeed on the same topology; success
 > drops with hop distance (hop 1 succeeds, hop 3 never did). Only 3 to 5
 > host meshes are verified for pubsub. Keep pubsub experiments there unless
-> you are deliberately reproducing that failure. See CONTEXT.md, "pubsub が 15-host mesh で系統的に失敗".
+> you are deliberately reproducing that failure. See [docs/known-cefore-behaviors.md](docs/known-cefore-behaviors.md), "pubsub が 15-host mesh で系統的に失敗".
 
 **Timed events (YAML):**
 ```yaml

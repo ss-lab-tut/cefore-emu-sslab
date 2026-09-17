@@ -6,7 +6,9 @@
 > blocked-by。frontier = open ∧ blocked-by 全 closed ∧ claimed-by 空。
 > 各 ticket の `## Task` は CONTEXT.md 由来の原文段落を verbatim で保持し
 > （file:line のみ 2026-08-23 の main で再検証・更新）、`## Status (2026-08-23)`
-> に現状を付す。
+> に現状を付す。2026-09-17: main defeeb4 で再検証し、95f175a の backlog 台帳訂正
+> と 7a545f8 / 420ef1e / 3c30cd0 / 9740a80 / a455bc7 の反映を ticket 側へ移植
+> （訂正箇所は「2026-09-17 訂正」または commit hash で明示）。
 
 ## Destination
 
@@ -22,7 +24,8 @@
 - 優先順: Strong [01](tickets/01-s4-pub-lifetime-by-uri.md)–[05](tickets/05-s9-topology-adjacency.md)
   → Worth [06](tickets/06-w1-read-conf-value.md)–[13](tickets/13-w8-campaign-jobs-split.md)
   → Speculative [14](tickets/14-p1-set-config-value-underscore.md)/[15](tickets/15-p2-campaign-retry-seam.md) は保留
-  → [16](tickets/16-kouho6-result-detect-into-verdict.md)–[19](tickets/19-kouho7-rename-topo-module.md) housekeeping pass
+  → [17](tickets/17-r8-failure-policy.md)–[19](tickets/19-kouho7-rename-topo-module.md) housekeeping pass
+    （[16](tickets/16-kouho6-result-detect-into-verdict.md) 候補6 は 2026-09-02 撤回済みのため順序から除外）
   → [20](tickets/20-deferred-ccninfo-monitoring-gaps.md) deferred
   → [21](tickets/21-recefore-rename-implementation.md)/[22](tickets/22-application-adapter-api.md) naming
 - R10 backlog (2026-07-09 review 完了) の経緯: feature/seam (= main, PR#13 マージ後)
@@ -36,22 +39,37 @@
   fresh-cache (--no-incremental) 必須。
 - 関連 ADR: ADR-0002（R8 FailurePolicy、[17](tickets/17-r8-failure-policy.md)）、
   ADR-0004（CI zero-error gate）
-- 参照 skills: cefore-run-tests / typecheck / codebase-design
+- 参照 skills: cefore-run-tests / typecheck（いずれも repo 内 `.agents/skills`）/ codebase-design
+  （外部 skill pack mattpocock/skills 由来で repo には vendoring していない。CLAUDE.md の Agent skills 節参照）
 
 ## Decisions so far
 
 - S1 run_cefstatus deepening（2026-07-12 実装完了）
 - S2 dead per-content label param 削除（2026-07-12 実装完了）
-- S3 Disaster/Connect wiring 重複 collapse（b94eb97、`ConfigDrivenMeshScenario` 抽出）
-  （W3 [08](tickets/08-w3-daemon-log-collection-enabled.md) を部分的に解消）
-- S7 Monitor outcome tri-state（f93245a。[20](tickets/20-deferred-ccninfo-monitoring-gaps.md)
-  の webui/ccninfo 側は未着手）
+- S3 Disaster/Connect wiring 重複 collapse（2026-07-16, b94eb97、`ConfigDrivenMeshScenario` 抽出）
+  （W3 [08](tickets/08-w3-daemon-log-collection-enabled.md) を部分的に解消）。
+  Mesh/Linear まで `ConfigDrivenMeshScenario` に寄せるのは別再設計（95f175a, 2026-09-02 再確認）
+- S7 Monitor outcome tri-state（2026-07-16, f93245a。ok / not-ok / skipped — monitor 語彙の
+  skipped は EventOutcome の skipped-no-result とは別。webui/state.py は outcome を
+  authoritative に利用、run_csmgrstatus は full CommandResult を返す。Monitor.stop の残余問題と
+  webui の ccninfo 非表示は [20](tickets/20-deferred-ccninfo-monitoring-gaps.md) に分離、95f175a で再確認）
 - B1 validate_merged_args present-but-empty structured config（73ca40b。
   残課題 `failure_scenarios: "none"` は [17](tickets/17-r8-failure-policy.md) へ）
 - B3 validate_merged_args scalar explicit-null（d2680b1）
 - B2 failure_manager cycle-mode host 恒久除外（7716a93）
-- S5 flap descriptor 検証の単一化（2026-08-24、[02](tickets/02-s5-validate-flap-descriptor.md)。
-  重複診断を解消し、R8 前のゼロ値・simple/cycles 非対称契約は維持）
+- S5 flap descriptor 検証の単一化（7a545f8, 2026-08-25、[02](tickets/02-s5-validate-flap-descriptor.md)。
+  `_validate_flap_descriptor` へ抽出し重複診断を解消、R8 前のゼロ値・simple/cycles 非対称契約は維持。
+  duration/interval >= 1 の tightening は R8 [17](tickets/17-r8-failure-policy.md) の scope）
+- 候補6 result_detect → Verdict 吸収は **撤回**（2026-09-02, 95f175a、
+  [16](tickets/16-kouho6-result-detect-into-verdict.md)）: core/verdict.py の pure 契約
+  (no Mininet, no file IO) に反する。result_detect.py は runtime adapter として維持
+- S6 bridge_external の fail-open（returncode None → 0、timed_out/cancelled 無視）は修正済み
+  （2026-09-02, 420ef1e、`_fail_closed_rc` で rc=-1）。runner seam 本体
+  [03](tickets/03-s6-bridge-external-runner-seam.md) は未着手のまま open
+- monitoring.interval の inf/nan は validator isfinite + Monitor ctor guard で拒否
+  （2026-09-02, 3c30cd0、[20](tickets/20-deferred-ccninfo-monitoring-gaps.md) の 1 項目）
+- ccninfo monitor の outcome が returncode/cancelled を反映（2026-09-02, 9740a80、
+  event 側 from_runtime_ccninfo と基準一致。[20](tickets/20-deferred-ccninfo-monitoring-gaps.md) の 1 項目）
 
 ## Fog
 

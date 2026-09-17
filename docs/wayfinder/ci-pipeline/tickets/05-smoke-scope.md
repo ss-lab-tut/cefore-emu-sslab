@@ -17,3 +17,7 @@ e2e smoke（root + Mininet + Cefore 実機系）を CI にどう位置づける�
   キャッシュ可能）だが未実証。実証前に v1 のクリティカルパスへ入れると CI の
   信頼をスタート時点から毀損する
 - smoke の gate 責務は当面 cefore-run-tests（ローカル・root）に残置
+
+## Status (2026-09-17)
+
+- done: v1 は smoke を含まず、Mininet-live 経路の gate は cefore-run-tests のまま（[ADR-0004](../../../adr/0004-ci-guards-unit-surface-only.md) Decision / Consequences）。prototype は [11](11-smoke-prototype.md) で open。

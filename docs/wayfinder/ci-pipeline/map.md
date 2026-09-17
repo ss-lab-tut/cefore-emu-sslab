@@ -16,9 +16,12 @@ mypy / uv lock --check / entry-points 検査）が main にマージされ、実
 ## Notes
 
 - **execution 込み**（wayfinder デフォルトの plan-only を override。2026-08-01 決定）
-- 言語: 日本語。実装計画の全文は repo ルートの PLAN.md（レビュアー向け単一文書）
+- 言語: 日本語。実装計画の全文は当時 repo ルートの PLAN.md（レビュアー向け単一文書、ephemeral で
+  未コミット）にあった。恒久的な決定と根拠は [ADR-0004](../../adr/0004-ci-guards-unit-surface-only.md)
+  と各 ticket の Resolution / Status が保持する（2026-09-17 訂正）
 - 外部レビュー: agmsg の opencode + codex。**10 分無応答なら codex MCP
-  (gpt-5.6-sol, reasoning max) に切替**（ユーザー指定フォールバック）
+  (gpt-5.6-sol, reasoning high) に切替**（ユーザー指定フォールバック。2026-09-17 訂正:
+  CLAUDE.md の MCP Tool Settings に合わせ max → high）
 - 重い機械実装（mypy 返済）は codex-main へ agmsg 委譲、per-phase codex-review、
   完了報告前に advisor gate（feedback memory 準拠）
 - 制約: main は branch protection 有効（2026-08-01〜）。全変更 PR 経由。
@@ -41,8 +44,22 @@ mypy / uv lock --check / entry-points 検査）が main にマージされ、実
 
 ## Not yet specified
 
-- ADR-0004 の Consequences に載せる却下理由の最終文面（PR B 実装時に確定）
-- actions（checkout / setup-uv / upload-artifact）の実装時点の最新 major 確認
+（2026-09-17: 旧 2 項目はいずれも決着済み — [ADR-0004](../../adr/0004-ci-guards-unit-surface-only.md)）
+
+- ~~ADR-0004 の Consequences に載せる却下理由の最終文面~~ → ADR-0004 Consequences に確定
+  （b41938c、PR #19 merge 8c346c5）
+- ~~actions の実装時点の最新 major 確認~~ → checkout@v7 / upload-artifact@v7 は floating major、
+  setup-uv は floating major tag が無いため v9.0.0 に exact pin（b335f1d、ADR-0004 uv discipline 節）
+
+## Status (2026-09-17)
+
+- destination 到達: `.github/workflows/ci.yml` 追加 832ffe3 → PR #19 merge 8c346c5
+  （PR B: 832ffe3 / b41938c / b335f1d / c9255ee）。PR A merge 63608b7（b2fc5d1..b63b516）。
+- 決定と required checks 4 つ（test / lint / typecheck / packaging, strict）は ADR-0004 に記録。
+  required checks の実設定（[10](tickets/10-required-checks-handoff.md)）は GitHub UI 側の状態で git からは検証不能。
+- 後続変更: 0430afa（2026-08-25）で ci.yml に `workflow_call` を追加し、release.yml が
+  `uses: ./.github/workflows/ci.yml` で同じゲートを再利用する（ゲート定義の owner は ci.yml のみ）。
+- 残 open は [11](tickets/11-smoke-prototype.md)（post-v1）のみ。
 
 ## Out of scope
 

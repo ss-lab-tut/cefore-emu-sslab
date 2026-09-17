@@ -82,7 +82,7 @@ The single seam through which every ResultsRecord is produced, accumulated, and 
 _Avoid_: result callback, results list, `_append_result`
 
 **Monitor outcome**:
-The tri-state `outcome` field (`ok` / `not-ok` / `skipped`) carried by every monitor.json record (`MONITOR_FIELDS` in `src/runtime/monitoring.py`; derived by `derive_monitor_outcome` from the CommandResult, `skipped` when a down host yields no CommandResult at all). The webui reads `record["outcome"]` for daemon liveness. Not a class name: there is no `MonitorOutcome` symbol.
+The tri-state `outcome` field (`ok` / `not-ok` / `skipped`) carried by every monitor.json record (`MONITOR_FIELDS` in `src/runtime/monitoring.py`; derived by `derive_monitor_outcome` from the CommandResult for cefstatus/csmgrstatus, `skipped` when a down host yields no CommandResult at all). ccninfo monitor records do not go through `derive_monitor_outcome` (it has no ccninfo marker table): `Monitor._collect_ccninfo` stamps `ok` only when a reply was parsed and the run was not timed out, not cancelled, and exited with returncode 0 (same fail-closed criteria as `verdict.from_runtime_ccninfo`; 2026-09-02, 9740a80). The webui reads `record["outcome"]` for daemon liveness. Not a class name: there is no `MonitorOutcome` symbol.
 _Avoid_: liveness re-derived by sniffing stdout text in webui, the `"skipped-no-result"` spelling (the code emits `"skipped"`)
 
 **ArtifactLayout (`src/core/artifacts.py`)**:

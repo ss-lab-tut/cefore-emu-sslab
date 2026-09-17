@@ -22,6 +22,7 @@ _Avoid_: ポスター・論文だけ改称してコード実体 (CLI 名) との
 
 ## Status (2026-08-23)
 
-- 未着手。`pyproject.toml:2` は `name = "cefore-emu"`、`[project.scripts]` :20-23 (`ceforeemu` / `ceforeemu-log` / `ceforeemu-connect`) 未変更。`ReCefore` は CONTEXT.md 以外に 0 hits。
+- 未着手。`pyproject.toml:2` は `name = "cefore-emu"` (version は :3 `0.2.1`、2026-09-17 時点)、`[project.scripts]` :20-23 (`ceforeemu` / `ceforeemu-log` / `ceforeemu-connect`) 未変更。
+- (2026-09-17 訂正) 旧記述「`ReCefore` は CONTEXT.md 以外に 0 hits」は誤り: main (defeeb4) では `ReCefore` は repo 全体で 0 hits。記述はこの移設ブランチで初めて入る (CONTEXT.md の Backlog 案内段落、本 ticket、[22](22-application-adapter-api.md))。
 - このチケットの範囲は改称の実装部分: repo rename (GitHub 旧 URL 自動リダイレクト) + pyproject `[project.scripts]` + README を一括。ポスター QR は現リポ URL を指しており、リダイレクトが効くため後追いでも壊れない。
 - Adapter API 構想は [22](22-application-adapter-api.md) に分離。

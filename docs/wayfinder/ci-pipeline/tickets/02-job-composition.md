@@ -19,3 +19,7 @@ pytest 以外に CI へ何を載せるか（ruff check / mypy / coverage / forma
 
 不採用: **ruff format gate**（54 files 大整形 + blame 汚れの引き換えを却下、再訪可）、
 **mutation workflow_dispatch ジョブ**（v1 外、round 2 の別 effort へ）。
+
+## Status (2026-09-17)
+
+- done: ci.yml の 4 jobs（test: pytest+coverage / lint: ruff check / typecheck: mypy / packaging: editable install + `--help`×3）と全 job の `uv lock --check` で実装（832ffe3、PR #19 merge 8c346c5）。examples 検証は a940011（PR A merge 63608b7）。却下案は [ADR-0004](../../../adr/0004-ci-guards-unit-surface-only.md) Consequences。

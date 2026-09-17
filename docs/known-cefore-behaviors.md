@@ -20,7 +20,8 @@ schema 化した (src/log/schema.py)。`from_log` は marker 存在時のみ pub
 definitive True と判定するよう更新済み (src/core/verdict.py) — marker 不在側
 (0-byte FAILURE ログ) の log-only 判定は依然 unknown のままで、これはログ欠損と
 区別不能という構造的限界であり today の fix では解消しない。
-_Avoid_: 実験 config の pubsub を無検証で 10+ hosts に置くこと
+追記 (2026-09-02): config/workshop/m3_scale_h15/h30/h45/h60 の pubsub pair は scale sweep として意図的に残した例外。plots.py の M3 success は get のみ集計で pubsub 失敗を隠すため、M3 の数値を pubsub 健全性と読まないこと。
+_Avoid_: 実験 config の pubsub を無検証で 10+ hosts に置くこと (上記 m3_scale 系は既知の例外)
 
 ## 障害窓中の get 可用性は「FIB 経路上の csmgrd」で決まる (2026-07-14 M5e 時系列実験)
 

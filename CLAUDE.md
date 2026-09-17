@@ -70,6 +70,9 @@ When using Codex MCP, specify model `gpt-5.6-sol` (reasoning high, summaries aut
 
 ## Agent skills
 
+The engineering skills these docs refer to (`domain-modeling`, `grill-with-docs`, `improve-codebase-architecture`, `codebase-design`, `to-tickets`, `to-spec`, `triage`, `wayfinder`, …) come from the external [mattpocock/skills](https://github.com/mattpocock/skills) pack and are not vendored in this repo (`.agents/skills/` holds only the repo's own skills).
+If they are not installed, install the pack per its README — Claude Code plugin: `claude plugins install mattpocock-skills` (or `/plugin install mattpocock-skills` inside a session); editable copy instead: `npx skills@latest add mattpocock/skills` (pick one, not both) — then run `/setup-matt-pocock-skills` once per repo.
+
 ### Issue tracker
 
 Two-tier local markdown: wayfinder maps/tickets under `docs/wayfinder/<effort>/` (committed, YAML frontmatter); `to-tickets`/`triage` output under `.scratch/<feature>/issues/` (ephemeral, gitignored). See `docs/agents/issue-tracker.md`.

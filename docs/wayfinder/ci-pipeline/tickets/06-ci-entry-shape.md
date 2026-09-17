@@ -18,3 +18,7 @@ examples 検証を pytest テスト（tests/core/config/test_example_configs.py�
 すると、cefore-run-tests の pytest phase は `pytest tests` を丸ごと回すため
 **runner にも CI にも自動で乗る**（専用 phase 案は CI から見えなくなるため不採用。
 ユーザーの「cefore-run-tests に追加」意向はこの包含関係の提示後に本案で確定）。
+
+## Status (2026-09-17)
+
+- done: ci.yml の各 step は素の 1 コマンド（832ffe3）、examples 検証は `tests/core/config/test_example_configs.py`（a940011）。[ADR-0004](../../../adr/0004-ci-guards-unit-surface-only.md) Consequences に記録。

@@ -16,3 +16,7 @@ checks `test` / `lint` / `typecheck` / `packaging` を追加する。初回 CI �
 
 受け入れ条件: 4 checks が required になった main protection rule のスクショ or
 口頭確認。
+
+## Status (2026-09-17)
+
+- done（ユーザー口頭確認、2026-08-01）: 4 required checks（test / lint / typecheck / packaging, strict）は [ADR-0004](../../../adr/0004-ci-guards-unit-surface-only.md) Branch protection 節に記録。branch protection は GitHub 側の設定で git からは検証不能。
