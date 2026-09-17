@@ -23,7 +23,7 @@ release 時のみ起動する形での組み込みを [12](12-smoke-release-inte
 ### 実施形（Question からの変更点）
 
 - **トリガー**: workflow_dispatch ではなく `ci/smoke-prototype` への push にした。
-  - dispatch 専用 workflow は default branch に無いと UI から起動できない。`gh` の dispatch 作成は 403。
+  - UI の "Run workflow" ボタンは workflow ファイルが default branch にあるときだけ出る（GitHub Docs「Events that trigger workflows」の workflow_dispatch 節）。`gh` の dispatch 作成は 403。
   - 最終形は release 時のみ起動する（ユーザー決定 2026-09-17）。
 - **controller**: ラボのパッチ版 openflow `controller` ではなく、apt の `ovs-testcontroller`（Mininet DefaultController のフォールバック先）を使った。
   - ラボのパッチ（GCC14 ビルド修正と `MAX_SWITCHES` 16→4096）は 3 switch の `min_putget` では機能差がない。
@@ -36,7 +36,7 @@ release 時のみ起動する形での組み込みを [12](12-smoke-release-inte
 
 ### 計測結果
 
-環境: `ubuntu-24.04`、Cefore `a9564bb`（v0.12.0）を `--enable-csmgr --enable-cache --enable-debug` でビルド、openvswitch-testcontroller 3.3.9。
+環境: `ubuntu-24.04`、Cefore `a9564bb`（v0.12.0）を `--enable-csmgr --enable-cache --enable-debug` でビルド、apt の mininet 2.3.0-1.1 / openvswitch-switch・openvswitch-testcontroller 3.3.9。
 workflow は `ci/smoke-prototype` の b258b5d（warm run は空コミット 4b7bbeb）。
 
 | run | cache-hit | configure | make | install | apt mininet/OVS | smoke | job 全体 | 結果 |
@@ -48,7 +48,7 @@ workflow は `ci/smoke-prototype` の b258b5d（warm run は空コミット 4b7b
 - **キャッシュヒット率**: warm で 3/3。
   - cold では 3 本が並列にビルドし、保存に成功したのは 1 本だけだった（残りは "Unable to reserve cache" の警告で続行）。想定どおり。
   - warm の install ログにある `libtool: install: (… --mode=relink …)` は csmgrd プラグイン 4 つの relink で、再ビルドではない（autoreconf も compile もなし）。
-- **Mininet 安定性**: netns / OVS kernel datapath / TCLink は hosted runner のカーネルで問題なく動いた。6 サンプルとも put 1 行・get 3 行が `success=true`、get は completed_log と出力ファイルが揃っている。
+- **Mininet 安定性**: netns と OVS kernel datapath は hosted runner のカーネルで問題なく動いた。TCLink は min_putget にリンクパラメータが無いため `tc` を実質使っておらず、未検証。6 サンプルとも put 1 行・get 3 行が `success=true`、get は completed_log と出力ファイルが揃っている。
 - **flakiness**: 6/6 green。6 サンプルで言えるのは「この回数で失敗は出なかった」までで、失敗率は確定していない。
 - **artifact**: smoke 出力 3 つをダウンロードして `*private-key*` は 0 件。
 
