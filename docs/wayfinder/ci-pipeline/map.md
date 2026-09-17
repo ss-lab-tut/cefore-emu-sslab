@@ -41,6 +41,7 @@ mypy / uv lock --check / entry-points 検査）が main にマージされ、実
 - [08 PR A 負債返済](tickets/08-pr-a-debt-payoff.md) — マージ済み: mypy/ruff 0 化 + examples 検証 (6 commits、両レビュアー approve、min_putget smoke OK)
 - [09 PR B CI 本体](tickets/09-pr-b-ci-workflow.md) — PR #19 マージ済み (8c346c5): 4 jobs 41秒、PR/push 両イベントで green を runtime 証明。setup-uv floating tag 不在 (P1) をレビューで捕捉
 - [10 required checks 設定](tickets/10-required-checks-handoff.md) — 2026-08-01 ユーザーが UI 設定完了 → **destination 到達**。残 open は [11 smoke prototype](tickets/11-smoke-prototype.md) (post-v1) のみ
+- [11 smoke prototype](tickets/11-smoke-prototype.md) — **成立** (2026-09-17): ubuntu-24.04 で Cefore ソースビルド + ovs-testcontroller + min_putget が 6/6 green、job 69–109 秒。release 時のみ起動する組み込みは [12](tickets/12-smoke-release-integration.md) へ
 
 ## Not yet specified
 
@@ -59,7 +60,8 @@ mypy / uv lock --check / entry-points 検査）が main にマージされ、実
   required checks の実設定（[10](tickets/10-required-checks-handoff.md)）は GitHub UI 側の状態で git からは検証不能。
 - 後続変更: 0430afa（2026-08-25）で ci.yml に `workflow_call` を追加し、release.yml が
   `uses: ./.github/workflows/ci.yml` で同じゲートを再利用する（ゲート定義の owner は ci.yml のみ）。
-- 残 open は [11](tickets/11-smoke-prototype.md)（post-v1）のみ。
+- 2026-09-17: [11](tickets/11-smoke-prototype.md) を成立で close（試作は `ci/smoke-prototype` ブランチ、run 35202408130 / 35202670896）。
+  残 open は [12](tickets/12-smoke-release-integration.md)（release 時 smoke の組み込み方の決定）のみ。
 
 ## Out of scope
 
