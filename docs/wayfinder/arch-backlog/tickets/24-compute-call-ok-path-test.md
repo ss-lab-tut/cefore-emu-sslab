@@ -1,7 +1,7 @@
 ---
-status: claimed
+status: closed
 type: task
-claimed-by: claude-code
+claimed-by:
 blocked-by: []
 ---
 ## Task
@@ -34,7 +34,7 @@ bridge config に `external_routes` を使うこと（実機の `/etc/resolv.con
 計画の全文（決定事項 Q1〜Q13、レビュー記録）は作業セッションの一時ファイル `/tmp/explore-grill-build/dcfcedb8/compute-ok-path.md`
 （消えている可能性あり。要点は本 ticket と PR 本文に写してある）。
 
-## Status (2026-09-25)
+## Status (2026-09-26)
 
 - 2026-09-25 着手。map.md の優先順（frontier は [01](01-s4-pub-lifetime-by-uri.md)）を上書きして先行
   （研究室 HPC を実 Compute endpoint として使えるようになったため）。
@@ -42,7 +42,7 @@ bridge config に `external_routes` を使うこと（実機の `/etc/resolv.con
 - PR (2) `feat/compute-ok-path-synthetic`: 本 ticket、map.md、CONTEXT.md「Compute endpoint」、
   `tools/compute_echo_server.py` + unit、hermetic 版テスト: **merged**（PR #29）。
 - PR (3) `feat/compute-ok-path-hpc`: HPC 版テスト、`docs/runbooks/compute-ok-path.md`、cefore-run-tests skill への
-  任意ステップ追記、README 両言語からの参照、`min_compute.yaml` コメント runbook の差し替え。
+  任意ステップ追記、README 両言語からの参照、`min_compute.yaml` コメント runbook の差し替え: **merged**（PR #30, 2026-09-26）。本 ticket は完了、Follow-up は下記のとおり残す。
   HPC 版の初回実行で `BridgeManager.add_host_route` の実バグを発見（2026-09-25）: 非 default 宛先に
   net-tools の `route add -net <dest>` を使っており `/32` は `SIOCADDRT: Invalid argument` で拒否される。
   戻り値を捨てていたため無言で経路無しになっていた（`vm_host_network` / `external_routes` に `/32` を書いた

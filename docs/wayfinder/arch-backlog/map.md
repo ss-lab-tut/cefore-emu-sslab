@@ -23,9 +23,8 @@
   （2026-08-23 にこの map へ移設。CONTEXT.md 側は glossary のみ残す）
 - **2026-09-25 上書き**: frontier [01] より先に [24](tickets/24-compute-call-ok-path-test.md)
   compute_call ok 経路の自動テスト整備を実施（研究室 HPC を実 Compute endpoint として利用可能に
-  なったため。PR (1) docs は PR #28 で merged、PR (2)/(3) 進行中）。完了後は下の優先順に戻る
-- 優先順: [24](tickets/24-compute-call-ok-path-test.md)（2026-09-25 先行）
-  → Strong [01](tickets/01-s4-pub-lifetime-by-uri.md)–[05](tickets/05-s9-topology-adjacency.md)
+  なったため。PR #28 / #29 / #30 で完了、2026-09-26 closed）。優先順は下のとおり frontier [01] に戻る
+- 優先順: Strong [01](tickets/01-s4-pub-lifetime-by-uri.md)–[05](tickets/05-s9-topology-adjacency.md)
   → Worth [06](tickets/06-w1-read-conf-value.md)–[13](tickets/13-w8-campaign-jobs-split.md)
   → Speculative [14](tickets/14-p1-set-config-value-underscore.md)/[15](tickets/15-p2-campaign-retry-seam.md) は保留
   → [17](tickets/17-r8-failure-policy.md)–[19](tickets/19-kouho7-rename-topo-module.md) housekeeping pass
