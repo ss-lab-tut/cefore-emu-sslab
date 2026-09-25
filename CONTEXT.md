@@ -111,6 +111,10 @@ _Avoid_: `valid_event_types` literal, `_EVENT_PRIORITY`/`_CONTENT_EVENT_TYPES` l
 The single owner of "which events introduce content into the network and who publishes them". Pure function in `src/core/events.py`: `extract_publications(events: list[dict]) → (publications, publishers_dict, publisher_ids)` where `publications` is the filtered list, `publishers_dict` is `{uri: host_idx}`, and `publisher_ids` is `frozenset[int]` (integer host indices, matching `ScenarioSetupSpec.publisher_ids: set[int]`). Both `DisasterScenario` and `ConnectScenario` derive their publisher state from it; `runtime/external_net.py` re-exports it as the public surface.
 _Avoid_: `_prepare_event_publishers` (removed), `_publication_metadata` (removed), per-scenario iteration over `publication_event_types()`
 
+**Compute endpoint**:
+The HTTP service that a `compute_call` event's `endpoint` URL points at: something outside the Mininet topology (a Jetson-class box or any HTTP API) that is not a Mininet host and not managed by the emulator. Reachability is the experiment's concern (bridges/NAT), or, in the hermetic tests, a stand-in HTTP server run inside another Mininet host. The host that *executes* the compute_call and republishes the result into the ICN is a Mininet host on the compute_call's `host` index: it, not the endpoint, is the ICN publisher of `publish_uri` (which is why conditional publication routes consumers toward that host, not toward the endpoint).
+_Avoid_: edge node, compute box, compute resource, compute node, "compute host" for the endpoint (ADR-0003 uses compute host for the publishing Mininet host)
+
 **ccninfo event**:
 A content event type that runs a CCNinfo path/cache trace (RFC 9344) from a designated host. Opt-in assert fields `expected_responder` and `expected_route` pin the responder node name and the ordered route token list respectively; mismatches are recorded as `responder_matched`/`route_matched` Factors in the CcninfoRecord.
 _Avoid_: calling ccninfo from a CS_MODE=2 originator without `-c` (upstream Bug2 produces corrupt replies)
