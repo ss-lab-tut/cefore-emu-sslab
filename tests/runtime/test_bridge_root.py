@@ -409,14 +409,16 @@ class TestSetupBridgesCommandRunnerWiring:
             ["ovs-ofctl", "add-flow", "s1", "priority=0,actions=NORMAL"],
             None,
         ) in runs
+        # Host routes go through iproute2 for every destination (net-tools
+        # rejects a /32 with -net), so these pin the `ip route replace` form.
         assert (
             "h0",
             [
+                "ip",
                 "route",
                 "add",
-                "-net",
                 "10.0.0.0/24",
-                "gw",
+                "via",
                 "100.64.3.254",
                 "dev",
                 "h0-eth0",
@@ -426,11 +428,11 @@ class TestSetupBridgesCommandRunnerWiring:
         assert (
             "h1",
             [
+                "ip",
                 "route",
                 "add",
-                "-net",
                 "172.20.0.0/16",
-                "gw",
+                "via",
                 "100.64.3.254",
                 "dev",
                 "h1-eth1",
@@ -1290,3 +1292,130 @@ class TestDefect3BridgeManagerCleanupRetainsFailedMandatory:
 
         # Verify the retained action was executed during the second cleanup.
         assert first_call_count[0] == 2, "retained action must have been retried"
+
+
+class TestAddHostRouteUsesIproute2:
+    """add_host_route must use iproute2 for every destination, not just default.
+
+    net-tools `route add -net X/32` fails with SIOCADDRT: Invalid argument, so
+    a single-address vm_host_network used to leave the host with no route at
+    all — silently, because the return code was discarded.
+    """
+
+    def _mgr_and_net(self, on_run=None):
+        from src.runtime.bridge_root import BridgeManager
+
+        fake = FakeCommandRunner()
+        if on_run is not None:
+            fake.on_run = on_run
+        net = MagicMock()
+        net.get = MagicMock(return_value=MagicMock())
+        return BridgeManager(runner=fake), net, fake
+
+    def test_single_address_destination_uses_ip_route_replace(self):
+        mgr, net, fake = self._mgr_and_net()
+
+        mgr.add_host_route(net, "h1", "133.15.70.55/32", "192.168.1.254", dev="h1-eth0")
+
+        assert [(r["node"], r["argv"]) for r in fake.runs] == [
+            (
+                "h1",
+                [
+                    "ip",
+                    "route",
+                    "add",
+                    "133.15.70.55/32",
+                    "via",
+                    "192.168.1.254",
+                    "dev",
+                    "h1-eth0",
+                ],
+            )
+        ]
+
+    def test_default_destination_is_unchanged(self):
+        mgr, net, fake = self._mgr_and_net()
+
+        mgr.add_host_route(net, "h0", "default", "192.168.1.254", dev="h0-eth0")
+
+        assert [(r["node"], r["argv"]) for r in fake.runs] == [
+            (
+                "h0",
+                [
+                    "ip",
+                    "route",
+                    "replace",
+                    "default",
+                    "via",
+                    "192.168.1.254",
+                    "dev",
+                    "h0-eth0",
+                ],
+            )
+        ]
+
+    def test_failed_add_is_reported_as_a_warning(self):
+        mgr, net, _fake = self._mgr_and_net(
+            on_run=lambda node, argv: CommandResult(
+                returncode=2, stderr="Nexthop has invalid gateway.\n"
+            )
+        )
+
+        with patch("src.runtime.bridge_root.info") as mock_info:
+            mgr.add_host_route(net, "h1", "10.0.0.0/24", "192.168.1.254")
+
+        messages = [call.args[0] for call in mock_info.call_args_list]
+        assert (
+            "*** Warning: route add failed in h1 (rc=2): "
+            "Nexthop has invalid gateway.\n" in messages
+        )
+
+    def test_successful_add_logs_only_the_add_line(self):
+        mgr, net, _fake = self._mgr_and_net()
+
+        with patch("src.runtime.bridge_root.info") as mock_info:
+            mgr.add_host_route(net, "h1", "10.0.0.0/24", "192.168.1.254")
+
+        assert [call.args[0] for call in mock_info.call_args_list] == [
+            "*** Adding route in h1: "
+            "['ip', 'route', 'add', '10.0.0.0/24', 'via', '192.168.1.254']\n"
+        ]
+
+    def test_failed_add_registers_no_cleanup_action(self):
+        """A route we did not create must never be deleted at teardown.
+
+        The add can fail precisely because the host already had that prefix
+        (EEXIST), so an unconditional cleanup would tear down somebody else's
+        route.
+        """
+        mgr, net, _fake = self._mgr_and_net(
+            on_run=lambda node, argv: CommandResult(
+                returncode=2, stderr="RTNETLINK answers: File exists\n"
+            )
+        )
+        assert mgr.cleanup_actions == []
+
+        with patch("src.runtime.bridge_root.info"):
+            mgr.add_host_route(net, "h1", "10.0.0.0/24", "192.168.1.254")
+
+        assert mgr.cleanup_actions == []
+
+    def test_successful_add_registers_exactly_one_cleanup_action(self):
+        mgr, net, _fake = self._mgr_and_net()
+        assert mgr.cleanup_actions == []
+
+        mgr.add_host_route(net, "h1", "10.0.0.0/24", "192.168.1.254")
+
+        assert [a.description for a in mgr.cleanup_actions] == [
+            "remove host route: ip route del 10.0.0.0/24"
+        ]
+
+    def test_cleanup_action_deletes_the_route_with_iproute2(self):
+        mgr, net, fake = self._mgr_and_net()
+        mgr.add_host_route(net, "h1", "133.15.70.55/32", "192.168.1.254", dev="h1-eth0")
+
+        assert [a.description for a in mgr.cleanup_actions] == [
+            "remove host route: ip route del 133.15.70.55/32"
+        ]
+        assert mgr.cleanup_actions[0].execute() == (0, "")
+        assert fake.runs[-1]["argv"] == ["ip", "route", "del", "133.15.70.55/32"]

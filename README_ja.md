@@ -202,6 +202,8 @@ cefputfile の exit が 0 でどちらの実行も timeout も cancel もして�
 にも加わるので、FIB の事前設定が consumer を再発行されたコンテンツへ導きます。
 `repeat` は `interval` / `count` のみをサポートします（restore 形式と未知の
 キーは拒否します）。
+ok 経路は `tests/synthetic/` の root 限定テスト（hermetic 版と HPC を使う版）で
+検証しています。手順は `docs/runbooks/compute-ok-path.md` を参照してください。
 
 `ceforeemu-connect` は `put` と `pubsub_pub` event のみを publisher 判定、
 URI 別 FIB 設定、CLI 開始前の publication seed に使います。`get`、
