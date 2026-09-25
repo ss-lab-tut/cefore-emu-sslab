@@ -211,6 +211,8 @@ compute_call also joins the disaster scenario's publisher metadata so FIB
 pre-programming routes consumers toward the republished content. `repeat`
 supports `interval`/`count` only (restore forms and unknown keys are
 rejected).
+The ok path is covered by root-gated product tests under `tests/synthetic/`
+(hermetic, plus an HPC-backed variant); see `docs/runbooks/compute-ok-path.md`.
 
 `ceforeemu-connect` uses `put` and `pubsub_pub` events only to identify
 publishers, program URI-specific FIB entries, and seed publications before

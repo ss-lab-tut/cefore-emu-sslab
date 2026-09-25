@@ -5,6 +5,9 @@
 - `tests/` — the full unit suite. No root needed: `tests/integration/test_smoke.py`
   is a self-skipping placeholder and `tests/synthetic/` skips unless
   `CEFEMU_SYNTHETIC_ROOT=1` and running as root.
+  `tests/synthetic/test_compute_ok_path_synthetic.py` (and `_hpc.py`, which also needs
+  `CEFEMU_COMPUTE_ENDPOINT`) are the compute_call ok-path product tests; the script never
+  runs them (see SKILL.md "Optional step").
   Notable coverage includes the runtime wrapper logging behavior
   (`tests/runtime/test_cefore.py`) and disaster pub/sub success detection
   (`tests/scenarios/test_disaster_pubsub.py`) that the gate previously ran in

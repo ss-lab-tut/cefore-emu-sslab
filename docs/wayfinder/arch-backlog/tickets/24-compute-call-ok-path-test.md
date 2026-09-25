@@ -40,9 +40,17 @@ bridge config に `external_routes` を使うこと（実機の `/etc/resolv.con
   （研究室 HPC を実 Compute endpoint として使えるようになったため）。
 - PR (1) docs 鏡写し（README_ja の compute_call 段落、CONTEXT.md「Event outcome」）: **merged**（PR #28, 1ff89e7）。
 - PR (2) `feat/compute-ok-path-synthetic`: 本 ticket、map.md、CONTEXT.md「Compute endpoint」、
-  `tools/compute_echo_server.py` + unit、hermetic 版テスト。
+  `tools/compute_echo_server.py` + unit、hermetic 版テスト: **merged**（PR #29）。
 - PR (3) `feat/compute-ok-path-hpc`: HPC 版テスト、`docs/runbooks/compute-ok-path.md`、cefore-run-tests skill への
   任意ステップ追記、README 両言語からの参照、`min_compute.yaml` コメント runbook の差し替え。
+  HPC 版の初回実行で `BridgeManager.add_host_route` の実バグを発見（2026-09-25）: 非 default 宛先に
+  net-tools の `route add -net <dest>` を使っており `/32` は `SIOCADDRT: Invalid argument` で拒否される。
+  戻り値を捨てていたため無言で経路無しになっていた（`vm_host_network` / `external_routes` に `/32` を書いた
+  既存 config も同じ）。**host 側（`add_host_route`）のみ** iproute2（`ip route add`、既存経路は上書きせず
+  warning、cleanup は成功時だけ登録）へ揃える修正を PR (3) に含める。root ns 側（`add_root_route` /
+  `connect_to_root_ns`）は net-tools のまま（Follow-up）。
+  NAT 経路そのもの（MASQUERADE + FORWARD + ip_forward + root ns 経路）は成立しており、plan の
+  ssh -L fallback は不要だった。
 - 計画レビュー（2026-09-25）: Workflow 3 体 + opencode 独立レビューが同じ blocker（bridge config の `nat: true`
   欠落。`setup_bridges` は opt-in、`bridge_root.py` の `use_nat = config.get("nat", False)`）と同じ major
   （`external_routes` の resolv.conf 上書き）を指摘、計画に反映済み。
@@ -59,6 +67,11 @@ bridge config に `external_routes` を使うこと（実機の `/etc/resolv.con
 - `tests/synthetic/` は cefore-run-tests skill の pytest フェーズ（非 root）では常に skip されるため CI では
   走らない。[ci-pipeline 12](../../ci-pipeline/tickets/12-smoke-release-integration.md) の hosted-runner smoke に
   載せるかは別途判断。
+- `BridgeManager.add_root_route`（root ns 側、`external_routes` + `gateway` 指定時）と `connect_to_root_ns` は
+  依然 net-tools `route add` + 戻り値未確認のまま（`/32` は無言で失敗する）。既存 config に該当指定は無く回帰は
+  無いが、`add_host_route` と同じ iproute2 化 + rc の可視化を別 PR で揃える。`add_host_route` の warning は
+  他のモジュール内メッセージと同じく `mininet.log.info` レベルなので、既定の OUTPUT レベルでは表示されない
+  （disaster / connect は info を有効にしている）。
 - `src/runtime/compute_client.py` の module docstring と ADR-0003 本文は glossary「Compute endpoint」の `_Avoid_` に挙げた
   旧語彙（edge node、compute resource、compute box）を使っている。本 PR は surgical change の原則で触っていない。別 PR で置換。
 - テストが `_handle_compute_call`（private 名）を直接呼ぶ。scheduler 側に public な入口を切るかは、

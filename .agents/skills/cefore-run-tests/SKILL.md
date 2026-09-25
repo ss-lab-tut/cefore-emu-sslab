@@ -86,3 +86,22 @@ Use `--output-base /tmp/some-dir` to control where smoke artifacts land.
 Use `--cleanup` only when the run passed and you do not need logs afterward. Smoke artifacts are created via `sudo`, so they are root-owned; `--cleanup` (a non-root `shutil.rmtree`) may fail to remove them — run `sudo rm -rf <output-base>` if needed.
 
 Read `references/test-matrix.md` when you need the exact expected outcomes for each config.
+
+### Optional step: compute_call ok-path synthetic tests (root, not run by the script)
+
+`tests/synthetic/test_compute_ok_path_synthetic.py` proves the compute_call **ok** path
+(HTTP 2xx → output_file → cefputfile → another host's cefgetfile, byte-identical) on real
+Mininet + Cefore. The script's pytest phase runs without root, so these tests always skip
+there; run them by hand after a change to compute_client / scheduler / provisioning / FIB, and the
+HPC variant after any change to bridge_root (it is the only live coverage of setup_bridges / add_host_route):
+
+```bash
+sudo env CEFEMU_SYNTHETIC_ROOT=1 PYTHONDONTWRITEBYTECODE=1 \
+  .venv/bin/python3 -m pytest -p no:cacheprovider tests/synthetic/test_compute_ok_path_synthetic.py
+```
+
+The HPC variant (`test_compute_ok_path_hpc.py`) additionally needs
+`CEFEMU_COMPUTE_ENDPOINT=http://<host>:18080/api/process` with `tools/compute_echo_server.py`
+running on that host; see `docs/runbooks/compute-ok-path.md`. **Never run either while the smoke
+phase is running**: they share cefnetd's fixed `/tmp/cef_*` sockets, and their teardown's
+`kill_cef_processes` (`pkill -f`) stops every Cefore process on the machine.
