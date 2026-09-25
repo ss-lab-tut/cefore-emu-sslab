@@ -1,11 +1,11 @@
 """Shared building blocks for the compute_call ok-path synthetic tests.
 
-The hermetic ok-path test is the one consumer today; it serves the compute
-endpoint from a second Mininet host. The planned HPC variant points the same
-scenario at a real machine and differs only in where the endpoint lives, so
-everything else — topology, scenario setup/teardown, HTTP readiness, the
-cefgetfile retry loop, the byte comparison — lives here rather than being
-copied into that module and left to drift.
+Two tests share this scaffolding. The hermetic one serves the compute
+endpoint from a second Mininet host; the HPC one points the same scenario at a
+real machine through the root-namespace bridge. They differ only in where the
+endpoint lives, so everything else — topology, scenario setup/teardown, the
+HTTP readiness poll, the cefgetfile retry loop, the byte comparison, the log
+level fixture — lives here rather than being copied and left to drift.
 
 The module deliberately holds no test functions: ``_``-prefixed, it is not
 collected by pytest and is imported only by the gated test modules, so the
@@ -22,10 +22,12 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+import pytest
 from mininet.topo import Topo
 
 from src.core.addressing import AddressingScheme
 from src.core.roles import assign_roles
+from src.runtime.bridge_root import BridgeManager
 from src.runtime.cache_strategy import RolesCacheStrategy
 from src.runtime.cefore import run_cefgetfile
 from src.runtime.cleanup import kill_cef_processes
@@ -73,6 +75,29 @@ class OneSwitchTopo(Topo):
             self.addLink(switch, self.addHost(f"h{idx}"))
 
 
+@pytest.fixture
+def mininet_info_logging():
+    """Raise Mininet's log level to info for one test, then put it back.
+
+    The default OUTPUT level hides every info() line — compute_call's curl
+    argv, DaemonFleet readiness, cefroute and bridge failures. Without them a
+    failure is undiagnosable once the namespaces are gone. setLogLevel writes
+    process-global state, so the previous level is restored instead of being
+    left raised for whatever runs next in the same session.
+
+    It lives here so both synthetic modules get it from one definition; pytest
+    resolves fixtures that a test module imported by name.
+    """
+    from mininet.log import LEVELS, lg, setLogLevel
+
+    previous = next(
+        (name for name, value in LEVELS.items() if value == lg.level), "output"
+    )
+    setLogLevel("info")
+    yield
+    setLogLevel(previous)
+
+
 @dataclass
 class OkPathHarness:
     """A started Mininet with the Cefore fleet up and the FIB applied."""
@@ -99,7 +124,9 @@ class OkPathHarness:
 
 
 @contextmanager
-def ok_path_scenario(run_dir: Path, publish_uri: str):
+def ok_path_scenario(
+    run_dir: Path, publish_uri: str, bridge_configs: list | None = None
+):
     """Provision, start and tear down the two-host ok-path scenario.
 
     The caller must already have chdir'd into a scratch directory: node
@@ -115,12 +142,20 @@ def ok_path_scenario(run_dir: Path, publish_uri: str):
     Teardown never calls ``cleanup_all()`` or ``BaseScenario.execute()``: both
     run ``mn -c``, which would tear down every Mininet on this machine,
     including someone else's.
+
+    ``bridge_configs`` (None for the hermetic test, which needs no external
+    connectivity) goes through the same ScenarioSetupSpec fields disaster uses.
+    The BridgeManager is created here rather than by the caller because setup
+    and teardown must share one instance: the manager accumulates the cleanup
+    actions — the root-ns route, the ip_forward value, the iptables rules —
+    and a second instance would tear down nothing while leaving those behind.
     """
     net = None
     result = None
     node_dirs: list[Path] = []
     harness = None
     body_failed = False
+    bridge_manager = BridgeManager() if bridge_configs else None
     try:
         roles = assign_roles(HOST_COUNT, random.Random(0))
         node_dirs = provision_node_dirs(roles)
@@ -137,6 +172,8 @@ def ok_path_scenario(run_dir: Path, publish_uri: str):
                 fleet_run_dir=run_dir,
                 fib_k=1,
                 fib_uri_publishers={publish_uri: 1},
+                bridge_manager=bridge_manager,
+                bridge_configs=bridge_configs,
                 # The default "warn" swallows a dead cefnetd and leaves the
                 # test to fail much later with an unexplained empty get.
                 fleet_readiness_policy="raise",
@@ -153,7 +190,7 @@ def ok_path_scenario(run_dir: Path, publish_uri: str):
         body_failed = True
         raise
     finally:
-        failures = _teardown(net, result, node_dirs, harness, run_dir)
+        failures = _teardown(net, result, node_dirs, harness, run_dir, bridge_manager)
         if failures and body_failed:
             # Raising here would replace the real failure with a cleanup one,
             # but staying silent hides leaked namespaces and switches that the
@@ -165,7 +202,9 @@ def ok_path_scenario(run_dir: Path, publish_uri: str):
             raise AssertionError(f"teardown stages failed: {failures}")
 
 
-def _teardown(net, result, node_dirs, harness, run_dir: Path) -> list[str]:
+def _teardown(
+    net, result, node_dirs, harness, run_dir: Path, bridge_manager=None
+) -> list[str]:
     """Run every teardown stage independently; return the stage failures.
 
     Each stage is guarded on its own so that one broken stage (a host whose
@@ -196,6 +235,17 @@ def _teardown(net, result, node_dirs, harness, run_dir: Path) -> list[str]:
                     # Falls back to rebuilding the fleet when setup died before
                     # binding `result` (scenario_setup.py:200-207).
                     daemon_fleet=result.daemon_fleet if result else None,
+                    # teardown_scenario runs the manager's cleanup, and it has
+                    # to happen before net.stop() below: removing the root-ns
+                    # route and the iptables rules needs root-eth0 to still
+                    # exist. Never call bridge_manager.cleanup() as well —
+                    # not because the actions would run twice (cleanup() drops
+                    # the ones that succeeded and keeps only failed mandatory
+                    # ones) but because teardown_scenario owns that call and
+                    # collects what it raises. A second call here would retry
+                    # those retained actions outside TeardownResult, hiding
+                    # the failure the first call reported.
+                    bridge_manager=bridge_manager,
                 ),
             )
             failures.extend(
@@ -217,6 +267,21 @@ def _teardown(net, result, node_dirs, harness, run_dir: Path) -> list[str]:
     except BaseException as exc:  # noqa: BLE001 - stage isolation
         failures.append(f"cleanup_node_dirs: {exc!r}")
     return failures
+
+
+def _curl_status(runner, host: str, url: str) -> str:
+    """Return the HTTP status `host` gets for `url`, as a string.
+
+    Body and errors are discarded on purpose: the caller only wants to know
+    whether the endpoint is answering from inside this namespace, and a large
+    body would be captured into memory for nothing.
+    """
+    probe = runner.run(
+        host,
+        ["curl", "-s", "-o", "/dev/null", "-w", "%{http_code}", "--max-time", "2", url],
+        timeout=5,
+    )
+    return probe.stdout.strip()
 
 
 def wait_http_ready(
@@ -244,22 +309,7 @@ def wait_http_ready(
                 f"the endpoint process exited with status {exited} before "
                 f"{url} answered; log tail ({log_path}):\n{_log_tail(log_path)}"
             )
-        probe = runner.run(
-            host,
-            [
-                "curl",
-                "-s",
-                "-o",
-                "/dev/null",
-                "-w",
-                "%{http_code}",
-                "--max-time",
-                "2",
-                url,
-            ],
-            timeout=5,
-        )
-        last = probe.stdout.strip()
+        last = _curl_status(runner, host, url)
         if last == "200":
             return
         if time.monotonic() >= deadline:

@@ -51,6 +51,7 @@ from ._compute_ok_path import (
     SCHEME,
     assert_three_way_bytes,
     get_until_success,
+    mininet_info_logging,  # noqa: F401 - imported so pytest can resolve it
     ok_path_scenario,
     wait_http_ready,
 )
@@ -82,29 +83,10 @@ ECHO_SERVER = REPO_ROOT / "tools" / "compute_echo_server.py"
 PAYLOAD = bytes(range(256)) * 16
 
 
-@pytest.fixture
-def mininet_info_logging():
-    """Raise Mininet's log level to info for one test, then put it back.
-
-    The default OUTPUT level hides every info() line — compute_call's curl
-    argv, DaemonFleet readiness, cefroute failures. Without them a failure
-    here is undiagnosable once the namespaces are gone. setLogLevel writes
-    process-global state, so the previous level is restored rather than left
-    raised for whatever runs next in the same session.
-    """
-    from mininet.log import LEVELS, lg, setLogLevel
-
-    previous = next(
-        (name for name, value in LEVELS.items() if value == lg.level), "output"
-    )
-    setLogLevel("info")
-    yield
-    setLogLevel(previous)
-
-
-def test_compute_call_ok_path_publishes_served_bytes(
-    mininet_info_logging, monkeypatch, tmp_path
-):
+# usefixtures rather than an argument: the fixture is imported into this
+# module's namespace, and naming it as a parameter too would shadow the import.
+@pytest.mark.usefixtures("mininet_info_logging")
+def test_compute_call_ok_path_publishes_served_bytes(monkeypatch, tmp_path):
     """compute_call ok: HTTP 200 -> output_file -> cefputfile -> cefgetfile."""
     # Must precede provisioning: see ok_path_scenario's docstring.
     monkeypatch.chdir(tmp_path)
