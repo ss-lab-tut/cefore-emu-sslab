@@ -66,7 +66,9 @@ sudo env CEFEMU_SYNTHETIC_ROOT=1 PYTHONDONTWRITEBYTECODE=1 \
 4. 終わったら endpoint 側のサーバを止める。
 
    ```bash
-   ssh hpc-debian 'pkill -f compute_echo_server.py'
+   ssh hpc-debian 'pkill -f "compute_echo_[s]erver"'
+   # `pkill -f compute_echo_server.py` だと ssh のリモートシェル自身の引数にもマッチして
+   # シェルが先に落ち（exit 255）、サーバが残ることがある。[s] で自己マッチを避ける。
    ```
 
 ## 経路の仕組み（HPC 版）
