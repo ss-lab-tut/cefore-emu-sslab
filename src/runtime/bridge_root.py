@@ -52,8 +52,12 @@ class TeardownError(RuntimeError):
 
 
 def _result_to_rc_detail(result) -> tuple[int, str]:
-    """Normalize a ``CommandResult`` to the ``(rc, detail)`` 2-tuple shape
-    ``cleanup()`` expects (detail is the stripped stderr)."""
+    """Normalize a ``CommandResult`` to an ``(rc, detail)`` 2-tuple, where
+    detail is the stripped stderr.
+
+    ``cleanup()`` consumes this shape for every registered action, and setup
+    paths use it too when they report a command failure, so one reading of
+    "what went wrong" serves both directions."""
     return result.returncode, (result.stderr or "").strip()
 
 
@@ -174,7 +178,17 @@ class BridgeManager:
         gateway: str,
         dev: str | None = None,
     ) -> None:
-        """Add route from Mininet host to external network."""
+        """Add route from Mininet host to external network.
+
+        ``dest_network`` must be a CIDR prefix, a bare IPv4 address (which
+        iproute2 reads as a /32), or ``default``/``0.0.0.0/0``: iproute2
+        rejects hostnames, and nothing here resolves them.
+
+        A route that already exists for the prefix is left exactly as it was —
+        the add fails with EEXIST, that becomes a warning, and no cleanup
+        action is registered, so teardown never deletes a route this manager
+        did not create.
+        """
         host = net.get(host_name)
         if host is None:
             info(f"*** Warning: host {host_name} not found\n")
@@ -193,17 +207,41 @@ class BridgeManager:
             ] + dev_clause
             del_argv = ["ip", "route", "del", "default"]
         else:
+            # 2026-09-25 fix: net-tools `route add -net X/32` fails with
+            # SIOCADDRT: Invalid argument (net-tools 2.10 wants -host for a
+            # single address), so a /32 vm_host_network/external_routes
+            # silently produced no host route; iproute2 accepts any prefix.
+            # `add`, not the default branch's `replace`: replace would silently
+            # overwrite a route the host already had for this prefix, and the
+            # cleanup below would then delete something this manager never
+            # created. With `add` a pre-existing route makes the command fail
+            # with EEXIST, which the caller sees as the warning.
             add_argv = [
+                "ip",
                 "route",
                 "add",
-                "-net",
                 dest_network,
-                "gw",
+                "via",
                 gateway,
             ] + dev_clause
-            del_argv = ["route", "del", "-net", dest_network]
+            del_argv = ["ip", "route", "del", dest_network]
         info(f"*** Adding route in {host_name}: {add_argv}\n")
-        runner.run(host_name, add_argv, capture_stderr=True)
+        rc, detail = _result_to_rc_detail(
+            runner.run(host_name, add_argv, capture_stderr=True)
+        )
+        if rc != 0:
+            # Warn rather than raise: existing scenarios tolerate a partially
+            # routed host and must not start failing at setup. The point is
+            # that the failure is no longer invisible — it used to surface
+            # only as unexplained "no connectivity" much later.
+            info(f"*** Warning: route add failed in {host_name} (rc={rc}): {detail}\n")
+            # Deliberately unlike the other producers in this module, which
+            # register their cleanup unconditionally: those undo settings they
+            # captured first (ip_forward) or rules only they could have added.
+            # A route is different — the add may have failed precisely because
+            # the host already had that prefix, and deleting it at teardown
+            # would break connectivity this manager never provided.
+            return
         self.cleanup_actions.append(
             CleanupAction(
                 description=f"remove host route: {' '.join(del_argv)}",
