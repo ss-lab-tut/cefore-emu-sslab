@@ -180,6 +180,29 @@ disaster の通常 `put` event では、`expiry` と `cache_time` の省略時�
 `pubsub_pub` の `pub_opts.expiry` / `pub_opts.cache_time` は暗黙補完せず、
 省略時は Cefore コマンドの既定値を使います。
 
+`compute_call` は edge-compute のオフロードを模擬します。ホストが HTTP
+リクエストを発行し（`endpoint`、`method` は GET/POST で既定は GET、任意の
+`payload` 文字列、`headers` は str→str の dict、`timeout` は秒で既定 30 で
+curl とコマンドの deadline の両方を縛ります）、必要に応じてレスポンスを保存し
+（`output_file`、実行ディレクトリ配下）、ICN へ再発行します（`publish_uri`
+→ cefputfile。`output_file` が必須）。`pub_opts` には put と同じ cefputfile
+のオプション、`rate`（0.001 Mbps 以上）、`block_size`（60 以上の整数）、
+`expiry` / `cache_time`（1 以上、既定 `3000`）、`valid_algo`（crc32c /
+rsa-sha256）、`port_num`（1 以上の整数）を渡せます。未知のキーは拒否します。
+cefputfile の実行には専用の deadline `publish_timeout`（正の数、既定 120 秒）
+があります（発行速度を決めるのは `rate` であって HTTP の timeout ではありません）。
+成功判定は厳密で、curl の exit が 0、HTTP が 2xx、さらに再発行する場合は
+cefputfile の exit が 0 でどちらの実行も timeout も cancel もしていないこと、を
+すべて満たしたときだけ成功です。results.json のレコードは三値の `outcome` を
+持ちます。`ok`、`not-ok`（HTTP の失敗、または再発行の失敗 / timeout / cancel）、
+`skipped-no-result`（環境要因。endpoint に到達できない（curl exit 5/6/7/28）、
+または HTTP の実行が timeout / cancel した場合）で、あわせて `detail` dict
+（`http_status`、`curl_exit`、`publish_ok`、`output_file`）を記録します。
+`publish_uri` を持つ `compute_call` は disaster シナリオの publisher metadata
+にも加わるので、FIB の事前設定が consumer を再発行されたコンテンツへ導きます。
+`repeat` は `interval` / `count` のみをサポートします（restore 形式と未知の
+キーは拒否します）。
+
 `ceforeemu-connect` は `put` と `pubsub_pub` event のみを publisher 判定、
 URI 別 FIB 設定、CLI 開始前の publication seed に使います。`get`、
 `pubsub_sub`、`ccninfo` は自動実行せず warning を出します。トップレベルの
