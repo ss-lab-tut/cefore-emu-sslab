@@ -306,6 +306,80 @@ class BridgeManager:
             failure_message=f"route add failed in {host_name}",
         )
 
+    def write_host_resolv_conf(self, net: Mininet, host_names: list[str]) -> None:
+        """Point every listed host's ``/etc/resolv.conf`` at 8.8.8.8.
+
+        Why this is one method with its own cleanup: Mininet hosts share the
+        root mount namespace, so "the host's" ``/etc/resolv.conf`` *is* the
+        real machine's file. Writing it without a restore rewrites the
+        operator's DNS configuration for good. The original is therefore
+        captured once, before the first write, and put back at teardown.
+
+        The restore is ``mandatory``: a silent failure would leave the machine
+        pointing at 8.8.8.8, which is exactly the damage this method
+        exists to prevent, so cleanup must surface it. Capture fails closed
+        the other way round: what cannot be captured is not overwritten.
+
+        Repeated calls (one bridge entry with ``external_routes`` each) are
+        safe. Each call registers one restore, and cleanup drains LIFO, so the
+        earliest capture — the real original, since nothing but this manager
+        writes the file — is written last.
+
+        2026-10-20: the write had no cleanup action, so every run with
+        ``bridges.external_routes`` left the machine's ``/etc/resolv.conf``
+        pointing at 8.8.8.8.
+
+        The seam owns the redirect: ``printf``'s stdout is written to the
+        (host-shared) file via ``log_path``, replacing the old shell
+        ``echo ... > /etc/resolv.conf``. The restore goes through the same
+        seam for the same reason: an injected runner must intercept it instead
+        of touching the real file. ``printf "%s"`` writes the captured text
+        verbatim, with no format interpretation of any ``%`` it contains.
+        """
+        if not host_names:
+            return
+        first = host_names[0]
+        runner = self._host_runner(net)
+
+        captured = runner.run(first, ["cat", "/etc/resolv.conf"], capture_stderr=True)
+        rc, detail = _result_to_rc_detail(captured)
+        if rc != 0:
+            info(
+                f"*** Warning: /etc/resolv.conf capture failed (rc={rc}): "
+                f"{detail}; not overwriting it\n"
+            )
+            return
+        original = captured.stdout
+
+        # Registered BEFORE any write, not after the loop: a failure partway
+        # through the hosts must still leave the file restorable.
+        self.cleanup_actions.append(
+            CleanupAction(
+                description="restore /etc/resolv.conf",
+                category="resolv",
+                mandatory=True,
+                execute=cast(
+                    Callable[[], tuple[int, str]],
+                    lambda r=runner, n=first, o=original: _result_to_rc_detail(
+                        r.run(
+                            n,
+                            ["printf", "%s", o],
+                            log_path="/etc/resolv.conf",
+                            capture_stderr=True,
+                        )
+                    ),
+                ),
+            )
+        )
+
+        for host_name in host_names:
+            runner.run(
+                host_name,
+                ["printf", "nameserver 8.8.8.8\n"],
+                log_path="/etc/resolv.conf",
+                capture_stderr=True,
+            )
+
     def add_root_route(self, dest_network: str, gateway: str) -> None:
         """Add route from root namespace to external network.
 
@@ -813,20 +887,7 @@ def setup_bridges(
                     dev=dev,
                 )
 
-            # Route through the bridge manager's host runner so an injected
-            # (fake) runner intercepts the write instead of truncating the real
-            # /etc/resolv.conf.
-            resolv_runner = bridge_manager._host_runner(net)
-            for host_idx in hosts:
-                # The seam owns the redirect: printf's stdout is written to the
-                # (host-shared) /etc/resolv.conf via log_path, replacing the old
-                # shell "echo ... > /etc/resolv.conf".
-                resolv_runner.run(
-                    f"h{host_idx}",
-                    ["printf", "nameserver 8.8.8.8\n"],
-                    log_path="/etc/resolv.conf",
-                    capture_stderr=True,
-                )
+            bridge_manager.write_host_resolv_conf(net, [f"h{i}" for i in hosts])
 
         use_nat = config.get("nat", False)
         if use_nat:

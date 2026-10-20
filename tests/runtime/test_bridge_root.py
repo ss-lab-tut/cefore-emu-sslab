@@ -1559,3 +1559,89 @@ class TestRootRoutesUseIproute2:
             ["ip", "route", "add", "133.15.70.55/32", "via", "192.168.1.1"],
             ["ip", "route", "del", "133.15.70.55/32"],
         ]
+
+
+class TestHostResolvConfIsRestored:
+    """Mininet hosts share the root mount namespace, so writing a host's
+    /etc/resolv.conf overwrites the real machine's file. BridgeManager
+    captures it once before the first write and restores it at teardown;
+    what it cannot restore it does not overwrite."""
+
+    ORIGINAL = "nameserver 192.168.0.53\nsearch lab.example\n"
+
+    def _mgr(self, capture_result=None, restore_result=None):
+        from src.runtime.bridge_root import BridgeManager
+
+        fake = FakeCommandRunner()
+
+        def on_run(node, argv):
+            if argv == ["cat", "/etc/resolv.conf"]:
+                return capture_result or CommandResult(0, stdout=self.ORIGINAL)
+            if argv[:2] == ["printf", "%s"]:
+                return restore_result or CommandResult(0)
+            return CommandResult(0)
+
+        fake.on_run = on_run
+        return BridgeManager(runner=fake), fake
+
+    @staticmethod
+    def _runs(fake):
+        return [(r["node"], r["argv"], r["log_path"]) for r in fake.runs]
+
+    def test_original_is_captured_before_writing_and_restored_at_cleanup(self):
+        mgr, fake = self._mgr()
+
+        mgr.write_host_resolv_conf(MagicMock(), ["h0", "h1"])
+        mgr.cleanup()
+
+        assert self._runs(fake) == [
+            ("h0", ["cat", "/etc/resolv.conf"], None),
+            ("h0", ["printf", "nameserver 8.8.8.8\n"], "/etc/resolv.conf"),
+            ("h1", ["printf", "nameserver 8.8.8.8\n"], "/etc/resolv.conf"),
+            ("h0", ["printf", "%s", self.ORIGINAL], "/etc/resolv.conf"),
+        ]
+
+    def test_failed_capture_leaves_the_file_untouched(self):
+        mgr, fake = self._mgr(capture_result=CommandResult(1, stderr="Permission denied\n"))
+
+        with patch("src.runtime.bridge_root.info") as mock_info:
+            mgr.write_host_resolv_conf(MagicMock(), ["h0", "h1"])
+
+        assert self._runs(fake) == [("h0", ["cat", "/etc/resolv.conf"], None)]
+        assert mgr.cleanup_actions == []
+        assert (
+            "*** Warning: /etc/resolv.conf capture failed (rc=1): Permission denied; "
+            "not overwriting it\n"
+            in [c.args[0] for c in mock_info.call_args_list]
+        )
+
+    def test_failed_restore_is_a_teardown_failure(self):
+        from src.runtime.bridge_root import TeardownError
+
+        mgr, _fake = self._mgr(restore_result=CommandResult(1, stderr="read-only\n"))
+        mgr.write_host_resolv_conf(MagicMock(), ["h0"])
+
+        with pytest.raises(TeardownError) as exc_info:
+            mgr.cleanup()
+
+        assert exc_info.value.failures == [
+            ("restore /etc/resolv.conf", 1, "read-only")
+        ]
+
+    def test_repeated_writes_still_end_with_the_original(self):
+        # Two bridge entries with external_routes both write; cleanup runs
+        # in reverse, so the first capture (the real original) is written last.
+        mgr, fake = self._mgr()
+        mgr.write_host_resolv_conf(MagicMock(), ["h0"])
+        captured_second = "nameserver 8.8.8.8\n"
+        fake.on_run = lambda node, argv: (
+            CommandResult(0, stdout=captured_second)
+            if argv == ["cat", "/etc/resolv.conf"]
+            else CommandResult(0)
+        )
+        mgr.write_host_resolv_conf(MagicMock(), ["h0"])
+        mgr.cleanup()
+
+        assert self._runs(fake)[-1] == (
+            "h0", ["printf", "%s", self.ORIGINAL], "/etc/resolv.conf"
+        )
