@@ -211,9 +211,14 @@ class BridgeManager:
         root.setIP(root_ip, intf=self.root_intf)
 
         runner = self._root_runner()
-        add_argv = ["route", "add", "-net", local_routes, "dev", str(self.root_intf)]
+        # 2026-10-20: net-tools `route add -net X/32` fails with SIOCADDRT
+        # (net-tools 2.10 wants -host), so a /32 silently produced no route;
+        # iproute2 accepts any prefix, and `add` (not `replace`) fails with
+        # EEXIST on a pre-existing route, which _apply_reversible turns into a
+        # warning with no cleanup registered.
+        add_argv = ["ip", "route", "add", local_routes, "dev", str(self.root_intf)]
         info(f"*** Adding route in root ns: {add_argv}\n")
-        del_argv = ["route", "del", "-net", local_routes]
+        del_argv = ["ip", "route", "del", local_routes]
         # The link stays attached even when only its route failed: the caller
         # relies on the return value to mean "switch attached", and skipping
         # the rest of the entry would strand the just-added link.
@@ -302,12 +307,25 @@ class BridgeManager:
         )
 
     def add_root_route(self, dest_network: str, gateway: str) -> None:
-        """Add route from root namespace to external network."""
+        """Add route from root namespace to external network.
+
+        ``dest_network`` may be a CIDR prefix or a bare IPv4 address (which
+        iproute2 reads as a /32): iproute2 rejects hostnames, and nothing here
+        resolves them. A route that already exists for the prefix is left
+        exactly as it was — the ``add`` fails with EEXIST, that becomes a
+        warning, and no cleanup action is registered, so teardown never
+        deletes a route this manager did not create.
+        """
         self.get_or_create_root()
         runner = self._root_runner()
-        add_argv = ["route", "add", "-net", dest_network, "gw", gateway]
+        # 2026-10-20: net-tools `route add -net X/32` fails with SIOCADDRT
+        # (net-tools 2.10 wants -host), so a /32 silently produced no route;
+        # iproute2 accepts any prefix, and `add` (not `replace`) fails with
+        # EEXIST on a pre-existing route, which _apply_reversible turns into a
+        # warning with no cleanup registered.
+        add_argv = ["ip", "route", "add", dest_network, "via", gateway]
         info(f"*** Adding route in root ns: {add_argv}\n")
-        del_argv = ["route", "del", "-net", dest_network]
+        del_argv = ["ip", "route", "del", dest_network]
         self._apply_reversible(
             runner,
             ROOT_SENTINEL,

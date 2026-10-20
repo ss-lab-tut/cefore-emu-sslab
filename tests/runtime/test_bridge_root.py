@@ -401,7 +401,7 @@ class TestSetupBridgesCommandRunnerWiring:
 
         assert (
             ROOT_SENTINEL,
-            ["route", "add", "-net", "100.64.0.0/16", "dev", "root-eth0"],
+            ["ip", "route", "add", "100.64.0.0/16", "dev", "root-eth0"],
             None,
         ) in runs
         assert (
@@ -1516,3 +1516,46 @@ class TestReversibleStepsRegisterInverseOnlyOnSuccess:
         # Warn-and-continue: the link exists, so the caller keeps going.
         mgr, _fake = self._mgr(CommandResult(2, stderr="boom\n"))
         assert self._call(mgr, "connect_to_root_ns") is True
+
+
+class TestRootRoutesUseIproute2:
+    """Root-namespace routes use iproute2 like add_host_route (0adede1):
+    net-tools `route add -net X/32` fails with SIOCADDRT for a single
+    address, and iproute2's `add` refuses to overwrite an existing route
+    (EEXIST) instead of silently replacing it."""
+
+    def _mgr(self):
+        from src.runtime.bridge_root import BridgeManager
+
+        fake = FakeCommandRunner()
+        fake.on_run = lambda node, argv: CommandResult(0)
+        mgr = BridgeManager(runner=fake)
+        mgr.root_node = MagicMock()
+        return mgr, fake
+
+    def test_connect_to_root_ns_adds_and_removes_the_local_route_with_ip(self):
+        mgr, fake = self._mgr()
+        net = MagicMock()
+        net.get = MagicMock(return_value=MagicMock())
+        link = MagicMock()
+        link.intf1 = "root-eth0"
+        net.addLink = MagicMock(return_value=link)
+
+        mgr.connect_to_root_ns(net, "s1", "192.168.1.254/24", "192.168.0.0/16")
+        mgr.cleanup()
+
+        assert [r["argv"] for r in fake.runs] == [
+            ["ip", "route", "add", "192.168.0.0/16", "dev", "root-eth0"],
+            ["ip", "route", "del", "192.168.0.0/16"],
+        ]
+
+    def test_add_root_route_accepts_a_single_address_and_removes_it_with_ip(self):
+        mgr, fake = self._mgr()
+
+        mgr.add_root_route("133.15.70.55/32", "192.168.1.1")
+        mgr.cleanup()
+
+        assert [r["argv"] for r in fake.runs] == [
+            ["ip", "route", "add", "133.15.70.55/32", "via", "192.168.1.1"],
+            ["ip", "route", "del", "133.15.70.55/32"],
+        ]
