@@ -42,3 +42,9 @@ fail-closed の読み方の表（timed_out / cancelled / `None` / 非 0 / 0）�
 
 - 起票のみ。[25](25-restore-event-validation.md) の PR の後に着手。
 - 2026-10-20 着手（branch `feat/bridge-reversible-step`）。決定 4 の置き場所を `bridge_args.py` に決定。
+- s1 fail-closed な読み方を `bridge_args.fail_closed_rc` に一本化: c02a906。
+- s2 `BridgeManager._apply_reversible` に経路・フロー 4 操作を載せ替え（成功時のみ取消を登録、失敗は warn）: fb712f5。
+- s3 root ns 経路 2 つを iproute2 へ: eff8feb。
+- s4 `write_host_resolv_conf`（退避して mandatory で書き戻し、退避失敗なら上書きしない）: 9b31edc。
+- s5 `add_host_route` default 分岐の docstring 訂正: d661871。
+- CONTEXT.md に「Reversible step」を追加、runbook compute-ok-path の resolv 警告を更新。

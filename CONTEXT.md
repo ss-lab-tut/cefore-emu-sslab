@@ -174,6 +174,10 @@ The former `runtime/bridge.py` god-module (1240 LOC, three unrelated interfaces)
 The two cleanup ledgers are deliberately separate — the attach side's 7-flag veth-deletion cascade cannot be expressed as a flat `CleanupAction` list (pinned decision; do not unify).
 _Avoid_: `runtime/bridge.py` (deleted), importing attach machinery from the root module or vice versa, ledger unification, adding CIDR validation to `parse_ext_args`
 
+**Reversible step (`BridgeManager._apply_reversible`)**:
+The single owner, inside `bridge_root.py`, of "run an owned mutation, read its result fail-closed (`bridge_args.fail_closed_rc`), and register its inverse `CleanupAction` only if it provably succeeded; on failure warn and continue". Every route/flow mutation BridgeManager makes goes through it (`add_host_route`, `connect_to_root_ns`, `add_root_route`, `enable_normal_flow`): a failed add may mean the state already existed (EEXIST), and undoing it at teardown would break state this manager never created. Routes use iproute2 `ip route add` (never net-tools, never `replace` except `add_host_route`'s documented `default` branch). The sysctl writers and NAT deliberately keep their own transactional code (prior-value capture, multi-rule rollback) and share only the fail-closed reading; `write_host_resolv_conf` likewise captures `/etc/resolv.conf` (the real machine's file — Mininet hosts share the mount namespace) before writing, registers a mandatory restore, and does not overwrite what it could not capture (2026-10-20, ticket 26).
+_Avoid_: registering a cleanup before the forward command's result is known, one options-bag primitive covering sysctl/NAT/resolv too, net-tools `route`, reading `returncode` raw in bridge code
+
 ## Scenario run
 
 **EventBatchSpec / EventBatchResult / run_event_batch**:
