@@ -27,7 +27,7 @@
 - **2026-10-20 上書き**: 2026-10-20 architecture review（探索 3 系統 + Codex 敵対的検証）の結果、frontier [01] より先に
   [25](tickets/25-restore-event-validation.md) 復元イベントの検証（検証を通った config が実行時に KeyError になる再現済みの穴）、
   続いて [26](tickets/26-bridge-manager-reversible-step.md) BridgeManager の元に戻せる操作を実施する。
-  25 は PR #33 で完了（2026-10-20 closed）。frontier は 26
+  25 は PR #33、26 は PR #35 で完了（いずれも 2026-10-20 closed）。優先順は frontier [01] に戻る
   同 review の残り候補（Monitor の runner seam、内容操作の 1 件 1 レコード不変条件、connect が読まない設定ブロック）は未起票
 - 優先順: Strong [01](tickets/01-s4-pub-lifetime-by-uri.md)–[05](tickets/05-s9-topology-adjacency.md)
   → Worth [06](tickets/06-w1-read-conf-value.md)–[13](tickets/13-w8-campaign-jobs-split.md)
@@ -53,6 +53,10 @@
 
 ## Decisions so far
 
+- 26 BridgeManager の元に戻せる操作（2026-10-20, PR #35）。`_apply_reversible` が経路・フロー 4 操作の
+  「成功時だけ取消を登録、失敗は warn」を持ち、root ns 経路は iproute2、`write_host_resolv_conf` が実機の
+  `/etc/resolv.conf` を退避して mandatory で書き戻す。fail-closed な読み方は `bridge_args.fail_closed_rc`
+  （相互 import 禁止を守る置き場所。CONTEXT.md「Reversible step」「Bridge modules」）
 - 25 復元イベントの検証（2026-10-20, PR #33）。`build_restore_event` を events.py に一本化し、復元イベントを
   トップレベルと同じ型ごとの規則で検証。restore 形式は非内容系だけ（元のイベントの型と復元先の型の両方を制限）、
   `restore` と `restore_type` の同時指定は拒否、`duration` だけの repeat は「復旧しない変化」として有効。
