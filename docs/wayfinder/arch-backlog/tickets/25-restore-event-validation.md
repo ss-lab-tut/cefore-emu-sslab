@@ -46,3 +46,12 @@ _Avoid_: `duration` だけの repeat を検証エラーにすること（意図�
 ## Status (2026-10-20)
 
 - 2026-10-20 着手（branch `feat/restore-event-validation`）。architecture review の Top recommendation。
+- (a) `_validate_events` の作り直し: 85a7741（メッセージ無変更、作り直し前との差分 fuzz で一致）。
+- (b) `bw_set` の nodes の形の誤りの文言を `link_*` にそろえた: 9e005d1。
+
+## Follow-up（本 ticket の scope 外として記録）
+
+- 検証エラーに config ファイル名と行番号を付ける（例: `example.yaml:42: events[0].nodes ...`）。現状は
+  `config error: events[0].nodes ...` だけ。loader が `yaml.safe_load` で位置情報を捨てるため、ノード位置を
+  保持する Loader と、`events[i].field` パスから行を引く対応表が要る。JSON config（`config/examples/example.json`）
+  をどう扱うかも別に決める。2026-10-20 ユーザー提案。
