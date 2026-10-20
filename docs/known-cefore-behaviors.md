@@ -25,8 +25,15 @@ _Avoid_: 実験 config の pubsub を無検証で 10+ hosts に置くこと (上
 
 ## 障害窓中の get 可用性は「FIB 経路上の csmgrd」で決まる (2026-07-14 M5e 時系列実験)
 
-機構を対照実験で確定: (1) 非cacheノードは CS_MODE=0 (テンプレ既定) で一切キャッシュを
-持たず、他ホストの取得は誰にも再供給されない (2) csmgrd が複製を持つのは「そのノード
+機構を対照実験で確定: (1) csmgrd を持たない非cacheノードの CS_MODE はテンプレ由来の 0 か 1 で、
+0 にそろってはいない（2026-10-20 訂正。`src/runtime/template.py` の `apply_cache_node_settings` は
+テンプレの 2 を 0 へ降格するだけで、publisher は 1 に強制する）。cefnetd ログの実測
+（"Local cache capacity" = 1 / "Not use Content Store" = 0）では s1101 の h4/h8/h14 が 1、h3 が 0、
+s1108 の主役 h6 が 1。主役が CS_MODE=0 の seed（s1103/s1105/s1106）でも主役は障害窓を生き残るので、
+下の (2)(3) の csmgrd 複製の機構はローカル CS に頼らずに成り立つ。ローカル CS（CS_MODE=1）の
+ホストが他ホストの取得を再供給するかは、この実験では切り分けていない。`config/workshop/m5e_static/m5e_s11*.yaml`
+のコメント「CS_MODE=0 everywhere else」は訂正前の古い記述のまま（解析の再導出が config のハッシュに
+依存しないと確かめてから直す） (2) csmgrd が複製を持つのは「そのノード
 自身が取得した場合」または「consumer→publisher の FIB 経路上にいて取得が通過した場合」
 のみ (3) publisher 停止中に get が成功する必要十分条件 ≒ 経路上の csmgrd に複製がある
 こと。flooding (FwdStr) は実質 FIB 経路のみで、経路外の csmgrd 複製は救わない。
@@ -38,4 +45,5 @@ failure_scenarios cycles の罠: interval は前 cycle の down 時点起点で�
 target は skip される → **interval > 前 cycle の duration が必須** (でないと後続窓が
 無言で消える)。
 _Avoid_: 「一度取得した content は網内キャッシュに乗る」と仮定した実験設計
-(非cacheノードの取得は乗らない)。cycles の interval ≤ duration。
+(csmgrd を持たないノードの取得が網内で再供給されるかは未検証)。非cacheノードを
+「一切キャッシュを持たない」と書くこと（言えるのは「csmgrd を持たない」まで）。cycles の interval ≤ duration。
