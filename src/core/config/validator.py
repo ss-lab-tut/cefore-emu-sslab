@@ -3,10 +3,10 @@
 import ipaddress
 import math
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Callable
 
 from ..artifacts import safe_uri_label
-from ..events import EVENT_SCHEMA, event_types, publication_event_types
+from ..events import EVENT_SCHEMA, event_types
 from ..protocols import VALID_ROUTE_PROTOCOLS, normalize_route_protocol
 
 VALID_ALGOS = ("crc32c", "rsa-sha256")
@@ -1064,13 +1064,332 @@ def _validate_ccninfo_options(errors, prefix, options):
         )
 
 
-def _validate_events(errors, config):
-    """Validate the ``events`` list: per-type required fields and field shapes.
+@dataclass(frozen=True)
+class _EventCheckContext:
+    """Config values a single event's rules need but the event itself lacks.
 
-    Missing-field checks are bound to ``EVENT_SCHEMA.required_fields``; the
-    per-type branches add the field-shape and cross-field rules a handler
-    cannot express there (see CONTEXT.md EventSchema for the binding
-    asymmetry). Appends messages to ``errors``; never raises on config data.
+    Kept as one frozen bundle (rather than threading ``config``/loop locals
+    through every validator) so the per-type functions stay pure lookups on
+    the event plus an explicit, enumerable dependency set. Adding a config
+    read to a branch means adding it here — that keeps cross-event coupling
+    visible in one place instead of scattered through dispatch arms.
+    """
+
+    host_count: Any
+    no_cli: Any
+    results_json: Any
+
+
+def _validate_required_fields(
+    event: dict, prefix: str, fields: tuple[str, ...]
+) -> list[str]:
+    """Emit one "missing required field" per schema-required key absent.
+
+    Centralized so the per-type validators cannot drift on wording or on
+    which keys count as handler-mandatory; the schema remains the single
+    source of truth. link_down/link_up/bw_set deliberately do NOT call this
+    (see CONTEXT.md EventSchema): their required keys are checked inside
+    their own shape checks, with legacy wording that must not change.
+    """
+    return [
+        f"{prefix} missing required field '{field}'"
+        for field in fields
+        if field not in event
+    ]
+
+
+def _validate_host_integer(event: dict, prefix: str) -> list[str]:
+    """Check the optional ``host`` selector's type.
+
+    Presence is the schema's concern (required-field check); this only
+    rejects values that would index the host list with something non-numeric.
+    """
+    if "host" in event and not _is_int(event["host"]):
+        return [f"{prefix}.host must be an integer"]
+    return []
+
+
+def _validate_host_range(event: dict, prefix: str, host_count: Any) -> list[str]:
+    """Check ``host`` against the declared host count, when both are usable.
+
+    Skipped for non-integer hosts (type error already reported) and for
+    configs without an integer ``hosts``; emitting a range here would leak
+    the wrong diagnosis for a malformed host list.
+    """
+    if not ("host" in event and _is_int(event["host"]) and _is_int(host_count)):
+        return []
+    if event["host"] < 0 or event["host"] >= host_count:
+        return [f"{prefix}.host is out of range (0..{host_count - 1})"]
+    return []
+
+
+def _validate_link_event(
+    event: dict, prefix: str, ctx: _EventCheckContext
+) -> list[str]:
+    """Validate link_down/link_up: exactly two host indices, in range.
+
+    These predate the schema's required_fields binding, so their messages
+    intentionally differ ("list of 2 elements" for the shape, "2 host
+    indices" for the element types) from bw_set's single-wording shape check.
+    """
+    errors: list[str] = []
+    nodes = event.get("nodes")
+    if not isinstance(nodes, list) or len(nodes) != 2:
+        errors.append(f"{prefix}.nodes must be a list of 2 elements")
+    elif not all(_is_int(n) for n in nodes):
+        errors.append(f"{prefix}.nodes must be a list of 2 host indices")
+    elif _is_int(ctx.host_count):
+        for n in nodes:
+            if n < 0 or n >= ctx.host_count:
+                errors.append(f"{prefix}.nodes contains out-of-range host index {n}")
+    return errors
+
+
+def _validate_bw_set_event(
+    event: dict, prefix: str, ctx: _EventCheckContext
+) -> list[str]:
+    """Validate bw_set's endpoints and bandwidth.
+
+    Deliberately keeps its own node shape check instead of the schema-driven
+    required-field loop: both the wrong-shape and wrong-element cases use the
+    legacy "list of 2 host indices" wording, which existing callers match on.
+    """
+    errors: list[str] = []
+    nodes = event.get("nodes")
+    if not isinstance(nodes, list) or len(nodes) != 2:
+        errors.append(f"{prefix}.nodes must be a list of 2 host indices")
+    elif not all(_is_int(n) for n in nodes):
+        errors.append(f"{prefix}.nodes must be a list of 2 host indices")
+    elif _is_int(ctx.host_count):
+        for n in nodes:
+            if n < 0 or n >= ctx.host_count:
+                errors.append(f"{prefix}.nodes contains out-of-range host index {n}")
+    if "bandwidth" not in event:
+        errors.append(f"{prefix} missing required field 'bandwidth'")
+    elif not _is_number(event["bandwidth"]) or event["bandwidth"] < 0:
+        errors.append(f"{prefix}.bandwidth must be a non-negative number")
+    return errors
+
+
+def _validate_compute_call_event(
+    event: dict, prefix: str, ctx: _EventCheckContext
+) -> list[str]:
+    """Validate a compute_call request and its repeat allowlist.
+
+    compute_call is the only event whose ``repeat`` keys are restricted here
+    (interval/count only): restore forms synthesize an event at runtime that
+    bypasses this validator, so an unrestricted restore key could publish a
+    URI no consumer can reach.
+    """
+    errors = _validate_required_fields(
+        event, prefix, EVENT_SCHEMA["compute_call"].required_fields
+    )
+    errors.extend(_validate_host_integer(event, prefix))
+    if "endpoint" in event and not isinstance(event["endpoint"], str):
+        errors.append(f"{prefix}.endpoint must be a string")
+    if "method" in event and event["method"] not in ("GET", "POST"):
+        errors.append(f"{prefix}.method must be 'GET' or 'POST'")
+    if "timeout" in event:
+        if not _is_number(event["timeout"]) or event["timeout"] <= 0:
+            errors.append(f"{prefix}.timeout must be a positive number")
+    for field in ("payload", "output_file", "publish_uri"):
+        if field in event and not isinstance(event[field], str):
+            errors.append(f"{prefix}.{field} must be a string")
+    if "headers" in event:
+        headers = event["headers"]
+        if not isinstance(headers, dict) or not all(
+            isinstance(k, str) and isinstance(v, str) for k, v in headers.items()
+        ):
+            errors.append(
+                f"{prefix}.headers must be a dict of string keys to string values"
+            )
+    # cefputfile needs a saved response body to publish; publish_uri without
+    # output_file can never publish.
+    if event.get("publish_uri") and not event.get("output_file"):
+        errors.append(f"{prefix}.publish_uri requires output_file to be set")
+    # 2026-07-16 audit fix: repeat restore forms merge a synthesized event at
+    # runtime, bypassing this validator and the pre-run
+    # conditional-publication (FIB) extraction — a restored publish_uri would
+    # publish content no consumer can reach. compute has no natural "restore",
+    # so repeat is an allowlist: anything but interval/count (restore forms,
+    # typos) is rejected rather than silently ignored.
+    repeat = event.get("repeat")
+    if isinstance(repeat, dict):
+        extra = sorted(str(k) for k in set(repeat) - {"interval", "count"})
+        if extra:
+            errors.append(
+                f"{prefix}.repeat for compute_call allows only interval/count; "
+                f"got: {', '.join(extra)}"
+            )
+    # 2026-07-16 audit fix: publishing speed is governed by pub_opts rate,
+    # not the HTTP request, so the cefputfile deadline is its own field.
+    if "publish_timeout" in event:
+        if not _is_number(event["publish_timeout"]) or event["publish_timeout"] <= 0:
+            errors.append(f"{prefix}.publish_timeout must be a positive number")
+    _validate_putfile_options(errors, prefix, event)
+    return errors
+
+
+def _validate_fib_event(
+    event: dict, prefix: str, ctx: _EventCheckContext
+) -> list[str]:
+    """Validate fib_add/fib_del/fib_enable's shared route-programming shape.
+
+    The three types differ only in the operation the handler performs, so
+    they share one rule set; the protocol normalization is the same one the
+    runtime route writer uses, keeping config-time and runtime acceptance
+    aligned.
+    """
+    etype = event["type"]
+    errors = _validate_required_fields(
+        event, prefix, EVENT_SCHEMA[etype].required_fields
+    )
+    if "protocol" in event:
+        try:
+            normalize_route_protocol(event["protocol"])
+        except (TypeError, ValueError):
+            errors.append(
+                f"{prefix}.protocol must be one of: "
+                f"{', '.join(VALID_ROUTE_PROTOCOLS)}"
+            )
+    errors.extend(_validate_host_integer(event, prefix))
+    return errors
+
+
+def _validate_publication_event(
+    event: dict, prefix: str, ctx: _EventCheckContext
+) -> list[str]:
+    """Validate put/pubsub_pub: required fields, then op-specific options.
+
+    put's autotest guard is a config-level interaction (no_cli + results_json),
+    which is why it needs ctx instead of only the event; that coupling is the
+    reason the check lives here rather than inside _validate_put_options.
+    """
+    etype = event["type"]
+    errors = _validate_required_fields(
+        event, prefix, EVENT_SCHEMA[etype].required_fields
+    )
+    errors.extend(_validate_host_integer(event, prefix))
+    if "uri" in event and not isinstance(event["uri"], str):
+        errors.append(f"{prefix}.uri must be a string")
+    if "file" in event and not isinstance(event["file"], str):
+        errors.append(f"{prefix}.file must be a string")
+    if etype == "put":
+        _validate_put_options(errors, prefix, event)
+        if event.get("repeat") and ctx.no_cli is True and ctx.results_json:
+            errors.append(f"{prefix}.repeat is not supported for autotest put events")
+    else:
+        _validate_pubsub_options(errors, prefix, event, etype)
+    return errors
+
+
+def _validate_ccninfo_event(
+    event: dict, prefix: str, ctx: _EventCheckContext
+) -> list[str]:
+    """Validate a ccninfo event, including log-label and assert targets.
+
+    The uri rule is stricter than other content ops because
+    content_log_name/parse_content_log_name round-trip through
+    safe_uri_label(); a URI that collapses to an empty label would make the
+    event's own log unrecoverable.
+    """
+    errors = _validate_required_fields(
+        event, prefix, EVENT_SCHEMA["ccninfo"].required_fields
+    )
+    errors.extend(_validate_host_integer(event, prefix))
+    # timeout is not a supported ccninfo event option (ccninfo self-terminates
+    # via CCNINFO_REPLY_TIMEOUT).
+    if "timeout" in event:
+        errors.append(
+            f"{prefix}.timeout is not a supported ccninfo event option "
+            "(ccninfo self-terminates via CCNINFO_REPLY_TIMEOUT)"
+        )
+    if "uri" in event:
+        if not isinstance(event["uri"], str):
+            errors.append(f"{prefix}.uri must be a string")
+        elif not safe_uri_label(event["uri"]):
+            # A root-only "ccnx:/" URI resolves to an empty safe_uri_label(),
+            # which would break the per-command log-name round-trip
+            # (content_log_name/parse_content_log_name) content_ops.py relies
+            # on to find this event's own log file.
+            errors.append(
+                f"{prefix}.uri must not resolve to an empty log label "
+                "(e.g. bare 'ccnx:/' root)"
+            )
+    _validate_ccninfo_options(errors, prefix, event)
+    if "expected_responder" in event:
+        er = event["expected_responder"]
+        # Empty/whitespace-only would never match any responder name (exact
+        # equality), making the opt-in assert always-fail — reject up front.
+        if not isinstance(er, str) or not er.strip():
+            errors.append(f"{prefix}.expected_responder must be a non-empty string")
+    if "expected_route" in event:
+        route = event["expected_route"]
+        if (
+            not isinstance(route, list)
+            or not route
+            or not all(isinstance(h, str) and h.strip() for h in route)
+        ):
+            errors.append(
+                f"{prefix}.expected_route must be a non-empty list of "
+                "non-empty strings"
+            )
+    return errors
+
+
+def _validate_get_event(
+    event: dict, prefix: str, ctx: _EventCheckContext
+) -> list[str]:
+    """Validate get/pubsub_sub: the two consumer-side content ops.
+
+    They share the host/uri shape but diverge on their option dicts
+    (``get`` flags vs ``sub_opts``), which is why the option call is the only
+    place these otherwise-identical rules split.
+    """
+    etype = event["type"]
+    errors = _validate_required_fields(
+        event, prefix, EVENT_SCHEMA[etype].required_fields
+    )
+    errors.extend(_validate_host_integer(event, prefix))
+    if "uri" in event and not isinstance(event["uri"], str):
+        errors.append(f"{prefix}.uri must be a string")
+    if etype == "get":
+        _validate_get_options(errors, prefix, event)
+    else:
+        _validate_pubsub_options(errors, prefix, event, etype)
+    return errors
+
+
+# Dispatch table keyed by EventSchema type name. Drift between EventSchema and
+# the validator is caught at import (same pattern as content_ops' _HANDLERS):
+# a new event type must either get a validator or be mapped to a shared one
+# before the module can load, instead of silently skipping all per-type rules.
+_EVENT_VALIDATORS: dict[str, Callable[[dict, str, _EventCheckContext], list[str]]] = {
+    "link_down": _validate_link_event,
+    "link_up": _validate_link_event,
+    "fib_add": _validate_fib_event,
+    "fib_del": _validate_fib_event,
+    "fib_enable": _validate_fib_event,
+    "bw_set": _validate_bw_set_event,
+    "compute_call": _validate_compute_call_event,
+    "put": _validate_publication_event,
+    "get": _validate_get_event,
+    "pubsub_pub": _validate_publication_event,
+    "pubsub_sub": _validate_get_event,
+    "ccninfo": _validate_ccninfo_event,
+}
+
+assert set(_EVENT_VALIDATORS) == set(event_types())
+
+
+def _validate_events(errors, config):
+    """Validate the ``events`` list: per-type rules plus cross-type repeat rules.
+
+    Per-type field-shape and cross-field rules live in ``_EVENT_VALIDATORS``
+    (see CONTEXT.md EventSchema for why link/bw_set do not use the schema's
+    required_fields loop). The ``at``/``type`` envelope checks and the repeat
+    checks that apply regardless of type stay here, in their original order.
+    Appends messages to ``errors``; never raises on config data.
     """
     if "events" in config:
         if not isinstance(config["events"], list):
@@ -1078,6 +1397,11 @@ def _validate_events(errors, config):
         else:
             valid_event_types = event_types()
             host_count = config.get("hosts")
+            ctx = _EventCheckContext(
+                host_count=host_count,
+                no_cli=config.get("no_cli"),
+                results_json=config.get("results_json"),
+            )
             for idx, event in enumerate(config["events"]):
                 if not isinstance(event, dict):
                     errors.append(f"events[{idx}] must be a dict")
@@ -1093,257 +1417,11 @@ def _validate_events(errors, config):
                         f"events[{idx}].type must be one of: {', '.join(valid_event_types)}"
                     )
                 else:
-                    etype = event["type"]
-                    if etype in ("link_down", "link_up"):
-                        nodes = event.get("nodes")
-                        if not isinstance(nodes, list) or len(nodes) != 2:
-                            errors.append(
-                                f"events[{idx}].nodes must be a list of 2 elements"
-                            )
-                        elif not all(_is_int(n) for n in nodes):
-                            errors.append(
-                                f"events[{idx}].nodes must be a list of 2 host indices"
-                            )
-                        elif _is_int(host_count):
-                            for n in nodes:
-                                if n < 0 or n >= host_count:
-                                    errors.append(
-                                        f"events[{idx}].nodes contains out-of-range host index {n}"
-                                    )
-                    elif etype == "bw_set":
-                        nodes = event.get("nodes")
-                        if not isinstance(nodes, list) or len(nodes) != 2:
-                            errors.append(
-                                f"events[{idx}].nodes must be a list of 2 host indices"
-                            )
-                        elif not all(_is_int(n) for n in nodes):
-                            errors.append(
-                                f"events[{idx}].nodes must be a list of 2 host indices"
-                            )
-                        elif _is_int(host_count):
-                            for n in nodes:
-                                if n < 0 or n >= host_count:
-                                    errors.append(
-                                        f"events[{idx}].nodes contains out-of-range host index {n}"
-                                    )
-                        if "bandwidth" not in event:
-                            errors.append(
-                                f"events[{idx}] missing required field 'bandwidth'"
-                            )
-                        elif (
-                            not _is_number(event["bandwidth"]) or event["bandwidth"] < 0
-                        ):
-                            errors.append(
-                                f"events[{idx}].bandwidth must be a non-negative number"
-                            )
-                    elif etype == "compute_call":
-                        for field in EVENT_SCHEMA[etype].required_fields:
-                            if field not in event:
-                                errors.append(
-                                    f"events[{idx}] missing required field '{field}'"
-                                )
-                        if "host" in event and not _is_int(event["host"]):
-                            errors.append(f"events[{idx}].host must be an integer")
-                        if "endpoint" in event and not isinstance(
-                            event["endpoint"], str
-                        ):
-                            errors.append(f"events[{idx}].endpoint must be a string")
-                        if "method" in event and event["method"] not in ("GET", "POST"):
-                            errors.append(
-                                f"events[{idx}].method must be 'GET' or 'POST'"
-                            )
-                        if "timeout" in event:
-                            if (
-                                not _is_number(event["timeout"])
-                                or event["timeout"] <= 0
-                            ):
-                                errors.append(
-                                    f"events[{idx}].timeout must be a positive number"
-                                )
-                        for field in ("payload", "output_file", "publish_uri"):
-                            if field in event and not isinstance(
-                                event[field], str
-                            ):
-                                errors.append(
-                                    f"events[{idx}].{field} must be a string"
-                                )
-                        if "headers" in event:
-                            headers = event["headers"]
-                            if not isinstance(headers, dict) or not all(
-                                isinstance(k, str) and isinstance(v, str)
-                                for k, v in headers.items()
-                            ):
-                                errors.append(
-                                    f"events[{idx}].headers must be a dict of "
-                                    f"string keys to string values"
-                                )
-                        # cefputfile needs a saved response body to publish;
-                        # publish_uri without output_file can never publish.
-                        if event.get("publish_uri") and not event.get(
-                            "output_file"
-                        ):
-                            errors.append(
-                                f"events[{idx}].publish_uri requires "
-                                f"output_file to be set"
-                            )
-                        # 2026-07-16 audit fix: repeat restore forms merge a
-                        # synthesized event at runtime, bypassing this
-                        # validator and the pre-run conditional-publication
-                        # (FIB) extraction — a restored publish_uri would
-                        # publish content no consumer can reach. compute has
-                        # no natural "restore", so repeat is an allowlist:
-                        # anything but interval/count (restore forms, typos)
-                        # is rejected rather than silently ignored.
-                        repeat = event.get("repeat")
-                        if isinstance(repeat, dict):
-                            extra = sorted(
-                                str(k) for k in set(repeat) - {"interval", "count"}
-                            )
-                            if extra:
-                                errors.append(
-                                    f"events[{idx}].repeat for compute_call "
-                                    f"allows only interval/count; got: "
-                                    f"{', '.join(extra)}"
-                                )
-                        # 2026-07-16 audit fix: publishing speed is governed
-                        # by pub_opts rate, not the HTTP request, so the
-                        # cefputfile deadline is its own field.
-                        if "publish_timeout" in event:
-                            if (
-                                not _is_number(event["publish_timeout"])
-                                or event["publish_timeout"] <= 0
-                            ):
-                                errors.append(
-                                    f"events[{idx}].publish_timeout must be "
-                                    f"a positive number"
-                                )
-                        _validate_putfile_options(
-                            errors, f"events[{idx}]", event
-                        )
-                    elif etype in ("fib_add", "fib_del", "fib_enable"):
-                        for field in EVENT_SCHEMA[etype].required_fields:
-                            if field not in event:
-                                errors.append(
-                                    f"events[{idx}] missing required field '{field}'"
-                                )
-                        if "protocol" in event:
-                            try:
-                                normalize_route_protocol(event["protocol"])
-                            except (TypeError, ValueError):
-                                errors.append(
-                                    f"events[{idx}].protocol must be one of: "
-                                    f"{', '.join(VALID_ROUTE_PROTOCOLS)}"
-                                )
-                        if "host" in event and not _is_int(event["host"]):
-                            errors.append(f"events[{idx}].host must be an integer")
-
-                    elif etype in publication_event_types():
-                        for field in EVENT_SCHEMA[etype].required_fields:
-                            if field not in event:
-                                errors.append(
-                                    f"events[{idx}] missing required field '{field}'"
-                                )
-                        if "host" in event and not _is_int(event["host"]):
-                            errors.append(f"events[{idx}].host must be an integer")
-                        if "uri" in event and not isinstance(event["uri"], str):
-                            errors.append(f"events[{idx}].uri must be a string")
-                        if "file" in event and not isinstance(event["file"], str):
-                            errors.append(f"events[{idx}].file must be a string")
-                        if etype == "put":
-                            _validate_put_options(errors, f"events[{idx}]", event)
-                            if (
-                                event.get("repeat")
-                                and config.get("no_cli") is True
-                                and config.get("results_json")
-                            ):
-                                errors.append(
-                                    f"events[{idx}].repeat is not supported for autotest put events"
-                                )
-                        else:
-                            _validate_pubsub_options(
-                                errors, f"events[{idx}]", event, etype
-                            )
-                    elif etype == "ccninfo":
-                        for field in EVENT_SCHEMA[etype].required_fields:
-                            if field not in event:
-                                errors.append(
-                                    f"events[{idx}] missing required field '{field}'"
-                                )
-                        if "host" in event and not _is_int(event["host"]):
-                            errors.append(f"events[{idx}].host must be an integer")
-                        # timeout is not a supported ccninfo event option
-                        # (ccninfo self-terminates via CCNINFO_REPLY_TIMEOUT).
-                        if "timeout" in event:
-                            errors.append(
-                                f"events[{idx}].timeout is not a supported "
-                                "ccninfo event option (ccninfo self-terminates "
-                                "via CCNINFO_REPLY_TIMEOUT)"
-                            )
-                        if "uri" in event:
-                            if not isinstance(event["uri"], str):
-                                errors.append(f"events[{idx}].uri must be a string")
-                            elif not safe_uri_label(event["uri"]):
-                                # A root-only "ccnx:/" URI resolves to an
-                                # empty safe_uri_label(), which would break
-                                # the per-command log-name round-trip
-                                # (content_log_name/parse_content_log_name)
-                                # content_ops.py relies on to find this
-                                # event's own log file.
-                                errors.append(
-                                    f"events[{idx}].uri must not resolve to an "
-                                    "empty log label (e.g. bare 'ccnx:/' root)"
-                                )
-                        _validate_ccninfo_options(errors, f"events[{idx}]", event)
-                        if "expected_responder" in event:
-                            er = event["expected_responder"]
-                            # Empty/whitespace-only would never match any
-                            # responder name (exact equality), making the
-                            # opt-in assert always-fail — reject up front.
-                            if not isinstance(er, str) or not er.strip():
-                                errors.append(
-                                    f"events[{idx}].expected_responder must be "
-                                    "a non-empty string"
-                                )
-                        if "expected_route" in event:
-                            route = event["expected_route"]
-                            if (
-                                not isinstance(route, list)
-                                or not route
-                                or not all(
-                                    isinstance(h, str) and h.strip() for h in route
-                                )
-                            ):
-                                errors.append(
-                                    f"events[{idx}].expected_route must be a "
-                                    "non-empty list of non-empty strings"
-                                )
-                    elif etype in ("get", "pubsub_sub"):
-                        for field in EVENT_SCHEMA[etype].required_fields:
-                            if field not in event:
-                                errors.append(
-                                    f"events[{idx}] missing required field '{field}'"
-                                )
-                        if "host" in event and not _is_int(event["host"]):
-                            errors.append(f"events[{idx}].host must be an integer")
-                        if "uri" in event and not isinstance(event["uri"], str):
-                            errors.append(f"events[{idx}].uri must be a string")
-                        if etype == "get":
-                            _validate_get_options(errors, f"events[{idx}]", event)
-                        else:
-                            _validate_pubsub_options(
-                                errors, f"events[{idx}]", event, etype
-                            )
-
-                    # host range check for fib/compute_call events
-                    if (
-                        "host" in event
-                        and _is_int(event["host"])
-                        and _is_int(host_count)
-                    ):
-                        if event["host"] < 0 or event["host"] >= host_count:
-                            errors.append(
-                                f"events[{idx}].host is out of range (0..{host_count - 1})"
-                            )
+                    prefix = f"events[{idx}]"
+                    errors.extend(_EVENT_VALIDATORS[event["type"]](event, prefix, ctx))
+                    # host range check applies across all typed events, after
+                    # that type's own messages (order is part of the contract).
+                    errors.extend(_validate_host_range(event, prefix, host_count))
 
                 # repeat validation (all event types)
                 if "repeat" in event:
