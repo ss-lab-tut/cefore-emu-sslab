@@ -8,7 +8,7 @@ from typing import Optional
 
 from mininet.log import info
 
-from ..core.events import content_event_types, event_priorities
+from ..core.events import build_restore_event, content_event_types, event_priorities
 from .bandwidth import set_switch_bandwidth
 from .command_runner import MininetCommandRunner
 from .compute_client import compute_call as _do_compute_call
@@ -220,13 +220,8 @@ class EventScheduler:
 
         if duration is not None and duration > 0:
             restore_at = scheduled_at + duration
-            if "restore" in repeat:
-                restore_event = {**event, **repeat["restore"]}
-                restore_event.pop("repeat", None)
-                self._push_event(restore_at, restore_event)
-            elif "restore_type" in repeat:
-                restore_event = {**event, "type": repeat["restore_type"]}
-                restore_event.pop("repeat", None)
+            restore_event = build_restore_event(event)
+            if restore_event is not None:
                 self._push_event(restore_at, restore_event)
 
         if interval > 0:
