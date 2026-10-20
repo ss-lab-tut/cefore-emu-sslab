@@ -247,10 +247,17 @@ class BridgeManager:
         iproute2 reads as a /32), or ``default``/``0.0.0.0/0``: iproute2
         rejects hostnames, and nothing here resolves them.
 
-        A route that already exists for the prefix is left exactly as it was —
-        the add fails with EEXIST, that becomes a warning, and no cleanup
-        action is registered, so teardown never deletes a route this manager
-        did not create.
+        For a non-default prefix, a route that already exists is left exactly
+        as it was — the add fails with EEXIST, that becomes a warning, and no
+        cleanup action is registered, so teardown never deletes a route this
+        manager did not create.
+
+        ``default`` is the exception: it uses ``ip route replace``, so an
+        existing default route in the host netns is overwritten, and teardown
+        deletes the default route. That is acceptable only because the host
+        netns is created per experiment and Mininet hosts normally have no
+        default route of their own (2026-10-20: this docstring used to claim
+        the default route was preserved too).
         """
         host = net.get(host_name)
         if host is None:
