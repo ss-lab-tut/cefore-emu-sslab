@@ -14,7 +14,7 @@ from mininet.node import Node
 
 from ..core.addressing import AddressingScheme
 from ..core.topology import TopologyModel
-from .bridge_args import validate_static_ip
+from .bridge_args import fail_closed_rc, validate_static_ip
 from .command_runner import ROOT_SENTINEL, MininetCommandRunner
 
 
@@ -52,13 +52,21 @@ class TeardownError(RuntimeError):
 
 
 def _result_to_rc_detail(result) -> tuple[int, str]:
-    """Normalize a ``CommandResult`` to an ``(rc, detail)`` 2-tuple, where
-    detail is the stripped stderr.
+    """Normalize a finished command result to an ``(rc, detail)`` 2-tuple,
+    where detail is the stripped stderr.
 
+    The verdict comes from ``fail_closed_rc``, so a timed-out, cancelled, or
+    exit-less run is a failure carrying its reason even when ``returncode``
+    is 0; a completed run keeps exactly the rc/stderr it always reported.
     ``cleanup()`` consumes this shape for every registered action, and setup
     paths use it too when they report a command failure, so one reading of
-    "what went wrong" serves both directions."""
-    return result.returncode, (result.stderr or "").strip()
+    "what went wrong" serves both directions.
+
+    2026-10-20: read returncode raw and ignored timed_out/cancelled, so a
+    restore that hit its deadline with rc 0 passed cleanup as success.
+    """
+    rc, detail = fail_closed_rc(result)
+    return rc, detail.strip()
 
 
 # ---------------------------------------------------------------------------
@@ -97,6 +105,62 @@ class BridgeManager:
         if self.root_node is None:
             self.root_node = Node("root", inNamespace=False)
         return self.root_node
+
+    def _apply_reversible(
+        self,
+        runner,
+        node: str,
+        forward_argv: list[str],
+        inverse_argv: list[str],
+        *,
+        description: str,
+        category: str,
+        failure_message: str,
+    ) -> bool:
+        """Apply one owned mutation and register its inverse only on success.
+
+        This is the single owner of the rule "register the inverse only if the
+        forward provably succeeded". A failed forward may mean the state
+        already existed (EEXIST for a pre-existing route or flow), so undoing
+        it at teardown would break state this manager never created. Failures
+        warn and continue because existing scenarios tolerate partial routing.
+
+        Scope: owned route/flow mutations only. The sysctl writers and NAT keep
+        their own transactional code (prior-value capture, multi-rule rollback)
+        by design; they share only the fail-closed result reading.
+
+        2026-10-20: connect_to_root_ns / add_root_route / enable_normal_flow
+        ignored the forward rc and registered the inverse unconditionally, so
+        teardown could delete a root route this manager never added.
+
+        Returns:
+            True when the forward command succeeded and the inverse was
+            registered; False on any fail-closed failure (nothing registered).
+        """
+        rc, detail = _result_to_rc_detail(
+            runner.run(node, forward_argv, capture_stderr=True)
+        )
+        if rc != 0:
+            info(f"*** Warning: {failure_message} (rc={rc}): {detail}\n")
+            return False
+        self.cleanup_actions.append(
+            CleanupAction(
+                description=description,
+                category=category,
+                mandatory=False,
+                # このファイルの cleanup lambda 全部に共通の identity cast:
+                # default 引数で値を束縛した lambda を mypy は optional 引数付き
+                # signature に推論し、引数ゼロの execute 型と照合できない。
+                # 実行時は引数なしで呼ばれ、束縛済みの既定値が使われる。
+                execute=cast(
+                    Callable[[], tuple[int, str]],
+                    lambda r=runner, n=node, a=inverse_argv: _result_to_rc_detail(
+                        r.run(n, a, capture_stderr=True)
+                    ),
+                ),
+            )
+        )
+        return True
 
     def connect_to_root_ns(
         self,
@@ -147,26 +211,25 @@ class BridgeManager:
         root.setIP(root_ip, intf=self.root_intf)
 
         runner = self._root_runner()
-        add_argv = ["route", "add", "-net", local_routes, "dev", str(self.root_intf)]
+        # 2026-10-20: net-tools `route add -net X/32` fails with SIOCADDRT
+        # (net-tools 2.10 wants -host), so a /32 silently produced no route;
+        # iproute2 accepts any prefix, and `add` (not `replace`) fails with
+        # EEXIST on a pre-existing route, which _apply_reversible turns into a
+        # warning with no cleanup registered.
+        add_argv = ["ip", "route", "add", local_routes, "dev", str(self.root_intf)]
         info(f"*** Adding route in root ns: {add_argv}\n")
-        runner.run(ROOT_SENTINEL, add_argv, capture_stderr=True)
-        del_argv = ["route", "del", "-net", local_routes]
-        self.cleanup_actions.append(
-            CleanupAction(
-                description=f"remove route: {' '.join(del_argv)}",
-                category="route",
-                mandatory=False,
-                # このファイルの cleanup lambda 全部に共通の identity cast:
-                # default 引数で値を束縛した lambda を mypy は optional 引数付き
-                # signature に推論し、引数ゼロの execute 型と照合できない。
-                # 実行時は引数なしで呼ばれ、束縛済みの既定値が使われる。
-                execute=cast(
-                    Callable[[], tuple[int, str]],
-                    lambda r=runner, a=del_argv: _result_to_rc_detail(
-                        r.run(ROOT_SENTINEL, a, capture_stderr=True)
-                    ),
-                ),
-            )
+        del_argv = ["ip", "route", "del", local_routes]
+        # The link stays attached even when only its route failed: the caller
+        # relies on the return value to mean "switch attached", and skipping
+        # the rest of the entry would strand the just-added link.
+        self._apply_reversible(
+            runner,
+            ROOT_SENTINEL,
+            add_argv,
+            del_argv,
+            description=f"remove route: {' '.join(del_argv)}",
+            category="route",
+            failure_message="route add failed in root ns",
         )
         return True
 
@@ -184,10 +247,17 @@ class BridgeManager:
         iproute2 reads as a /32), or ``default``/``0.0.0.0/0``: iproute2
         rejects hostnames, and nothing here resolves them.
 
-        A route that already exists for the prefix is left exactly as it was —
-        the add fails with EEXIST, that becomes a warning, and no cleanup
-        action is registered, so teardown never deletes a route this manager
-        did not create.
+        For a non-default prefix, a route that already exists is left exactly
+        as it was — the add fails with EEXIST, that becomes a warning, and no
+        cleanup action is registered, so teardown never deletes a route this
+        manager did not create.
+
+        ``default`` is the exception: it uses ``ip route replace``, so an
+        existing default route in the host netns is overwritten, and teardown
+        deletes the default route. That is acceptable only because the host
+        netns is created per experiment and Mininet hosts normally have no
+        default route of their own (2026-10-20: this docstring used to claim
+        the default route was preserved too).
         """
         host = net.get(host_name)
         if host is None:
@@ -226,56 +296,125 @@ class BridgeManager:
             ] + dev_clause
             del_argv = ["ip", "route", "del", dest_network]
         info(f"*** Adding route in {host_name}: {add_argv}\n")
-        rc, detail = _result_to_rc_detail(
-            runner.run(host_name, add_argv, capture_stderr=True)
+        # Warn rather than raise on failure: existing scenarios tolerate a
+        # partially routed host and must not start failing at setup. The point
+        # is that the failure is not invisible — it used to surface only as
+        # unexplained "no connectivity" much later. All route/flow producers in
+        # this module now share this rule: a failed add may mean the prefix was
+        # already there, so teardown must not delete what this manager never
+        # created.
+        self._apply_reversible(
+            runner,
+            host_name,
+            add_argv,
+            del_argv,
+            description=f"remove host route: {' '.join(del_argv)}",
+            category="route",
+            failure_message=f"route add failed in {host_name}",
         )
-        if rc != 0:
-            # Warn rather than raise: existing scenarios tolerate a partially
-            # routed host and must not start failing at setup. The point is
-            # that the failure is no longer invisible — it used to surface
-            # only as unexplained "no connectivity" much later.
-            info(f"*** Warning: route add failed in {host_name} (rc={rc}): {detail}\n")
-            # Deliberately unlike the other producers in this module, which
-            # register their cleanup unconditionally: those undo settings they
-            # captured first (ip_forward) or rules only they could have added.
-            # A route is different — the add may have failed precisely because
-            # the host already had that prefix, and deleting it at teardown
-            # would break connectivity this manager never provided.
+
+    def write_host_resolv_conf(self, net: Mininet, host_names: list[str]) -> None:
+        """Point every listed host's ``/etc/resolv.conf`` at 8.8.8.8.
+
+        Why this is one method with its own cleanup: Mininet hosts share the
+        root mount namespace, so "the host's" ``/etc/resolv.conf`` *is* the
+        real machine's file. Writing it without a restore rewrites the
+        operator's DNS configuration for good. The original is therefore
+        captured once, before the first write, and put back at teardown.
+
+        The restore is ``mandatory``: a silent failure would leave the machine
+        pointing at 8.8.8.8, which is exactly the damage this method
+        exists to prevent, so cleanup must surface it. Capture fails closed
+        the other way round: what cannot be captured is not overwritten.
+
+        Repeated calls (one bridge entry with ``external_routes`` each) are
+        safe. Each call registers one restore, and cleanup drains LIFO, so the
+        earliest capture — the real original, since nothing but this manager
+        writes the file — is written last.
+
+        2026-10-20: the write had no cleanup action, so every run with
+        ``bridges.external_routes`` left the machine's ``/etc/resolv.conf``
+        pointing at 8.8.8.8.
+
+        The seam owns the redirect: ``printf``'s stdout is written to the
+        (host-shared) file via ``log_path``, replacing the old shell
+        ``echo ... > /etc/resolv.conf``. The restore goes through the same
+        seam for the same reason: an injected runner must intercept it instead
+        of touching the real file. ``printf "%s"`` writes the captured text
+        verbatim, with no format interpretation of any ``%`` it contains.
+        """
+        if not host_names:
             return
+        first = host_names[0]
+        runner = self._host_runner(net)
+
+        captured = runner.run(first, ["cat", "/etc/resolv.conf"], capture_stderr=True)
+        rc, detail = _result_to_rc_detail(captured)
+        if rc != 0:
+            info(
+                f"*** Warning: /etc/resolv.conf capture failed (rc={rc}): "
+                f"{detail}; not overwriting it\n"
+            )
+            return
+        original = captured.stdout
+
+        # Registered BEFORE any write, not after the loop: a failure partway
+        # through the hosts must still leave the file restorable.
         self.cleanup_actions.append(
             CleanupAction(
-                description=f"remove host route: {' '.join(del_argv)}",
-                category="route",
-                mandatory=False,
+                description="restore /etc/resolv.conf",
+                category="resolv",
+                mandatory=True,
                 execute=cast(
                     Callable[[], tuple[int, str]],
-                    lambda r=runner, name=host_name, a=del_argv: _result_to_rc_detail(
-                        r.run(name, a, capture_stderr=True)
+                    lambda r=runner, n=first, o=original: _result_to_rc_detail(
+                        r.run(
+                            n,
+                            ["printf", "%s", o],
+                            log_path="/etc/resolv.conf",
+                            capture_stderr=True,
+                        )
                     ),
                 ),
             )
         )
 
+        for host_name in host_names:
+            runner.run(
+                host_name,
+                ["printf", "nameserver 8.8.8.8\n"],
+                log_path="/etc/resolv.conf",
+                capture_stderr=True,
+            )
+
     def add_root_route(self, dest_network: str, gateway: str) -> None:
-        """Add route from root namespace to external network."""
+        """Add route from root namespace to external network.
+
+        ``dest_network`` may be a CIDR prefix or a bare IPv4 address (which
+        iproute2 reads as a /32): iproute2 rejects hostnames, and nothing here
+        resolves them. A route that already exists for the prefix is left
+        exactly as it was — the ``add`` fails with EEXIST, that becomes a
+        warning, and no cleanup action is registered, so teardown never
+        deletes a route this manager did not create.
+        """
         self.get_or_create_root()
         runner = self._root_runner()
-        add_argv = ["route", "add", "-net", dest_network, "gw", gateway]
+        # 2026-10-20: net-tools `route add -net X/32` fails with SIOCADDRT
+        # (net-tools 2.10 wants -host), so a /32 silently produced no route;
+        # iproute2 accepts any prefix, and `add` (not `replace`) fails with
+        # EEXIST on a pre-existing route, which _apply_reversible turns into a
+        # warning with no cleanup registered.
+        add_argv = ["ip", "route", "add", dest_network, "via", gateway]
         info(f"*** Adding route in root ns: {add_argv}\n")
-        runner.run(ROOT_SENTINEL, add_argv, capture_stderr=True)
-        del_argv = ["route", "del", "-net", dest_network]
-        self.cleanup_actions.append(
-            CleanupAction(
-                description=f"remove root route: {' '.join(del_argv)}",
-                category="route",
-                mandatory=False,
-                execute=cast(
-                    Callable[[], tuple[int, str]],
-                    lambda r=runner, a=del_argv: _result_to_rc_detail(
-                        r.run(ROOT_SENTINEL, a, capture_stderr=True)
-                    ),
-                ),
-            )
+        del_argv = ["ip", "route", "del", dest_network]
+        self._apply_reversible(
+            runner,
+            ROOT_SENTINEL,
+            add_argv,
+            del_argv,
+            description=f"remove root route: {' '.join(del_argv)}",
+            category="route",
+            failure_message="route add failed in root ns",
         )
 
     def enable_ip_forwarding(self) -> None:
@@ -442,20 +581,15 @@ class BridgeManager:
         self.get_or_create_root()
         runner = self._root_runner()
         add_argv = ["ovs-ofctl", "add-flow", switch_name, "priority=0,actions=NORMAL"]
-        runner.run(ROOT_SENTINEL, add_argv, capture_stderr=True)
         del_argv = ["ovs-ofctl", "del-flows", switch_name, "--strict", "priority=0"]
-        self.cleanup_actions.append(
-            CleanupAction(
-                description=f"remove OVS flow: {' '.join(del_argv)}",
-                category="flow",
-                mandatory=False,
-                execute=cast(
-                    Callable[[], tuple[int, str]],
-                    lambda r=runner, a=del_argv: _result_to_rc_detail(
-                        r.run(ROOT_SENTINEL, a, capture_stderr=True)
-                    ),
-                ),
-            )
+        self._apply_reversible(
+            runner,
+            ROOT_SENTINEL,
+            add_argv,
+            del_argv,
+            description=f"remove OVS flow: {' '.join(del_argv)}",
+            category="flow",
+            failure_message=f"flow add failed on {switch_name}",
         )
 
     def enable_proxy_arp(self) -> None:
@@ -760,20 +894,7 @@ def setup_bridges(
                     dev=dev,
                 )
 
-            # Route through the bridge manager's host runner so an injected
-            # (fake) runner intercepts the write instead of truncating the real
-            # /etc/resolv.conf.
-            resolv_runner = bridge_manager._host_runner(net)
-            for host_idx in hosts:
-                # The seam owns the redirect: printf's stdout is written to the
-                # (host-shared) /etc/resolv.conf via log_path, replacing the old
-                # shell "echo ... > /etc/resolv.conf".
-                resolv_runner.run(
-                    f"h{host_idx}",
-                    ["printf", "nameserver 8.8.8.8\n"],
-                    log_path="/etc/resolv.conf",
-                    capture_stderr=True,
-                )
+            bridge_manager.write_host_resolv_conf(net, [f"h{i}" for i in hosts])
 
         use_nat = config.get("nat", False)
         if use_nat:

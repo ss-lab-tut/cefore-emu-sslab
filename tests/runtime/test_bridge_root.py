@@ -401,7 +401,7 @@ class TestSetupBridgesCommandRunnerWiring:
 
         assert (
             ROOT_SENTINEL,
-            ["route", "add", "-net", "100.64.0.0/16", "dev", "root-eth0"],
+            ["ip", "route", "add", "100.64.0.0/16", "dev", "root-eth0"],
             None,
         ) in runs
         assert (
@@ -757,6 +757,34 @@ class TestIPForwarding:
 
         assert exc_info.value.failures == [
             ("restore ip_forward to 0", 1, "restore failed")
+        ]
+
+    def test_timed_out_restoration_is_a_failure_even_with_exit_zero(self):
+        """A restore that hit its deadline did not provably restore anything,
+        so cleanup must not read its returncode 0 as success."""
+        from src.runtime.bridge_root import BridgeManager, TeardownError
+
+        fake = FakeCommandRunner()
+        writes = []
+
+        def on_run(node, argv):
+            if argv[:2] == ["sysctl", "-n"]:
+                return CommandResult(0, stdout="0")
+            writes.append(argv)
+            if len(writes) == 1:
+                return CommandResult(0)
+            return CommandResult(0, timed_out=True)
+
+        fake.on_run = on_run
+        mgr = BridgeManager(runner=fake)
+        mgr.root_node = MagicMock()
+        mgr.enable_ip_forwarding()
+
+        with pytest.raises(TeardownError) as exc_info:
+            mgr.cleanup()
+
+        assert exc_info.value.failures == [
+            ("restore ip_forward to 0", -1, "command timed out")
         ]
 
 
@@ -1419,3 +1447,201 @@ class TestAddHostRouteUsesIproute2:
         ]
         assert mgr.cleanup_actions[0].execute() == (0, "")
         assert fake.runs[-1]["argv"] == ["ip", "route", "del", "133.15.70.55/32"]
+
+
+class TestReversibleStepsRegisterInverseOnlyOnSuccess:
+    """Every route/flow mutation BridgeManager performs goes through one rule:
+    run it, read the result fail-closed, and register the inverse only when it
+    provably succeeded. A failed add is a warning (setup continues), and a
+    mutation this manager did not make is never undone at teardown."""
+
+    @staticmethod
+    def _net():
+        net = MagicMock()
+        net.get = MagicMock(return_value=MagicMock())
+        net.addLink = MagicMock(return_value=MagicMock())
+        return net
+
+    def _mgr(self, result):
+        from src.runtime.bridge_root import BridgeManager
+
+        fake = FakeCommandRunner()
+        fake.on_run = lambda node, argv: result
+        mgr = BridgeManager(runner=fake)
+        mgr.root_node = MagicMock()
+        return mgr, fake
+
+    def _call(self, mgr, step):
+        net = self._net()
+        if step == "connect_to_root_ns":
+            return mgr.connect_to_root_ns(net, "s1", "192.168.1.254/24", "192.168.0.0/16")
+        if step == "add_root_route":
+            return mgr.add_root_route("10.9.0.0/16", "192.168.1.1")
+        return mgr.enable_normal_flow(net, "s1")
+
+    _FAILURE_WARNINGS = {
+        "connect_to_root_ns": "*** Warning: route add failed in root ns (rc=2): boom\n",
+        "add_root_route": "*** Warning: route add failed in root ns (rc=2): boom\n",
+        "enable_normal_flow": "*** Warning: flow add failed on s1 (rc=2): boom\n",
+    }
+
+    @pytest.mark.parametrize("step", sorted(_FAILURE_WARNINGS))
+    def test_failed_mutation_warns_and_registers_no_inverse(self, step):
+        mgr, _fake = self._mgr(CommandResult(2, stderr="boom\n"))
+
+        with patch("src.runtime.bridge_root.info") as mock_info:
+            self._call(mgr, step)
+
+        assert mgr.cleanup_actions == []
+        messages = [c.args[0] for c in mock_info.call_args_list]
+        assert self._FAILURE_WARNINGS[step] in messages
+
+    @pytest.mark.parametrize("step", sorted(_FAILURE_WARNINGS))
+    def test_mutation_that_hit_its_deadline_counts_as_failed(self, step):
+        mgr, _fake = self._mgr(CommandResult(0, timed_out=True))
+        self._call(mgr, step)
+        assert mgr.cleanup_actions == []
+
+    @pytest.mark.parametrize("step", sorted(_FAILURE_WARNINGS))
+    def test_successful_mutation_registers_exactly_one_inverse(self, step):
+        mgr, fake = self._mgr(CommandResult(0))
+        self._call(mgr, step)
+        assert len(mgr.cleanup_actions) == 1
+        before = len(fake.runs)
+        mgr.cleanup()
+        assert len(fake.runs) == before + 1
+        assert fake.runs[-1]["node"] == ROOT_SENTINEL
+
+    def test_root_link_stays_attached_when_only_its_route_failed(self):
+        # Warn-and-continue: the link exists, so the caller keeps going.
+        mgr, _fake = self._mgr(CommandResult(2, stderr="boom\n"))
+        assert self._call(mgr, "connect_to_root_ns") is True
+
+
+class TestRootRoutesUseIproute2:
+    """Root-namespace routes use iproute2 like add_host_route (0adede1):
+    net-tools `route add -net X/32` fails with SIOCADDRT for a single
+    address, and iproute2's `add` refuses to overwrite an existing route
+    (EEXIST) instead of silently replacing it."""
+
+    def _mgr(self):
+        from src.runtime.bridge_root import BridgeManager
+
+        fake = FakeCommandRunner()
+        fake.on_run = lambda node, argv: CommandResult(0)
+        mgr = BridgeManager(runner=fake)
+        mgr.root_node = MagicMock()
+        return mgr, fake
+
+    def test_connect_to_root_ns_adds_and_removes_the_local_route_with_ip(self):
+        mgr, fake = self._mgr()
+        net = MagicMock()
+        net.get = MagicMock(return_value=MagicMock())
+        link = MagicMock()
+        link.intf1 = "root-eth0"
+        net.addLink = MagicMock(return_value=link)
+
+        mgr.connect_to_root_ns(net, "s1", "192.168.1.254/24", "192.168.0.0/16")
+        mgr.cleanup()
+
+        assert [r["argv"] for r in fake.runs] == [
+            ["ip", "route", "add", "192.168.0.0/16", "dev", "root-eth0"],
+            ["ip", "route", "del", "192.168.0.0/16"],
+        ]
+
+    def test_add_root_route_accepts_a_single_address_and_removes_it_with_ip(self):
+        mgr, fake = self._mgr()
+
+        mgr.add_root_route("133.15.70.55/32", "192.168.1.1")
+        mgr.cleanup()
+
+        assert [r["argv"] for r in fake.runs] == [
+            ["ip", "route", "add", "133.15.70.55/32", "via", "192.168.1.1"],
+            ["ip", "route", "del", "133.15.70.55/32"],
+        ]
+
+
+class TestHostResolvConfIsRestored:
+    """Mininet hosts share the root mount namespace, so writing a host's
+    /etc/resolv.conf overwrites the real machine's file. BridgeManager
+    captures it once before the first write and restores it at teardown;
+    what it cannot restore it does not overwrite."""
+
+    ORIGINAL = "nameserver 192.168.0.53\nsearch lab.example\n"
+
+    def _mgr(self, capture_result=None, restore_result=None):
+        from src.runtime.bridge_root import BridgeManager
+
+        fake = FakeCommandRunner()
+
+        def on_run(node, argv):
+            if argv == ["cat", "/etc/resolv.conf"]:
+                return capture_result or CommandResult(0, stdout=self.ORIGINAL)
+            if argv[:2] == ["printf", "%s"]:
+                return restore_result or CommandResult(0)
+            return CommandResult(0)
+
+        fake.on_run = on_run
+        return BridgeManager(runner=fake), fake
+
+    @staticmethod
+    def _runs(fake):
+        return [(r["node"], r["argv"], r["log_path"]) for r in fake.runs]
+
+    def test_original_is_captured_before_writing_and_restored_at_cleanup(self):
+        mgr, fake = self._mgr()
+
+        mgr.write_host_resolv_conf(MagicMock(), ["h0", "h1"])
+        mgr.cleanup()
+
+        assert self._runs(fake) == [
+            ("h0", ["cat", "/etc/resolv.conf"], None),
+            ("h0", ["printf", "nameserver 8.8.8.8\n"], "/etc/resolv.conf"),
+            ("h1", ["printf", "nameserver 8.8.8.8\n"], "/etc/resolv.conf"),
+            ("h0", ["printf", "%s", self.ORIGINAL], "/etc/resolv.conf"),
+        ]
+
+    def test_failed_capture_leaves_the_file_untouched(self):
+        mgr, fake = self._mgr(capture_result=CommandResult(1, stderr="Permission denied\n"))
+
+        with patch("src.runtime.bridge_root.info") as mock_info:
+            mgr.write_host_resolv_conf(MagicMock(), ["h0", "h1"])
+
+        assert self._runs(fake) == [("h0", ["cat", "/etc/resolv.conf"], None)]
+        assert mgr.cleanup_actions == []
+        assert (
+            "*** Warning: /etc/resolv.conf capture failed (rc=1): Permission denied; "
+            "not overwriting it\n"
+            in [c.args[0] for c in mock_info.call_args_list]
+        )
+
+    def test_failed_restore_is_a_teardown_failure(self):
+        from src.runtime.bridge_root import TeardownError
+
+        mgr, _fake = self._mgr(restore_result=CommandResult(1, stderr="read-only\n"))
+        mgr.write_host_resolv_conf(MagicMock(), ["h0"])
+
+        with pytest.raises(TeardownError) as exc_info:
+            mgr.cleanup()
+
+        assert exc_info.value.failures == [
+            ("restore /etc/resolv.conf", 1, "read-only")
+        ]
+
+    def test_repeated_writes_still_end_with_the_original(self):
+        # Two bridge entries with external_routes both write; cleanup runs
+        # in reverse, so the first capture (the real original) is written last.
+        mgr, fake = self._mgr()
+        mgr.write_host_resolv_conf(MagicMock(), ["h0"])
+        captured_second = "nameserver 8.8.8.8\n"
+        fake.on_run = lambda node, argv: (
+            CommandResult(0, stdout=captured_second)
+            if argv == ["cat", "/etc/resolv.conf"]
+            else CommandResult(0)
+        )
+        mgr.write_host_resolv_conf(MagicMock(), ["h0"])
+        mgr.cleanup()
+
+        assert self._runs(fake)[-1] == (
+            "h0", ["printf", "%s", self.ORIGINAL], "/etc/resolv.conf"
+        )

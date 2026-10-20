@@ -87,8 +87,10 @@ teardown は `TeardownSpec.bridge_manager`）。config は次の 1 件。
   2026-09-25 以前の `add_host_route` は net-tools の `route add -net X/32` を使っていて `/32` を黙って
   取りこぼしていた（`SIOCADDRT: Invalid argument`、戻り値未確認）。iproute2 に揃えた修正込みで動く。
   症状は「MASQUERADE も ip_forward も入っているのに h1 の `ip route` に endpoint 向けの行が無い」。
-  **`external_routes` は使わない**: 指定すると各ホスト経由で `nameserver 8.8.8.8` が
-  **この機の実 /etc/resolv.conf に復元無しで上書き**される（Mininet ホストは mount ns を共有）。
+  **`external_routes` は使わない**: 指定すると実行中は各ホスト経由で **この機の実 /etc/resolv.conf** が
+  `nameserver 8.8.8.8` に置き換わる（Mininet ホストは mount ns を共有）。2026-10-20 以降（ticket 26）は
+  書き込み前に退避して teardown で書き戻すが、実行中と、プロセスが異常終了して cleanup が走らなかった場合は
+  置き換わったまま残る。
 - 送信元は MASQUERADE でこの機のアドレス（133.15.70.25）になるので、endpoint 側に
   Mininet 内部レンジ向けの経路や NAT は不要。戻りは conntrack → root-eth0 の connected route → s0 → h1。
 - **前提**: この機の LAN が `192.168.0.0/16` と重ならないこと。root ns にその範囲の経路と

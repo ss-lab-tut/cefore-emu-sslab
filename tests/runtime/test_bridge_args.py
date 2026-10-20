@@ -2,7 +2,10 @@
 
 import pytest
 
+from src.runtime.command_runner import CommandResult
+
 from src.runtime.bridge_args import (
+    fail_closed_rc,
     parse_bridge_args,
     parse_ext_args,
     validate_static_ip,
@@ -63,3 +66,25 @@ class TestValidateStaticIp:
     def test_bad_ip_raises_runtime_error(self):
         with pytest.raises(RuntimeError, match="invalid static IP"):
             validate_static_ip("not-an-ip/24")
+
+
+class TestFailClosedRc:
+    """Both bridge modules read a finished command through this one ladder:
+    only a run that actually exited 0 reads as success."""
+
+    @pytest.mark.parametrize(
+        "result, expected",
+        [
+            (CommandResult(0, stderr="warn"), (0, "warn")),
+            (CommandResult(2, stderr="boom"), (2, "boom")),
+            (CommandResult(0, stderr="partial", timed_out=True),
+             (-1, "partial\ncommand timed out")),
+            (CommandResult(0, cancelled=True), (-1, "command cancelled")),
+            (CommandResult(None, stderr="x\n"), (-1, "x\nno exit status")),
+            (CommandResult(0, timed_out=True, cancelled=True), (-1, "command timed out")),
+        ],
+        ids=["exit-0", "exit-nonzero", "timed-out", "cancelled", "no-exit-status",
+             "timed-out-outranks-cancelled"],
+    )
+    def test_only_a_completed_zero_exit_reads_as_success(self, result, expected):
+        assert fail_closed_rc(result) == expected
