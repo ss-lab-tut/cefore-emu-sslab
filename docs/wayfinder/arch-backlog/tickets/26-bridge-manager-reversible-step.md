@@ -48,3 +48,9 @@ fail-closed の読み方の表（timed_out / cancelled / `None` / 非 0 / 0）�
 - s4 `write_host_resolv_conf`（退避して mandatory で書き戻し、退避失敗なら上書きしない）: 9b31edc。
 - s5 `add_host_route` default 分岐の docstring 訂正: d661871。
 - CONTEXT.md に「Reversible step」を追加、runbook compute-ok-path の resolv 警告を更新。
+- 検証（2026-10-20）: unit 1611 passed / 8 skipped、ruff・mypy 0。cefore-run-tests の smoke 14 本 PASS、
+  root synthetic（external bridge + compute hermetic）6 passed。HPC 版（`test_compute_ok_path_hpc.py`、endpoint
+  133.15.70.55:18080）1 passed: root ns の `ip route add 192.168.0.0/16 dev root-eth0` とホストの /32 経路が
+  iproute2 で成功（warning 無し）し、実行前後で resolv.conf の sha256・ip_forward・NAT/FORWARD 規則・root ns 経路表・
+  proxy_arp が完全一致。resolv 退避（s4）と `add_root_route` は `external_routes` を使う config でしか動かないため、
+  実機では未確認（unit のみ）。
