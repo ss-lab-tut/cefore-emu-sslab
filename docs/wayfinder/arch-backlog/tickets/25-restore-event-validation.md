@@ -1,7 +1,7 @@
 ---
-status: open
+status: closed
 type: task
-claimed-by: claude-main
+claimed-by:
 blocked-by: []
 ---
 ## Task
@@ -57,6 +57,7 @@ _Avoid_: `duration` だけの repeat を検証エラーにすること（意図�
   通して検証結果の差 0。cefore-run-tests の smoke 14 本 PASS。smoke に repeat を使う config が無いため、
   `min_event_link` を改変した repeat restore 版（bw_set の `restore`、link_down の `restore_type`）を実機で 1 回走らせ、
   復元イベントが予定時刻に発火し `restore` の値で実行されることを確認。
+- PR #33 で main にマージ（1e7cad1）。2026-10-20 closed。
 
 ## Follow-up（本 ticket の scope 外として記録）
 
