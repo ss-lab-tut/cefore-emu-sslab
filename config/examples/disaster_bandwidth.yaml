@@ -56,8 +56,10 @@ routing:
 # repeat: 繰り返し設定（オプション）
 #   interval:     繰り返し間隔（秒）
 #   duration:     restore イベントまでの時間（秒）
+#                 restore / restore_type を省くと復旧しない（変化はそのまま残る）
 #   restore:      復元時に上書きするフィールド（dict）
 #   restore_type: 復元イベントの type（例: link_up）
+#                 restore 形式は link_* / fib_* / bw_set だけ（内容系と compute_call は interval/count のみ）、restore と restore_type は同時に書けない。
 #   count:        繰り返し回数（null で無限）
 events:
   # コンテンツ配信

@@ -1501,6 +1501,11 @@ def _validate_events(errors, config):
                     # that type's own messages (order is part of the contract).
                     errors.extend(_validate_host_range(event, prefix, host_count))
 
+                # Set when both restore forms are present on an event that
+                # supports them; the restored event cannot be validated
+                # because either form may be the author's intent.
+                ambiguous_restore = False
+
                 # repeat validation (all event types)
                 if "repeat" in event:
                     rep = event["repeat"]
@@ -1513,6 +1518,11 @@ def _validate_events(errors, config):
                                     f"events[{idx}].repeat.interval must be a positive number"
                                 )
                         if "duration" in rep:
+                            # 2026-10-20: duration with neither restore form is
+                            # VALID by design. It expresses a change that is
+                            # never recovered (e.g. a link that stays down), so
+                            # reject only a malformed value, never the absence
+                            # of a restore form.
                             if not _is_number(rep["duration"]) or rep["duration"] < 0:
                                 errors.append(
                                     f"events[{idx}].repeat.duration must be a non-negative number"
@@ -1533,12 +1543,30 @@ def _validate_events(errors, config):
                             errors.append(
                                 f"events[{idx}].repeat.restore_type must be a valid event type"
                             )
+                        # 2026-10-20: the scheduler silently prefers
+                        # ``restore`` when both forms are present, so the
+                        # author's intent is ambiguous. Allowlist types are
+                        # excluded: their allowlist message already names both
+                        # keys, so this one would only duplicate it.
+                        if (
+                            event.get("type") not in _REPEAT_ALLOWLIST_EVENT_TYPES
+                            and "restore" in rep
+                            and "restore_type" in rep
+                        ):
+                            errors.append(
+                                f"events[{idx}].repeat.restore and "
+                                "repeat.restore_type are mutually exclusive"
+                            )
+                            ambiguous_restore = True
 
                 # Last, so the original event's messages keep their order.
                 # Skip every repeat-allowlist type: their restore forms are
                 # already rejected, so validating the restored event would only
                 # duplicate that error.
-                if event.get("type") not in _REPEAT_ALLOWLIST_EVENT_TYPES:
+                if (
+                    not ambiguous_restore
+                    and event.get("type") not in _REPEAT_ALLOWLIST_EVENT_TYPES
+                ):
                     errors.extend(
                         _validate_restore_event(
                             event, idx, valid_event_types, ctx, host_count

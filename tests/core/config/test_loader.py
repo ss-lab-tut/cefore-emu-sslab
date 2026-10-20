@@ -2281,3 +2281,40 @@ def test_content_event_repeat_with_interval_and_count_stays_valid(etype):
              "repeat": {"interval": 10, "count": 3}}
     errors = validate_config({"hosts": 3, "events": [event]})
     assert not [e for e in errors if "repeat" in e]
+
+
+@pytest.mark.parametrize(
+    "base",
+    [
+        {"type": "bw_set", "nodes": [0, 1], "bandwidth": 1},
+        {"type": "link_down", "nodes": [0, 1]},
+    ],
+    ids=["bw_set", "link_down"],
+)
+def test_restore_and_restore_type_together_are_rejected(base):
+    # The scheduler would silently prefer `restore`; an author who writes both
+    # expects both to apply, so neither guess is safe.
+    event = {"at": 1, **base, "repeat": {
+        "interval": 10, "duration": 2,
+        "restore": {"bandwidth": 10}, "restore_type": "link_up",
+    }}
+    errors = validate_config({"hosts": 3, "events": [event]})
+    assert errors == [
+        "events[0].repeat.restore and repeat.restore_type are mutually exclusive"
+    ]
+
+
+@pytest.mark.parametrize(
+    "base",
+    [
+        {"type": "bw_set", "nodes": [0, 1], "bandwidth": 1},
+        {"type": "link_down", "nodes": [0, 1]},
+        {"type": "fib_add", "host": 1, "prefix": "ccnx:/a", "next_hop": "10.0.0.2"},
+    ],
+    ids=["bw_set", "link_down", "fib_add"],
+)
+def test_duration_without_a_restore_form_is_a_valid_permanent_change(base):
+    # By design: a repeat whose change is never recovered (e.g. a link that
+    # stays down), not an incomplete config.
+    event = {"at": 1, **base, "repeat": {"interval": 10, "duration": 5}}
+    assert validate_config({"hosts": 3, "events": [event]}) == []
