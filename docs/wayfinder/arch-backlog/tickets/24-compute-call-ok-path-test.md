@@ -63,6 +63,7 @@ bridge config に `external_routes` を使うこと（実機の `/etc/resolv.con
   root ns + MASQUERADE の bridges とは別機構の話。
 - `bridges.external_routes` が各ホスト経由で実機の `/etc/resolv.conf` を `nameserver 8.8.8.8` で復元無しに
   上書きする（`bridge_root.py` の resolv 書き込み、cleanup action 未登録）。disaster 本体の既存挙動。
+  → 2026-10-20 [26](26-bridge-manager-reversible-step.md) へ移した。
 - ROUTER（csmgrd）を挟む多段経路版（`SimpleLinkTopo` h0-s0-h1-s1-h2 で 2 ホップ get）。
 - `tests/synthetic/` は cefore-run-tests skill の pytest フェーズ（非 root）では常に skip されるため CI では
   走らない。[ci-pipeline 12](../../ci-pipeline/tickets/12-smoke-release-integration.md) の hosted-runner smoke に
@@ -72,6 +73,7 @@ bridge config に `external_routes` を使うこと（実機の `/etc/resolv.con
   無いが、`add_host_route` と同じ iproute2 化 + rc の可視化を別 PR で揃える。`add_host_route` の warning は
   他のモジュール内メッセージと同じく `mininet.log.info` レベルなので、既定の OUTPUT レベルでは表示されない
   （disaster / connect は info を有効にしている）。
+  → 2026-10-20 [26](26-bridge-manager-reversible-step.md) へ移した。
 - `src/runtime/compute_client.py` の module docstring と ADR-0003 本文は glossary「Compute endpoint」の `_Avoid_` に挙げた
   旧語彙（edge node、compute resource、compute box）を使っている。本 PR は surgical change の原則で触っていない。別 PR で置換。
 - テストが `_handle_compute_call`（private 名）を直接呼ぶ。scheduler 側に public な入口を切るかは、

@@ -8,6 +8,7 @@ the schema. A drift that previously hid across three files now fails one test.
 
 from src.core.events import (
     EVENT_SCHEMA,
+    build_restore_event,
     content_event_types,
     event_priorities,
     event_types,
@@ -222,3 +223,54 @@ def test_loader_accepts_exactly_the_schema_types():
         assert not any("must be one of" in e for e in errors), (
             f"loader rejected schema type {etype!r} as unknown"
         )
+
+
+# --- restore event ---------------------------------------------------------
+# build_restore_event is the one owner of how a repeating event's restore form
+# becomes the event the scheduler fires `duration` seconds later; the scheduler
+# and the config validator both call it, so they cannot disagree on its shape.
+
+def test_restore_dict_overrides_fields_and_drops_repeat():
+    event = {
+        "at": 10, "type": "bw_set", "nodes": [0, 1], "bandwidth": 1,
+        "repeat": {"interval": 30, "duration": 5, "restore": {"bandwidth": 10}},
+    }
+    assert build_restore_event(event) == {
+        "at": 10, "type": "bw_set", "nodes": [0, 1], "bandwidth": 10,
+    }
+
+
+def test_restore_type_replaces_only_the_type_and_drops_repeat():
+    event = {
+        "at": 10, "type": "link_down", "nodes": [0, 1],
+        "repeat": {"interval": 30, "duration": 5, "restore_type": "link_up"},
+    }
+    assert build_restore_event(event) == {"at": 10, "type": "link_up", "nodes": [0, 1]}
+
+
+def test_restore_dict_may_itself_change_the_type():
+    event = {
+        "at": 0, "type": "link_down", "nodes": [2, 3],
+        "repeat": {"duration": 1, "restore": {"type": "link_up"}},
+    }
+    assert build_restore_event(event) == {"at": 0, "type": "link_up", "nodes": [2, 3]}
+
+
+def test_repeat_without_a_restore_form_has_no_restore_event():
+    # duration alone is the documented "change that is never recovered".
+    event = {"at": 0, "type": "link_down", "nodes": [0, 1], "repeat": {"duration": 5}}
+    assert build_restore_event(event) is None
+
+
+def test_event_without_repeat_has_no_restore_event():
+    assert build_restore_event({"at": 0, "type": "link_down", "nodes": [0, 1]}) is None
+
+
+def test_building_a_restore_event_leaves_the_original_untouched():
+    repeat = {"interval": 30, "duration": 5, "restore": {"bandwidth": 10}}
+    event = {"at": 10, "type": "bw_set", "nodes": [0, 1], "bandwidth": 1, "repeat": repeat}
+    build_restore_event(event)
+    assert event == {
+        "at": 10, "type": "bw_set", "nodes": [0, 1], "bandwidth": 1,
+        "repeat": {"interval": 30, "duration": 5, "restore": {"bandwidth": 10}},
+    }

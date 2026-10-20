@@ -131,6 +131,25 @@ def test_validate_events_link_down_nodes():
     assert any("nodes" in e and "2 elements" in e for e in errors)
 
 
+@pytest.mark.parametrize("etype", ["link_down", "link_up", "bw_set"])
+@pytest.mark.parametrize(
+    "nodes, expected",
+    [
+        ([1], "events[0].nodes must be a list of 2 elements"),
+        ("1,2", "events[0].nodes must be a list of 2 elements"),
+        (["a", 1], "events[0].nodes must be a list of 2 host indices"),
+    ],
+)
+def test_validate_events_nodes_wording_separates_shape_from_element_type(
+    etype, nodes, expected
+):
+    """Every nodes-bearing event type words a wrong-shape list and a
+    non-integer element differently, so the message alone says which is wrong."""
+    event = {"at": 5, "type": etype, "nodes": nodes, "bandwidth": 1}
+    errors = validate_config({"events": [event]})
+    assert expected in errors
+
+
 def test_validate_events_fib_del_missing_fields():
     errors = validate_config({"events": [{"at": 5, "type": "fib_del"}]})
     assert any("host" in e for e in errors)
@@ -2154,3 +2173,170 @@ def test_warn_ccninfo_monitor_interval_at_default_silent():
         }
     )
     assert warned is False
+
+
+# ── restore events (repeat.restore / repeat.restore_type) ──
+# The event the scheduler synthesizes from a restore form is checked by the
+# same per-type rule as a top-level event, with messages prefixed
+# events[i].repeat.restore so the author can tell which document is wrong.
+
+def test_restore_type_into_a_type_with_more_required_fields_is_rejected():
+    event = {
+        "at": 1, "type": "link_down", "nodes": [0, 1],
+        "repeat": {"interval": 10, "duration": 2, "restore_type": "fib_add"},
+    }
+    errors = validate_config({"hosts": 3, "events": [event]})
+    assert errors == [
+        "events[0].repeat.restore missing required field 'host'",
+        "events[0].repeat.restore missing required field 'prefix'",
+        "events[0].repeat.restore missing required field 'next_hop'",
+    ]
+
+
+def test_restore_dict_with_an_invalid_value_is_rejected_like_a_top_level_event():
+    event = {
+        "at": 1, "type": "bw_set", "nodes": [0, 1], "bandwidth": 1,
+        "repeat": {"interval": 10, "duration": 2, "restore": {"bandwidth": -1}},
+    }
+    errors = validate_config({"hosts": 3, "events": [event]})
+    assert errors == ["events[0].repeat.restore.bandwidth must be a non-negative number"]
+
+
+def test_restore_dict_pointing_outside_the_topology_is_rejected():
+    event = {
+        "at": 1, "type": "bw_set", "nodes": [0, 1], "bandwidth": 1,
+        "repeat": {"interval": 10, "duration": 2, "restore": {"nodes": [0, 9]}},
+    }
+    errors = validate_config({"hosts": 3, "events": [event]})
+    assert errors == ["events[0].repeat.restore.nodes contains out-of-range host index 9"]
+
+
+def test_restore_dict_naming_an_unknown_type_is_rejected():
+    event = {
+        "at": 1, "type": "link_down", "nodes": [0, 1],
+        "repeat": {"interval": 10, "duration": 2, "restore": {"type": "explode"}},
+    }
+    errors = validate_config({"hosts": 3, "events": [event]})
+    assert errors == [
+        "events[0].repeat.restore.type must be one of: "
+        "link_down, link_up, fib_add, fib_del, fib_enable, bw_set, compute_call, "
+        "put, get, pubsub_pub, pubsub_sub, ccninfo"
+    ]
+
+
+@pytest.mark.parametrize(
+    "event",
+    [
+        {"at": 1, "type": "bw_set", "nodes": [0, 1], "bandwidth": 1,
+         "repeat": {"interval": 10, "duration": 2, "restore": {"bandwidth": 10}}},
+        {"at": 1, "type": "link_down", "nodes": [0, 1],
+         "repeat": {"interval": 10, "duration": 2, "restore_type": "link_up"}},
+    ],
+    ids=["bw_set-restore-bandwidth", "link_down-restore_type-link_up"],
+)
+def test_the_two_restore_forms_used_in_the_shipped_configs_stay_valid(event):
+    assert validate_config({"hosts": 3, "events": [event]}) == []
+
+
+# Content events and compute_call accept only interval/count in repeat: a
+# restore form there could synthesize a publisher that FIB pre-programming
+# (extract_publications) never sees, so the path is closed at config time.
+
+_CONTENT_EVENTS = {
+    "put": {"host": 1, "uri": "ccnx:/a", "file": "a.bin"},
+    "get": {"host": 1, "uri": "ccnx:/a"},
+    "pubsub_pub": {"host": 1, "uri": "ccnx:/a", "file": "a.bin"},
+    "pubsub_sub": {"host": 1, "uri": "ccnx:/a"},
+    "ccninfo": {"host": 1, "uri": "ccnx:/a"},
+}
+
+
+@pytest.mark.parametrize("etype", sorted(_CONTENT_EVENTS))
+def test_content_event_repeat_rejects_restore_forms_and_duration(etype):
+    event = {"at": 1, "type": etype, **_CONTENT_EVENTS[etype],
+             "repeat": {"interval": 10, "duration": 2, "restore": {"host": 2}}}
+    errors = validate_config({"hosts": 3, "events": [event]})
+    assert (
+        f"events[0].repeat for {etype} allows only interval/count; got: duration, restore"
+        in errors
+    )
+    # The rejected restore is not additionally validated as an event.
+    assert not [e for e in errors if e.startswith("events[0].repeat.restore")]
+
+
+def test_put_restored_onto_an_invalid_host_and_rate_is_rejected():
+    # The 2026-10-20 reproduction: this config used to validate cleanly.
+    event = {"at": 1, "type": "put", **_CONTENT_EVENTS["put"],
+             "repeat": {"interval": 10, "duration": 2, "restore": {"host": 99, "rate": -1}}}
+    errors = validate_config({"hosts": 3, "events": [event]})
+    assert (
+        "events[0].repeat for put allows only interval/count; got: duration, restore"
+        in errors
+    )
+
+
+@pytest.mark.parametrize("etype", sorted(_CONTENT_EVENTS))
+def test_content_event_repeat_with_interval_and_count_stays_valid(etype):
+    event = {"at": 1, "type": etype, **_CONTENT_EVENTS[etype],
+             "repeat": {"interval": 10, "count": 3}}
+    errors = validate_config({"hosts": 3, "events": [event]})
+    assert not [e for e in errors if "repeat" in e]
+
+
+@pytest.mark.parametrize(
+    "base",
+    [
+        {"type": "bw_set", "nodes": [0, 1], "bandwidth": 1},
+        {"type": "link_down", "nodes": [0, 1]},
+    ],
+    ids=["bw_set", "link_down"],
+)
+def test_restore_and_restore_type_together_are_rejected(base):
+    # The scheduler would silently prefer `restore`; an author who writes both
+    # expects both to apply, so neither guess is safe.
+    event = {"at": 1, **base, "repeat": {
+        "interval": 10, "duration": 2,
+        "restore": {"bandwidth": 10}, "restore_type": "link_up",
+    }}
+    errors = validate_config({"hosts": 3, "events": [event]})
+    assert errors == [
+        "events[0].repeat.restore and repeat.restore_type are mutually exclusive"
+    ]
+
+
+@pytest.mark.parametrize(
+    "base",
+    [
+        {"type": "bw_set", "nodes": [0, 1], "bandwidth": 1},
+        {"type": "link_down", "nodes": [0, 1]},
+        {"type": "fib_add", "host": 1, "prefix": "ccnx:/a", "next_hop": "10.0.0.2"},
+    ],
+    ids=["bw_set", "link_down", "fib_add"],
+)
+def test_duration_without_a_restore_form_is_a_valid_permanent_change(base):
+    # By design: a repeat whose change is never recovered (e.g. a link that
+    # stays down), not an incomplete config.
+    event = {"at": 1, **base, "repeat": {"interval": 10, "duration": 5}}
+    assert validate_config({"hosts": 3, "events": [event]}) == []
+
+
+@pytest.mark.parametrize(
+    "repeat",
+    [
+        {"duration": 2, "restore_type": "put"},
+        {"duration": 2, "restore": {"type": "pubsub_pub", "host": 1,
+                                    "uri": "ccnx:/b", "file": "b.bin"}},
+        {"duration": 2, "restore": {"type": "compute_call", "host": 1,
+                                    "endpoint": "http://e/p", "publish_uri": "ccnx:/c",
+                                    "output_file": "o.bin"}},
+    ],
+    ids=["restore_type-put", "restore-pubsub_pub", "restore-compute_call"],
+)
+def test_restore_cannot_turn_an_event_into_a_content_event_or_compute_call(repeat):
+    # The restore *target* is constrained too: otherwise a link_down could
+    # restore into a publisher that FIB pre-programming never saw.
+    event = {"at": 1, "type": "link_down", "nodes": [0, 1], "repeat": repeat}
+    errors = validate_config({"hosts": 3, "events": [event]})
+    assert errors == [
+        "events[0].repeat.restore.type must not be a content event type or compute_call"
+    ]

@@ -152,3 +152,37 @@ def extract_publications(
     }
     publisher_ids = frozenset(ev["host"] for ev in counted)
     return publications, publishers_dict, publisher_ids
+
+
+def build_restore_event(event: dict) -> dict | None:
+    """Return the event a repeating event restores to, or None if it has none.
+
+    This is the single owner of the restore-event shape: the scheduler fires
+    the result and the validator reasons about the same document, so deriving
+    it in only one place keeps them from disagreeing about which fields win
+    (``restore`` overrides ``restore_type``; both drop ``repeat``).
+
+    The caller decides *when* the restore fires. ``duration`` is deliberately
+    not read here: timing belongs to the scheduler. A ``duration`` with no
+    ``restore``/``restore_type`` therefore yields None -- that is a change
+    that is never recovered, by design, not an error.
+
+    Nothing is remembered. A restore is only the declared override applied to
+    the original event, so ``bw_set`` restores to the bandwidth written in the
+    event, not to whatever the topology's bandwidth was before the change.
+
+    Precondition: when ``repeat["restore"]`` is present it is a dict; the
+    config validator checks that shape before anything calls this helper.
+    Pure: never mutates ``event`` or its ``repeat``.
+    """
+    repeat = event.get("repeat")
+    if not isinstance(repeat, dict):
+        return None
+    if "restore" in repeat:
+        restore_event = {**event, **repeat["restore"]}
+    elif "restore_type" in repeat:
+        restore_event = {**event, "type": repeat["restore_type"]}
+    else:
+        return None
+    restore_event.pop("repeat", None)
+    return restore_event
