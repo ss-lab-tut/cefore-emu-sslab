@@ -1128,9 +1128,10 @@ def _validate_link_event(
 ) -> list[str]:
     """Validate link_down/link_up: exactly two host indices, in range.
 
-    These predate the schema's required_fields binding, so their messages
-    intentionally differ ("list of 2 elements" for the shape, "2 host
-    indices" for the element types) from bw_set's single-wording shape check.
+    They predate the schema's required_fields binding. The wording matches
+    bw_set's node errors so that "list of 2 elements" identifies a wrong-shape
+    list and "2 host indices" identifies non-integer elements, regardless of
+    which of these event types produced the message.
     """
     errors: list[str] = []
     nodes = event.get("nodes")
@@ -1151,13 +1152,15 @@ def _validate_bw_set_event(
     """Validate bw_set's endpoints and bandwidth.
 
     Deliberately keeps its own node shape check instead of the schema-driven
-    required-field loop: both the wrong-shape and wrong-element cases use the
-    legacy "list of 2 host indices" wording, which existing callers match on.
+    required-field loop. Its node errors use the same wording as link_down and
+    link_up: "list of 2 elements" for a wrong-shape list versus "2 host
+    indices" for non-integer elements. Thus the message alone distinguishes the
+    two failures without needing to know the event type.
     """
     errors: list[str] = []
     nodes = event.get("nodes")
     if not isinstance(nodes, list) or len(nodes) != 2:
-        errors.append(f"{prefix}.nodes must be a list of 2 host indices")
+        errors.append(f"{prefix}.nodes must be a list of 2 elements")
     elif not all(_is_int(n) for n in nodes):
         errors.append(f"{prefix}.nodes must be a list of 2 host indices")
     elif _is_int(ctx.host_count):

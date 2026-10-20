@@ -131,6 +131,25 @@ def test_validate_events_link_down_nodes():
     assert any("nodes" in e and "2 elements" in e for e in errors)
 
 
+@pytest.mark.parametrize("etype", ["link_down", "link_up", "bw_set"])
+@pytest.mark.parametrize(
+    "nodes, expected",
+    [
+        ([1], "events[0].nodes must be a list of 2 elements"),
+        ("1,2", "events[0].nodes must be a list of 2 elements"),
+        (["a", 1], "events[0].nodes must be a list of 2 host indices"),
+    ],
+)
+def test_validate_events_nodes_wording_separates_shape_from_element_type(
+    etype, nodes, expected
+):
+    """Every nodes-bearing event type words a wrong-shape list and a
+    non-integer element differently, so the message alone says which is wrong."""
+    event = {"at": 5, "type": etype, "nodes": nodes, "bandwidth": 1}
+    errors = validate_config({"events": [event]})
+    assert expected in errors
+
+
 def test_validate_events_fib_del_missing_fields():
     errors = validate_config({"events": [{"at": 5, "type": "fib_del"}]})
     assert any("host" in e for e in errors)
