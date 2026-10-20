@@ -2173,3 +2173,66 @@ def test_warn_ccninfo_monitor_interval_at_default_silent():
         }
     )
     assert warned is False
+
+
+# ── restore events (repeat.restore / repeat.restore_type) ──
+# The event the scheduler synthesizes from a restore form is checked by the
+# same per-type rule as a top-level event, with messages prefixed
+# events[i].repeat.restore so the author can tell which document is wrong.
+
+def test_restore_type_into_a_type_with_more_required_fields_is_rejected():
+    event = {
+        "at": 1, "type": "link_down", "nodes": [0, 1],
+        "repeat": {"interval": 10, "duration": 2, "restore_type": "fib_add"},
+    }
+    errors = validate_config({"hosts": 3, "events": [event]})
+    assert errors == [
+        "events[0].repeat.restore missing required field 'host'",
+        "events[0].repeat.restore missing required field 'prefix'",
+        "events[0].repeat.restore missing required field 'next_hop'",
+    ]
+
+
+def test_restore_dict_with_an_invalid_value_is_rejected_like_a_top_level_event():
+    event = {
+        "at": 1, "type": "bw_set", "nodes": [0, 1], "bandwidth": 1,
+        "repeat": {"interval": 10, "duration": 2, "restore": {"bandwidth": -1}},
+    }
+    errors = validate_config({"hosts": 3, "events": [event]})
+    assert errors == ["events[0].repeat.restore.bandwidth must be a non-negative number"]
+
+
+def test_restore_dict_pointing_outside_the_topology_is_rejected():
+    event = {
+        "at": 1, "type": "bw_set", "nodes": [0, 1], "bandwidth": 1,
+        "repeat": {"interval": 10, "duration": 2, "restore": {"nodes": [0, 9]}},
+    }
+    errors = validate_config({"hosts": 3, "events": [event]})
+    assert errors == ["events[0].repeat.restore.nodes contains out-of-range host index 9"]
+
+
+def test_restore_dict_naming_an_unknown_type_is_rejected():
+    event = {
+        "at": 1, "type": "link_down", "nodes": [0, 1],
+        "repeat": {"interval": 10, "duration": 2, "restore": {"type": "explode"}},
+    }
+    errors = validate_config({"hosts": 3, "events": [event]})
+    assert errors == [
+        "events[0].repeat.restore.type must be one of: "
+        "link_down, link_up, fib_add, fib_del, fib_enable, bw_set, compute_call, "
+        "put, get, pubsub_pub, pubsub_sub, ccninfo"
+    ]
+
+
+@pytest.mark.parametrize(
+    "event",
+    [
+        {"at": 1, "type": "bw_set", "nodes": [0, 1], "bandwidth": 1,
+         "repeat": {"interval": 10, "duration": 2, "restore": {"bandwidth": 10}}},
+        {"at": 1, "type": "link_down", "nodes": [0, 1],
+         "repeat": {"interval": 10, "duration": 2, "restore_type": "link_up"}},
+    ],
+    ids=["bw_set-restore-bandwidth", "link_down-restore_type-link_up"],
+)
+def test_the_two_restore_forms_used_in_the_shipped_configs_stay_valid(event):
+    assert validate_config({"hosts": 3, "events": [event]}) == []

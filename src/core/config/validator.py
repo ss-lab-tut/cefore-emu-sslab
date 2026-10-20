@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from typing import Any, Callable
 
 from ..artifacts import safe_uri_label
-from ..events import EVENT_SCHEMA, event_types
+from ..events import EVENT_SCHEMA, build_restore_event, event_types
 from ..protocols import VALID_ROUTE_PROTOCOLS, normalize_route_protocol
 
 VALID_ALGOS = ("crc32c", "rsa-sha256")
@@ -1385,6 +1385,57 @@ _EVENT_VALIDATORS: dict[str, Callable[[dict, str, _EventCheckContext], list[str]
 assert set(_EVENT_VALIDATORS) == set(event_types())
 
 
+def _validate_restore_event(
+    event: dict,
+    idx: int,
+    valid_event_types: tuple[str, ...],
+    ctx: _EventCheckContext,
+    host_count: Any,
+) -> list[str]:
+    """Validate the event a repeat form synthesizes at runtime.
+
+    The scheduler builds this event with ``build_restore_event`` and fires it
+    directly, so it never passes through the top-level loop in
+    ``_validate_events``. Without
+    this check an authoring mistake (for example restoring a link_down into a
+    fib_add without the route fields) is accepted at config time and only
+    surfaces as a handler KeyError mid-experiment. The restored event is
+    therefore judged by exactly the rules a top-level typed event gets, with
+    the restore path as its prefix; ``at`` is not re-checked because it is
+    inherited from the original event and already validated there.
+
+    2026-10-20: restore events were synthesized by the scheduler without
+    validation (a link_down restored into fib_add passed validate_config and
+    raised KeyError at runtime).
+
+    The caller only invokes this for well-shaped restore forms; the existing
+    repeat checks have already reported malformed ``restore``/``restore_type``
+    values, so returning early here avoids duplicate messages.
+    """
+    repeat = event.get("repeat")
+    if not isinstance(repeat, dict):
+        return []
+    if "restore" in repeat and not isinstance(repeat["restore"], dict):
+        return []
+    if (
+        "restore_type" in repeat
+        and repeat["restore_type"] not in valid_event_types
+    ):
+        return []
+
+    restored = build_restore_event(event)
+    if restored is None:
+        return []
+
+    prefix = f"events[{idx}].repeat.restore"
+    restored_type = restored.get("type")
+    if restored_type not in valid_event_types:
+        return [f"{prefix}.type must be one of: {', '.join(valid_event_types)}"]
+    errors = _EVENT_VALIDATORS[restored_type](restored, prefix, ctx)
+    errors.extend(_validate_host_range(restored, prefix, host_count))
+    return errors
+
+
 def _validate_events(errors, config):
     """Validate the ``events`` list: per-type rules plus cross-type repeat rules.
 
@@ -1458,6 +1509,15 @@ def _validate_events(errors, config):
                             errors.append(
                                 f"events[{idx}].repeat.restore_type must be a valid event type"
                             )
+
+                # Last, so the original event's messages keep their order.
+                # Skip compute_call: its repeat allowlist already rejects restore.
+                if event.get("type") != "compute_call":
+                    errors.extend(
+                        _validate_restore_event(
+                            event, idx, valid_event_types, ctx, host_count
+                        )
+                    )
 
 
 def validate_config(config: dict[str, Any]) -> list[str]:
