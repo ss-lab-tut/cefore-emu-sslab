@@ -106,6 +106,62 @@ class BridgeManager:
             self.root_node = Node("root", inNamespace=False)
         return self.root_node
 
+    def _apply_reversible(
+        self,
+        runner,
+        node: str,
+        forward_argv: list[str],
+        inverse_argv: list[str],
+        *,
+        description: str,
+        category: str,
+        failure_message: str,
+    ) -> bool:
+        """Apply one owned mutation and register its inverse only on success.
+
+        This is the single owner of the rule "register the inverse only if the
+        forward provably succeeded". A failed forward may mean the state
+        already existed (EEXIST for a pre-existing route or flow), so undoing
+        it at teardown would break state this manager never created. Failures
+        warn and continue because existing scenarios tolerate partial routing.
+
+        Scope: owned route/flow mutations only. The sysctl writers and NAT keep
+        their own transactional code (prior-value capture, multi-rule rollback)
+        by design; they share only the fail-closed result reading.
+
+        2026-10-20: connect_to_root_ns / add_root_route / enable_normal_flow
+        ignored the forward rc and registered the inverse unconditionally, so
+        teardown could delete a root route this manager never added.
+
+        Returns:
+            True when the forward command succeeded and the inverse was
+            registered; False on any fail-closed failure (nothing registered).
+        """
+        rc, detail = _result_to_rc_detail(
+            runner.run(node, forward_argv, capture_stderr=True)
+        )
+        if rc != 0:
+            info(f"*** Warning: {failure_message} (rc={rc}): {detail}\n")
+            return False
+        self.cleanup_actions.append(
+            CleanupAction(
+                description=description,
+                category=category,
+                mandatory=False,
+                # このファイルの cleanup lambda 全部に共通の identity cast:
+                # default 引数で値を束縛した lambda を mypy は optional 引数付き
+                # signature に推論し、引数ゼロの execute 型と照合できない。
+                # 実行時は引数なしで呼ばれ、束縛済みの既定値が使われる。
+                execute=cast(
+                    Callable[[], tuple[int, str]],
+                    lambda r=runner, n=node, a=inverse_argv: _result_to_rc_detail(
+                        r.run(n, a, capture_stderr=True)
+                    ),
+                ),
+            )
+        )
+        return True
+
     def connect_to_root_ns(
         self,
         net: Mininet,
@@ -157,24 +213,18 @@ class BridgeManager:
         runner = self._root_runner()
         add_argv = ["route", "add", "-net", local_routes, "dev", str(self.root_intf)]
         info(f"*** Adding route in root ns: {add_argv}\n")
-        runner.run(ROOT_SENTINEL, add_argv, capture_stderr=True)
         del_argv = ["route", "del", "-net", local_routes]
-        self.cleanup_actions.append(
-            CleanupAction(
-                description=f"remove route: {' '.join(del_argv)}",
-                category="route",
-                mandatory=False,
-                # このファイルの cleanup lambda 全部に共通の identity cast:
-                # default 引数で値を束縛した lambda を mypy は optional 引数付き
-                # signature に推論し、引数ゼロの execute 型と照合できない。
-                # 実行時は引数なしで呼ばれ、束縛済みの既定値が使われる。
-                execute=cast(
-                    Callable[[], tuple[int, str]],
-                    lambda r=runner, a=del_argv: _result_to_rc_detail(
-                        r.run(ROOT_SENTINEL, a, capture_stderr=True)
-                    ),
-                ),
-            )
+        # The link stays attached even when only its route failed: the caller
+        # relies on the return value to mean "switch attached", and skipping
+        # the rest of the entry would strand the just-added link.
+        self._apply_reversible(
+            runner,
+            ROOT_SENTINEL,
+            add_argv,
+            del_argv,
+            description=f"remove route: {' '.join(del_argv)}",
+            category="route",
+            failure_message="route add failed in root ns",
         )
         return True
 
@@ -234,34 +284,21 @@ class BridgeManager:
             ] + dev_clause
             del_argv = ["ip", "route", "del", dest_network]
         info(f"*** Adding route in {host_name}: {add_argv}\n")
-        rc, detail = _result_to_rc_detail(
-            runner.run(host_name, add_argv, capture_stderr=True)
-        )
-        if rc != 0:
-            # Warn rather than raise: existing scenarios tolerate a partially
-            # routed host and must not start failing at setup. The point is
-            # that the failure is no longer invisible — it used to surface
-            # only as unexplained "no connectivity" much later.
-            info(f"*** Warning: route add failed in {host_name} (rc={rc}): {detail}\n")
-            # Deliberately unlike the other producers in this module, which
-            # register their cleanup unconditionally: those undo settings they
-            # captured first (ip_forward) or rules only they could have added.
-            # A route is different — the add may have failed precisely because
-            # the host already had that prefix, and deleting it at teardown
-            # would break connectivity this manager never provided.
-            return
-        self.cleanup_actions.append(
-            CleanupAction(
-                description=f"remove host route: {' '.join(del_argv)}",
-                category="route",
-                mandatory=False,
-                execute=cast(
-                    Callable[[], tuple[int, str]],
-                    lambda r=runner, name=host_name, a=del_argv: _result_to_rc_detail(
-                        r.run(name, a, capture_stderr=True)
-                    ),
-                ),
-            )
+        # Warn rather than raise on failure: existing scenarios tolerate a
+        # partially routed host and must not start failing at setup. The point
+        # is that the failure is not invisible — it used to surface only as
+        # unexplained "no connectivity" much later. All route/flow producers in
+        # this module now share this rule: a failed add may mean the prefix was
+        # already there, so teardown must not delete what this manager never
+        # created.
+        self._apply_reversible(
+            runner,
+            host_name,
+            add_argv,
+            del_argv,
+            description=f"remove host route: {' '.join(del_argv)}",
+            category="route",
+            failure_message=f"route add failed in {host_name}",
         )
 
     def add_root_route(self, dest_network: str, gateway: str) -> None:
@@ -270,20 +307,15 @@ class BridgeManager:
         runner = self._root_runner()
         add_argv = ["route", "add", "-net", dest_network, "gw", gateway]
         info(f"*** Adding route in root ns: {add_argv}\n")
-        runner.run(ROOT_SENTINEL, add_argv, capture_stderr=True)
         del_argv = ["route", "del", "-net", dest_network]
-        self.cleanup_actions.append(
-            CleanupAction(
-                description=f"remove root route: {' '.join(del_argv)}",
-                category="route",
-                mandatory=False,
-                execute=cast(
-                    Callable[[], tuple[int, str]],
-                    lambda r=runner, a=del_argv: _result_to_rc_detail(
-                        r.run(ROOT_SENTINEL, a, capture_stderr=True)
-                    ),
-                ),
-            )
+        self._apply_reversible(
+            runner,
+            ROOT_SENTINEL,
+            add_argv,
+            del_argv,
+            description=f"remove root route: {' '.join(del_argv)}",
+            category="route",
+            failure_message="route add failed in root ns",
         )
 
     def enable_ip_forwarding(self) -> None:
@@ -450,20 +482,15 @@ class BridgeManager:
         self.get_or_create_root()
         runner = self._root_runner()
         add_argv = ["ovs-ofctl", "add-flow", switch_name, "priority=0,actions=NORMAL"]
-        runner.run(ROOT_SENTINEL, add_argv, capture_stderr=True)
         del_argv = ["ovs-ofctl", "del-flows", switch_name, "--strict", "priority=0"]
-        self.cleanup_actions.append(
-            CleanupAction(
-                description=f"remove OVS flow: {' '.join(del_argv)}",
-                category="flow",
-                mandatory=False,
-                execute=cast(
-                    Callable[[], tuple[int, str]],
-                    lambda r=runner, a=del_argv: _result_to_rc_detail(
-                        r.run(ROOT_SENTINEL, a, capture_stderr=True)
-                    ),
-                ),
-            )
+        self._apply_reversible(
+            runner,
+            ROOT_SENTINEL,
+            add_argv,
+            del_argv,
+            description=f"remove OVS flow: {' '.join(del_argv)}",
+            category="flow",
+            failure_message=f"flow add failed on {switch_name}",
         )
 
     def enable_proxy_arp(self) -> None:

@@ -1447,3 +1447,72 @@ class TestAddHostRouteUsesIproute2:
         ]
         assert mgr.cleanup_actions[0].execute() == (0, "")
         assert fake.runs[-1]["argv"] == ["ip", "route", "del", "133.15.70.55/32"]
+
+
+class TestReversibleStepsRegisterInverseOnlyOnSuccess:
+    """Every route/flow mutation BridgeManager performs goes through one rule:
+    run it, read the result fail-closed, and register the inverse only when it
+    provably succeeded. A failed add is a warning (setup continues), and a
+    mutation this manager did not make is never undone at teardown."""
+
+    @staticmethod
+    def _net():
+        net = MagicMock()
+        net.get = MagicMock(return_value=MagicMock())
+        net.addLink = MagicMock(return_value=MagicMock())
+        return net
+
+    def _mgr(self, result):
+        from src.runtime.bridge_root import BridgeManager
+
+        fake = FakeCommandRunner()
+        fake.on_run = lambda node, argv: result
+        mgr = BridgeManager(runner=fake)
+        mgr.root_node = MagicMock()
+        return mgr, fake
+
+    def _call(self, mgr, step):
+        net = self._net()
+        if step == "connect_to_root_ns":
+            return mgr.connect_to_root_ns(net, "s1", "192.168.1.254/24", "192.168.0.0/16")
+        if step == "add_root_route":
+            return mgr.add_root_route("10.9.0.0/16", "192.168.1.1")
+        return mgr.enable_normal_flow(net, "s1")
+
+    _FAILURE_WARNINGS = {
+        "connect_to_root_ns": "*** Warning: route add failed in root ns (rc=2): boom\n",
+        "add_root_route": "*** Warning: route add failed in root ns (rc=2): boom\n",
+        "enable_normal_flow": "*** Warning: flow add failed on s1 (rc=2): boom\n",
+    }
+
+    @pytest.mark.parametrize("step", sorted(_FAILURE_WARNINGS))
+    def test_failed_mutation_warns_and_registers_no_inverse(self, step):
+        mgr, _fake = self._mgr(CommandResult(2, stderr="boom\n"))
+
+        with patch("src.runtime.bridge_root.info") as mock_info:
+            self._call(mgr, step)
+
+        assert mgr.cleanup_actions == []
+        messages = [c.args[0] for c in mock_info.call_args_list]
+        assert self._FAILURE_WARNINGS[step] in messages
+
+    @pytest.mark.parametrize("step", sorted(_FAILURE_WARNINGS))
+    def test_mutation_that_hit_its_deadline_counts_as_failed(self, step):
+        mgr, _fake = self._mgr(CommandResult(0, timed_out=True))
+        self._call(mgr, step)
+        assert mgr.cleanup_actions == []
+
+    @pytest.mark.parametrize("step", sorted(_FAILURE_WARNINGS))
+    def test_successful_mutation_registers_exactly_one_inverse(self, step):
+        mgr, fake = self._mgr(CommandResult(0))
+        self._call(mgr, step)
+        assert len(mgr.cleanup_actions) == 1
+        before = len(fake.runs)
+        mgr.cleanup()
+        assert len(fake.runs) == before + 1
+        assert fake.runs[-1]["node"] == ROOT_SENTINEL
+
+    def test_root_link_stays_attached_when_only_its_route_failed(self):
+        # Warn-and-continue: the link exists, so the caller keeps going.
+        mgr, _fake = self._mgr(CommandResult(2, stderr="boom\n"))
+        assert self._call(mgr, "connect_to_root_ns") is True
