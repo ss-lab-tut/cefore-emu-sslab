@@ -2318,3 +2318,25 @@ def test_duration_without_a_restore_form_is_a_valid_permanent_change(base):
     # stays down), not an incomplete config.
     event = {"at": 1, **base, "repeat": {"interval": 10, "duration": 5}}
     assert validate_config({"hosts": 3, "events": [event]}) == []
+
+
+@pytest.mark.parametrize(
+    "repeat",
+    [
+        {"duration": 2, "restore_type": "put"},
+        {"duration": 2, "restore": {"type": "pubsub_pub", "host": 1,
+                                    "uri": "ccnx:/b", "file": "b.bin"}},
+        {"duration": 2, "restore": {"type": "compute_call", "host": 1,
+                                    "endpoint": "http://e/p", "publish_uri": "ccnx:/c",
+                                    "output_file": "o.bin"}},
+    ],
+    ids=["restore_type-put", "restore-pubsub_pub", "restore-compute_call"],
+)
+def test_restore_cannot_turn_an_event_into_a_content_event_or_compute_call(repeat):
+    # The restore *target* is constrained too: otherwise a link_down could
+    # restore into a publisher that FIB pre-programming never saw.
+    event = {"at": 1, "type": "link_down", "nodes": [0, 1], "repeat": repeat}
+    errors = validate_config({"hosts": 3, "events": [event]})
+    assert errors == [
+        "events[0].repeat.restore.type must not be a content event type or compute_call"
+    ]

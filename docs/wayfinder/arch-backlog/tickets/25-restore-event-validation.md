@@ -24,6 +24,9 @@ validator では「`restore` が dict か」「`restore_type` が既知の型名
    内容系と compute_call は `interval` / `count` 以外を拒否する。compute_call の既存規則と 1 本にまとめ、
    compute_call のメッセージは byte 一致のまま。これで復元イベントが publisher になる経路自体が消え、
    `extract_publications` は変更しない。
+   （2026-10-20 訂正: 元のイベントの型だけを制限しても、`link_down` を `restore_type: put` や
+   `restore: {type: pubsub_pub}` で内容系へ復元する経路が残っていた。advisor review で発見し、復元先の型にも
+   同じ集合を当てて塞いだ。両方を制限して初めて「経路自体が消える」が成り立つ。）
 3. 復元後のイベントは、トップレベルと同じ型ごとの規則で検証する。メッセージには
    `events[i].repeat.restore` 接頭辞を付けて区別する。
 4. `restore` と `restore_type` の同時指定は検証エラー（現状は scheduler の if/elif で `restore` が黙って優先される）。

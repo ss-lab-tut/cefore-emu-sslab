@@ -16,8 +16,10 @@ from ..protocols import VALID_ROUTE_PROTOCOLS, normalize_route_protocol
 
 VALID_ALGOS = ("crc32c", "rsa-sha256")
 
-# Event types whose ``repeat`` is an allowlist (interval/count only). A
-# restore form on a content type would synthesize a content event at runtime,
+# Event types whose ``repeat`` is an allowlist (interval/count only). The set
+# constrains both the original event (its repeat may not carry a restore form)
+# and the restore *target* (another event may not restore into one of these
+# types). Either direction would synthesize a content event at runtime,
 # possibly a publisher, that ``extract_publications`` / FIB pre-programming
 # never sees; compute_call has no natural "restore" at all. Derive the content
 # types from EVENT_SCHEMA so a new content operation is covered automatically.
@@ -1428,6 +1430,11 @@ def _validate_restore_event(
     the restore path as its prefix; ``at`` is not re-checked because it is
     inherited from the original event and already validated there.
 
+    The restored type is also held to the repeat allowlist that
+    ``_REPEAT_ALLOWLIST_EVENT_TYPES`` defines: that set constrains the restore
+    target as well as the original event, so an event such as link_down cannot
+    restore into a publisher that FIB pre-programming never saw.
+
     2026-10-20: restore events were synthesized by the scheduler without
     validation (a link_down restored into fib_add passed validate_config and
     raised KeyError at runtime).
@@ -1455,6 +1462,11 @@ def _validate_restore_event(
     restored_type = restored.get("type")
     if restored_type not in valid_event_types:
         return [f"{prefix}.type must be one of: {', '.join(valid_event_types)}"]
+    # 2026-10-20 review fix: the allowlist gated only the original event's
+    # type; the restore target must be gated too, or a link_down can restore
+    # into a publisher FIB pre-programming never saw.
+    if restored_type in _REPEAT_ALLOWLIST_EVENT_TYPES:
+        return [f"{prefix}.type must not be a content event type or compute_call"]
     errors = _EVENT_VALIDATORS[restored_type](restored, prefix, ctx)
     errors.extend(_validate_host_range(restored, prefix, host_count))
     return errors
