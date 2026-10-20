@@ -759,6 +759,34 @@ class TestIPForwarding:
             ("restore ip_forward to 0", 1, "restore failed")
         ]
 
+    def test_timed_out_restoration_is_a_failure_even_with_exit_zero(self):
+        """A restore that hit its deadline did not provably restore anything,
+        so cleanup must not read its returncode 0 as success."""
+        from src.runtime.bridge_root import BridgeManager, TeardownError
+
+        fake = FakeCommandRunner()
+        writes = []
+
+        def on_run(node, argv):
+            if argv[:2] == ["sysctl", "-n"]:
+                return CommandResult(0, stdout="0")
+            writes.append(argv)
+            if len(writes) == 1:
+                return CommandResult(0)
+            return CommandResult(0, timed_out=True)
+
+        fake.on_run = on_run
+        mgr = BridgeManager(runner=fake)
+        mgr.root_node = MagicMock()
+        mgr.enable_ip_forwarding()
+
+        with pytest.raises(TeardownError) as exc_info:
+            mgr.cleanup()
+
+        assert exc_info.value.failures == [
+            ("restore ip_forward to 0", -1, "command timed out")
+        ]
+
 
 class TestProxyARP:
     """Tests for enable_proxy_arp() transactional mutation."""

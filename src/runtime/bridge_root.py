@@ -14,7 +14,7 @@ from mininet.node import Node
 
 from ..core.addressing import AddressingScheme
 from ..core.topology import TopologyModel
-from .bridge_args import validate_static_ip
+from .bridge_args import fail_closed_rc, validate_static_ip
 from .command_runner import ROOT_SENTINEL, MininetCommandRunner
 
 
@@ -52,13 +52,21 @@ class TeardownError(RuntimeError):
 
 
 def _result_to_rc_detail(result) -> tuple[int, str]:
-    """Normalize a ``CommandResult`` to an ``(rc, detail)`` 2-tuple, where
-    detail is the stripped stderr.
+    """Normalize a finished command result to an ``(rc, detail)`` 2-tuple,
+    where detail is the stripped stderr.
 
+    The verdict comes from ``fail_closed_rc``, so a timed-out, cancelled, or
+    exit-less run is a failure carrying its reason even when ``returncode``
+    is 0; a completed run keeps exactly the rc/stderr it always reported.
     ``cleanup()`` consumes this shape for every registered action, and setup
     paths use it too when they report a command failure, so one reading of
-    "what went wrong" serves both directions."""
-    return result.returncode, (result.stderr or "").strip()
+    "what went wrong" serves both directions.
+
+    2026-10-20: read returncode raw and ignored timed_out/cancelled, so a
+    restore that hit its deadline with rc 0 passed cleanup as success.
+    """
+    rc, detail = fail_closed_rc(result)
+    return rc, detail.strip()
 
 
 # ---------------------------------------------------------------------------

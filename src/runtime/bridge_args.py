@@ -1,9 +1,12 @@
-"""Pure bridge argument parsing and validation leaf helpers.
+"""Stdlib-only leaf shared by the bridge modules.
 
 This module owns CLI-shape parsing and strict static-IP validation for bridge
-features. It intentionally depends only on stdlib modules so external attach
-and root-namespace bridge code can share it without creating runtime cycles or
-pulling Mininet into pure argument tests.
+features, plus the one fail-closed reading of a finished command result
+(``fail_closed_rc``) that both external attach and root-namespace bridge code
+use. It intentionally depends only on stdlib modules so the two siblings can
+share it without creating runtime cycles, pulling Mininet into pure argument
+tests, or importing the CommandRunner seam. Import direction is one-way:
+``bridge_args`` imports nobody from either sibling.
 """
 
 import ipaddress as _ipaddress
@@ -67,6 +70,47 @@ def parse_ext_args(values):
         mtu = int(parts[3]) if len(parts) == 4 and parts[3] else None
         entries.append((host_name, intf_name, ip, mtu))
     return entries
+
+
+def fail_closed_rc(result: Any) -> tuple[int, str]:
+    """Map a finished command result to ``(rc, detail)`` without ever letting
+    an unfinished run read as success.
+
+    ``result`` is read by attribute only (``timed_out``, ``cancelled``,
+    ``returncode``, ``stderr``) and is loosely annotated on purpose: this leaf
+    must stay stdlib-only, so it must not import ``CommandResult`` or anything
+    from ``command_runner``. Any object exposing those four attributes works.
+
+    Fail-closed ladder (same criteria as monitoring._collect_ccninfo and
+    verdict.from_runtime_ccninfo: flags outrank the exit status):
+    1. timed_out            -> rc=-1, stderr += "command timed out"
+    2. cancelled            -> rc=-1, stderr += "command cancelled"
+    3. returncode is None   -> rc=-1, stderr += "no exit status"
+    4. otherwise            -> rc=returncode, stderr unchanged
+
+    ``rc=-1`` is a bridge-local convention, deliberately not part of the
+    CommandResult seam: ``CommandResult`` expresses deadlines through
+    ``timed_out``/``cancelled`` and never through a sentinel ``returncode``.
+    The sentinel exists only so callers can keep the uniform ``rc != 0``
+    test that the ``(rc, detail)`` cleanup contract already uses.
+    """
+    # 2026-09-02 fail-closed fix: None was coerced to 0 and the timed_out /
+    # cancelled flags were ignored, so a killed ``ip link`` passed as success
+    # and the bridge state machine kept going on a half-applied network.
+    # -1 is a nonzero sentinel; every caller only tests ``rc != 0``. The
+    # appended reason lets the rollback log explain *why* the step failed.
+    if result.timed_out:
+        reason = "command timed out"
+    elif result.cancelled:
+        reason = "command cancelled"
+    elif result.returncode is None:
+        reason = "no exit status"
+    else:
+        return result.returncode, result.stderr
+    stderr = result.stderr or ""
+    if stderr and not stderr.endswith("\n"):
+        stderr += "\n"
+    return -1, stderr + reason
 
 
 def parse_bridge_args(values: list[str] | None) -> list[dict[str, Any]]:
