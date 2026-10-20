@@ -1,7 +1,7 @@
 ---
-status: open
+status: closed
 type: task
-claimed-by: claude-main
+claimed-by:
 blocked-by: [25]
 ---
 ## Task
@@ -55,3 +55,4 @@ fail-closed の読み方の表（timed_out / cancelled / `None` / 非 0 / 0）�
   proxy_arp が完全一致。`setup_bridges` 経由の resolv 退避（s4）と `add_root_route` は `external_routes` を使う config でしか
   動かないため実験全体では未確認。書き戻しのコマンドの形は、本物の runner で Mininet ホストから `.scratch/` の試し用ファイルへ
   書き、空白・改行・`#`・`%` を含む中身がバイト一致することを確認した（実機の `/etc/resolv.conf` には触れていない）。
+- PR #35 で main にマージ。2026-10-20 closed。
