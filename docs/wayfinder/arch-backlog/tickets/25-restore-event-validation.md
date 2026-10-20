@@ -48,6 +48,12 @@ _Avoid_: `duration` だけの repeat を検証エラーにすること（意図�
 - 2026-10-20 着手（branch `feat/restore-event-validation`）。architecture review の Top recommendation。
 - (a) `_validate_events` の作り直し: 85a7741（メッセージ無変更、作り直し前との差分 fuzz で一致）。
 - (b) `bw_set` の nodes の形の誤りの文言を `link_*` にそろえた: 9e005d1。
+- (c) 新規則: `build_restore_event` 新設と scheduler の置き換え 1d352c0、復元イベントの型ごとの検証 e4cbe64、
+  内容系の repeat allowlist 化 fcec455、同時指定の拒否と duration だけの repeat の明文化 50648a8。
+- 検証（2026-10-20）: unit 1585 passed / 8 skipped、ruff・mypy 0。`config/` 配下 78 config を変更前後の validator に
+  通して検証結果の差 0。cefore-run-tests の smoke 14 本 PASS。smoke に repeat を使う config が無いため、
+  `min_event_link` を改変した repeat restore 版（bw_set の `restore`、link_down の `restore_type`）を実機で 1 回走らせ、
+  復元イベントが予定時刻に発火し `restore` の値で実行されることを確認。
 
 ## Follow-up（本 ticket の scope 外として記録）
 
