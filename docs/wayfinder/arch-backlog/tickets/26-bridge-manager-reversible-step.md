@@ -52,5 +52,6 @@ fail-closed の読み方の表（timed_out / cancelled / `None` / 非 0 / 0）�
   root synthetic（external bridge + compute hermetic）6 passed。HPC 版（`test_compute_ok_path_hpc.py`、endpoint
   133.15.70.55:18080）1 passed: root ns の `ip route add 192.168.0.0/16 dev root-eth0` とホストの /32 経路が
   iproute2 で成功（warning 無し）し、実行前後で resolv.conf の sha256・ip_forward・NAT/FORWARD 規則・root ns 経路表・
-  proxy_arp が完全一致。resolv 退避（s4）と `add_root_route` は `external_routes` を使う config でしか動かないため、
-  実機では未確認（unit のみ）。
+  proxy_arp が完全一致。`setup_bridges` 経由の resolv 退避（s4）と `add_root_route` は `external_routes` を使う config でしか
+  動かないため実験全体では未確認。書き戻しのコマンドの形は、本物の runner で Mininet ホストから `.scratch/` の試し用ファイルへ
+  書き、空白・改行・`#`・`%` を含む中身がバイト一致することを確認した（実機の `/etc/resolv.conf` には触れていない）。
