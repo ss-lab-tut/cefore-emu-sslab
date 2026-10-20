@@ -2236,3 +2236,48 @@ def test_restore_dict_naming_an_unknown_type_is_rejected():
 )
 def test_the_two_restore_forms_used_in_the_shipped_configs_stay_valid(event):
     assert validate_config({"hosts": 3, "events": [event]}) == []
+
+
+# Content events and compute_call accept only interval/count in repeat: a
+# restore form there could synthesize a publisher that FIB pre-programming
+# (extract_publications) never sees, so the path is closed at config time.
+
+_CONTENT_EVENTS = {
+    "put": {"host": 1, "uri": "ccnx:/a", "file": "a.bin"},
+    "get": {"host": 1, "uri": "ccnx:/a"},
+    "pubsub_pub": {"host": 1, "uri": "ccnx:/a", "file": "a.bin"},
+    "pubsub_sub": {"host": 1, "uri": "ccnx:/a"},
+    "ccninfo": {"host": 1, "uri": "ccnx:/a"},
+}
+
+
+@pytest.mark.parametrize("etype", sorted(_CONTENT_EVENTS))
+def test_content_event_repeat_rejects_restore_forms_and_duration(etype):
+    event = {"at": 1, "type": etype, **_CONTENT_EVENTS[etype],
+             "repeat": {"interval": 10, "duration": 2, "restore": {"host": 2}}}
+    errors = validate_config({"hosts": 3, "events": [event]})
+    assert (
+        f"events[0].repeat for {etype} allows only interval/count; got: duration, restore"
+        in errors
+    )
+    # The rejected restore is not additionally validated as an event.
+    assert not [e for e in errors if e.startswith("events[0].repeat.restore")]
+
+
+def test_put_restored_onto_an_invalid_host_and_rate_is_rejected():
+    # The 2026-10-20 reproduction: this config used to validate cleanly.
+    event = {"at": 1, "type": "put", **_CONTENT_EVENTS["put"],
+             "repeat": {"interval": 10, "duration": 2, "restore": {"host": 99, "rate": -1}}}
+    errors = validate_config({"hosts": 3, "events": [event]})
+    assert (
+        "events[0].repeat for put allows only interval/count; got: duration, restore"
+        in errors
+    )
+
+
+@pytest.mark.parametrize("etype", sorted(_CONTENT_EVENTS))
+def test_content_event_repeat_with_interval_and_count_stays_valid(etype):
+    event = {"at": 1, "type": etype, **_CONTENT_EVENTS[etype],
+             "repeat": {"interval": 10, "count": 3}}
+    errors = validate_config({"hosts": 3, "events": [event]})
+    assert not [e for e in errors if "repeat" in e]

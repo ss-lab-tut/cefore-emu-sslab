@@ -6,10 +6,22 @@ from dataclasses import dataclass
 from typing import Any, Callable
 
 from ..artifacts import safe_uri_label
-from ..events import EVENT_SCHEMA, build_restore_event, event_types
+from ..events import (
+    EVENT_SCHEMA,
+    build_restore_event,
+    content_event_types,
+    event_types,
+)
 from ..protocols import VALID_ROUTE_PROTOCOLS, normalize_route_protocol
 
 VALID_ALGOS = ("crc32c", "rsa-sha256")
+
+# Event types whose ``repeat`` is an allowlist (interval/count only). A
+# restore form on a content type would synthesize a content event at runtime,
+# possibly a publisher, that ``extract_publications`` / FIB pre-programming
+# never sees; compute_call has no natural "restore" at all. Derive the content
+# types from EVENT_SCHEMA so a new content operation is covered automatically.
+_REPEAT_ALLOWLIST_EVENT_TYPES = content_event_types() | {"compute_call"}
 
 
 def _is_int(value: Any) -> bool:
@@ -1174,15 +1186,37 @@ def _validate_bw_set_event(
     return errors
 
 
+def _validate_repeat_allowlist(event: dict, prefix: str) -> list[str]:
+    """Reject repeat keys other than interval/count for allowlisted events.
+
+    2026-07-16 audit fix: repeat restore forms merge a synthesized event at
+    runtime, bypassing this validator and the pre-run conditional-publication
+    (FIB) extraction — a restored publish_uri would publish content no
+    consumer can reach. For content events the synthesized event may also be
+    a publisher that ``extract_publications`` never saw. compute_call has no
+    natural "restore", so for both families repeat is an allowlist: anything
+    but interval/count (restore forms, typos) is rejected rather than
+    silently ignored.
+    """
+    repeat = event.get("repeat")
+    if not isinstance(repeat, dict):
+        return []
+    extra = sorted(str(k) for k in set(repeat) - {"interval", "count"})
+    if not extra:
+        return []
+    return [
+        f"{prefix}.repeat for {event['type']} allows only interval/count; "
+        f"got: {', '.join(extra)}"
+    ]
+
+
 def _validate_compute_call_event(
     event: dict, prefix: str, ctx: _EventCheckContext
 ) -> list[str]:
     """Validate a compute_call request and its repeat allowlist.
 
-    compute_call is the only event whose ``repeat`` keys are restricted here
-    (interval/count only): restore forms synthesize an event at runtime that
-    bypasses this validator, so an unrestricted restore key could publish a
-    URI no consumer can reach.
+    compute_call shares the repeat allowlist with the content events; see
+    ``_validate_repeat_allowlist``.
     """
     errors = _validate_required_fields(
         event, prefix, EVENT_SCHEMA["compute_call"].required_fields
@@ -1210,20 +1244,7 @@ def _validate_compute_call_event(
     # output_file can never publish.
     if event.get("publish_uri") and not event.get("output_file"):
         errors.append(f"{prefix}.publish_uri requires output_file to be set")
-    # 2026-07-16 audit fix: repeat restore forms merge a synthesized event at
-    # runtime, bypassing this validator and the pre-run
-    # conditional-publication (FIB) extraction — a restored publish_uri would
-    # publish content no consumer can reach. compute has no natural "restore",
-    # so repeat is an allowlist: anything but interval/count (restore forms,
-    # typos) is rejected rather than silently ignored.
-    repeat = event.get("repeat")
-    if isinstance(repeat, dict):
-        extra = sorted(str(k) for k in set(repeat) - {"interval", "count"})
-        if extra:
-            errors.append(
-                f"{prefix}.repeat for compute_call allows only interval/count; "
-                f"got: {', '.join(extra)}"
-            )
+    errors.extend(_validate_repeat_allowlist(event, prefix))
     # 2026-07-16 audit fix: publishing speed is governed by pub_opts rate,
     # not the HTTP request, so the cefputfile deadline is its own field.
     if "publish_timeout" in event:
@@ -1283,6 +1304,7 @@ def _validate_publication_event(
             errors.append(f"{prefix}.repeat is not supported for autotest put events")
     else:
         _validate_pubsub_options(errors, prefix, event, etype)
+    errors.extend(_validate_repeat_allowlist(event, prefix))
     return errors
 
 
@@ -1337,6 +1359,7 @@ def _validate_ccninfo_event(
                 f"{prefix}.expected_route must be a non-empty list of "
                 "non-empty strings"
             )
+    errors.extend(_validate_repeat_allowlist(event, prefix))
     return errors
 
 
@@ -1360,6 +1383,7 @@ def _validate_get_event(
         _validate_get_options(errors, prefix, event)
     else:
         _validate_pubsub_options(errors, prefix, event, etype)
+    errors.extend(_validate_repeat_allowlist(event, prefix))
     return errors
 
 
@@ -1511,8 +1535,10 @@ def _validate_events(errors, config):
                             )
 
                 # Last, so the original event's messages keep their order.
-                # Skip compute_call: its repeat allowlist already rejects restore.
-                if event.get("type") != "compute_call":
+                # Skip every repeat-allowlist type: their restore forms are
+                # already rejected, so validating the restored event would only
+                # duplicate that error.
+                if event.get("type") not in _REPEAT_ALLOWLIST_EVENT_TYPES:
                     errors.extend(
                         _validate_restore_event(
                             event, idx, valid_event_types, ctx, host_count
