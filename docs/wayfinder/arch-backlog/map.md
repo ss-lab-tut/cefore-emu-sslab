@@ -24,6 +24,10 @@
 - **2026-09-25 上書き**: frontier [01] より先に [24](tickets/24-compute-call-ok-path-test.md)
   compute_call ok 経路の自動テスト整備を実施（研究室 HPC を実 Compute endpoint として利用可能に
   なったため。PR #28 / #29 / #30 で完了、2026-09-26 closed）。優先順は下のとおり frontier [01] に戻る
+- **2026-10-20 上書き**: 2026-10-20 architecture review（探索 3 系統 + Codex 敵対的検証）の結果、frontier [01] より先に
+  [25](tickets/25-restore-event-validation.md) 復元イベントの検証（検証を通った config が実行時に KeyError になる再現済みの穴）、
+  続いて [26](tickets/26-bridge-manager-reversible-step.md) BridgeManager の元に戻せる操作を実施する。
+  同 review の残り候補（Monitor の runner seam、内容操作の 1 件 1 レコード不変条件、connect が読まない設定ブロック）は未起票
 - 優先順: Strong [01](tickets/01-s4-pub-lifetime-by-uri.md)–[05](tickets/05-s9-topology-adjacency.md)
   → Worth [06](tickets/06-w1-read-conf-value.md)–[13](tickets/13-w8-campaign-jobs-split.md)
   → Speculative [14](tickets/14-p1-set-config-value-underscore.md)/[15](tickets/15-p2-campaign-retry-seam.md) は保留
