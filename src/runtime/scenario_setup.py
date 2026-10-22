@@ -75,6 +75,10 @@ class ScenarioSetupSpec:
     fleet_readiness_policy: str = "warn"
     fib_strategy: str = "dijkstra"
     fib_uri_publishers: dict | None = None
+    # Static ccnx:/-prefix -> host-index route announcement, independent of
+    # fib_uri_publishers (no put/pubsub_pub publisher behind it). See
+    # core.fib.compute_fib_for_uris' prefix_routes pass.
+    fib_prefix_routes: dict | None = None
     forwarding_config: dict | None = None
 
 
@@ -318,6 +322,7 @@ def setup_scenario(net, spec: ScenarioSetupSpec) -> SetupResult:
         spec.fib_k,
         strategy=spec.fib_strategy,
         uri_publishers=spec.fib_uri_publishers,
+        prefix_routes=spec.fib_prefix_routes,
         scheme=spec.scheme,
     )
 

@@ -87,6 +87,16 @@ def bootstrap_scenario(
             "links is not supported by the connect scenario "
             "(ceforeemu-connect); it is scoped to the disaster scenario only"
         )
+    # prefix_routes: only scenarios.disaster.DisasterScenario.configure reads
+    # args.prefix_routes into ScenarioSetupSpec.fib_prefix_routes --
+    # ConnectScenario never does, so letting it reach connect would silently
+    # accept and then ignore the key (the same class of gap the `links`
+    # check above was added to close).
+    if "connect" in blocks and config_data.get("prefix_routes") is not None:
+        errors.append(
+            "prefix_routes is not supported by the connect scenario "
+            "(ceforeemu-connect); it is scoped to the disaster scenario only"
+        )
     # special_config_merge entries bypass ordinary config_option_keys() so raw
     # validation owns them. That keeps unfinished blocks like
     # forwarding_config: null visible instead of disappearing during merge.

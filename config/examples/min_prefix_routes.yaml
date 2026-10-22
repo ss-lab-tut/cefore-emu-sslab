@@ -1,0 +1,48 @@
+# 最小検証用: prefix_routes (静的な prefix→host の FIB route announcement)
+# Usage: sudo .venv/bin/python3 -m src disaster --config config/examples/min_prefix_routes.yaml
+#
+# links: [[0, 1], [1, 2]] で h0-h1-h2 の3ホスト直線を固定する (min_explicit_line
+# と同じ理由: 決定的なトポロジで FIB の計算結果を手で検算できるようにする)。
+#
+# prefix_routes の2本 (to-h2, to-h0) は put/get イベントとは無関係な prefix
+# で、それぞれの host 以外の全ホストにその host への route が入ることだけを
+# 検証する (compute_fib_for_uris の prefix_routes pass: 宛先向きの一方向のみ、
+# publisher 側からの逆方向 route は作らない)。put (host 2) / get (host 0) の
+# 組は min_putget.yaml と同じ組み合わせで、prefix_routes が
+# put/pubsub_pub publisher の有無に関わらず常に FIB に乗ることを確かめるため
+# の対照 (このペアだけでも self.uri_publishers が non-empty になる)。
+#
+# debug.artifacts: [fib_dump] で各ホストの cefstatus 出力を
+# <run_dir>/debug/fib/fib_hN.txt に残す。cefroute add の呼び出し自体は
+# script.log に出るが「実際に FIB へ入ったか」の証拠ではないため、この
+# ダンプが唯一の実証拠。
+hosts: 3
+seed: 42
+k: 1
+num: 9918
+output_dir: "logs/verify"
+no_cli: true
+duration: 20
+results_json: "results.json"
+
+links:
+  - [0, 1]
+  - [1, 2]
+
+prefix_routes:
+  "ccnx:/test/prefixroutes/to-h2": 2
+  "ccnx:/test/prefixroutes/to-h0": 0
+
+debug:
+  artifacts: [fib_dump]
+
+events:
+  - at: 5
+    type: put
+    host: 2
+    uri: "ccnx:/test/prefixroutes/putget"
+    file: "./sample-putfile"
+  - at: 10
+    type: get
+    host: 0
+    uri: "ccnx:/test/prefixroutes/putget"

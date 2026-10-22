@@ -141,6 +141,12 @@ class DisasterScenario(ConfigDrivenMeshScenario):
             fleet_readiness_policy="raise",
             fib_strategy=routing_config.get("strategy", "dijkstra"),
             fib_uri_publishers=self.uri_publishers or None,
+            # Config-level prefix_routes: kept separate from uri_publishers
+            # (no put/pubsub_pub event behind it) so it never touches
+            # self.uri_publishers / self.publisher_ids, which content_ops'
+            # publisher_host fallback and cache placement's
+            # exclude_publishers both read.
+            fib_prefix_routes=getattr(args, "prefix_routes", None) or None,
             forwarding_config=getattr(args, "forwarding_config", None),
         )
         result = setup_scenario(net, spec)

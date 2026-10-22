@@ -195,6 +195,30 @@ def test_seam_walks_canonical_setup_order(patched_seam):
     assert result.fib_routes == [("route", "stub")]
 
 
+def test_setup_scenario_passes_prefix_routes_to_apply_fib(patched_seam):
+    """fib_prefix_routes is a field separate from fib_uri_publishers
+    precisely so a config with prefix_routes but no put/pubsub_pub
+    publisher still reaches apply_fib's own prefix_routes kwarg."""
+    _calls, mocks, _runner = patched_seam
+    strategy = _FakeCacheStrategy(result=set())
+    spec = ScenarioSetupSpec(
+        mesh_links=[("h0", "h1", "s0")],
+        scheme=MagicMock(name="scheme"),
+        host_count=2,
+        publisher_ids=set(),
+        cache_strategy=strategy,
+        fleet_run_dir=Path("/tmp/run_dir"),
+        fib_k=1,
+        fib_uri_publishers=None,
+        fib_prefix_routes={"ccnx:/test/a": 1},
+    )
+    net = MagicMock(name="net")
+
+    setup_scenario(net, spec)
+
+    assert mocks["apply_fib"].call_args.kwargs["prefix_routes"] == {"ccnx:/test/a": 1}
+
+
 def test_seam_with_empty_bw_ext_still_calls_parsers(patched_seam):
     # Even with empty bw/ext args, the parse_* functions are invoked once
     # each (they yield empty lists). Pins that parsing is unconditional;

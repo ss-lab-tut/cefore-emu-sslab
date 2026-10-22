@@ -28,6 +28,7 @@ SMOKE_CONFIGS = (
     "min_failure",
     "min_event_link",
     "min_explicit_line",
+    "min_prefix_routes",
     "min_monitoring",
     "min_ccninfo",
     "min_compute",
@@ -342,6 +343,39 @@ def build_smoke_cases() -> list[SmokeCase]:
             },
         ),
         SmokeCase(
+            # prefix_routes: a static ccnx:/-prefix -> host route
+            # announcement independent of put/pubsub_pub publishers (see
+            # core.fib.compute_fib_for_uris' prefix_routes pass). The
+            # put/get pair (same h2 -> h0 shape as min_putget) exists only
+            # to make self.uri_publishers non-empty too, proving
+            # prefix_routes still lands in the FIB alongside it. cefroute
+            # add's own script.log line only proves a command was issued,
+            # not that cefnetd installed it -- debug.artifacts: [fib_dump]
+            # (config) + fib_dump's require/forbid (below) is the actual
+            # evidence, read from each host's own cefstatus dump.
+            "min_prefix_routes",
+            config_relpath="config/examples/min_prefix_routes.yaml",
+            expect={
+                **PUTGET_EXPECT,
+                "fib_dump": {
+                    "require": {
+                        "h0": ["ccnx:/test/prefixroutes/to-h2"],
+                        "h1": [
+                            "ccnx:/test/prefixroutes/to-h2",
+                            "ccnx:/test/prefixroutes/to-h0",
+                        ],
+                        "h2": ["ccnx:/test/prefixroutes/to-h0"],
+                    },
+                    # Pass-1-only (unidirectional): the host a prefix routes
+                    # to never gets a FIB entry for its own prefix.
+                    "forbid": {
+                        "h2": ["ccnx:/test/prefixroutes/to-h2"],
+                        "h0": ["ccnx:/test/prefixroutes/to-h0"],
+                    },
+                },
+            },
+        ),
+        SmokeCase(
             "min_monitoring",
             config_relpath="config/examples/min_monitoring.yaml",
             expect={
@@ -446,6 +480,31 @@ def _resolve_dotpath(obj, dotpath: str):
     return obj
 
 
+def _fib_section_prefixes(fib_text: str) -> set[str]:
+    """Return the URI prefixes cefstatus lists under its ``FIB :`` section.
+
+    cefstatus prints each installed prefix on its own line ("  <uri>",
+    two-space indent, no trailing slash -- see
+    cef_frame_conversion_name_to_uri in cefore's cef_frame.c) directly
+    under a "FIB : <count>" header, up to the next top-level header
+    ("PIT(App) :"). Scoping to that span -- not a substring search of the
+    whole dump -- matters because "FIB(App) :" (app-registered prefixes,
+    same two-space-indent format) appears earlier in the same dump and
+    would otherwise produce a false match.
+    """
+    prefixes: set[str] = set()
+    in_fib_section = False
+    for line in fib_text.splitlines():
+        if line.startswith("FIB :"):
+            in_fib_section = True
+            continue
+        if in_fib_section and line.startswith("PIT(App) :"):
+            break
+        if in_fib_section and line.startswith("  ") and not line.startswith("    "):
+            prefixes.add(line.strip())
+    return prefixes
+
+
 def validate_results(
     case_name: str, data: list[dict], expect: dict, case_output_dir: Path
 ) -> None:
@@ -473,6 +532,12 @@ def validate_results(
       must exist under the case output directory.
     - ``summarizer_min_rows``: ceforeemu-log module-form stdout must produce at
       least this many canonical-parse CSV rows.
+    - ``fib_dump``: ``{"require": {host: [prefix, ...]}, "forbid": {host:
+      [prefix, ...]}}`` against ``debug/fib/fib_<host>.txt`` (the
+      ``debug.artifacts: [fib_dump]`` cefstatus capture -- see
+      ``_fib_section_prefixes``). ``require`` asserts the prefix is
+      installed in that host's FIB; ``forbid`` asserts it is not (e.g. a
+      prefix_routes target must never route to itself).
     - ``host_app_markers``: not checked here -- like ``summarizer_min_rows``,
       it is read directly by ``run_single_smoke`` and dispatched to
       ``validate_host_app_markers`` (data-independent: it checks files on
@@ -547,6 +612,35 @@ def validate_results(
                     f"{event_type} record outcome is {row.get('outcome')!r}, "
                     f"expected {want_outcome!r}"
                 )
+    fib_dump_spec = expect.get("fib_dump")
+    if fib_dump_spec:
+
+        def _read_fib_dump(host_label: str) -> set[str]:
+            matches = sorted(case_output_dir.rglob(f"fib_{host_label}.txt"))
+            if not matches:
+                fail(
+                    f"no fib_{host_label}.txt debug artifact produced "
+                    "(expected debug.artifacts: [fib_dump] in the config)"
+                )
+            return _fib_section_prefixes(matches[0].read_text(encoding="utf-8"))
+
+        for host_label, want_prefixes in fib_dump_spec.get("require", {}).items():
+            present = _read_fib_dump(host_label)
+            for prefix in want_prefixes:
+                if prefix not in present:
+                    fail(
+                        f"fib_{host_label}.txt FIB section is missing "
+                        f"prefix {prefix!r}"
+                    )
+        for host_label, unwanted_prefixes in fib_dump_spec.get("forbid", {}).items():
+            present = _read_fib_dump(host_label)
+            for prefix in unwanted_prefixes:
+                if prefix in present:
+                    fail(
+                        f"fib_{host_label}.txt FIB section unexpectedly has "
+                        f"prefix {prefix!r} (a route announcement must not "
+                        "route to itself)"
+                    )
     monitor_spec = expect.get("monitor_json")
     if monitor_spec:
         matches = sorted(case_output_dir.rglob("monitor.json"))

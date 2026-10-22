@@ -451,6 +451,7 @@ OPTION_SPECS = {
         "failure_scenarios", "structured", cli_allowed=False
     ),
     "links": OptionSpec("links", "structured", cli_allowed=False),
+    "prefix_routes": OptionSpec("prefix_routes", "structured", cli_allowed=False),
     "events": OptionSpec("events", "structured", cli_allowed=False),
     "monitoring": OptionSpec("monitoring", "structured", cli_allowed=False),
     "routing": OptionSpec("routing", "structured", cli_allowed=False),
@@ -1107,6 +1108,60 @@ def _validate_links(errors, config):
         if len(visited) != host_count:
             errors.append(
                 "links must connect all hosts into a single connected component"
+            )
+
+
+def _validate_prefix_routes(errors, config):
+    """Validate the optional ``prefix_routes`` static prefix-to-host FIB override.
+
+    ``prefix_routes: {<ccnx prefix>: <host index>}`` announces that a
+    prefix belongs to a given host, independent of any put/pubsub_pub event
+    (core.fib.compute_fib_for_uris' prefix_routes pass: every host other
+    than the named one gets a route toward it -- see
+    runtime.scenario_setup.ScenarioSetupSpec.fib_prefix_routes /
+    scenarios.disaster.DisasterScenario.configure). Range checks mirror
+    _validate_links: the out-of-range check only runs once ``hosts`` is
+    itself a known integer, and MAX_HOST_INDEX is checked unconditionally
+    because it is a hard limit of AddressingScheme.host_ip regardless of
+    the declared host count.
+    """
+    if "prefix_routes" not in config:
+        return
+    prefix_routes = config["prefix_routes"]
+    if not isinstance(prefix_routes, dict):
+        errors.append(
+            "prefix_routes must be a mapping of ccnx:/ prefix to host index"
+        )
+        return
+
+    host_count = config.get("hosts")
+    host_count_known = _is_int(host_count)
+
+    for prefix, host_idx in prefix_routes.items():
+        # 2026-10-22 fix: the bare root "ccnx:/" passed startswith("ccnx:/")
+        # and was accepted, but it names every prefix in the namespace, not
+        # one -- compute_fib_for_uris' prefix_routes pass needs a specific
+        # prefix to route toward, so the bare root is not a usable value
+        # here (unlike ccninfo's uri argument, where the root is valid).
+        if (
+            not isinstance(prefix, str)
+            or not prefix.startswith("ccnx:/")
+            or prefix == "ccnx:/"
+        ):
+            errors.append(
+                f"prefix_routes key {prefix!r} must be a non-empty ccnx:/ URI string"
+            )
+        if not _is_int(host_idx):
+            errors.append(f"prefix_routes[{prefix!r}] must be an integer host index")
+            continue
+        if host_count_known and (host_idx < 0 or host_idx >= host_count):
+            errors.append(
+                f"prefix_routes[{prefix!r}] contains out-of-range host index {host_idx}"
+            )
+        elif host_idx > MAX_HOST_INDEX:
+            errors.append(
+                f"prefix_routes[{prefix!r}] contains host index {host_idx} which "
+                f"exceeds the addressing scheme's maximum host index ({MAX_HOST_INDEX})"
             )
 
 
@@ -1917,6 +1972,8 @@ def validate_config(config: dict[str, Any]) -> list[str]:
     _validate_bridges(errors, config)
 
     _validate_links(errors, config)
+
+    _validate_prefix_routes(errors, config)
 
     if "warmup_gets" in config:
         wg = config["warmup_gets"]

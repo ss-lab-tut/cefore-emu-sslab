@@ -146,6 +146,32 @@
   - NOT gated by a blanket `all_success` (the `during` row is expected to
     fail by design)
 
+### `min_prefix_routes`
+
+- File: `config/examples/min_prefix_routes.yaml`
+- `prefix_routes: {<ccnx prefix>: <host index>}` is a static prefix-to-host
+  FIB route announcement fed into `core.fib.compute_fib_for_uris`,
+  independent of any put/pubsub_pub publisher. 3-host line
+  (`links: [[0,1],[1,2]]`), two entries (`to-h2` to host 2, `to-h0` to host
+  0), plus a put (h2) / get (h0) pair on an unrelated URI so
+  `self.uri_publishers` is also non-empty (proving prefix_routes still
+  lands in the FIB alongside it, the requirement this config exists to
+  pin). `debug: {artifacts: [fib_dump]}` captures each host's `cefstatus`
+  output to `debug/fib/fib_hN.txt`. `cefroute add`'s own `script.log` line
+  only proves the command was issued, not that cefnetd installed it, so
+  the dump is the only real evidence.
+- Expected `results.json`: put + get rows (same shape as `min_putget`)
+- Required checks:
+  - every row has `success == true`, every `get` row has
+    `has_completed_log == true` and `has_output_file == true`
+  - `fib_dump` (`require`): `fib_h0.txt`'s FIB section contains
+    `ccnx:/test/prefixroutes/to-h2`; `fib_h1.txt`'s contains both
+    `to-h2` and `to-h0`; `fib_h2.txt`'s contains `to-h0`
+  - `fib_dump` (`forbid`): `fib_h2.txt` does NOT contain `to-h2` and
+    `fib_h0.txt` does NOT contain `to-h0`. A route announcement is
+    one-directional (every OTHER host routes toward the named one), so the
+    named host itself must never get a FIB entry for its own prefix
+
 ### `min_monitoring`
 
 - File: `config/examples/min_monitoring.yaml`

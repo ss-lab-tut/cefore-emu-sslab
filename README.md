@@ -288,6 +288,26 @@ config error rather than silently ignored (leave them unset/default). A
 the switch count. See `config/examples/min_explicit_line.yaml` for a
 3-host line with a `link_down`/`link_up` cycle.
 
+**Static prefix routes (`prefix_routes`):**
+Config-only (no CLI flag); `disaster` only -- `connect` rejects it the same
+way it rejects `links`, since only `DisasterScenario.configure` reads it.
+```yaml
+prefix_routes:
+  "ccnx:/test/to-h2": 2
+  "ccnx:/test/to-h0": 0
+```
+Each entry announces that every host other than the named one gets a FIB
+route toward it, computed with the same shortest-path/next-hop logic as
+every other route (`core.fib.compute_fib_for_uris`). Unlike a
+put/pubsub_pub publisher, a `prefix_routes` entry is one-directional only
+(nothing ever originates a Reflexive-Forwarding route back), and it is
+independent of whether any publisher exists in the same config: its routes
+are always computed, with or without `put`/`pubsub_pub` events (routes
+from an actual publisher are unaffected and still get both directions).
+Keys must be non-empty `ccnx:/` URI strings; values must be an integer
+host index in range. See `config/examples/min_prefix_routes.yaml` for a
+3-host line with `debug.artifacts: [fib_dump]` capturing the installed FIB.
+
 **Forwarding configuration (`forwarding_config`):**
 Config-only (no CLI flag); valid in `disaster` and `connect` blocks.
 ```yaml
