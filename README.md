@@ -273,6 +273,40 @@ starts (post-start edits do not take effect). A `nodes` entry overrides
 `default` for its host IDs; an unspecified `default` resolves to `"flooding"`,
 matching the template status quo.
 
+**Host apps (`host_apps`):**
+Config-only (no CLI flag). Starts one or more arbitrary, long-running
+processes per host, after cefnetd/csmgrd come up, and stops them before
+teardown stops cefnetd/csmgrd (mirrors `DaemonFleet`'s start/stop shape:
+each host's stop is independent, and failures are aggregated instead of
+aborting the rest). ReCefore has no knowledge of what the app does or why
+— it only expands four placeholders and launches/stops the argv through
+`CommandRunner.start`.
+```yaml
+host_apps:
+  - hosts: [0, 1, 2]        # or "all"
+    argv: ["sh", "-c", "echo {node} {t0_ms} > {node_dir}/marker"]
+    cwd: "{node_dir}"                       # optional
+    env: {CEFORE_DIR: "{cefore_conf_dir}"}   # optional; CommandRunner.start
+                                              # has no env kwarg, so this
+                                              # becomes an `env K=V ...`
+                                              # argv prefix
+    log: "{node_dir}/{node}.log"             # optional; must contain
+                                              # {node} when hosts is "all"
+                                              # or more than one host, or
+                                              # every host truncates the
+                                              # same file
+```
+Placeholders, expanded in `argv`/`env`/`cwd`/`log`:
+
+| Placeholder | Value |
+|---|---|
+| `{node}` | Node name (`h3`) |
+| `{node_dir}` | Absolute path of that host's directory |
+| `{cefore_conf_dir}` | Absolute path of the directory holding that host's `cefnetd.conf` — the value cefpyco's `create_handle(ceforedir=...)` wants. Identical to `{node_dir}` today; named separately on purpose |
+| `{t0_ms}` | Epoch ms taken at the same instant the scheduler treats as `at: 0`, so a host app's own relative-time math lines up with scheduled events |
+
+See `config/examples/min_host_apps.yaml` for a runnable example.
+
 See `config/examples/example.yaml` for the complete reference with all parameters.
 
 ## Log Output Directory
