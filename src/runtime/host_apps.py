@@ -131,6 +131,26 @@ class HostAppFleet:
         self._cefore_conf_dirs = cefore_conf_dirs
         self._t0_ms = t0_ms
         self._runner = runner or MininetCommandRunner(net)
+        # 2026-10-23 fix (review finding): every entry's life-1 (canonical)
+        # log path, reserved once here for the fleet's ENTIRE lifetime --
+        # never recomputed later. restart_host() checks a would-be
+        # life-N (N>=2) log against this fixed set before doing anything
+        # else. Without it, two valid same-host entries with distinct
+        # base paths ("a.log" and "a.log.life2") can collide: restarting
+        # the first app onto its life 2 computes exactly "a.log.life2",
+        # the second app's own life-1 path, and CommandRunner.start()'s
+        # "wb" open (command_runner.py) would silently truncate the
+        # second app's still-live output. Computed from _specs/_host_count
+        # up front (not from _launches, which only ever holds what is
+        # CURRENTLY tracked) so the reservation covers every entry
+        # regardless of start/restart/stop ordering.
+        reserved_logs = set()
+        for spec in self._specs:
+            for idx in _resolve_hosts(spec["hosts"], self._host_count):
+                _, _, log = self._expand_launch(spec, idx)
+                if log is not None:
+                    reserved_logs.add(log)
+        self._reserved_logs = frozenset(reserved_logs)
         # Each entry is {"idx", "argv", "cwd", "log", "life", "handle"}: the
         # exact CommandRunner.start() call that produced "handle", recorded
         # so restart_host() can replay argv/cwd verbatim instead of
@@ -291,6 +311,20 @@ class HostAppFleet:
         except the log path, which _life_log() suffixes (see its
         docstring) so the new life cannot truncate the old life's output.
 
+        2026-10-23 fix (review finding): that suffixing alone is not
+        enough to rule out truncating a DIFFERENT host_apps entry's
+        output -- a sibling entry on the same host can configure its own
+        log at exactly the suffixed path this restart is about to
+        compute (e.g. base paths "a.log" and "a.log.life2": restarting
+        the first app's life 2 computes "a.log.life2" verbatim, the
+        second app's own life-1 path). This is checked against
+        ``_reserved_logs`` (see __init__) up front, before the
+        removal/stop loop below, and raises instead of proceeding.
+
+        Raises:
+            ValueError: the next life's log path collides with another
+                host_apps entry's reserved log path (see above).
+
         Shutdown race: the wait below is an Event.wait, not time.sleep, so
         a concurrent stop_all() (which sets _stopping) wakes it immediately
         instead of leaving it to sleep out the full downtime_s past the
@@ -314,6 +348,24 @@ class HostAppFleet:
                 # start.
                 return False
             mine = [launch for launch in self._launches if launch["idx"] == idx]
+
+            # 2026-10-23 fix (review finding): reject BEFORE stopping
+            # anything or calling runner.start if replaying this restart
+            # would land its next life's log on another host_apps entry's
+            # reserved (life-1) log path -- see _reserved_logs's comment
+            # in __init__ for the collision this closes. Checked here,
+            # ahead of the removal/stop loop below, so a rejected restart
+            # leaves the original process running and untouched rather
+            # than stopping it and then having nowhere safe to restart it.
+            for launch in mine:
+                collide = _life_log(launch["log"], launch["life"] + 1)
+                if collide is not None and collide in self._reserved_logs:
+                    raise ValueError(
+                        f"host_apps restart for h{idx} would write its "
+                        f"next life's log to {collide!r}, which collides "
+                        "with another host_apps entry's reserved log path"
+                    )
+
             self._launches = [launch for launch in self._launches if launch["idx"] != idx]
 
             failures = []

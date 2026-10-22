@@ -545,6 +545,73 @@ class TestRestartHost:
         assert fake.waits == []  # nothing was stopped either
 
 
+# ── restart_host: cross-entry log collision ──
+# 2026-10-23 (review finding): _life_log() only guarantees a restarted
+# life's log differs from ITS OWN earlier lives. A sibling host_apps entry
+# on the same host can configure its own log at exactly the path a
+# restart's suffixing computes, and CommandRunner.start()'s "wb" open
+# would then truncate the sibling's still-live output.
+
+
+class TestRestartLogCollision:
+    """restart_host() must reject a restart whose next life's log would
+    land on another host_apps entry's reserved (life-1) log path, before
+    stopping or starting anything."""
+
+    def test_restart_colliding_with_a_sibling_entrys_log_is_rejected(self, tmp_path):
+        """Two host_apps entries on the same host: entry A's log is
+        "a.log", entry B's log is "a.log.life2". Restarting A once
+        computes A's life-2 log as "a.log.life2" -- the exact literal
+        path B's life-1 process already opened and is still writing to.
+        The restart must raise before either entry is touched, and B's
+        already-started process must stay the only thing ever written
+        to that path."""
+        a_log = str(tmp_path / "a.log")
+        b_log = a_log + ".life2"
+        fake = FakeCommandRunner()
+        fleet = _fleet(
+            fake,
+            specs=[
+                {"hosts": [0], "argv": ["./agent-a"], "log": a_log},
+                {"hosts": [0], "argv": ["./agent-b"], "log": b_log},
+            ],
+        )
+        fleet.start_all()
+        assert [h.log_path for h in fake.starts] == [a_log, b_log]
+
+        try:
+            fleet.restart_host(0, downtime_s=0)
+            raised = None
+        except ValueError as exc:
+            raised = exc
+
+        assert raised is not None
+        assert str(raised) == (
+            f"host_apps restart for h0 would write its next life's log to "
+            f"{b_log!r}, which collides with another host_apps entry's "
+            "reserved log path"
+        )
+        # Rejected before either side effect: neither app was stopped,
+        # and no third process (which would have reused b_log) started.
+        assert fake.waits == []
+        assert [h.log_path for h in fake.starts] == [a_log, b_log]
+
+    def test_restart_with_no_sibling_collision_is_unaffected(self):
+        """Control: a restart whose next life's log does not match any
+        OTHER entry's reserved log must still proceed normally -- proves
+        the collision check does not reject on seeing its own (different)
+        log path."""
+        fake = FakeCommandRunner()
+        fleet = _fleet(
+            fake,
+            specs=[{"hosts": [0], "argv": ["./agent"], "log": "/x/h0/h0.log"}],
+        )
+        fleet.start_all()
+
+        assert fleet.restart_host(0, downtime_s=0) is True
+        assert fake.starts[1].log_path == "/x/h0/h0.log.life2"
+
+
 # ── shutdown race: a restart racing scenario shutdown must not leave an
 # orphan process ──
 
