@@ -201,6 +201,245 @@ def test_validate_monitoring_targets_invalid_type():
     assert any("type" in e for e in errors)
 
 
+# ── host_apps ──
+# Exact-match assertions per project convention (docs/runbooks/mutation-testing.md):
+# substring-loop asserts let mutants through, so these check the literal message.
+
+
+def test_validate_host_apps_missing_hosts():
+    errors = validate_config({"host_apps": [{"argv": ["noop"]}]})
+    assert "host_apps[0] missing required field 'hosts'" in errors
+
+
+def test_validate_host_apps_missing_argv():
+    errors = validate_config({"host_apps": [{"hosts": [0]}]})
+    assert "host_apps[0] missing required field 'argv'" in errors
+
+
+def test_validate_host_apps_hosts_wrong_type():
+    errors = validate_config({"host_apps": [{"hosts": "cache", "argv": ["noop"]}]})
+    assert "host_apps[0].hosts must be 'all' or a list of integers" in errors
+
+
+def test_validate_host_apps_hosts_out_of_range():
+    errors = validate_config(
+        {"hosts": 3, "host_apps": [{"hosts": [5], "argv": ["noop"]}]}
+    )
+    assert "host_apps[0].hosts contains out-of-range host index 5" in errors
+
+
+def test_validate_host_apps_hosts_range_skipped_without_known_host_count():
+    # host_count unknown (no top-level "hosts") -> cannot judge range, so no
+    # out-of-range error is raised even for an index that would be invalid
+    # under the default host count.
+    errors = validate_config({"host_apps": [{"hosts": [50], "argv": ["noop"]}]})
+    assert errors == []
+
+
+def test_validate_host_apps_argv_empty_list():
+    errors = validate_config({"host_apps": [{"hosts": [0], "argv": []}]})
+    assert "host_apps[0].argv must be a non-empty list of strings" in errors
+
+
+def test_validate_host_apps_argv_non_string_element():
+    errors = validate_config({"host_apps": [{"hosts": [0], "argv": ["ok", 1]}]})
+    assert "host_apps[0].argv must be a non-empty list of strings" in errors
+
+
+def test_validate_host_apps_cwd_non_string():
+    errors = validate_config(
+        {"host_apps": [{"hosts": [0], "argv": ["noop"], "cwd": 1}]}
+    )
+    assert "host_apps[0].cwd must be a string" in errors
+
+
+def test_validate_host_apps_unknown_key():
+    errors = validate_config(
+        {"host_apps": [{"hosts": [0], "argv": ["noop"], "bogus": 1}]}
+    )
+    assert (
+        "host_apps[0] has unsupported keys: bogus "
+        "(allowed: argv, cwd, env, hosts, log)" in errors
+    )
+
+
+def test_validate_host_apps_env_non_string_value():
+    errors = validate_config(
+        {"host_apps": [{"hosts": [0], "argv": ["noop"], "env": {"K": 1}}]}
+    )
+    assert "host_apps[0].env must be a dict of string keys to string values" in errors
+
+
+def test_validate_host_apps_env_key_with_equals():
+    """A key containing '=' is not a POSIX name and must be rejected."""
+    errors = validate_config(
+        {"host_apps": [{"hosts": [0], "argv": ["noop"], "env": {"K=V": "1"}}]}
+    )
+    assert (
+        "host_apps[0].env has invalid keys: K=V "
+        "(keys must match [A-Za-z_][A-Za-z0-9_]*)" in errors
+    )
+
+
+def test_validate_host_apps_env_key_starts_with_dash():
+    """2026-10-22: "env -X=1 ..." is parsed by GNU env as an option, not an
+    assignment -- a leading '-' must be rejected here, before argv."""
+    errors = validate_config(
+        {"host_apps": [{"hosts": [0], "argv": ["noop"], "env": {"-X": "1"}}]}
+    )
+    assert (
+        "host_apps[0].env has invalid keys: -X "
+        "(keys must match [A-Za-z_][A-Za-z0-9_]*)" in errors
+    )
+
+
+def test_validate_host_apps_env_key_starts_with_digit():
+    """A POSIX name cannot start with a digit."""
+    errors = validate_config(
+        {"host_apps": [{"hosts": [0], "argv": ["noop"], "env": {"1X": "1"}}]}
+    )
+    assert (
+        "host_apps[0].env has invalid keys: 1X "
+        "(keys must match [A-Za-z_][A-Za-z0-9_]*)" in errors
+    )
+
+
+def test_validate_host_apps_env_key_with_internal_dash():
+    """A dash anywhere in the key, not just leading, is still not POSIX."""
+    errors = validate_config(
+        {"host_apps": [{"hosts": [0], "argv": ["noop"], "env": {"A-B": "1"}}]}
+    )
+    assert (
+        "host_apps[0].env has invalid keys: A-B "
+        "(keys must match [A-Za-z_][A-Za-z0-9_]*)" in errors
+    )
+
+
+def test_validate_host_apps_env_key_empty():
+    """An empty key was already rejected before the POSIX-name check; still is."""
+    errors = validate_config(
+        {"host_apps": [{"hosts": [0], "argv": ["noop"], "env": {"": "1"}}]}
+    )
+    assert (
+        "host_apps[0].env has invalid keys:  "
+        "(keys must match [A-Za-z_][A-Za-z0-9_]*)" in errors
+    )
+
+
+def test_validate_host_apps_log_requires_a_per_host_placeholder_for_multiple_hosts():
+    """A bare log path shared by several hosts has nothing to disambiguate them."""
+    errors = validate_config(
+        {"host_apps": [{"hosts": [0, 1], "argv": ["noop"], "log": "app.log"}]}
+    )
+    assert (
+        "host_apps[0].log must contain one of {node}, {node_dir}, "
+        "{cefore_conf_dir} when hosts is 'all' or more than one host" in errors
+    )
+
+
+def test_validate_host_apps_log_requires_a_per_host_placeholder_for_all():
+    """Same requirement as the multi-host-list case, for hosts: "all"."""
+    errors = validate_config(
+        {"host_apps": [{"hosts": "all", "argv": ["noop"], "log": "app.log"}]}
+    )
+    assert (
+        "host_apps[0].log must contain one of {node}, {node_dir}, "
+        "{cefore_conf_dir} when hosts is 'all' or more than one host" in errors
+    )
+
+
+def test_validate_host_apps_log_t0_ms_placeholder_alone_is_still_rejected():
+    """{t0_ms} is the same value for every host in one experiment, so unlike
+    {node}/{node_dir}/{cefore_conf_dir} it cannot disambiguate a shared
+    multi-host log path -- it must not satisfy this requirement."""
+    errors = validate_config(
+        {"host_apps": [{"hosts": [0, 1], "argv": ["noop"], "log": "{t0_ms}/app.log"}]}
+    )
+    assert (
+        "host_apps[0].log must contain one of {node}, {node_dir}, "
+        "{cefore_conf_dir} when hosts is 'all' or more than one host" in errors
+    )
+
+
+def test_validate_host_apps_log_node_dir_placeholder_satisfies_multiple_hosts():
+    """{node_dir} alone (no {node}) is accepted: it also varies per host."""
+    errors = validate_config(
+        {
+            "host_apps": [
+                {"hosts": [0, 1], "argv": ["noop"], "log": "{node_dir}/app.log"}
+            ]
+        }
+    )
+    assert errors == []
+
+
+def test_validate_host_apps_log_cefore_conf_dir_placeholder_satisfies_all_hosts():
+    """{cefore_conf_dir} alone also satisfies the per-host requirement."""
+    errors = validate_config(
+        {
+            "host_apps": [
+                {"hosts": "all", "argv": ["noop"], "log": "{cefore_conf_dir}/app.log"}
+            ]
+        }
+    )
+    assert errors == []
+
+
+def test_validate_host_apps_log_single_host_does_not_require_a_placeholder():
+    """A single host never shares its log path, so no placeholder is required."""
+    errors = validate_config(
+        {"host_apps": [{"hosts": [0], "argv": ["noop"], "log": "app.log"}]}
+    )
+    assert errors == []
+
+
+def test_validate_host_apps_log_non_string():
+    errors = validate_config(
+        {"host_apps": [{"hosts": [0], "argv": ["noop"], "log": 1}]}
+    )
+    assert "host_apps[0].log must be a string" in errors
+
+
+def test_validate_host_apps_not_a_list():
+    errors = validate_config({"host_apps": {"hosts": [0]}})
+    assert "host_apps must be a list" in errors
+
+
+def test_validate_host_apps_entry_not_a_dict():
+    errors = validate_config({"host_apps": ["nope"]})
+    assert "host_apps[0] must be a dict" in errors
+
+
+def test_validate_host_apps_valid_minimal():
+    errors = validate_config(
+        {
+            "hosts": 3,
+            "host_apps": [
+                {"hosts": [0, 1], "argv": ["noop"], "log": "{node}.log"}
+            ],
+        }
+    )
+    assert errors == []
+
+
+def test_validate_host_apps_valid_with_env_and_cwd():
+    errors = validate_config(
+        {
+            "hosts": 3,
+            "host_apps": [
+                {
+                    "hosts": "all",
+                    "argv": ["./agent"],
+                    "cwd": "{node_dir}",
+                    "env": {"CEFORE_DIR": "{cefore_conf_dir}"},
+                    "log": "{node}.log",
+                }
+            ],
+        }
+    )
+    assert errors == []
+
+
 def test_validate_bridges_missing_fields():
     errors = validate_config({"bridges": [{}]})
     assert any("switch" in e for e in errors)
@@ -566,6 +805,7 @@ def test_config_option_keys_preserves_current_order_and_excludes_special_merge()
         "addressing",
         "cefnetd_timeout",
         "warmup_gets",
+        "host_apps",
         "webui_port",
         "script_log",
     )

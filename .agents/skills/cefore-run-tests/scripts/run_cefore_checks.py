@@ -32,6 +32,7 @@ SMOKE_CONFIGS = (
     "min_monitoring",
     "min_ccninfo",
     "min_compute",
+    "min_host_apps",
     "connect",
 )
 
@@ -433,6 +434,21 @@ def build_smoke_cases() -> list[SmokeCase]:
                 "event_outcomes": {"compute_call": "skipped-no-result"},
             },
         ),
+        SmokeCase(
+            # host_apps: starts a per-host long-running process after
+            # cefnetd/csmgrd and stops it before teardown; it writes no
+            # content, so results.json stays empty like min_empty, but the
+            # host_app_markers check below is what actually proves the
+            # feature ran -- each host's own marker file must exist and all
+            # three must share the same t0_ms (see HostAppFleet in
+            # CONTEXT.md).
+            "min_host_apps",
+            config_relpath="config/examples/min_host_apps.yaml",
+            expect={
+                "empty": True,
+                "host_app_markers": {"hosts": (0, 1, 2)},
+            },
+        ),
         SmokeCase("connect", kind="connect"),
     ]
 
@@ -522,6 +538,11 @@ def validate_results(
       ``_fib_section_prefixes``). ``require`` asserts the prefix is
       installed in that host's FIB; ``forbid`` asserts it is not (e.g. a
       prefix_routes target must never route to itself).
+    - ``host_app_markers``: not checked here -- like ``summarizer_min_rows``,
+      it is read directly by ``run_single_smoke`` and dispatched to
+      ``validate_host_app_markers`` (data-independent: it checks files on
+      disk, not ``results.json``, so it works even when ``expect["empty"]``
+      has already short-circuited the rest of this function).
     """
 
     def fail(msg: str) -> None:
@@ -659,6 +680,44 @@ def validate_results(
                     f"monitor.json: no {check_type} entry passes all checks; "
                     f"mismatches: {'; '.join(per_entry_reasons)}"
                 )
+
+
+def validate_host_app_markers(case_name: str, run_dir: Path, hosts: tuple[int, ...]) -> None:
+    """Validate the host_apps marker files a min_host_apps-style config writes.
+
+    Each configured host's marker is expected at
+    ``<run_dir>/debug/node_dirs/h{idx}/host_app_marker`` (the debug.artifacts:
+    node_dirs path -- see min_host_apps.yaml) and to contain exactly
+    ``"h{idx} <t0_ms>"``: the node name the host app's own {node} placeholder
+    expanded to, and the {t0_ms} placeholder's value. Checking the node name
+    (not just that a file exists) catches a mix-up where every host wrote to
+    the same marker instead of its own. Checking that every host's t0_ms is
+    identical is this smoke's real assertion: it is the only external
+    evidence that all host apps actually received the one shared t0 the
+    scheduler's "at: 0" origin also uses, rather than each reading its own
+    independent clock.
+    """
+
+    def fail(msg: str) -> None:
+        raise RuntimeError(f"{case_name}: {msg}")
+
+    t0_values: set[str] = set()
+    for idx in hosts:
+        marker_path = run_dir / "debug" / "node_dirs" / f"h{idx}" / "host_app_marker"
+        if not marker_path.is_file():
+            fail(f"host_app_marker missing for h{idx}")
+        content = marker_path.read_text(encoding="utf-8").strip()
+        tokens = content.split()
+        if len(tokens) != 2:
+            fail(f"h{idx} host_app_marker content {content!r} is not 'hN <ms>'")
+        node, t0 = tokens
+        if node != f"h{idx}":
+            fail(f"h{idx} host_app_marker node is {node!r}, expected 'h{idx}'")
+        if not t0.isdigit():
+            fail(f"h{idx} host_app_marker t0 {t0!r} is not numeric")
+        t0_values.add(t0)
+    if len(t0_values) != 1:
+        fail(f"host_app_marker t0 values differ across hosts: {sorted(t0_values)}")
 
 
 def validate_summarizer_stdout(
@@ -850,6 +909,11 @@ def run_single_smoke(
                 results_path.parent,
                 data,
                 summarizer_min_rows,
+            )
+        host_app_markers = (case.expect or {}).get("host_app_markers")
+        if host_app_markers is not None:
+            validate_host_app_markers(
+                case.name, results_path.parent, host_app_markers["hosts"]
             )
         print(f"[OK] {case.name}: {results_path}")
         return case_output_dir

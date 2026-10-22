@@ -209,6 +209,17 @@
   - every `compute_call` record has `outcome == "skipped-no-result"`
     （環境要因が実験失敗 not-ok と区別されること — tri-state seam の回帰ガード）
 
+### `min_host_apps`
+
+- File: `config/examples/min_host_apps.yaml`
+- host_apps: one process per host (`sh -c "echo {node} {t0_ms} > {node_dir}/host_app_marker; exec sleep 1000"`), started after cefnetd/csmgrd and stopped before teardown. No content operations run, so this is a lifecycle/placeholder check, not a put/get check.
+- Expected `results.json`: empty array (same shape as `min_empty`).
+- Required checks:
+  - parsed `results.json` equals `[]`
+  - `debug/node_dirs/h{0,1,2}/host_app_marker` all exist (via `debug.artifacts: node_dirs`, which is what keeps the marker files around after teardown deletes the live `hN/` working directories)
+  - each marker's content is exactly `"hN <t0_ms>"`, with its own node name (catches a mix-up where every host wrote to the same file)
+  - all three markers carry the identical `<t0_ms>` value (the regression this case guards: host apps must receive the same t0 the scheduler's `"at: 0"` origin uses, not each reading its own clock)
+
 ### `connect`
 
 - Path: ConnectScenario via `ceforeemu-connect` (no config file). The helper runs
