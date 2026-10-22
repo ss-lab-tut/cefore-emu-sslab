@@ -310,10 +310,14 @@ def build_smoke_cases() -> list[SmokeCase]:
             # pair is off the get path by construction), this is a 3-host
             # line where link_down [1, 2] cuts the ONLY path from h0 to h2.
             # No "all_success": True here on purpose -- the whole point is
-            # that the "during" get must fail. Each phase uses content never
-            # requested before the cut (get_outcomes below), so neither the
-            # failure nor the post-restore success can be explained away by
-            # a pre-cut cache; see the config's own comment for the design.
+            # that the "during" get must fail. "during" and "after" are each
+            # content no get ever touches before their own eval-phase get
+            # (get_outcomes below), so neither the failure nor the
+            # post-restore success can be explained away by a pre-cut
+            # cache; "before" is deliberately warmed up ahead of its own
+            # get and carries no such guarantee -- see the config's own
+            # comment for why that split is safe and for the autotest
+            # seed/warmup/eval ordering this case depends on.
             "min_explicit_line",
             config_relpath="config/examples/min_explicit_line.yaml",
             expect={

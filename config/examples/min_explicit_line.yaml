@@ -16,36 +16,132 @@
 # すり抜けてしまう。そのため URI を3本に分け、各フェーズで「切断前に一度も
 # 取得していない新規コンテンツ」を使うことで、キャッシュでは説明できない
 # 成功/失敗だけを要求する:
-#   before: 切断前に put+get する。経路がそもそも動くことの前提確認 (ok 期待)
+#   before: put+get する。経路がそもそも動くことの前提確認 (ok 期待)
 #   during: 切断前に put (ローカル登録のみ、ネットワーク不要) し、切断中に
 #           初めて get する。h1 はこの URI を一度も中継していないので、
 #           失敗は「h1 のキャッシュから返った」では説明できない (ng 期待)
-#   after:  復旧後に put (切断中/切断前には存在しない新規コンテンツ) し、
-#           復旧後に get する。成功は「どこかの事前キャッシュ」では説明
+#   after:  put 済みだが誰も fetch していない新規コンテンツを、復旧後に
+#           初めて get する。成功は「どこかの事前キャッシュ」では説明
 #           できず、復旧した h1-h2 リンクを実際に通ったことの証拠になる
 #           (ok 期待)
 #
-# during の get (at: 10) と link_up (at: 22) の間を 12 秒空けているのは、
-# cefgetfile が一度も Data を受け取れないまま自力で諦めるまでの時間の実測が
-# 無いため (Cefore のツール文書にある「最後に Data を受けてから 2 秒」は
-# 最初の 1 個を受け取った後の話で、0 個のケースの保証ではない)。ここで詰め
-# すぎると、during 用の get プロセスがまだ再送中のうちに link_up が先に
-# 起きてしまい、取得自体は復旧後に成功する「別の理由」で during: False が壊れる
-# (feature の失敗ではなく、タイミングの事故)。duration (32) は最後の get
-# (at: 28) から 4 秒の余裕を min_event_link と同じ比率で確保している。
+# 2026-10-22 review fix (2周目): 上の設計は autotest モード (--no-cli +
+# results_json) の実行順序を2点読み違えていた。disaster.py
+# _run_autotest_experiment の実際の順序は次の通り:
+#   1. seed: events のうち type=="put" を1バッチにまとめて実行する。この
+#      バッチも普通の EventScheduler なので、まとめて実行されるのは「put
+#      だけが他の event より先に全部終わる」という意味であって、put 同士の
+#      at: は無視されない -- 各 put は自分の at: まで実際に待つ。
+#   2. warmup (_run_warmup): put した URI 全部 × cache_node_set の全ホストを
+#      総当たりで先取り get する。
+#   3. eval: put 以外の events (get/link_down/link_up) を実行する。
+# seed と eval は同じ origin (run_experiment の先頭で1回だけ取る
+# time.monotonic()) を共有する EventScheduler で動く (disaster.py の
+# run_event_batch 呼び出し2箇所、どちらも start_time=origin)。つまり eval
+# 側の at: は「warmup が終わった後からの経過秒」ではなく「origin からの
+# 絶対オフセット」なので、seed+warmup の実時間が eval の at: の値を超えて
+# いると、eval の該当イベントは「もう過ぎている」扱いになり待たずに連続
+# 発火する。
+#
+# これは理論上の懸念ではなく、2026-10-22 の失敗した run
+# (/tmp/cefore-run-tests/20261022-093337/min_explicit_line/ex9917_seed42/
+# results.json) で実際に確認した事象: 旧版は before/during/after の put を
+# at: 0/6/24 に分けていたため、seed バッチ自体が (↑の理由で) at:24 まで
+# 実際に24秒待ってから終わり、warmup (旧版は cache_node_set={h0,h1} への
+# 2ホスト×3URI=6 get) でさらに約8秒かかった。その結果、eval 開始時点で
+# origin からの経過時間はすでに約31秒で、during の get (at: 10) どころか
+# link_up (at: 22) まで「過ぎている」扱いになり、scheduled_at: 8 の
+# link_down と scheduled_at: 22 の link_up は実時刻 (actual_at) でわずか
+# 0.011 秒差で連続発火した (本来14秒空ける設計が11ミリ秒に潰れた)。during
+# の get は (warmup 経由で h0/h1 が before 実行前にすでに取得していた
+# ことに加えて) その cefgetfile プロセス自体も link_up の約4秒後にようやく
+# 動き出していたので、「リンクがまだ落ちている間に再送し尽くして諦める」
+# という during 失敗の前提が、キャッシュの有無とは無関係にそもそも成立して
+# いなかった。
+#
+# この版で直したこと:
+#   1. before/during/after の put を全部 at: 0 にした。3本とも同じ seed
+#      バッチで実行される以上、put 同士の相対順序はイベントリスト内の並び
+#      順 (before→during→after) で決まり、at: をずらす意味は「seed が
+#      eval の at: をどれだけ食い潰すか」を増やすだけだったため。
+#   2. warmup_gets を明示指定し、during/after には warmup の get を絶対に
+#      向けない。何も指定しなければ _run_warmup は「put した URI × cache_
+#      node_set の全ホスト」を総当たりで prefetch するので、during/after も
+#      対象に入ってしまう (実際、上記の失敗した run の results.json には
+#      during/after 向けの warmup get が h0/h1 双方に success:true で
+#      記録されていた)。
+#      これを「k: 2 で h0/h1 が cache node になるのが原因」と考えて
+#      cache_count/down_count 側 (または k) を直す案も検討したが、コードを
+#      確認した上で退けた:
+#        - k は FIB の k-shortest-paths 設定であって (validator.py の
+#          OptionSpec "k", block=("mesh","connect"), help="number of
+#          shortest paths per destination") cache node の数とは無関係。
+#          しかも minimum=1 なので "k: 0" はそもそも config エラーになる。
+#        - cache_count のデフォルト 0 は「down_count + 1 を使う」という
+#          意味で、文字通りゼロにはならない (cache_manager.py
+#          CachePlacement.decide)。
+#        - CachePlacement.decide には「選んだノードが空なら host_count-1
+#          を使う」という fallback が exclude_publishers とは無関係に
+#          発火するので、config だけで cache_node_set を本当に空にする
+#          方法はそもそも存在しない。
+#      つまり cache node の割り当てを変えても warmup の対象ホストを空には
+#      できず、本当の原因は「どのホストが cache node か」ではなく
+#      「warmup が put した URI を宛先問わず全部先取りしてしまう」こと
+#      そのものだった。warmup_gets を明示リストに差し替えて during/after
+#      だけを外すのが、唯一の有効な対処になる。
+#      before は h0 から先取りしても安全: during/after の「切断前に一度も
+#      取得していない」という保証とは無関係で、before はそもそも「経路が
+#      動くことの前提確認」なので cache 経由の成功でも ok 期待の結論は
+#      変わらない。この host 0 / uri before の組み合わせは上記の失敗した
+#      run の results.json でも success:true で記録済み
+#      (cefgetfile_warmup_h0_test_explicitline_before.log) なので、他の
+#      組み合わせより実績がある。トレードオフとして、before の eval 側
+#      get はこの warmup のローカルキャッシュ応答になる可能性があり、
+#      「経路を実際に通った」ことの証明ではなくなる -- before にその証明
+#      能力は要求していないので許容する。
+#   3. after は依然として put 自体は復旧前 (seed フェーズ) に行われる
+#      (autotest モードでは put イベントの at: に関わらず必ず warmup より
+#      前に実行されるため、「復旧後に put する」という元の設計は autotest
+#      モードでは実現できない)。after の証明価値は「put された時点」では
+#      なく「warmup_gets からも外され、復旧後の eval get まで誰も fetch
+#      していない」ことだけに依存している。
+#   4. eval 側の at: は元の相対関係 (before→down: 4秒, down→during: 2秒,
+#      during→up: 12秒, up→after: 6秒, after→duration末尾: 4秒) をそのまま
+#      保ち、全体を +15秒ずらした。during→up の12秒は変更していない:
+#      cefgetfile (tools/cefgetfile/cefgetfile.c, lifetime デフォルト2秒 =
+#      CefC_Default_LifetimeSec, 再送間隔 T_RETRY_INTERVAL(lifetime) =
+#      lifetime*0.75 = 1.5秒, CefC_Max_Retry=5) は初回送信から数えて
+#      1.5秒×6回 (初回の待ち+再送5回) ≈ 9秒で "Timeout (The number of
+#      Interest retransmission has reached its limit, 5.)" になって諦める。
+#      12秒はこの9秒に3秒の余裕を乗せた値で、この値自体は壊れていなかった
+#      ので変更不要と判断した。+15秒のずらしは、新しい seed (put 3回、
+#      どれも at:0 で実行時間だけに依存) + warmup (get 1回) にかかる実時間
+#      に対して十分な余裕を持たせるための固定値 (実測はしていない。
+#      ORCHESTRATOR へ: sudo で走らせた results.json の link_down/link_up
+#      の scheduled_at と actual_at の差がほぼゼロ秒であること、during の
+#      get (eval_recvfile_h0_test_explicitline_during) が success:false で
+#      あることを確認してほしい)。
 hosts: 3
 seed: 42
 k: 2
 num: 9917
 output_dir: "logs/verify"
 no_cli: true
-duration: 32
+duration: 47
 results_json: "results.json"
 publisher_host: 2
 
 links:
   - [0, 1]
   - [1, 2]
+
+# during/after を warmup の先取り get から外すための明示リスト。省略すると
+# _run_warmup が put した URI 全部 (before/during/after) × cache_node_set の
+# 全ホストを総当たりで prefetch してしまう (上のコメント参照)。before だけ
+# なら先取りしても設計上問題ない。
+warmup_gets:
+  - host: 0
+    uri: "ccnx:/test/explicitline/before"
 
 events:
   - at: 0
@@ -55,35 +151,35 @@ events:
     file: "./sample-putfile"
     expiry: 3000
     cache_time: 3000
-  - at: 4
-    type: get
-    host: 0
-    uri: "ccnx:/test/explicitline/before"
-  - at: 6
+  - at: 0
     type: put
     host: 2
     uri: "ccnx:/test/explicitline/during"
     file: "./sample-putfile"
     expiry: 3000
     cache_time: 3000
-  - at: 8
-    type: link_down
-    nodes: [1, 2]
-  - at: 10
-    type: get
-    host: 0
-    uri: "ccnx:/test/explicitline/during"
-  - at: 22
-    type: link_up
-    nodes: [1, 2]
-  - at: 24
+  - at: 0
     type: put
     host: 2
     uri: "ccnx:/test/explicitline/after"
     file: "./sample-putfile"
     expiry: 3000
     cache_time: 3000
-  - at: 28
+  - at: 19
+    type: get
+    host: 0
+    uri: "ccnx:/test/explicitline/before"
+  - at: 23
+    type: link_down
+    nodes: [1, 2]
+  - at: 25
+    type: get
+    host: 0
+    uri: "ccnx:/test/explicitline/during"
+  - at: 37
+    type: link_up
+    nodes: [1, 2]
+  - at: 43
     type: get
     host: 0
     uri: "ccnx:/test/explicitline/after"
