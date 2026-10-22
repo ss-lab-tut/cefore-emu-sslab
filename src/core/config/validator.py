@@ -987,12 +987,24 @@ def _validate_links(errors, config):
     before any of that code ever sees the list; ExplicitLinksTopo itself
     does not re-validate.
 
-    Connectivity is required, not merely "every host appears in some link":
-    AddressingScheme.canonical_host_ip raises ValueError for a host attached
-    to no link, and TopologyModel.peer_of raises RuntimeError for a
-    publisher with no links, so a disconnected graph would otherwise crash
-    scenario setup after node directories are already provisioned, instead
-    of failing at config time with a clear message.
+    Connectivity is required, not merely "every host appears in some link".
+    This is a deliberate choice, not a blanket "disconnected always crashes"
+    claim -- the two cases a disconnected graph can produce behave
+    differently, and neither is acceptable:
+    - A host with zero links crashes outright, after node directories are
+      already provisioned: AddressingScheme.canonical_host_ip raises
+      ValueError for that host, and TopologyModel.peer_of raises
+      RuntimeError for a publisher with no links.
+    - A graph with two or more components, where every host still has
+      degree >= 1, does not crash at all -- core.fib.compute_fib silently
+      skips any (src, dest) pair with no path (`if not candidates:
+      continue`), so the FIB simply has no route to the other component's
+      hosts, and a get/put that needed one fails at runtime for a reason
+      the operator never intended (an unreachable prefix, not the
+      failure-injection scenario they configured).
+    Rejecting both at config time, with a clear message naming the problem,
+    is strictly better than either crashing mid-setup or silently shipping
+    an incomplete FIB.
 
     Addressing capacity (MAX_LINK_SUBNET_ID / MAX_HOST_INDEX) is likewise
     required: ExplicitLinksTopo assigns subnet = link_index + 1 and
