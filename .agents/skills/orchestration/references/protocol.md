@@ -356,7 +356,7 @@ tmux ペインの記録が古い場合、無関係なペインを落とす危険
 
 ## codex-main への依頼注意事項
 
-codex-main は gpt-5.6-sol / reasoning high / summaries auto で動かす想定。
+codex-main は gpt-6.1-sol / reasoning high（軽い確認なら medium）/ summaries auto で動かす想定。
 ただしこれは**運用者側の設定であって spawn.sh が保証するものではない**。
 manifest が持つのは `model_arg` の綴りだけで、`--model` を明示しない spawn は
 モデルを指定しない。設定に依存する依頼をするなら、相手に現在の設定を答えさせて確かめる。
