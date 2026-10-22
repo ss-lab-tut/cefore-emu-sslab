@@ -170,3 +170,89 @@ def test_get_outcomes_matching_success_passes():
         },
         Path("."),
     )
+
+
+# ── validate_host_app_markers ──
+#
+# Exact-match assertions per project convention (docs/runbooks/mutation-
+# testing.md): substring/regex asserts let mutants through, so these compare
+# the full raised message, not a `match=` pattern.
+
+
+def _write_marker(run_dir: Path, idx: int, content: str) -> None:
+    """Write one host's host_app_marker file under run_dir, as the real
+    min_host_apps.yaml command (echo {node} {t0_ms} > ...) would."""
+    marker_dir = run_dir / "debug" / "node_dirs" / f"h{idx}"
+    marker_dir.mkdir(parents=True, exist_ok=True)
+    (marker_dir / "host_app_marker").write_text(content)
+
+
+def test_host_app_markers_missing_file_fails(tmp_path):
+    """A host that never wrote its marker must fail by name, not vacuously."""
+    _write_marker(tmp_path, 0, "h0 1700000000000")
+    # h1's marker is never written.
+
+    with pytest.raises(RuntimeError) as exc_info:
+        checker.validate_host_app_markers("min_host_apps", tmp_path, (0, 1))
+
+    assert str(exc_info.value) == "min_host_apps: host_app_marker missing for h1"
+
+
+def test_host_app_markers_wrong_token_count_fails(tmp_path):
+    """The marker must be exactly two whitespace-separated tokens."""
+    _write_marker(tmp_path, 0, "h0 1700000000000 extra")
+
+    with pytest.raises(RuntimeError) as exc_info:
+        checker.validate_host_app_markers("min_host_apps", tmp_path, (0,))
+
+    assert str(exc_info.value) == (
+        "min_host_apps: h0 host_app_marker content "
+        "'h0 1700000000000 extra' is not 'hN <ms>'"
+    )
+
+
+def test_host_app_markers_wrong_node_name_fails(tmp_path):
+    """h1's marker holds h0's name -- the mix-up this check exists to catch."""
+    _write_marker(tmp_path, 1, "h0 1700000000000")
+
+    with pytest.raises(RuntimeError) as exc_info:
+        checker.validate_host_app_markers("min_host_apps", tmp_path, (1,))
+
+    assert str(exc_info.value) == (
+        "min_host_apps: h1 host_app_marker node is 'h0', expected 'h1'"
+    )
+
+
+def test_host_app_markers_non_numeric_t0_fails(tmp_path):
+    """The second token must be the numeric t0_ms, not arbitrary text."""
+    _write_marker(tmp_path, 0, "h0 not-a-number")
+
+    with pytest.raises(RuntimeError) as exc_info:
+        checker.validate_host_app_markers("min_host_apps", tmp_path, (0,))
+
+    assert str(exc_info.value) == (
+        "min_host_apps: h0 host_app_marker t0 'not-a-number' is not numeric"
+    )
+
+
+def test_host_app_markers_mismatched_t0_fails(tmp_path):
+    """Differing t0_ms across hosts means they did not share one capture point."""
+    _write_marker(tmp_path, 0, "h0 1700000000000")
+    _write_marker(tmp_path, 1, "h1 1700000000111")
+
+    with pytest.raises(RuntimeError) as exc_info:
+        checker.validate_host_app_markers("min_host_apps", tmp_path, (0, 1))
+
+    assert str(exc_info.value) == (
+        "min_host_apps: host_app_marker t0 values differ across hosts: "
+        "['1700000000000', '1700000000111']"
+    )
+
+
+def test_host_app_markers_matching_t0_passes(tmp_path):
+    """Three markers, each with its own node name and the same t0_ms, pass."""
+    _write_marker(tmp_path, 0, "h0 1700000000000")
+    _write_marker(tmp_path, 1, "h1 1700000000000")
+    _write_marker(tmp_path, 2, "h2 1700000000000")
+
+    checker.validate_host_app_markers("min_host_apps", tmp_path, (0, 1, 2))

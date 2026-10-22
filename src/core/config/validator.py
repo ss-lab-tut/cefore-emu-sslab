@@ -2,6 +2,7 @@
 
 import ipaddress
 import math
+import re
 from dataclasses import dataclass
 from typing import Any, Callable
 
@@ -467,6 +468,7 @@ OPTION_SPECS = {
     ),
     "cefnetd_timeout": OptionSpec("cefnetd_timeout", "number", cli_allowed=False),
     "warmup_gets": OptionSpec("warmup_gets", "structured", cli_allowed=False),
+    "host_apps": OptionSpec("host_apps", "structured", cli_allowed=False),
     "webui_port": OptionSpec(
         "webui_port",
         "int",
@@ -1106,6 +1108,120 @@ def _validate_links(errors, config):
             errors.append(
                 "links must connect all hosts into a single connected component"
             )
+
+
+# host_apps entries share monitoring.targets[idx].hosts's "'all' or a list
+# of integers" shape (minus "cache" -- host_apps has no cache-node concept).
+# See CONTEXT.md Daemon lifecycle: HostAppFleet.
+_HOST_APP_KEYS = frozenset({"hosts", "argv", "cwd", "env", "log"})
+
+# 2026-10-22 fix: an env key is prepended to argv as "env KEY=VALUE ..."
+# (see host_apps.py _env_argv_prefix). GNU env parses a leading '-' in that
+# first token as one of its own options -- confirmed: "env -X=1 true" exits
+# 125 with "env: invalid option -- 'X'" instead of running anything -- so a
+# bad key fails at the worst possible time: inside the host's netns, as
+# env's own cryptic error, with no indication that a host_apps.env key is
+# the actual cause. Restricting keys to POSIX shell names rules this out
+# structurally (a POSIX name can never start with '-' or a digit) and turns
+# that runtime failure into a validation error naming the exact bad key.
+_POSIX_ENV_KEY = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
+
+
+def _validate_host_apps(errors, config):
+    """Validate host_apps: entries (see CONTEXT.md: HostAppFleet)."""
+    if "host_apps" not in config:
+        return
+    apps = config["host_apps"]
+    if not isinstance(apps, list):
+        errors.append("host_apps must be a list")
+        return
+    host_count = config.get("hosts")
+    for idx, entry in enumerate(apps):
+        prefix = f"host_apps[{idx}]"
+        if not isinstance(entry, dict):
+            errors.append(f"{prefix} must be a dict")
+            continue
+
+        unknown = sorted(str(k) for k in set(entry) - _HOST_APP_KEYS)
+        if unknown:
+            errors.append(
+                f"{prefix} has unsupported keys: {', '.join(unknown)} "
+                f"(allowed: {', '.join(sorted(_HOST_APP_KEYS))})"
+            )
+
+        # Tracks whether this entry's log file (if any) is shared by more
+        # than one host, so the per-host-placeholder requirement below can
+        # be judged.
+        multi_host = False
+        if "hosts" not in entry:
+            errors.append(f"{prefix} missing required field 'hosts'")
+        else:
+            hosts = entry["hosts"]
+            if hosts == "all":
+                multi_host = True
+            elif not isinstance(hosts, list) or not all(_is_int(h) for h in hosts):
+                errors.append(f"{prefix}.hosts must be 'all' or a list of integers")
+            else:
+                multi_host = len(hosts) > 1
+                if _is_int(host_count):
+                    for h in hosts:
+                        if h < 0 or h >= host_count:
+                            errors.append(
+                                f"{prefix}.hosts contains out-of-range host index {h}"
+                            )
+
+        if "argv" not in entry:
+            errors.append(f"{prefix} missing required field 'argv'")
+        else:
+            argv = entry["argv"]
+            if (
+                not isinstance(argv, list)
+                or not argv
+                or not all(isinstance(a, str) for a in argv)
+            ):
+                errors.append(f"{prefix}.argv must be a non-empty list of strings")
+
+        if "cwd" in entry and not isinstance(entry["cwd"], str):
+            errors.append(f"{prefix}.cwd must be a string")
+
+        if "log" in entry:
+            log = entry["log"]
+            if not isinstance(log, str):
+                errors.append(f"{prefix}.log must be a string")
+            elif multi_host and not any(
+                placeholder in log
+                for placeholder in ("{node}", "{node_dir}", "{cefore_conf_dir}")
+            ):
+                # CommandRunner.start() opens log_path with "wb" (truncate);
+                # every host sharing this entry would overwrite the same file
+                # unless the path varies per host. {node_dir} and
+                # {cefore_conf_dir} vary per host exactly like {node} does
+                # (see host_apps.py _placeholder_context), so any one of the
+                # three is sufficient -- {t0_ms} is deliberately excluded
+                # here since it is the same value for every host in one
+                # experiment and so cannot disambiguate them.
+                errors.append(
+                    f"{prefix}.log must contain one of {{node}}, {{node_dir}}, "
+                    "{cefore_conf_dir} when hosts is 'all' or more than one host"
+                )
+
+        if "env" in entry:
+            env = entry["env"]
+            if not isinstance(env, dict) or not all(
+                isinstance(k, str) and isinstance(v, str) for k, v in env.items()
+            ):
+                errors.append(
+                    f"{prefix}.env must be a dict of string keys to string values"
+                )
+            else:
+                # See _POSIX_ENV_KEY above for why a key must be a POSIX
+                # name, not merely non-empty and '='-free.
+                bad_keys = sorted(k for k in env if not _POSIX_ENV_KEY.fullmatch(k))
+                if bad_keys:
+                    errors.append(
+                        f"{prefix}.env has invalid keys: {', '.join(bad_keys)} "
+                        "(keys must match [A-Za-z_][A-Za-z0-9_]*)"
+                    )
 
 
 def _validate_put_options(errors, prefix, event):
@@ -1950,6 +2066,8 @@ def validate_config(config: dict[str, Any]) -> list[str]:
                                 "supported on monitor targets (assert options are "
                                 "event-only)"
                             )
+
+    _validate_host_apps(errors, config)
 
     if "addressing" in config:
         addr = config["addressing"]
