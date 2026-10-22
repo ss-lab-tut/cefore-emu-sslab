@@ -27,7 +27,7 @@ EXAMPLE_FILES = sorted(
 )
 
 # glob が静かに空振りすると個別テストが 0 件収集で green になってしまうので、
-# discovery 自体を検証対象にする。smoke が使う min_*.yaml 14 本は、消えたら
+# discovery 自体を検証対象にする。smoke が使う min_*.yaml 15 本は、消えたら
 # cefore-run-tests の証拠構成が壊れるため存在を明示的に固定する。
 _SMOKE_EXAMPLES = frozenset(
     {
@@ -37,6 +37,7 @@ _SMOKE_EXAMPLES = frozenset(
         "min_event_link.yaml",
         "min_event_pubsub.yaml",
         "min_event_putget.yaml",
+        "min_explicit_line.yaml",
         "min_failure.yaml",
         "min_host_apps.yaml",
         "min_mixed.yaml",

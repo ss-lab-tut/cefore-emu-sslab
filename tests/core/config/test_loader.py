@@ -1,6 +1,7 @@
 """Tests for src.core.config.loader."""
 
 import argparse
+import itertools
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -796,6 +797,7 @@ def test_config_option_keys_preserves_current_order_and_excludes_special_merge()
         "ext",
         "bridges",
         "failure_scenarios",
+        "links",
         "events",
         "monitoring",
         "routing",
@@ -2040,6 +2042,83 @@ def test_validate_bridges_switch_range_checked_when_switch_count_known():
     )
 
 
+def test_validate_bridges_switch_bound_uses_links_length_not_switches_default():
+    """2026-10-22 review fix: with explicit `links` set, `switches` has no
+    effect on the real topology (ExplicitLinksTopo always creates exactly
+    len(links) switches), but the config merger still fills `switches` with
+    its argparse default of 10. Before this fix, an 11-link topology (which
+    creates s0..s10) rejected a bridge targeting the real switch s10,
+    because the bound compared against the unrelated default of 10 instead
+    of len(links) == 11. `switches: 10` is included explicitly (not left
+    absent) so this reproduces the actual bug: with `switches` absent the
+    old coarse-bound branch never activated at all, and the test would have
+    passed vacuously against the pre-fix code too.
+    """
+    links = [[i, i + 1] for i in range(11)]  # 11 links -> s0..s10, hosts 0..11
+    errors = validate_config(
+        {
+            "hosts": 12,
+            "switches": 10,
+            "links": links,
+            "bridges": [
+                {
+                    "switch": 10,
+                    "root_ip": "10.0.0.1/24",
+                    "local_routes": "192.168.0.0/16",
+                }
+            ],
+        }
+    )
+    assert errors == []
+
+    errors = validate_config(
+        {
+            "hosts": 12,
+            "switches": 10,
+            "links": links,
+            "bridges": [
+                {
+                    "switch": 11,
+                    "root_ip": "10.0.0.1/24",
+                    "local_routes": "192.168.0.0/16",
+                }
+            ],
+        }
+    )
+    assert errors == [
+        "bridges[0].switch is out-of-range: 11 (links creates 11 switches)"
+    ]
+
+
+def test_validate_merged_args_links_bridge_targets_switch_from_links_length():
+    """Merged-config regression guard for the same fix, through the real
+    bootstrap_scenario -> validate_merged_args path: `switches` reaches
+    validate_config at its argparse default of 10 on every ordinary run
+    (see test_validate_merged_args_links_with_all_mesh_knobs_at_default_is_
+    valid above), so this is the exact shape a real disaster config
+    produces post-merge. A bridge targeting s10 on an 11-link topology must
+    validate cleanly."""
+    links = [[i, i + 1] for i in range(11)]
+    args = SimpleNamespace(
+        hosts=12,
+        links=links,
+        switches=10,
+        node_per_switch=2,
+        host_degree_min=1,
+        host_degree_max=2,
+        switch_use_all=False,
+        bridges=[
+            {
+                "switch": 10,
+                "root_ip": "10.0.0.1/24",
+                "local_routes": "192.168.0.0/16",
+            }
+        ],
+    )
+
+    assert validate_merged_args(args) == []
+
+
 # ── ccninfo option validation (events) ──
 
 
@@ -2580,3 +2659,233 @@ def test_restore_cannot_turn_an_event_into_a_content_event_or_compute_call(repea
     assert errors == [
         "events[0].repeat.restore.type must not be a content event type or compute_call"
     ]
+
+
+# ── links (explicit mesh topology) ──
+
+
+def test_validate_links_absent_is_valid():
+    # The feature's core promise: omitting `links` must not add any error --
+    # the byte-identical-when-absent contract lives at the topology layer
+    # (build_mesh_scenario), but validation must not gate it either.
+    assert validate_config({"hosts": 3}) == []
+
+
+def test_validate_links_three_host_line_is_valid():
+    assert validate_config({"hosts": 3, "links": [[0, 1], [1, 2]]}) == []
+
+
+def test_validate_links_accepts_reversed_pair_order():
+    # [2, 1] describes the same edge as [1, 2]; only the duplicate check
+    # (below) treats pair order as equivalent, construction itself does not
+    # need the caller to pre-sort.
+    assert validate_config({"hosts": 3, "links": [[0, 1], [2, 1]]}) == []
+
+
+def test_validate_links_not_a_list():
+    errors = validate_config({"hosts": 3, "links": {"a": 1}})
+    assert errors == ["links must be a list"]
+
+
+def test_validate_links_entry_not_a_pair():
+    errors = validate_config({"hosts": 3, "links": [[0, 1, 2]]})
+    assert errors == ["links[0] must be a list of 2 host indices"]
+
+
+def test_validate_links_entry_not_a_list():
+    errors = validate_config({"hosts": 3, "links": [0, 1]})
+    assert errors == [
+        "links[0] must be a list of 2 host indices",
+        "links[1] must be a list of 2 host indices",
+    ]
+
+
+def test_validate_links_entry_non_integer_elements():
+    errors = validate_config({"hosts": 3, "links": [["a", "b"]]})
+    assert errors == ["links[0] must be a list of 2 host indices"]
+
+
+def test_validate_links_entry_bool_elements_rejected():
+    # bool is an int subclass in Python; _is_int excludes it explicitly, the
+    # same way every other index field in this validator does.
+    errors = validate_config({"hosts": 3, "links": [[True, 1]]})
+    assert errors == ["links[0] must be a list of 2 host indices"]
+
+
+def test_validate_links_self_link_rejected():
+    errors = validate_config({"hosts": 3, "links": [[1, 1], [1, 2]]})
+    assert errors == ["links[0] connects host 1 to itself"]
+
+
+def test_validate_links_out_of_range_host_index():
+    errors = validate_config({"hosts": 3, "links": [[0, 5]]})
+    assert errors == ["links[0] contains out-of-range host index 5"]
+
+
+def test_validate_links_both_endpoints_out_of_range_reports_both():
+    errors = validate_config({"hosts": 3, "links": [[5, 6]]})
+    assert errors == [
+        "links[0] contains out-of-range host index 5",
+        "links[0] contains out-of-range host index 6",
+    ]
+
+
+def test_validate_links_negative_host_index_is_out_of_range():
+    errors = validate_config({"hosts": 3, "links": [[-1, 1]]})
+    assert errors == ["links[0] contains out-of-range host index -1"]
+
+
+def test_validate_links_range_not_checked_without_known_host_count():
+    # hosts missing/invalid: range can't be judged, so only shape/self-link
+    # rules apply -- the same "skip range, keep the rest" behavior
+    # _validate_link_event uses for link_down/link_up.
+    assert validate_config({"links": [[0, 5]]}) == []
+
+
+def test_validate_links_duplicate_pair_rejected():
+    errors = validate_config({"hosts": 3, "links": [[0, 1], [1, 2], [1, 0]]})
+    assert errors == ["links contains duplicate link [0, 1]"]
+
+
+def test_validate_links_duplicate_detection_is_order_independent():
+    # [1, 0] and [0, 1] name the same edge; the message always reports the
+    # sorted pair regardless of which order the duplicate used.
+    errors = validate_config({"hosts": 3, "links": [[1, 0], [0, 1], [1, 2]]})
+    assert errors == ["links contains duplicate link [0, 1]"]
+
+
+def test_validate_links_disconnected_graph_rejected():
+    errors = validate_config({"hosts": 4, "links": [[0, 1], [2, 3]]})
+    assert errors == [
+        "links must connect all hosts into a single connected component"
+    ]
+
+
+def test_validate_links_host_with_no_link_is_disconnected():
+    # A host absent from every pair is, by construction, unreachable --
+    # caught by the same single-component check rather than a separate
+    # "every host must appear" rule.
+    errors = validate_config({"hosts": 3, "links": [[0, 1]]})
+    assert errors == [
+        "links must connect all hosts into a single connected component"
+    ]
+
+
+def test_validate_links_connectivity_not_checked_when_entries_malformed():
+    # A malformed entry already has its own error; piling a connectivity
+    # verdict for the same links list on top would only be noise, since the
+    # graph it implies is unclear while an entry is still invalid.
+    errors = validate_config({"hosts": 4, "links": [[0, 1], ["x", 3]]})
+    assert errors == ["links[1] must be a list of 2 host indices"]
+
+
+# ── links addressing-capacity bounds (2026-10-22 review fix) ──
+#
+# AddressingScheme.host_ip encodes subnet_id in the 3rd octet (base + id,
+# base always 0 for a /16) and host_idx + 1 in the 4th octet. Neither bound
+# is visible from host-index-range/connectivity validation alone, so a
+# config can pass every check above and then raise ValueError inside
+# host_ip/link_network mid-setup. These pin the two exact review scenarios.
+
+
+def test_validate_links_rejects_too_many_links():
+    # Exact regression for the review finding: a 24-host complete graph is
+    # shape/range/connectivity-valid (every pair is a real edge among hosts
+    # 0..23, and a complete graph is trivially connected) but produces
+    # C(24, 2) = 276 links, each claiming its own addressing subnet -- one
+    # more than AddressingScheme.host_ip's 3rd octet has room for.
+    links = [list(pair) for pair in itertools.combinations(range(24), 2)]
+    assert len(links) == 276
+    errors = validate_config({"hosts": 24, "links": links})
+    assert errors == [
+        "links must contain at most 255 entries (got 276); each link uses "
+        "one addressing subnet and the scheme has 255 available"
+    ]
+
+
+def test_validate_links_rejects_host_index_beyond_addressing_max():
+    # Exact regression for the review finding: a 255-host line
+    # ([0,1],[1,2],...,[253,254]) is shape/range/connectivity-valid relative
+    # to `hosts`, but host index 254 overflows host_ip's 4th octet
+    # (host_idx + 1 must stay <= 254).
+    links = [[i, i + 1] for i in range(254)]
+    errors = validate_config({"hosts": 255, "links": links})
+    assert errors == [
+        "links[253] contains host index 254 which exceeds the addressing "
+        "scheme's maximum host index (253)"
+    ]
+
+
+def test_validate_links_at_addressing_capacity_boundary_is_valid():
+    # The boundary itself must stay accepted: exactly 255 links (one more
+    # than a spanning line needs) and a maximum host index of exactly 253
+    # are both still in range.
+    links = [[i, i + 1] for i in range(253)]  # spanning line, hosts 0..253
+    links += [[0, 2], [0, 3]]  # 2 extra edges -- 255 total, still connected
+    assert len(links) == 255
+    assert validate_config({"hosts": 254, "links": links}) == []
+
+
+@pytest.mark.parametrize(
+    ("key", "value"),
+    [
+        ("switches", 99),
+        ("node_per_switch", 3),
+        ("host_degree_min", 2),
+        ("host_degree_max", 3),
+        ("switch_use_all", True),
+    ],
+)
+def test_validate_links_rejects_non_default_mesh_randomization_option(key, value):
+    # These knobs only mean something to MeshTopo's random build; a
+    # non-default value alongside `links` is very likely a leftover from a
+    # config that used to request the random mesh.
+    errors = validate_config(
+        {"hosts": 3, "links": [[0, 1], [1, 2]], key: value}
+    )
+    assert errors == [
+        f"links cannot be combined with a non-default {key} "
+        "(mesh-randomization options have no effect once links is set)"
+    ]
+
+
+@pytest.mark.parametrize(
+    ("key", "value"),
+    [
+        ("switches", 10),
+        ("node_per_switch", 2),
+        ("host_degree_min", 1),
+        ("host_degree_max", 2),
+        ("switch_use_all", False),
+    ],
+)
+def test_validate_links_accepts_default_mesh_randomization_option(key, value):
+    # Mirrors the real bootstrap flow: validate_merged_args always includes
+    # these keys (argparse gives each a real default), so an unset option
+    # reaching validate_config at its default value must not be rejected.
+    errors = validate_config(
+        {"hosts": 3, "links": [[0, 1], [1, 2]], key: value}
+    )
+    assert errors == []
+
+
+def test_validate_merged_args_links_with_all_mesh_knobs_at_default_is_valid():
+    # The scenario the parametrized default-value test above checks one key
+    # at a time: in the real CLI flow (bootstrap_scenario ->
+    # validate_merged_args) all five mesh-randomization keys are present on
+    # the merged args SIMULTANEOUSLY, each at its argparse default, because
+    # every one of them has a real (non-None) default (see
+    # cli/args._add_args_for_block). A presence-only contradiction check
+    # (`"switches" in config`) would reject `links` on every ordinary run;
+    # this pins that it does not.
+    args = SimpleNamespace(
+        hosts=3,
+        links=[[0, 1], [1, 2]],
+        switches=10,
+        node_per_switch=2,
+        host_degree_min=1,
+        host_degree_max=2,
+        switch_use_all=False,
+    )
+
+    assert validate_merged_args(args) == []

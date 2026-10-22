@@ -41,7 +41,7 @@ from .daemon_fleet import build_fleet, DaemonFleet
 from .forwarding import ForwardingConfigManager
 from .net_config import apply_fib, apply_ip_addr
 from .template import cleanup_node_dirs, provision_node_dirs
-from .topo import MeshTopo
+from .topo import ExplicitLinksTopo, MeshTopo
 from .viz import build_host_graph, print_mesh_links, render_topology_png
 
 
@@ -137,6 +137,11 @@ class MeshBuildSpec:
     switch_use_all: bool = False
     rng: random.Random | None = None
     publisher_ids: frozenset[int] = frozenset()
+    # Explicit host-index pairs that replace the RNG-drawn MeshTopo build
+    # below when not None. Already
+    # validated by core.config.validator._validate_links (shape, range,
+    # self-links, duplicates, connectivity) before it reaches this spec.
+    links: list[list[int]] | None = None
 
 
 @dataclass
@@ -145,11 +150,17 @@ class MeshBuildResult:
 
     roles: dict[int, NodeRole]
     node_dirs: list[Path]
-    topo: MeshTopo
+    topo: MeshTopo | ExplicitLinksTopo
 
 
 def build_mesh_scenario(spec: MeshBuildSpec) -> MeshBuildResult:
-    """Build roles, template directories, and MeshTopo in the legacy order.
+    """Build roles, template directories, and the mesh topology.
+
+    ``spec.links`` picks between the two Topo builders below, but role
+    assignment runs identically either way -- roles are a function of host
+    index, not topology, so this order (and assign_roles' rng consumption)
+    stays exactly what it was before explicit links existed, which is what
+    keeps the no-links path byte-identical to its pre-feature behavior.
 
     If topology construction fails after provisioning, the seam removes the
     generated node directories before propagating the original error. The old
@@ -160,17 +171,25 @@ def build_mesh_scenario(spec: MeshBuildSpec) -> MeshBuildResult:
     roles = assign_roles(spec.host_count, rng, spec.publisher_ids)
     node_dirs = provision_node_dirs(roles)
     try:
-        topo = MeshTopo(
-            hosts=spec.host_count,
-            # MeshTopo's historical kwarg is misspelled; the new seam exposes its
-            # actual meaning: an upper bound on the emergent switch count.
-            swhich_num=spec.switch_limit,
-            rng=rng,
-            node_per_switch=spec.node_per_switch,
-            host_degree_min=spec.host_degree_min,
-            host_degree_max=spec.host_degree_max,
-            switch_use_all=spec.switch_use_all,
-        )
+        if spec.links is not None:
+            # Explicit topology: deliberately does not touch `rng` -- a
+            # links-driven run has no random topology decisions to make, and
+            # burning rng draws here only to discard them would just make
+            # self.rng's later consumers (failure flapping, random cache
+            # strategy) diverge from their own seed for no behavioral reason.
+            topo = ExplicitLinksTopo(hosts=spec.host_count, links=spec.links)
+        else:
+            topo = MeshTopo(
+                hosts=spec.host_count,
+                # MeshTopo's historical kwarg is misspelled; the new seam exposes its
+                # actual meaning: an upper bound on the emergent switch count.
+                swhich_num=spec.switch_limit,
+                rng=rng,
+                node_per_switch=spec.node_per_switch,
+                host_degree_min=spec.host_degree_min,
+                host_degree_max=spec.host_degree_max,
+                switch_use_all=spec.switch_use_all,
+            )
     except BaseException:
         cleanup_node_dirs(node_dirs)
         raise

@@ -81,6 +81,16 @@ class ConfigDrivenMeshScenario(BaseScenario):
             switch_use_all=args.switch_use_all,
             rng=self.rng,
             publisher_ids=frozenset(self.publisher_ids),
+            # Disaster accepts an explicit `links` config list;
+            # absent, getattr's default keeps MeshBuildSpec.links=None and
+            # the random MeshTopo path runs exactly as before. ConnectScenario
+            # shares this method (so this line would forward links for it
+            # too), but cli/bootstrap.py's bootstrap_scenario rejects a
+            # `links` key reaching the connect entry point before args ever
+            # gets here -- explicit links are scoped to disaster only
+            # (2026-10-22 review fix: connect's bridge/cache-placement path
+            # has no test coverage for it).
+            links=getattr(args, "links", None),
         )
         result = build_mesh_scenario(spec)
         self.generated_node_dirs = result.node_dirs

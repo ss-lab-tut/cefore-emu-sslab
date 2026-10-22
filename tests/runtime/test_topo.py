@@ -37,6 +37,7 @@ from unittest.mock import patch
 import pytest
 
 from src.runtime.topo import (
+    ExplicitLinksTopo,
     LineTopo,
     MeshTopo,
     SimpleLinkTopo,
@@ -298,3 +299,64 @@ class TestMeshTopoSwitchUseAll:
             )
         assert len(topo.mesh_links) == 5
         mock_info.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# ExplicitLinksTopo -- deterministic, no RNG; each pair gets its own switch.
+# ---------------------------------------------------------------------------
+
+
+class TestExplicitLinksTopo:
+    def test_three_host_line_wires_one_switch_per_pair(self):
+        # The ticket's canonical fixture: a 0-1-2 line, same shape as
+        # min_explicit_line.yaml.
+        topo = ExplicitLinksTopo(hosts=3, links=[[0, 1], [1, 2]])
+
+        assert sorted(topo.nodes()) == ["h0", "h1", "h2", "s0", "s1"]
+        assert topo.links() == [
+            ("h0", "s0"),
+            ("h1", "s0"),
+            ("h1", "s1"),
+            ("h2", "s1"),
+        ]
+        assert topo.mesh_links == [
+            {"subnet": 1, "switch": "s0", "hosts": [0, 1], "host_eth": {0: 0, 1: 0}},
+            {"subnet": 2, "switch": "s1", "hosts": [1, 2], "host_eth": {1: 1, 2: 0}},
+        ]
+
+    def test_host_eth_counts_addlink_calls_per_host_not_per_switch(self):
+        # h1 appears in both links; its host_eth must be 0 for the first
+        # link it is wired into and 1 for the second, regardless of which
+        # switch that link uses -- this is the port index
+        # net_config.apply_ip_addr's "h1-eth<n>" naming depends on.
+        topo = ExplicitLinksTopo(hosts=3, links=[[0, 1], [1, 2]])
+
+        assert topo.mesh_links[0]["host_eth"][1] == 0
+        assert topo.mesh_links[1]["host_eth"][1] == 1
+
+    def test_pair_order_is_sorted_within_each_switch_regardless_of_input_order(self):
+        # [2, 1] must produce hosts=[1, 2], matching MeshTopo's convention
+        # (TopologyModel/addressing/FIB only ever see sorted host lists).
+        topo = ExplicitLinksTopo(hosts=3, links=[[2, 1]])
+
+        assert topo.mesh_links == [
+            {"subnet": 1, "switch": "s0", "hosts": [1, 2], "host_eth": {1: 0, 2: 0}}
+        ]
+
+    def test_unlinked_host_has_no_links_but_still_exists(self):
+        # Construction trusts its input (validation lives in
+        # core.config.validator._validate_links); a links list that leaves a
+        # host unconnected still builds, it just produces a host with no
+        # interfaces.
+        topo = ExplicitLinksTopo(hosts=3, links=[[0, 1]])
+
+        assert sorted(topo.nodes()) == ["h0", "h1", "h2", "s0"]
+        linked_nodes = {node for link in topo.links() for node in link}
+        assert "h2" not in linked_nodes
+
+    def test_empty_links_produces_bare_hosts_and_no_switches(self):
+        topo = ExplicitLinksTopo(hosts=2, links=[])
+
+        assert sorted(topo.nodes()) == ["h0", "h1"]
+        assert topo.links() == []
+        assert topo.mesh_links == []

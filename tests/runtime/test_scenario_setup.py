@@ -29,7 +29,7 @@ from src.runtime.scenario_setup import (
     setup_scenario,
     teardown_scenario,
 )
-from src.runtime.topo import MeshTopo
+from src.runtime.topo import ExplicitLinksTopo, MeshTopo
 
 
 class _FakeCacheStrategy:
@@ -577,6 +577,103 @@ def test_build_mesh_scenario_cleans_node_dirs_when_topology_build_fails(monkeypa
 
     with pytest.raises(RuntimeError) as excinfo:
         build_mesh_scenario(_mesh_spec(seed=9))
+
+    assert excinfo.value is boom
+    assert cleanup_calls == [node_dirs]
+
+
+# -- mesh construction seam: explicit links ---------------------------------
+
+
+def test_build_mesh_scenario_links_none_uses_meshtopo_unchanged(tmp_path, monkeypatch):
+    """links=None (the default) must take the exact pre-feature MeshTopo path.
+
+    This is the byte-identical regression guard the ticket requires: it pins
+    build_mesh_scenario to instantiate MeshTopo, not ExplicitLinksTopo, when
+    links is absent, which is what keeps the seeded golden mesh_links in
+    tests/runtime/test_topo.py (consumed via the same rng stream here)
+    reachable through this seam too.
+    """
+    monkeypatch.chdir(tmp_path)
+
+    result = build_mesh_scenario(_mesh_spec(seed=123))
+
+    assert type(result.topo) is MeshTopo
+
+
+def test_build_mesh_scenario_links_builds_explicit_links_topo(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+
+    result = build_mesh_scenario(_mesh_spec(seed=42, links=[[0, 1], [1, 2]]))
+
+    assert type(result.topo) is ExplicitLinksTopo
+    assert result.topo.mesh_links == [
+        {"subnet": 1, "switch": "s0", "hosts": [0, 1], "host_eth": {0: 0, 1: 0}},
+        {"subnet": 2, "switch": "s1", "hosts": [1, 2], "host_eth": {1: 1, 2: 0}},
+    ]
+
+
+def test_build_mesh_scenario_links_still_assigns_roles_from_rng(tmp_path, monkeypatch):
+    # Roles are a function of host index, not topology (see assign_roles), so
+    # the explicit-links path must assign roles identically to the
+    # random-mesh path given the same seed and host count.
+    monkeypatch.chdir(tmp_path)
+
+    expected_roles = assign_roles(3, random.Random(7), publishers=None)
+
+    result = build_mesh_scenario(
+        _mesh_spec(seed=7, links=[[0, 1], [1, 2]], publisher_ids=frozenset())
+    )
+
+    assert result.roles == expected_roles
+
+
+def test_build_mesh_scenario_links_does_not_consume_topology_rng(tmp_path, monkeypatch):
+    # Explicit links make no random topology decisions, so the rng passed
+    # into the spec must be left exactly where assign_roles leaves it -- the
+    # later consumers of self.rng (failure flapping, random cache strategy)
+    # must not see a different stream just because links was set.
+    monkeypatch.chdir(tmp_path)
+
+    shared_rng = random.Random(55)
+    build_mesh_scenario(
+        MeshBuildSpec(
+            host_count=3,
+            switch_limit=3,
+            rng=shared_rng,
+            publisher_ids=frozenset(),
+            links=[[0, 1], [1, 2]],
+        )
+    )
+
+    expected_rng = random.Random(55)
+    assign_roles(3, expected_rng, publishers=None)
+
+    assert shared_rng.getstate() == expected_rng.getstate()
+
+
+def test_build_mesh_scenario_links_cleans_node_dirs_when_topology_build_fails(
+    monkeypatch,
+):
+    node_dirs = [Path("h0"), Path("h1"), Path("h2")]
+    cleanup_calls = []
+    boom = RuntimeError("bad explicit links")
+
+    monkeypatch.setattr(
+        "src.runtime.scenario_setup.provision_node_dirs",
+        lambda roles: node_dirs,
+    )
+    monkeypatch.setattr(
+        "src.runtime.scenario_setup.ExplicitLinksTopo",
+        MagicMock(side_effect=boom),
+    )
+    monkeypatch.setattr(
+        "src.runtime.scenario_setup.cleanup_node_dirs",
+        lambda dirs: cleanup_calls.append(dirs),
+    )
+
+    with pytest.raises(RuntimeError) as excinfo:
+        build_mesh_scenario(_mesh_spec(seed=9, links=[[0, 1], [1, 2]]))
 
     assert excinfo.value is boom
     assert cleanup_calls == [node_dirs]

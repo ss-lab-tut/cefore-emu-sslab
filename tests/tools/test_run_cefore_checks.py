@@ -39,27 +39,48 @@ def _event_row(event_type, outcome=None, success=False):
     return row
 
 
+def _get_row(uri, success):
+    """One results.json get-content record for the given uri."""
+    return {"op_type": "get", "uri": uri, "success": success}
+
+
 def test_event_outcomes_zero_matching_rows_fails():
     """2026-07-16 audit fix: an outcome expectation implies the event
-    happened; zero matching rows must fail, not pass vacuously."""
-    with pytest.raises(RuntimeError, match="at least 1 compute_call"):
+    happened; zero matching rows must fail, not pass vacuously.
+
+    2026-10-22 fix: exact-match the raised message instead of a substring
+    -- mutation testing showed a substring match lets a mutant that drops
+    or reorders words in the message through undetected.
+    """
+    with pytest.raises(RuntimeError) as exc_info:
         checker.validate_results(
             "case",
             [_event_row("link_down")],
             {"event_outcomes": {"compute_call": "skipped-no-result"}},
             Path("."),
         )
+    assert (
+        str(exc_info.value)
+        == "case: expected at least 1 compute_call record to check outcome"
+    )
 
 
 def test_event_outcomes_wrong_outcome_fails():
-    """A mismatching outcome value must fail the expectation."""
-    with pytest.raises(RuntimeError, match="skipped-no-result"):
+    """A mismatching outcome value must fail the expectation.
+
+    2026-10-22 fix: exact-match the raised message (see
+    test_event_outcomes_zero_matching_rows_fails for why).
+    """
+    with pytest.raises(RuntimeError) as exc_info:
         checker.validate_results(
             "case",
             [_event_row("compute_call", outcome="not-ok")],
             {"event_outcomes": {"compute_call": "skipped-no-result"}},
             Path("."),
         )
+    assert str(exc_info.value) == (
+        "case: compute_call record outcome is 'not-ok', expected 'skipped-no-result'"
+    )
 
 
 def test_event_outcomes_matching_outcome_passes():
@@ -68,6 +89,85 @@ def test_event_outcomes_matching_outcome_passes():
         "case",
         [_event_row("compute_call", outcome="skipped-no-result")],
         {"event_outcomes": {"compute_call": "skipped-no-result"}},
+        Path("."),
+    )
+
+
+# ── get_outcomes (per-uri success, not a blanket all_success) ──
+
+
+def test_get_outcomes_zero_matching_rows_fails():
+    """A get_outcomes expectation implies that uri was actually fetched;
+    zero matching rows must fail, not pass vacuously.
+
+    2026-10-22 fix: exact-match the raised message instead of a substring
+    -- mutation testing showed a substring match lets a mutant that drops
+    or reorders words in the message through undetected.
+    """
+    with pytest.raises(RuntimeError) as exc_info:
+        checker.validate_results(
+            "case",
+            [_get_row("ccnx:/other", True)],
+            {"get_outcomes": {"ccnx:/test/during": False}},
+            Path("."),
+        )
+    assert str(exc_info.value) == (
+        "case: expected at least 1 get result for uri='ccnx:/test/during'"
+    )
+
+
+def test_get_outcomes_unexpected_success_fails():
+    """A get that was expected to fail (e.g. during a link outage) but
+    actually succeeded must fail the expectation -- this is the case a
+    blanket all_success could never express.
+
+    2026-10-22 fix: exact-match the raised message (see
+    test_get_outcomes_zero_matching_rows_fails for why).
+    """
+    with pytest.raises(RuntimeError) as exc_info:
+        checker.validate_results(
+            "case",
+            [_get_row("ccnx:/test/during", True)],
+            {"get_outcomes": {"ccnx:/test/during": False}},
+            Path("."),
+        )
+    assert str(exc_info.value) == (
+        "case: get row for uri='ccnx:/test/during' has success=True "
+        "(type bool), expected exactly False"
+    )
+
+
+def test_get_outcomes_unexpected_failure_fails():
+    """A get that was expected to succeed (e.g. after restoration) but
+    actually failed must fail the expectation.
+
+    2026-10-22 fix: exact-match the raised message (see
+    test_get_outcomes_zero_matching_rows_fails for why).
+    """
+    with pytest.raises(RuntimeError) as exc_info:
+        checker.validate_results(
+            "case",
+            [_get_row("ccnx:/test/after", False)],
+            {"get_outcomes": {"ccnx:/test/after": True}},
+            Path("."),
+        )
+    assert str(exc_info.value) == (
+        "case: get row for uri='ccnx:/test/after' has success=False "
+        "(type bool), expected exactly True"
+    )
+
+
+def test_get_outcomes_matching_success_passes():
+    """The expectation passes when every matching row's success matches."""
+    checker.validate_results(
+        "case",
+        [_get_row("ccnx:/test/before", True), _get_row("ccnx:/test/during", False)],
+        {
+            "get_outcomes": {
+                "ccnx:/test/before": True,
+                "ccnx:/test/during": False,
+            }
+        },
         Path("."),
     )
 

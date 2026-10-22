@@ -6,6 +6,7 @@ import re
 from dataclasses import dataclass
 from typing import Any, Callable
 
+from ..addressing import MAX_HOST_INDEX, MAX_LINK_SUBNET_ID
 from ..artifacts import safe_uri_label
 from ..events import (
     EVENT_SCHEMA,
@@ -449,6 +450,7 @@ OPTION_SPECS = {
     "failure_scenarios": OptionSpec(
         "failure_scenarios", "structured", cli_allowed=False
     ),
+    "links": OptionSpec("links", "structured", cli_allowed=False),
     "events": OptionSpec("events", "structured", cli_allowed=False),
     "monitoring": OptionSpec("monitoring", "structured", cli_allowed=False),
     "routing": OptionSpec("routing", "structured", cli_allowed=False),
@@ -885,6 +887,20 @@ def _validate_bridges(errors, config):
                     errors.append(
                         f"bridges[{idx}].switch must be a non-negative integer"
                     )
+                elif "links" in config and isinstance(config["links"], list):
+                    # 2026-10-22 review fix: with explicit `links` set,
+                    # ExplicitLinksTopo creates exactly len(links) switches
+                    # (s0..s{len(links)-1}, one per pair) and `switches` has
+                    # no effect at all (see _MESH_RANDOMIZATION_KEYS below) --
+                    # bounding against the random-mesh default of 10 here
+                    # would wrongly reject a bridge targeting a real switch
+                    # on an 11+-link topology (e.g. s10).
+                    if bridge["switch"] >= len(config["links"]):
+                        errors.append(
+                            f"bridges[{idx}].switch is out-of-range: "
+                            f"{bridge['switch']} (links creates "
+                            f"{len(config['links'])} switches)"
+                        )
                 elif _is_int(config.get("switches")) and bridge[
                     "switch"
                 ] >= config["switches"]:
@@ -930,6 +946,168 @@ def _validate_bridges(errors, config):
                     errors.append(f"bridges[{idx}].nat must be a boolean")
                 if "nat_out" in bridge and not isinstance(bridge["nat_out"], str):
                     errors.append(f"bridges[{idx}].nat_out must be a string")
+
+
+# Mesh-randomization knobs that MeshTopo.build consumes (see runtime/topo.py)
+# and that ExplicitLinksTopo never reads. Once `links` fixes the topology
+# explicitly, a non-default value for one of these can only be a leftover
+# from a config that used to request the random mesh -- silently ignoring it
+# would hide that mistake, so it is rejected instead. "Non-default" is
+# checked against OPTION_SPECS[key].default rather than mere presence: in the
+# real CLI flow (bootstrap_scenario -> validate_merged_args) every one of
+# these keys is always present on the merged args (argparse gives each a real
+# default), so a presence-only check would reject `links` on every ordinary
+# run. Comparing against the default is what distinguishes "the author
+# touched this knob" from "argparse/merge filled in its default" in both that
+# merged-args dict and a raw config dict handed straight to validate_config().
+_MESH_RANDOMIZATION_KEYS = (
+    "switches",
+    "node_per_switch",
+    "host_degree_min",
+    "host_degree_max",
+    "switch_use_all",
+)
+
+
+def _validate_links(errors, config):
+    """Validate the optional explicit ``links`` topology override.
+
+    ``links: [[host_a, host_b], ...]`` lets a disaster config fix the exact
+    mesh instead of the seeded random MeshTopo build (see
+    ConfigDrivenMeshScenario.build_topology / runtime.scenario_setup.
+    build_mesh_scenario / runtime.topo.ExplicitLinksTopo). The explicit
+    `links` override is scoped to disaster only -- src/cli/bootstrap.py
+    rejects a `links` key
+    reaching it from the connect entry point before this function ever runs
+    for it, because connect's bridge/cache-placement path has no test
+    coverage for an explicit-link topology. Every downstream consumer -- FIB
+    computation, addressing, cache placement, link_down/link_up, the
+    topology PNG -- reads mesh_links through TopologyModel and assumes every
+    declared host is reachable and in-range for the addressing scheme, so
+    this is the one place that checks shape, host-index range, self-links,
+    duplicates, addressing capacity, and single-component connectivity
+    before any of that code ever sees the list; ExplicitLinksTopo itself
+    does not re-validate.
+
+    Connectivity is required, not merely "every host appears in some link".
+    This is a deliberate choice, not a blanket "disconnected always crashes"
+    claim -- the two cases a disconnected graph can produce behave
+    differently, and neither is acceptable:
+    - A host with zero links crashes outright, after node directories are
+      already provisioned: AddressingScheme.canonical_host_ip raises
+      ValueError for that host, and TopologyModel.peer_of raises
+      RuntimeError for a publisher with no links.
+    - A graph with two or more components, where every host still has
+      degree >= 1, does not crash at all -- core.fib.compute_fib silently
+      skips any (src, dest) pair with no path (`if not candidates:
+      continue`), so the FIB simply has no route to the other component's
+      hosts, and a get/put that needed one fails at runtime for a reason
+      the operator never intended (an unreachable prefix, not the
+      failure-injection scenario they configured).
+    Rejecting both at config time, with a clear message naming the problem,
+    is strictly better than either crashing mid-setup or silently shipping
+    an incomplete FIB.
+
+    Addressing capacity (MAX_LINK_SUBNET_ID / MAX_HOST_INDEX) is likewise
+    required: ExplicitLinksTopo assigns subnet = link_index + 1 and
+    AddressingScheme.host_ip encodes host_idx as "host_idx + 1" in the 4th
+    octet, so a topology with too many links or too high a host index
+    passes every check above yet raises ValueError inside host_ip/
+    link_network mid-setup -- the same "fail at config time, not mid-setup"
+    reasoning as the connectivity check, just for a different crash site
+    (2026-10-22 review fix: a 24-host complete graph, 276 links, and a
+    255-host line, host index 254, both used to validate clean and then blow
+    up in addressing).
+    """
+    if "links" not in config:
+        return
+    links = config["links"]
+    if not isinstance(links, list):
+        errors.append("links must be a list")
+        return
+
+    if len(links) > MAX_LINK_SUBNET_ID:
+        errors.append(
+            f"links must contain at most {MAX_LINK_SUBNET_ID} entries "
+            f"(got {len(links)}); each link uses one addressing subnet and "
+            f"the scheme has {MAX_LINK_SUBNET_ID} available"
+        )
+
+    host_count = config.get("hosts")
+    host_count_known = _is_int(host_count)
+
+    # Pairs that passed shape/range/self-link checks, in input order
+    # (duplicates included -- a duplicate is reported but still a valid edge
+    # for the connectivity check below).
+    valid_pairs: list[tuple[int, int]] = []
+    for idx, entry in enumerate(links):
+        prefix = f"links[{idx}]"
+        if not isinstance(entry, list) or len(entry) != 2:
+            errors.append(f"{prefix} must be a list of 2 host indices")
+        elif not all(_is_int(n) for n in entry):
+            errors.append(f"{prefix} must be a list of 2 host indices")
+        elif entry[0] == entry[1]:
+            errors.append(f"{prefix} connects host {entry[0]} to itself")
+        else:
+            host_a, host_b = entry
+            out_of_range = False
+            for n in (host_a, host_b):
+                if host_count_known and (n < 0 or n >= host_count):
+                    errors.append(
+                        f"{prefix} contains out-of-range host index {n}"
+                    )
+                    out_of_range = True
+                elif n > MAX_HOST_INDEX:
+                    # host_count alone can't catch this: a host index can be
+                    # in-range for a large `hosts` value yet still overflow
+                    # AddressingScheme.host_ip's 4th octet (host_idx + 1,
+                    # capped at 254), independent of how many hosts the
+                    # config declares.
+                    errors.append(
+                        f"{prefix} contains host index {n} which exceeds "
+                        f"the addressing scheme's maximum host index "
+                        f"({MAX_HOST_INDEX})"
+                    )
+                    out_of_range = True
+            if not out_of_range:
+                valid_pairs.append((host_a, host_b))
+
+    seen_pairs = set()
+    for host_a, host_b in valid_pairs:
+        pair = tuple(sorted((host_a, host_b)))
+        if pair in seen_pairs:
+            errors.append(f"links contains duplicate link [{pair[0]}, {pair[1]}]")
+        else:
+            seen_pairs.add(pair)
+
+    for key in _MESH_RANDOMIZATION_KEYS:
+        if key in config and config[key] != OPTION_SPECS[key].default:
+            errors.append(
+                f"links cannot be combined with a non-default {key} "
+                "(mesh-randomization options have no effect once links is set)"
+            )
+
+    # Connectivity only means something once every entry was individually
+    # well-formed; a malformed entry has already been reported above, and
+    # judging the graph it would have produced adds noise, not information.
+    entries_well_formed = len(valid_pairs) == len(links)
+    if entries_well_formed and host_count_known and host_count > 0:
+        graph: dict[int, set[int]] = {i: set() for i in range(host_count)}
+        for host_a, host_b in valid_pairs:
+            graph[host_a].add(host_b)
+            graph[host_b].add(host_a)
+        visited = {0}
+        stack = [0]
+        while stack:
+            node = stack.pop()
+            for neighbor in graph[node]:
+                if neighbor not in visited:
+                    visited.add(neighbor)
+                    stack.append(neighbor)
+        if len(visited) != host_count:
+            errors.append(
+                "links must connect all hosts into a single connected component"
+            )
 
 
 # host_apps entries share monitoring.targets[idx].hosts's "'all' or a list
@@ -1737,6 +1915,8 @@ def validate_config(config: dict[str, Any]) -> list[str]:
     _validate_failure_scenarios(errors, config)
 
     _validate_bridges(errors, config)
+
+    _validate_links(errors, config)
 
     if "warmup_gets" in config:
         wg = config["warmup_gets"]

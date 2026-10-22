@@ -18,6 +18,18 @@ DEFAULT_NETWORK_CIDR = "192.168.0.0/16"
 LINK_PREFIXLEN = 24
 LINK_NETMASK = str(ipaddress.IPv4Network(f"0.0.0.0/{LINK_PREFIXLEN}").netmask)
 
+# 2026-10-22 review fix: a /16 network address always zeroes its
+# last two octets (netmask 255.255.0.0), so host_ip()'s 3rd octet
+# ("base + subnet_id", base always 0) and 4th octet ("host_idx + 1") are
+# bounded the same way for ANY network_cidr the caller configures, not just
+# the default 192.168.0.0/16 -- these are hard limits of the addressing
+# scheme itself. core.config.validator's explicit `links` check imports them
+# to reject an over-large topology at config time, instead of letting
+# host_ip/link_network raise ValueError mid-setup after node directories are
+# already provisioned (see _validate_links).
+MAX_LINK_SUBNET_ID = 255  # 3rd octet range is 0..255; subnet_id starts at 1
+MAX_HOST_INDEX = 253  # 4th octet range is 1..254, i.e. host_idx in 0..253
+
 
 class AddressingScheme:
     """Computes Cefore link addresses from a configurable IPv4 /16 base.
