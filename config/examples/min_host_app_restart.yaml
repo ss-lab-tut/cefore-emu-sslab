@@ -5,7 +5,8 @@
 # argv/cwd (同じ t0_ms, 再キャプチャしない) で再起動する
 # (HostAppFleet.restart_host)。各ライフは exec で sleep に置き換わる前に
 # 1回だけ "{node} {t0_ms} $$" を {node_dir}/host_app_marker に追記する
-# (">>"): h1 だけ2回再起動され、h0/h2 は一度も再起動されない。
+# (">>"): h1 だけ2回起動され (初回起動+再起動1回の合計2ライフ)、h0/h2 は
+# 再起動されず初回起動の1ライフのまま。
 # at: 4 は余裕を持たせた値 (2026-10-22: host_app_fleet.start_all() の
 # Mininet popen 3本 + echo がまだ実行される前に restart_host の SIGTERM が
 # 届くと、h1 のマーカーが1行目を失って checker の "expected 2" で落ちる)。
@@ -20,6 +21,13 @@
 #   h0, h2: 1行のまま (再起動されていない)
 # results.json 側は host_app_restart の outcome record が success: true で
 # 1件あることを確認する (min_rows/require_event_types/all_events_success)。
+#
+# 2026-10-22: log: "{node_dir}/{node}.log" を追加。_life_log() の
+# ".lifeN" サフィックス (host_apps.py) はこれまで単体テストのみで、実際の
+# CommandRunner.start() 経由では一度も確認されていなかった。
+# validate_host_app_restart_logs が debug/node_dirs/hN/ 配下を見る:
+#   h1: hN.log (life1) と hN.log.life2 (再起動後) の両方が存在
+#   h0, h2: hN.log のみ (life2 は作られない)
 #
 # cleanup_all が hN/ を削除するため、debug.artifacts: node_dirs で teardown
 # 後も hN/ の中身を logs/verify/ex9919_seed42/debug/node_dirs/hN/
@@ -46,6 +54,7 @@ links:
 host_apps:
   - hosts: [0, 1, 2]
     argv: ["sh", "-c", "echo {node} {t0_ms} $$ >> {node_dir}/host_app_marker; exec sleep 1000"]
+    log: "{node_dir}/{node}.log"
 
 events:
   - at: 4

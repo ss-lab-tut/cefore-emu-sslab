@@ -241,6 +241,11 @@
   - h1's two lines carry two DIFFERENT pids (the only direct evidence that
     `HostAppFleet.restart_host()` started a second OS process, rather than
     being a no-op that left the first life's single line alone)
+  - the host_apps entry also carries `log: "{node_dir}/{node}.log"`, and
+    `debug/node_dirs/h{0,1,2}/` must show: h1 both `h1.log` (life 1) and
+    `h1.log.life2` (life 2), h0/h2 only their own `hN.log` (never a
+    `.life2`) -- live proof of `_life_log()`'s per-life suffixing
+    (host_apps.py), which was previously unit-tested only
 
 ### `connect`
 

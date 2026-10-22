@@ -498,3 +498,76 @@ def test_restart_markers_matching_case_passes(tmp_path):
     checker.validate_host_app_restart_markers(
         "min_host_app_restart", tmp_path, {0: 1, 1: 2, 2: 1}
     )
+
+
+# ── validate_host_app_restart_logs ──
+#
+# Exact-match assertions per project convention (docs/runbooks/mutation-
+# testing.md): substring/regex asserts let mutants through, so these compare
+# the full raised message, not a `match=` pattern.
+
+
+def _write_restart_log(run_dir: Path, idx: int, *life_suffixes: str) -> None:
+    """Touch one host's per-life log files, as a min_host_app_restart.yaml
+    ``log: "{node_dir}/{node}.log"`` entry would via CommandRunner.start()'s
+    log redirection. ``life_suffixes`` are appended to "hN.log" verbatim
+    (e.g. "" for life 1, ".life2" for life 2)."""
+    node_dir = run_dir / "debug" / "node_dirs" / f"h{idx}"
+    node_dir.mkdir(parents=True, exist_ok=True)
+    for suffix in life_suffixes:
+        (node_dir / f"h{idx}.log{suffix}").write_text("stub\n")
+
+
+def test_restart_logs_missing_first_life_log_fails(tmp_path):
+    """A host with zero log files must fail by name, not vacuously."""
+    with pytest.raises(RuntimeError) as exc_info:
+        checker.validate_host_app_restart_logs(
+            "min_host_app_restart", tmp_path, {0: 1}
+        )
+
+    assert str(exc_info.value) == (
+        "min_host_app_restart: h0 life 1 log missing: h0.log"
+    )
+
+
+def test_restart_logs_missing_life_2_log_fails(tmp_path):
+    """A restarted host (life_count 2) must show its life-2 log too, not
+    just the first-life one."""
+    _write_restart_log(tmp_path, 1, "")  # only life 1
+
+    with pytest.raises(RuntimeError) as exc_info:
+        checker.validate_host_app_restart_logs(
+            "min_host_app_restart", tmp_path, {1: 2}
+        )
+
+    assert str(exc_info.value) == (
+        "min_host_app_restart: h1 life 2 log missing: h1.log.life2"
+    )
+
+
+def test_restart_logs_unexpected_extra_life_fails(tmp_path):
+    """A host expected to have only its first-life log must NOT also have
+    a life-2 log -- this is what the "only" in h0/h2's expectation means,
+    and would catch e.g. every host wrongly getting restarted."""
+    _write_restart_log(tmp_path, 0, "", ".life2")
+
+    with pytest.raises(RuntimeError) as exc_info:
+        checker.validate_host_app_restart_logs(
+            "min_host_app_restart", tmp_path, {0: 1}
+        )
+
+    assert str(exc_info.value) == (
+        "min_host_app_restart: h0 has an unexpected life 2 log: h0.log.life2"
+    )
+
+
+def test_restart_logs_matching_case_passes(tmp_path):
+    """h1 restarted once (life 1 + life 2 logs); h0/h2 only their
+    first-life log -- the exact shape min_host_app_restart.yaml produces."""
+    _write_restart_log(tmp_path, 0, "")
+    _write_restart_log(tmp_path, 1, "", ".life2")
+    _write_restart_log(tmp_path, 2, "")
+
+    checker.validate_host_app_restart_logs(
+        "min_host_app_restart", tmp_path, {0: 1, 1: 2, 2: 1}
+    )

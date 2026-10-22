@@ -458,6 +458,13 @@ def build_smoke_cases() -> list[SmokeCase]:
             # outcome row -- the host_app_restart_markers check below is
             # what actually proves HostAppFleet.restart_host started a
             # second, distinct process rather than being a no-op.
+            #
+            # 2026-10-22: host_app_restart_logs exercises _life_log()'s
+            # ".lifeN" suffixing (host_apps.py) against a REAL
+            # CommandRunner.start() log redirection -- the config's
+            # host_apps entry now also carries log: "{node_dir}/{node}.log"
+            # (see min_host_app_restart.yaml) so this had unit coverage
+            # only, never live, before.
             "min_host_app_restart",
             config_relpath="config/examples/min_host_app_restart.yaml",
             expect={
@@ -465,6 +472,7 @@ def build_smoke_cases() -> list[SmokeCase]:
                 "require_event_types": ("host_app_restart",),
                 "all_events_success": True,
                 "host_app_restart_markers": {"lines": {0: 1, 1: 2, 2: 1}},
+                "host_app_restart_logs": {"lives": {0: 1, 1: 2, 2: 1}},
             },
         ),
         SmokeCase("connect", kind="connect"),
@@ -564,6 +572,9 @@ def validate_results(
     - ``host_app_restart_markers``: same dispatch pattern as
       ``host_app_markers``, to ``validate_host_app_restart_markers`` (also
       file-based, not ``results.json``-based).
+    - ``host_app_restart_logs``: same dispatch pattern, to
+      ``validate_host_app_restart_logs`` (also file-based; requires the
+      case's host_apps entry to carry a ``log:`` key).
     """
 
     def fail(msg: str) -> None:
@@ -796,6 +807,43 @@ def validate_host_app_restart_markers(
         fail(f"host_app_marker t0 values differ: {sorted(t0_values)}")
 
 
+def validate_host_app_restart_logs(
+    case_name: str, run_dir: Path, expected_lives: dict[int, int]
+) -> None:
+    """Validate a min_host_app_restart-style config's per-life log files.
+
+    validate_host_app_restart_markers proves the marker file's line count
+    and distinct pids -- but only ever against the FakeCommandRunner in
+    unit tests, never against a real CommandRunner.start() log
+    redirection. This proves _life_log()'s ".lifeN" suffixing (host_apps.py)
+    live: with the config's host_apps entry carrying a ``log:
+    "{node_dir}/{node}.log"`` key, life 1 writes the bare "<node>.log" and
+    each life N >= 2 writes a SEPARATE "<node>.log.lifeN" -- never
+    truncating an earlier life's file (that is what CommandRunner.start()'s
+    "wb" open would do if a later life reused an earlier life's exact
+    path). ``expected_lives`` is the same {host_idx: life_count} mapping
+    validate_host_app_restart_markers takes: a host with life_count 1 must
+    show only its first-life log; one with life_count N must show every
+    log from life 1 through life N, and must NOT show a life-(N+1) log --
+    proof the restart count matches exactly, not merely "at least".
+    """
+
+    def fail(msg: str) -> None:
+        raise RuntimeError(f"{case_name}: {msg}")
+
+    for idx, lives in sorted(expected_lives.items()):
+        node = f"h{idx}"
+        node_dir = run_dir / "debug" / "node_dirs" / node
+        for life in range(1, lives + 1):
+            log_name = f"{node}.log" if life == 1 else f"{node}.log.life{life}"
+            if not (node_dir / log_name).is_file():
+                fail(f"{node} life {life} log missing: {log_name}")
+        next_life = lives + 1
+        extra_name = f"{node}.log.life{next_life}"
+        if (node_dir / extra_name).is_file():
+            fail(f"{node} has an unexpected life {next_life} log: {extra_name}")
+
+
 def validate_summarizer_stdout(
     case_name: str,
     stdout: str,
@@ -995,6 +1043,11 @@ def run_single_smoke(
         if host_app_restart_markers is not None:
             validate_host_app_restart_markers(
                 case.name, results_path.parent, host_app_restart_markers["lines"]
+            )
+        host_app_restart_logs = (case.expect or {}).get("host_app_restart_logs")
+        if host_app_restart_logs is not None:
+            validate_host_app_restart_logs(
+                case.name, results_path.parent, host_app_restart_logs["lives"]
             )
         print(f"[OK] {case.name}: {results_path}")
         return case_output_dir
