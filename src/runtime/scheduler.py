@@ -283,15 +283,23 @@ class EventScheduler:
                 info(f"[scheduler] unknown event type: {event_type}\n")
                 continue
 
-            elapsed = time.monotonic() - self._start_time
-            late_by = elapsed - at_sec
+            # 2026-10-22 fix: capture the fire time HERE, before the
+            # handler runs -- not after it returns. host_app_restart blocks
+            # this thread for stop + downtime_s + start (seconds); a
+            # reviewer found that resampling time.monotonic() after the
+            # handler returned attributed that blocking time to the
+            # event's actual_at instead of its real fire time. fire_at is
+            # passed into _record_event_outcome() below rather than let it
+            # resample.
+            fire_at = time.monotonic() - self._start_time
+            late_by = fire_at - at_sec
             if self._shared_start_time and late_by > 0.05:
                 info(
                     f"[warning] scheduler event {event_type} scheduled at "
-                    f"t={at_sec:.1f}s executed at t={elapsed:.1f}s "
+                    f"t={at_sec:.1f}s executed at t={fire_at:.1f}s "
                     f"({late_by:.1f}s late)\n"
                 )
-            info(f"[scheduler] t={elapsed:.1f}s  {event_type} {event}\n")
+            info(f"[scheduler] t={fire_at:.1f}s  {event_type} {event}\n")
             success = True
             error = None
             outcome = None
@@ -317,17 +325,31 @@ class EventScheduler:
                 break
 
             self._record_event_outcome(
-                event, event_type, at_sec, success, error, outcome, detail
+                event, event_type, at_sec, fire_at, success, error, outcome, detail
             )
             self._handle_repeat(event, at_sec)
 
     def _record_event_outcome(
-        self, event, event_type, at_sec, success, error, outcome=None, detail=None
+        self,
+        event,
+        event_type,
+        at_sec,
+        actual_at,
+        success,
+        error,
+        outcome=None,
+        detail=None,
     ):
-        """Emit an outcome record for a non-content event into the ResultsSink."""
+        """Emit an outcome record for a non-content event into the ResultsSink.
+
+        ``actual_at`` is the fire time the caller (_run()) sampled right
+        before invoking the handler -- this method must not resample
+        time.monotonic() itself, or a handler that blocks (e.g.
+        host_app_restart's stop + downtime_s + start) would have its own
+        blocking duration misattributed to the event's fire time.
+        """
         if self._sink is None or event_type in _CONTENT_EVENT_TYPES:
             return
-        actual_at = time.monotonic() - self._start_time
         self._sink.record_event(
             event_type,
             success=success,
