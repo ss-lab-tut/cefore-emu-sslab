@@ -308,10 +308,10 @@ class HostAppFleet:
         """
         with self._lock:
             if self._stopping.is_set():
-                # 2026-10-22: shutdown already swept the fleet before this
-                # call even reached the lock (e.g. stop_all() ran first and
-                # already waited on, or will never see, this host's
-                # launches) -- nothing left to stop and nothing to start.
+                # 2026-10-22: stop_all() already ran (it sets _stopping
+                # before anything else, see stop_all) before this call even
+                # reached the lock -- nothing left to stop and nothing to
+                # start.
                 return False
             mine = [launch for launch in self._launches if launch["idx"] == idx]
             self._launches = [launch for launch in self._launches if launch["idx"] != idx]
