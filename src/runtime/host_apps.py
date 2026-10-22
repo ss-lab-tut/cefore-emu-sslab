@@ -294,15 +294,14 @@ class HostAppFleet:
             self._launches = [launch for launch in self._launches if launch["idx"] != idx]
 
         if not mine:
-            # 2026-10-22: config validation rejects a host_app_restart
-            # whose host has no host_apps: coverage, so this is normally
-            # unreachable -- but without it, a host with nothing left
-            # tracked (e.g. a prior restart's put-back landing on a
-            # DIFFERENT idx, or any future caller this validation does not
-            # cover) would fall through the two loops below as no-ops and
-            # return True: a restart that touched zero processes reporting
-            # success. False matches the existing "no restart performed"
-            # convention the shutdown-race case below already uses.
+            # 2026-10-22: config validation requires a host_app_restart's
+            # host to have host_apps: coverage, so this is normally
+            # unreachable through a validated config. It exists so that
+            # without it, this fleet-level API would fall through the two
+            # loops below as no-ops and return True for a restart that
+            # touched zero processes -- a vacuous success report. False
+            # matches the existing "no restart performed" convention the
+            # shutdown-race case below already uses.
             return False
 
         failures = []
