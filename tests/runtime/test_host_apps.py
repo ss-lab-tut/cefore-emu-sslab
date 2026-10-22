@@ -452,6 +452,80 @@ class TestRestartHost:
         assert raised is boom
         assert len(fake.starts) == 1
 
+    def test_stop_failure_leaves_the_launch_reachable_for_shutdown_to_retry(self):
+        """2026-10-22 fix (review finding): restart_host() used to remove
+        ``mine`` from _launches before attempting to stop it. If that stop
+        then raised, the handle -- which may still be a running process --
+        was permanently forgotten, and a subsequent stop_all() at shutdown
+        could never retry reclaiming it. It must stay tracked until a stop
+        is actually confirmed."""
+        fake = FakeCommandRunner()
+        boom = RuntimeError("host vanished")
+
+        def on_wait(handle):
+            raise boom
+
+        fake.on_wait = on_wait
+        fleet = _fleet(fake, specs=[{"hosts": [0], "argv": ["noop"]}])
+        fleet.start_all()
+        original_handle = fake.starts[0]
+
+        try:
+            fleet.restart_host(0, downtime_s=0)
+        except RuntimeError:
+            pass
+
+        # Shutdown must still see the un-confirmed-stopped launch and
+        # retry waiting on it -- not silently have zero launches left.
+        failures = fleet.stop_all()
+
+        assert failures == [("stop_host_app h0", boom)]
+        assert fake.waits == [original_handle, original_handle]
+
+    def test_partial_restart_failure_still_lets_stop_all_reclaim_the_started_replacement(
+        self,
+    ):
+        """2026-10-22 fix (review finding): two apps on one host. The first
+        app's replacement starts fine; the second's start() raises.
+        Registering handles into _launches only after the whole loop
+        finished would have left the first app's already-running
+        replacement untracked -- an orphan nothing could ever stop. Each
+        successful start must be registered immediately."""
+        fake = FakeCommandRunner()
+        fleet = _fleet(
+            fake,
+            specs=[
+                {"hosts": [0], "argv": ["./agent1"]},
+                {"hosts": [0], "argv": ["./agent2"]},
+            ],
+        )
+        fleet.start_all()
+        assert len(fake.starts) == 2
+
+        boom = RuntimeError("agent2 replacement failed to start")
+
+        def on_start(handle):
+            if handle.argv[0] == "./agent2":
+                raise boom
+
+        fake.on_start = on_start
+
+        try:
+            fleet.restart_host(0, downtime_s=0)
+            raised = None
+        except RuntimeError as exc:
+            raised = exc
+
+        assert raised is boom
+        fake.on_start = None
+
+        # agent1's already-started replacement is reachable: stop_all()
+        # finds and waits on it, proving it was not lost.
+        failures = fleet.stop_all()
+
+        assert failures == []
+        assert fake.waits[-1].argv == ["./agent1"]
+
 
 # ── shutdown race: a restart racing scenario shutdown must not leave an
 # orphan process ──

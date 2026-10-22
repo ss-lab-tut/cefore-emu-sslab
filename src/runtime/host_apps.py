@@ -177,15 +177,8 @@ class HostAppFleet:
                     {"idx": idx, "argv": argv, "cwd": cwd, "log": log, "life": 1, "handle": handle}
                 )
 
-    def _stop_launches(self, launches, context="shutdown"):
-        """Stop each of ``launches`` independently; aggregate failures.
-
-        Shared by stop_all() (every launch, at scenario shutdown) and
-        restart_host() (one host's launches, before its restart) so the
-        per-handle reclaim logic -- and its "already exited" warning --
-        exists exactly once. ``context`` only changes that warning's final
-        word ("shutdown" / "restart"); stop_all()'s own tests pin the
-        "shutdown" wording byte-for-byte, so it stays the default.
+    def _stop_one_launch(self, launch, context):
+        """Stop one launch's handle; return its failure tuple, or None.
 
         ``wait(deadline=time.monotonic())`` is the codebase's established
         "reclaim a started handle now" idiom -- ContentOperationRunner.stop()
@@ -205,19 +198,40 @@ class HostAppFleet:
         start_all() (missing binary, bad args, ...) stopped silently --
         stop_all() still "succeeded" and nothing in script.log said the
         process never actually ran.
+
+        2026-10-22: this is split out of _stop_launches() so restart_host()
+        can learn WHICH of several launches a stop failed for (not just
+        that the batch had a failure) -- see restart_host's "put failed
+        launches back" comment.
+        """
+        handle = launch["handle"]
+        try:
+            result = self._runner.wait(handle, deadline=time.monotonic())
+            if not result.timed_out and not result.cancelled:
+                info(
+                    f"[host-apps] warning: {handle.node} exited "
+                    f"rc={result.returncode} before {context}\n"
+                )
+            return None
+        except BaseException as exc:
+            return (f"stop_host_app {handle.node}", exc)
+
+    def _stop_launches(self, launches, context="shutdown"):
+        """Stop each of ``launches`` independently; aggregate failures.
+
+        Shared by stop_all() (every launch, at scenario shutdown) and
+        restart_host() (one host's launches, before its restart) so the
+        per-handle reclaim logic -- and its "already exited" warning --
+        exists exactly once, via _stop_one_launch(). ``context`` only
+        changes that warning's final word ("shutdown" / "restart");
+        stop_all()'s own tests pin the "shutdown" wording byte-for-byte, so
+        it stays the default.
         """
         failures = []
         for launch in launches:
-            handle = launch["handle"]
-            try:
-                result = self._runner.wait(handle, deadline=time.monotonic())
-                if not result.timed_out and not result.cancelled:
-                    info(
-                        f"[host-apps] warning: {handle.node} exited "
-                        f"rc={result.returncode} before {context}\n"
-                    )
-            except BaseException as exc:
-                failures.append((f"stop_host_app {handle.node}", exc))
+            failure = self._stop_one_launch(launch, context)
+            if failure is not None:
+                failures.append(failure)
         return failures
 
     def stop_all(self):
@@ -238,10 +252,22 @@ class HostAppFleet:
 
         The scheduler's host_app_restart event handler calls this. Every
         launch currently tracked for ``idx`` is stopped through the same
-        _stop_launches() path stop_all() uses (SIGTERM, 2s grace, SIGKILL);
-        a stop failure is raised rather than swallowed, since starting a
-        new process on top of a host we could not confirm stopped would
-        risk two processes racing the same log path.
+        _stop_one_launch() helper stop_all() uses (SIGTERM, 2s grace,
+        SIGKILL); a stop failure is raised rather than swallowed, since
+        starting a new process on top of a host we could not confirm
+        stopped would risk two processes racing the same log path.
+
+        2026-10-22 fix: ``mine`` is removed from ``_launches`` up front (so
+        a concurrent stop_all() does not also try to stop the same handles
+        a second time), but a launch whose stop raises is put BACK into
+        ``_launches`` before raising. A reviewer found that discarding
+        every selected launch unconditionally meant a process that
+        survived a failed stop became permanently invisible to
+        stop_all(), so shutdown could never retry reclaiming it (see
+        TestRestartHost's stop-failure test, which now calls stop_all()
+        afterward to confirm the retry). A launch that DID stop cleanly is
+        left out of that put-back: its process is already confirmed gone,
+        so there is nothing left to retry.
 
         The restarted life replays the ORIGINAL _expand_launch() result
         (argv/cwd verbatim, from the launch record -- never re-expanded),
@@ -269,8 +295,20 @@ class HostAppFleet:
             mine = [launch for launch in self._launches if launch["idx"] == idx]
             self._launches = [launch for launch in self._launches if launch["idx"] != idx]
 
-        failures = self._stop_launches(mine, context="restart")
+        failures = []
+        unstopped = []
+        for launch in mine:
+            failure = self._stop_one_launch(launch, context="restart")
+            if failure is not None:
+                failures.append(failure)
+                unstopped.append(launch)
+
         if failures:
+            # See the fix note above the docstring: put back exactly the
+            # launches whose stop could not be confirmed, so stop_all() at
+            # shutdown still sees them and can retry.
+            with self._lock:
+                self._launches.extend(unstopped)
             raise failures[0][1]
 
         if self._stopping.wait(downtime_s):
@@ -280,7 +318,6 @@ class HostAppFleet:
             if self._stopping.is_set():
                 return False
             node = f"h{idx}"
-            restarted = []
             for launch in mine:
                 life = launch["life"] + 1
                 # launch["log"] is always the ORIGINAL (life 1) expanded log
@@ -291,8 +328,15 @@ class HostAppFleet:
                 # "log" is deliberately carried forward unmodified.
                 log = _life_log(launch["log"], life)
                 handle = self._runner.start(node, launch["argv"], log_path=log, cwd=launch["cwd"])
-                restarted.append({**launch, "life": life, "handle": handle})
-            self._launches.extend(restarted)
+                # 2026-10-22 fix: append to _launches IMMEDIATELY after each
+                # start() call, not after this whole loop via a local list
+                # extended at the end. A reviewer reproduced the
+                # alternative's bug with two apps on one host: the first
+                # start() succeeds, the second raises, and accumulating
+                # into a local list first left the first app's
+                # already-running replacement untracked -- an orphan
+                # stop_all() could never reach.
+                self._launches.append({**launch, "life": life, "handle": handle})
         return True
 
 
