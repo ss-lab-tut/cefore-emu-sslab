@@ -558,7 +558,7 @@ class TestRestartLogCollision:
     land on another host_apps entry's reserved (life-1) log path, before
     stopping or starting anything."""
 
-    def test_restart_colliding_with_a_sibling_entrys_log_is_rejected(self, tmp_path):
+    def test_restart_colliding_with_a_sibling_entrys_log_is_rejected(self):
         """Two host_apps entries on the same host: entry A's log is
         "a.log", entry B's log is "a.log.life2". Restarting A once
         computes A's life-2 log as "a.log.life2" -- the exact literal
@@ -566,7 +566,7 @@ class TestRestartLogCollision:
         The restart must raise before either entry is touched, and B's
         already-started process must stay the only thing ever written
         to that path."""
-        a_log = str(tmp_path / "a.log")
+        a_log = "/x/h0/a.log"
         b_log = a_log + ".life2"
         fake = FakeCommandRunner()
         fleet = _fleet(
@@ -632,21 +632,27 @@ class _LockAcquireProbe:
     """
 
     def __init__(self, real_lock, on_acquire):
+        """Wrap ``real_lock``, calling ``on_acquire()`` on every acquire
+        attempt before delegating to it."""
         self._real_lock = real_lock
         self._on_acquire = on_acquire
 
     def acquire(self, *args, **kwargs):
+        """Signal the attempt, then block on the real lock as usual."""
         self._on_acquire()
         return self._real_lock.acquire(*args, **kwargs)
 
     def release(self):
+        """Delegate to the real lock; no signal needed on release."""
         self._real_lock.release()
 
     def __enter__(self):
+        """Support ``with probe:`` the same way ``with self._lock:`` does."""
         self.acquire()
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
+        """Release on block exit, mirroring a real lock's context manager."""
         self.release()
 
 
