@@ -216,20 +216,20 @@ class HostAppFleet:
         except BaseException as exc:
             return (f"stop_host_app {handle.node}", exc)
 
-    def _stop_launches(self, launches, context="shutdown"):
-        """Stop each of ``launches`` independently; aggregate failures.
+    def _stop_launches(self, launches):
+        """Stop every started host app at shutdown; aggregate failures.
 
-        Shared by stop_all() (every launch, at scenario shutdown) and
-        restart_host() (one host's launches, before its restart) so the
-        per-handle reclaim logic -- and its "already exited" warning --
-        exists exactly once, via _stop_one_launch(). ``context`` only
-        changes that warning's final word ("shutdown" / "restart");
-        stop_all()'s own tests pin the "shutdown" wording byte-for-byte, so
-        it stays the default.
+        stop_all()'s only caller, and always for every tracked launch at
+        once, so "shutdown" is hardcoded rather than threaded through as a
+        parameter (restart_host() needs per-launch pass/fail -- which of
+        several launches stopped and which did not -- so it calls
+        _stop_one_launch() directly instead of this batch wrapper; see
+        restart_host). stop_all()'s own tests pin the "shutdown" wording
+        byte-for-byte.
         """
         failures = []
         for launch in launches:
-            failure = self._stop_one_launch(launch, context)
+            failure = self._stop_one_launch(launch, "shutdown")
             if failure is not None:
                 failures.append(failure)
         return failures
@@ -260,14 +260,12 @@ class HostAppFleet:
         2026-10-22 fix: ``mine`` is removed from ``_launches`` up front (so
         a concurrent stop_all() does not also try to stop the same handles
         a second time), but a launch whose stop raises is put BACK into
-        ``_launches`` before raising. A reviewer found that discarding
-        every selected launch unconditionally meant a process that
-        survived a failed stop became permanently invisible to
-        stop_all(), so shutdown could never retry reclaiming it (see
-        TestRestartHost's stop-failure test, which now calls stop_all()
-        afterward to confirm the retry). A launch that DID stop cleanly is
-        left out of that put-back: its process is already confirmed gone,
-        so there is nothing left to retry.
+        ``_launches`` before raising. Discarding every selected launch
+        unconditionally meant a process that survived a failed stop became
+        permanently invisible to stop_all(), so shutdown could never retry
+        reclaiming it. A launch that DID stop cleanly is left out of that
+        put-back: its process is already confirmed gone, so there is
+        nothing left to retry.
 
         The restarted life replays the ORIGINAL _expand_launch() result
         (argv/cwd verbatim, from the launch record -- never re-expanded),
@@ -294,6 +292,18 @@ class HostAppFleet:
         with self._lock:
             mine = [launch for launch in self._launches if launch["idx"] == idx]
             self._launches = [launch for launch in self._launches if launch["idx"] != idx]
+
+        if not mine:
+            # 2026-10-22: config validation rejects a host_app_restart
+            # whose host has no host_apps: coverage, so this is normally
+            # unreachable -- but without it, a host with nothing left
+            # tracked (e.g. a prior restart's put-back landing on a
+            # DIFFERENT idx, or any future caller this validation does not
+            # cover) would fall through the two loops below as no-ops and
+            # return True: a restart that touched zero processes reporting
+            # success. False matches the existing "no restart performed"
+            # convention the shutdown-race case below already uses.
+            return False
 
         failures = []
         unstopped = []

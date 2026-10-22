@@ -519,12 +519,30 @@ class TestRestartHost:
         assert raised is boom
         fake.on_start = None
 
-        # agent1's already-started replacement is reachable: stop_all()
-        # finds and waits on it, proving it was not lost.
+        # agent1's already-started replacement (fake.starts[2]: index 0/1
+        # are the two original start_all() launches) is reachable:
+        # stop_all() finds and waits on THAT SPECIFIC handle, not merely
+        # some handle with the same argv, proving it was not lost.
         failures = fleet.stop_all()
 
         assert failures == []
-        assert fake.waits[-1].argv == ["./agent1"]
+        assert fake.waits[-1] is fake.starts[2]
+
+    def test_restarting_a_host_with_no_tracked_launches_returns_false(self):
+        """2026-10-22 fix: a host_app_restart whose host has nothing left
+        in _launches must not fall through the stop/start loops as a
+        silent no-op and report True -- that is exactly the "success with
+        no launches" a reviewer called out. Config validation already
+        rejects this for a real event (host_app_restart requires
+        host_apps: coverage), so this exercises the fleet-level guard
+        directly."""
+        fake = FakeCommandRunner()
+        fleet = _fleet(fake, specs=[{"hosts": [1], "argv": ["noop"]}])
+        fleet.start_all()
+
+        assert fleet.restart_host(0, downtime_s=0) is False
+        assert fake.starts == [fake.starts[0]]  # nothing new was started
+        assert fake.waits == []  # nothing was stopped either
 
 
 # ── shutdown race: a restart racing scenario shutdown must not leave an
