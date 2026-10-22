@@ -939,6 +939,117 @@ def test_validate_events_ccninfo_host_must_be_int():
     assert any("host" in e and "integer" in e for e in errors)
 
 
+# ── host_app_restart ──
+# Exact-match assertions per project convention (docs/runbooks/mutation-
+# testing.md): substring/regex asserts let mutants through.
+
+
+def test_validate_host_app_restart_missing_host():
+    """host is required_fields; its absence must be flagged like any other
+    typed event's missing required field."""
+    errors = validate_config({"events": [{"at": 0, "type": "host_app_restart"}]})
+    assert "events[0] missing required field 'host'" in errors
+
+
+def test_validate_host_app_restart_host_must_be_int():
+    """host's type check is the generic _validate_host_integer helper."""
+    errors = validate_config(
+        {"events": [{"at": 0, "type": "host_app_restart", "host": "zero"}]}
+    )
+    assert "events[0].host must be an integer" in errors
+
+
+def test_validate_host_app_restart_downtime_s_negative():
+    """downtime_s must be >= 0 (_validate_number_option's default minimum)."""
+    errors = validate_config(
+        {
+            "hosts": 1,
+            "host_apps": [{"hosts": "all", "argv": ["noop"]}],
+            "events": [
+                {"at": 0, "type": "host_app_restart", "host": 0, "downtime_s": -1}
+            ],
+        }
+    )
+    assert "events[0].downtime_s must be a number >= 0" in errors
+
+
+@pytest.mark.parametrize("downtime_s", [float("inf"), float("nan")], ids=["inf", "nan"])
+def test_validate_host_app_restart_downtime_s_non_finite(downtime_s):
+    """2026-10-22: an .inf/.nan downtime_s would otherwise pass the plain
+    ">= 0" bound check (nan comparisons are always False) and then park
+    the scheduler thread's Event.wait(downtime_s) forever."""
+    errors = validate_config(
+        {
+            "hosts": 1,
+            "host_apps": [{"hosts": "all", "argv": ["noop"]}],
+            "events": [
+                {
+                    "at": 0,
+                    "type": "host_app_restart",
+                    "host": 0,
+                    "downtime_s": downtime_s,
+                }
+            ],
+        }
+    )
+    assert "events[0].downtime_s must be a finite number" in errors
+
+
+def test_validate_host_app_restart_rejects_host_with_no_host_apps_at_all():
+    """No host_apps: key at all means no entry can cover any host."""
+    errors = validate_config(
+        {"hosts": 1, "events": [{"at": 0, "type": "host_app_restart", "host": 0}]}
+    )
+    assert (
+        "events[0].host has no host_apps entry covering it "
+        "(host_app_restart requires a host_apps: entry whose hosts "
+        "includes this host)"
+    ) in errors
+
+
+def test_validate_host_app_restart_rejects_host_not_covered_by_any_entry():
+    """host_apps exists but its hosts list skips the restarted host."""
+    errors = validate_config(
+        {
+            "hosts": 3,
+            "host_apps": [{"hosts": [0, 2], "argv": ["noop"]}],
+            "events": [{"at": 0, "type": "host_app_restart", "host": 1}],
+        }
+    )
+    assert (
+        "events[0].host has no host_apps entry covering it "
+        "(host_app_restart requires a host_apps: entry whose hosts "
+        "includes this host)"
+    ) in errors
+
+
+def test_validate_host_app_restart_valid_with_explicit_host_list():
+    """A host_apps entry naming the restarted host by index is sufficient
+    coverage; downtime_s is accepted as a positive number."""
+    errors = validate_config(
+        {
+            "hosts": 3,
+            "host_apps": [{"hosts": [1], "argv": ["noop"]}],
+            "events": [
+                {"at": 5, "type": "host_app_restart", "host": 1, "downtime_s": 2}
+            ],
+        }
+    )
+    assert errors == []
+
+
+def test_validate_host_app_restart_valid_with_hosts_all():
+    """hosts: "all" covers every host, including the restarted one."""
+    errors = validate_config(
+        {
+            "hosts": 3,
+            "host_apps": [{"hosts": "all", "argv": ["noop"]}],
+            "events": [{"at": 5, "type": "host_app_restart", "host": 1}],
+        }
+    )
+    assert errors == []
+
+
 def test_validate_events_protocol_invalid():
     errors = validate_config(
         {
@@ -2540,7 +2651,7 @@ def test_restore_dict_naming_an_unknown_type_is_rejected():
     assert errors == [
         "events[0].repeat.restore.type must be one of: "
         "link_down, link_up, fib_add, fib_del, fib_enable, bw_set, compute_call, "
-        "put, get, pubsub_pub, pubsub_sub, ccninfo"
+        "put, get, pubsub_pub, pubsub_sub, ccninfo, host_app_restart"
     ]
 
 

@@ -1,0 +1,51 @@
+# 最小検証用: host_app_restart (host_apps プロセスの停止→再起動) の確認
+# Usage: sudo .venv/bin/python3 -m src disaster --config config/examples/min_host_app_restart.yaml
+#
+# h1 の host_apps プロセスだけを t=2s で止め、downtime_s=2s 後に同じ
+# argv/cwd (同じ t0_ms, 再キャプチャしない) で再起動する
+# (HostAppFleet.restart_host)。各ライフは exec で sleep に置き換わる前に
+# 1回だけ "{node} {t0_ms} $$" を {node_dir}/host_app_marker に追記する
+# (">>"): h1 だけ2回再起動され、h0/h2 は一度も再起動されない。
+#
+# host_app_restart は non-put イベントなので autotest (no_cli + results_json)
+# の eval フェーズで実行される (disaster.py _run_autotest_experiment: type
+# が "put" のイベントだけが先に実行される seed フェーズを通らない)。
+#
+# cefore-run-tests の validate_host_app_restart_markers が
+# debug/node_dirs/hN/host_app_marker の行数・t0・pid を確認する:
+#   h1: 2行、両方 t0 が同じで pid は異なる (2つの別プロセスが起動した証拠)
+#   h0, h2: 1行のまま (再起動されていない)
+# results.json 側は host_app_restart の outcome record が success: true で
+# 1件あることを確認する (min_rows/require_event_types/all_events_success)。
+#
+# cleanup_all が hN/ を削除するため、debug.artifacts: node_dirs で teardown
+# 後も hN/ の中身を logs/verify/ex9919_seed42/debug/node_dirs/hN/
+# host_app_marker として残す。
+#
+# links: [[0, 1], [1, 2]] で3ホスト直線にする (switches はこの links の本数
+# から決まるので、min_explicit_line.yaml と同様に明示しない)。
+hosts: 3
+seed: 42
+k: 1
+num: 9919
+output_dir: "logs/verify"
+no_cli: true
+duration: 10
+results_json: "results.json"
+
+debug:
+  artifacts: ["node_dirs"]
+
+links:
+  - [0, 1]
+  - [1, 2]
+
+host_apps:
+  - hosts: [0, 1, 2]
+    argv: ["sh", "-c", "echo {node} {t0_ms} $$ >> {node_dir}/host_app_marker; exec sleep 1000"]
+
+events:
+  - at: 2
+    type: host_app_restart
+    host: 1
+    downtime_s: 2
