@@ -847,7 +847,19 @@ class TestRestartShutdownRace:
         sets replaces that guess with proof that stop_all() actually
         called ``_lock.acquire()`` (and is therefore genuinely blocked
         inside it, since restart_thread still holds the real lock) before
-        the ``is_alive()`` assertion runs."""
+        the ``is_alive()`` assertion runs.
+
+        2026-10-23 fix (review finding): ``acquire_attempted`` alone still
+        only proves the CALL happened, not that it is still stuck inside
+        it by the time the test checks -- ``is_alive()`` could in
+        principle stay true for a finished-but-not-yet-reaped thread just
+        as easily as for one genuinely blocked. Two direct ``.locked()``
+        checks on the real lock (right after ``entered.wait()``, and
+        again right after ``acquire_attempted.wait()``) replace that
+        inference with the lock's own state, which is what the
+        lock-scope fix this test exists to guard actually changes: revert
+        it and the first ``.locked()`` check fails on its own, with no
+        dependency on how stop_all()'s thread happens to be scheduled."""
         fake = FakeCommandRunner()
         fleet = _fleet(fake, specs=[{"hosts": [0], "argv": ["noop"]}])
         fleet.start_all()
@@ -885,6 +897,22 @@ class TestRestartShutdownRace:
         # and -- per restart_host's fix -- is holding _lock the whole
         # time it stays blocked here.
 
+        # 2026-10-23 fix (review finding): assert this directly, against
+        # the lock itself, rather than only inferring it later from
+        # whether stop_all()'s thread still looks "alive" -- that
+        # inference depends on the OS having not yet scheduled stop_all()
+        # far enough to finish, which is exactly the kind of scheduling
+        # luck this suite otherwise avoids (see the class docstring's
+        # 2026-10-23 note above). Captured before the probe swap below
+        # because ``_LockAcquireProbe`` does not implement ``locked()``.
+        # If the lock-scope fix were reverted (restart_thread releasing
+        # _lock before calling _stop_one_launch instead of across the
+        # whole stop phase), this lock would already be free here and
+        # this assertion would fail on its own, with no dependency on
+        # how stop_all()'s thread happens to be scheduled.
+        real_lock = fleet._lock
+        assert real_lock.locked()
+
         # Swap in the probe around the SAME real lock restart_thread is
         # already holding. This reassignment is safe even though
         # restart_thread is mid-``with self._lock:``: that statement
@@ -903,6 +931,18 @@ class TestRestartShutdownRace:
         # since restart_thread still holds the real lock -- before this
         # assertion runs.
         assert acquire_attempted.wait(5)
+        # 2026-10-23 fix (review finding): acquire_attempted firing only
+        # proves stop_all() CALLED acquire() -- not that it is still
+        # stuck inside it. Re-checking real_lock.locked() here (still
+        # True, since restart_thread has not released it yet) rules out
+        # any acquisition having slipped through in between; combined
+        # with shutdown_result still being empty (stop_all() has not
+        # returned), that proves stop_all() is genuinely blocked on this
+        # exact lock right now, not merely "not yet observed to have
+        # finished" the way is_alive() alone would leave open to
+        # scheduling luck.
+        assert real_lock.locked()
+        assert shutdown_result == []
         assert shutdown_thread.is_alive()
 
         release.set()
