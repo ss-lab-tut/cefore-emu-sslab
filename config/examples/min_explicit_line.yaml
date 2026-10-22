@@ -53,7 +53,7 @@
 # link_up (at: 22) まで「過ぎている」扱いになり、scheduled_at: 8 の
 # link_down と scheduled_at: 22 の link_up は実時刻 (actual_at) でわずか
 # 0.011 秒差で連続発火した (本来14秒空ける設計が11ミリ秒に潰れた)。during
-# の get は (warmup 経由で h0/h1 が before 実行前にすでに取得していた
+# の get は (warmup 経由で h0/h1 がこの URI 自体を事前にすでに取得していた
 # ことに加えて) その cefgetfile プロセス自体も link_up の約4秒後にようやく
 # 動き出していたので、「リンクがまだ落ちている間に再送し尽くして諦める」
 # という during 失敗の前提が、キャッシュの有無とは無関係にそもそも成立して
@@ -95,10 +95,19 @@
 #      変わらない。この host 0 / uri before の組み合わせは上記の失敗した
 #      run の results.json でも success:true で記録済み
 #      (cefgetfile_warmup_h0_test_explicitline_before.log) なので、他の
-#      組み合わせより実績がある。トレードオフとして、before の eval 側
-#      get はこの warmup のローカルキャッシュ応答になる可能性があり、
-#      「経路を実際に通った」ことの証明ではなくなる -- before にその証明
-#      能力は要求していないので許容する。
+#      組み合わせより実績がある。トレードオフとして、before はこの warmup
+#      get によって確実にローカルキャッシュへ乗る: このラウンドでは
+#      cache_config を変更していないので cache_node_set は既定の k_centers
+#      (count=down_count+1=6 → publisher 除外後の非publisherホスト2つ
+#      {h0,h1} に clamp) のまま変わっておらず、h0 は apply_cache_node_
+#      settings により CS_MODE=2 を強制される。つまり before の eval 側 get
+#      (at: 19) は「ローカルキャッシュ応答になる可能性がある」のではなく、
+#      確実にローカルキャッシュ応答になり、「経路を実際に通った」ことの証明
+#      ではなくなる -- before にその証明能力は要求していないので許容する。
+#      (この host0/h1 が cache node であること自体は during/after の正しさ
+#      には無関係: during/after は warmup_gets からも外れているので、
+#      Cefore のプル型配送モデル上、h0/h1 はその2本を一度も中継していない
+#      -- CS_MODE に関わらずキャッシュに乗る機会がそもそも無い。)
 #   3. after は依然として put 自体は復旧前 (seed フェーズ) に行われる
 #      (autotest モードでは put イベントの at: に関わらず必ず warmup より
 #      前に実行されるため、「復旧後に put する」という元の設計は autotest
@@ -116,11 +125,22 @@
 #      12秒はこの9秒に3秒の余裕を乗せた値で、この値自体は壊れていなかった
 #      ので変更不要と判断した。+15秒のずらしは、新しい seed (put 3回、
 #      どれも at:0 で実行時間だけに依存) + warmup (get 1回) にかかる実時間
-#      に対して十分な余裕を持たせるための固定値 (実測はしていない。
-#      ORCHESTRATOR へ: sudo で走らせた results.json の link_down/link_up
-#      の scheduled_at と actual_at の差がほぼゼロ秒であること、during の
-#      get (eval_recvfile_h0_test_explicitline_during) が success:false で
-#      あることを確認してほしい)。
+#      に対して十分な余裕を持たせるための固定値だが、実測はしていない。
+#      保証できているのは「during の get (at: 25) が過ぎている扱いに
+#      ならない限り during→up の12秒は本物の real-time wait になる」という
+#      ことだけで、「+15秒」という数字そのものに魔法はない: seed+warmup の
+#      実時間が 25秒を超えた分だけ、during→up の実際の間隔はその分だけ
+#      1:1 で削られる (例えば実時間が28秒かかれば12秒の余裕が9秒まで
+#      減り、cefgetfile の諦め時間と同じになって危険域に入る)。
+#      ORCHESTRATOR へ: sudo で走らせた results.json で次を確認してほしい:
+#        - during の get 行 (phase: eval) 自身の actual_at が 25 秒前後
+#          であること (これが 28 秒以上なら seed+warmup がこの見立てより
+#          遅く、+15秒では余裕が足りていない)。
+#        - link_down の actual_at が 23 秒前後、link_up の actual_at が
+#          37 秒前後であること (この2つが極端に近ければ、また潰れている)。
+#        - during の get (success) が false であること、during/after 向け
+#          の warmup 行が (uri に /during や /after を含むものが) 1件も
+#          無いこと。
 hosts: 3
 seed: 42
 k: 2

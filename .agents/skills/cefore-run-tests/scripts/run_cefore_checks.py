@@ -315,9 +315,11 @@ def build_smoke_cases() -> list[SmokeCase]:
             # (get_outcomes below), so neither the failure nor the
             # post-restore success can be explained away by a pre-cut
             # cache; "before" is deliberately warmed up ahead of its own
-            # get and carries no such guarantee -- see the config's own
-            # comment for why that split is safe and for the autotest
-            # seed/warmup/eval ordering this case depends on.
+            # get and IS a cache hit by the time its eval get runs (h0 is a
+            # cache node in this config), so its eval get proves nothing
+            # about the network path -- see the config's own comment for
+            # why that's safe for "before" specifically and for the
+            # autotest seed/warmup/eval ordering this case depends on.
             "min_explicit_line",
             config_relpath="config/examples/min_explicit_line.yaml",
             expect={
