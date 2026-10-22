@@ -23,10 +23,10 @@ from .command_runner import MininetCommandRunner
 # cefpyco's create_handle(ceforedir=...) must be pointed at" -- so a future
 # change that moves one without the other does not force renaming every
 # existing host_apps config. {t0_ms}: the epoch-ms time.time() reading taken
-# at the exact point DisasterScenario.run_experiment() also reads
-# time.monotonic() for the EventScheduler's "at: 0" origin, so a host app's
-# own relative-time math and the scheduler's schedule describe the same
-# instant without this module brokering any further synchronization.
+# at the same single capture point whose paired time.monotonic() reading
+# becomes the EventScheduler's "at: 0" origin, so a host app's own
+# relative-time math and the scheduler's schedule describe the same instant
+# without this module brokering any further synchronization.
 _PLACEHOLDER_NAMES = ("node", "node_dir", "cefore_conf_dir", "t0_ms")
 
 
@@ -79,10 +79,10 @@ class HostAppFleet:
     Mirrors DaemonFleet's start_all()/stop_all() shape:
     - start_all() launches every configured app via CommandRunner.start
       (long-running, non-blocking) and does not catch per-host failures
-      itself, same as DaemonFleet.start_all() -- the caller's lifecycle
-      (DisasterScenario.shutdown_runtime_resources) is what makes a partial
-      start recoverable, because each handle is recorded as soon as its
-      start() call returns.
+      itself, same as DaemonFleet.start_all() -- a partial start still
+      stays recoverable, because each handle is recorded as soon as its
+      start() call returns, and stop_all() always runs during shutdown,
+      before the Cefore daemons are torn down, to reclaim it.
     - stop_all() attempts every started handle independently and aggregates
       ``(stage, exception)`` failures instead of aborting on the first,
       same as DaemonFleet.stop_all().
