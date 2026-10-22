@@ -183,8 +183,8 @@ def test_connect_main_rejects_malformed_debug_section(monkeypatch, tmp_path, cap
 
 
 def test_connect_main_rejects_explicit_links(monkeypatch, tmp_path, capsys):
-    """2026-10-22 review fix: ticket 03 scoped the explicit `links` topology
-    override to disaster. connect shares ConfigDrivenMeshScenario's
+    """2026-10-22 review fix: the explicit `links` topology override is
+    scoped to disaster. connect shares ConfigDrivenMeshScenario's
     build_topology mechanically, but its bridge/k-centers cache-placement
     path has no test coverage for an explicit-link topology, so a connect
     config setting `links` must fail loudly here instead of being silently

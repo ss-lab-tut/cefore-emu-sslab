@@ -582,7 +582,7 @@ def test_build_mesh_scenario_cleans_node_dirs_when_topology_build_fails(monkeypa
     assert cleanup_calls == [node_dirs]
 
 
-# -- mesh construction seam: explicit links (ticket 03) --------------------
+# -- mesh construction seam: explicit links ---------------------------------
 
 
 def test_build_mesh_scenario_links_none_uses_meshtopo_unchanged(tmp_path, monkeypatch):

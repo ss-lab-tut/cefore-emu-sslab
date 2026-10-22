@@ -2421,7 +2421,7 @@ def test_restore_cannot_turn_an_event_into_a_content_event_or_compute_call(repea
     ]
 
 
-# ── links (ticket 03: explicit mesh topology) ──
+# ── links (explicit mesh topology) ──
 
 
 def test_validate_links_absent_is_valid():

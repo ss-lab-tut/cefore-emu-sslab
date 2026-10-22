@@ -973,8 +973,9 @@ def _validate_links(errors, config):
     ``links: [[host_a, host_b], ...]`` lets a disaster config fix the exact
     mesh instead of the seeded random MeshTopo build (see
     ConfigDrivenMeshScenario.build_topology / runtime.scenario_setup.
-    build_mesh_scenario / runtime.topo.ExplicitLinksTopo). Ticket 03 scoped
-    this to disaster only -- src/cli/bootstrap.py rejects a `links` key
+    build_mesh_scenario / runtime.topo.ExplicitLinksTopo). The explicit
+    `links` override is scoped to disaster only -- src/cli/bootstrap.py
+    rejects a `links` key
     reaching it from the connect entry point before this function ever runs
     for it, because connect's bridge/cache-placement path has no test
     coverage for an explicit-link topology. Every downstream consumer -- FIB

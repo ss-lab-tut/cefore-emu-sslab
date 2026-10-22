@@ -217,7 +217,7 @@ class MeshTopo(Topo):
 class ExplicitLinksTopo(Topo):
     """Topology built from caller-supplied host-index pairs, not the RNG mesh.
 
-    Ticket 03 (ReCefore explicit links): a disaster config may pass
+    A disaster config may pass
     ``links: [[a, b], ...]`` to fix the exact topology instead of letting
     MeshTopo draw one from the seed. Each pair gets its own switch connecting
     exactly those two hosts. This is the same shape MeshTopo already emits

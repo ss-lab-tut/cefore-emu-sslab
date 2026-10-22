@@ -158,7 +158,7 @@ def test_build_topology_passes_args_to_mesh_build_spec(tmp_path):
 
 
 def test_build_topology_passes_links_to_mesh_build_spec(tmp_path):
-    # Ticket 03: args.links (set only via disaster's config `links:` key,
+    # args.links (set only via disaster's config `links:` key,
     # never a CLI flag) must reach MeshBuildSpec unchanged so
     # build_mesh_scenario can pick ExplicitLinksTopo over the random mesh.
     scenario = ConcreteScenario(

@@ -18,7 +18,7 @@ DEFAULT_NETWORK_CIDR = "192.168.0.0/16"
 LINK_PREFIXLEN = 24
 LINK_NETMASK = str(ipaddress.IPv4Network(f"0.0.0.0/{LINK_PREFIXLEN}").netmask)
 
-# 2026-10-22 review fix (ticket 03): a /16 network address always zeroes its
+# 2026-10-22 review fix: a /16 network address always zeroes its
 # last two octets (netmask 255.255.0.0), so host_ip()'s 3rd octet
 # ("base + subnet_id", base always 0) and 4th octet ("host_idx + 1") are
 # bounded the same way for ANY network_cidr the caller configures, not just

@@ -137,8 +137,8 @@ class MeshBuildSpec:
     switch_use_all: bool = False
     rng: random.Random | None = None
     publisher_ids: frozenset[int] = frozenset()
-    # Ticket 03 (ReCefore explicit links): explicit host-index pairs that
-    # replace the RNG-drawn MeshTopo build below when not None. Already
+    # Explicit host-index pairs that replace the RNG-drawn MeshTopo build
+    # below when not None. Already
     # validated by core.config.validator._validate_links (shape, range,
     # self-links, duplicates, connectivity) before it reaches this spec.
     links: list[list[int]] | None = None

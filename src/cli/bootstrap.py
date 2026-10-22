@@ -72,7 +72,7 @@ def bootstrap_scenario(
     cli_parser = _build_cli_precedence_parser(blocks)
     merge_cli_and_config(args, config_data, cli_parser)
     errors = validate_merged_args(args)
-    # 2026-10-22 review fix (ticket 03): the explicit `links` topology
+    # 2026-10-22 review fix: the explicit `links` topology
     # override is scoped to disaster only. ConnectScenario shares
     # ConfigDrivenMeshScenario.build_topology (so passing links through
     # would work mechanically), but its bridge/k-centers cache-placement

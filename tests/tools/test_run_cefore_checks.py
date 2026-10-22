@@ -77,8 +77,7 @@ def test_event_outcomes_matching_outcome_passes():
     )
 
 
-# ── get_outcomes (ticket 03 review fix: per-uri success, not a blanket
-# all_success) ──
+# ── get_outcomes (per-uri success, not a blanket all_success) ──
 
 
 def test_get_outcomes_zero_matching_rows_fails():
