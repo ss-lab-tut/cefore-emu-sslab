@@ -559,6 +559,7 @@ def test_config_option_keys_preserves_current_order_and_excludes_special_merge()
         "bridges",
         "failure_scenarios",
         "links",
+        "prefix_routes",
         "events",
         "monitoring",
         "routing",
@@ -2648,4 +2649,85 @@ def test_validate_merged_args_links_with_all_mesh_knobs_at_default_is_valid():
         switch_use_all=False,
     )
 
+    assert validate_merged_args(args) == []
+
+
+# ── prefix_routes (static prefix-to-host FIB route announcement) ──
+
+
+def test_validate_prefix_routes_absent_is_valid():
+    assert validate_config({"hosts": 3}) == []
+
+
+def test_validate_prefix_routes_valid_mapping_is_valid():
+    assert (
+        validate_config(
+            {"hosts": 3, "prefix_routes": {"ccnx:/test/a": 2, "ccnx:/test/b": 0}}
+        )
+        == []
+    )
+
+
+def test_validate_prefix_routes_not_a_dict():
+    errors = validate_config({"hosts": 3, "prefix_routes": [["ccnx:/test/a", 2]]})
+    assert errors == ["prefix_routes must be a mapping of ccnx:/ prefix to host index"]
+
+
+def test_validate_prefix_routes_key_not_a_string():
+    errors = validate_config({"hosts": 3, "prefix_routes": {1: 2}})
+    assert errors == ["prefix_routes key 1 must be a non-empty ccnx:/ URI string"]
+
+
+def test_validate_prefix_routes_key_missing_ccnx_prefix():
+    errors = validate_config({"hosts": 3, "prefix_routes": {"test/a": 2}})
+    assert errors == [
+        "prefix_routes key 'test/a' must be a non-empty ccnx:/ URI string"
+    ]
+
+
+def test_validate_prefix_routes_value_not_an_integer():
+    errors = validate_config({"hosts": 3, "prefix_routes": {"ccnx:/test/a": "h2"}})
+    assert errors == ["prefix_routes['ccnx:/test/a'] must be an integer host index"]
+
+
+def test_validate_prefix_routes_value_bool_rejected():
+    # bool is an int subclass in Python; _is_int excludes it explicitly, the
+    # same way every other index field in this validator does.
+    errors = validate_config({"hosts": 3, "prefix_routes": {"ccnx:/test/a": True}})
+    assert errors == ["prefix_routes['ccnx:/test/a'] must be an integer host index"]
+
+
+def test_validate_prefix_routes_out_of_range_host_index():
+    errors = validate_config({"hosts": 3, "prefix_routes": {"ccnx:/test/a": 5}})
+    assert errors == [
+        "prefix_routes['ccnx:/test/a'] contains out-of-range host index 5"
+    ]
+
+
+def test_validate_prefix_routes_negative_host_index_is_out_of_range():
+    errors = validate_config({"hosts": 3, "prefix_routes": {"ccnx:/test/a": -1}})
+    assert errors == [
+        "prefix_routes['ccnx:/test/a'] contains out-of-range host index -1"
+    ]
+
+
+def test_validate_prefix_routes_range_not_checked_without_known_host_count():
+    # hosts missing/invalid: range can't be judged, so only the key/value
+    # shape rules apply -- mirrors _validate_links' same-named test.
+    assert validate_config({"prefix_routes": {"ccnx:/test/a": 5}}) == []
+
+
+def test_validate_prefix_routes_rejects_host_index_beyond_addressing_max():
+    # AddressingScheme.host_ip's 4th octet (host_idx + 1) overflows past
+    # 253 regardless of the declared `hosts` -- same hard limit _validate_
+    # links enforces for `links[i]` host indices.
+    errors = validate_config({"prefix_routes": {"ccnx:/test/a": 254}})
+    assert errors == [
+        "prefix_routes['ccnx:/test/a'] contains host index 254 which exceeds "
+        "the addressing scheme's maximum host index (253)"
+    ]
+
+
+def test_validate_merged_args_prefix_routes_valid_mapping():
+    args = SimpleNamespace(hosts=3, prefix_routes={"ccnx:/test/a": 2})
     assert validate_merged_args(args) == []

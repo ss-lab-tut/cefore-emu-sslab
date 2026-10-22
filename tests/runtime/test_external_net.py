@@ -217,6 +217,40 @@ def test_connect_main_rejects_explicit_links(monkeypatch, tmp_path, capsys):
     )
 
 
+def test_connect_main_rejects_prefix_routes(monkeypatch, tmp_path, capsys):
+    """prefix_routes is read only by scenarios.disaster.DisasterScenario.
+    configure; ConnectScenario never does, so a connect config setting it
+    must fail loudly here instead of silently accepting and then ignoring
+    the key (same class of gap the `links` check above closes)."""
+    config_path = _write_config(
+        tmp_path,
+        'hosts: 3\nswitches: 6\nprefix_routes:\n  "ccnx:/test/a": 1\n',
+    )
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "ceforeemu-connect",
+            "--config",
+            str(config_path),
+            "--output-dir",
+            str(tmp_path / "out"),
+            "--no-script-log",
+        ],
+    )
+
+    with pytest.raises(SystemExit) as exc_info:
+        external_net.main()
+
+    assert exc_info.value.code == 1
+    assert (
+        "config error: prefix_routes is not supported by the connect "
+        "scenario (ceforeemu-connect); it is scoped to the disaster "
+        "scenario only\n"
+        in capsys.readouterr().err
+    )
+
+
 def test_connect_main_cli_override_can_make_invalid_config_valid(monkeypatch, tmp_path):
     record = _run_connect_main(
         monkeypatch,
