@@ -5,6 +5,7 @@ import math
 from dataclasses import dataclass
 from typing import Any, Callable
 
+from ..addressing import MAX_HOST_INDEX, MAX_LINK_SUBNET_ID
 from ..artifacts import safe_uri_label
 from ..events import (
     EVENT_SCHEMA,
@@ -884,6 +885,20 @@ def _validate_bridges(errors, config):
                     errors.append(
                         f"bridges[{idx}].switch must be a non-negative integer"
                     )
+                elif "links" in config and isinstance(config["links"], list):
+                    # 2026-10-22 review fix: with explicit `links` set,
+                    # ExplicitLinksTopo creates exactly len(links) switches
+                    # (s0..s{len(links)-1}, one per pair) and `switches` has
+                    # no effect at all (see _MESH_RANDOMIZATION_KEYS below) --
+                    # bounding against the random-mesh default of 10 here
+                    # would wrongly reject a bridge targeting a real switch
+                    # on an 11+-link topology (e.g. s10).
+                    if bridge["switch"] >= len(config["links"]):
+                        errors.append(
+                            f"bridges[{idx}].switch is out-of-range: "
+                            f"{bridge['switch']} (links creates "
+                            f"{len(config['links'])} switches)"
+                        )
                 elif _is_int(config.get("switches")) and bridge[
                     "switch"
                 ] >= config["switches"]:
@@ -955,16 +970,21 @@ _MESH_RANDOMIZATION_KEYS = (
 def _validate_links(errors, config):
     """Validate the optional explicit ``links`` topology override.
 
-    ``links: [[host_a, host_b], ...]`` lets a disaster (or connect) config
-    fix the exact mesh instead of the seeded random MeshTopo build (see
+    ``links: [[host_a, host_b], ...]`` lets a disaster config fix the exact
+    mesh instead of the seeded random MeshTopo build (see
     ConfigDrivenMeshScenario.build_topology / runtime.scenario_setup.
-    build_mesh_scenario / runtime.topo.ExplicitLinksTopo). Every downstream
-    consumer -- FIB computation, addressing, cache placement, link_down/
-    link_up, the topology PNG -- reads mesh_links through TopologyModel and
-    assumes every declared host is reachable, so this is the one place that
-    checks shape, host-index range, self-links, duplicates, and single-
-    component connectivity before any of that code ever sees the list;
-    ExplicitLinksTopo itself does not re-validate.
+    build_mesh_scenario / runtime.topo.ExplicitLinksTopo). Ticket 03 scoped
+    this to disaster only -- src/cli/bootstrap.py rejects a `links` key
+    reaching it from the connect entry point before this function ever runs
+    for it, because connect's bridge/cache-placement path has no test
+    coverage for an explicit-link topology. Every downstream consumer -- FIB
+    computation, addressing, cache placement, link_down/link_up, the
+    topology PNG -- reads mesh_links through TopologyModel and assumes every
+    declared host is reachable and in-range for the addressing scheme, so
+    this is the one place that checks shape, host-index range, self-links,
+    duplicates, addressing capacity, and single-component connectivity
+    before any of that code ever sees the list; ExplicitLinksTopo itself
+    does not re-validate.
 
     Connectivity is required, not merely "every host appears in some link":
     AddressingScheme.canonical_host_ip raises ValueError for a host attached
@@ -972,6 +992,17 @@ def _validate_links(errors, config):
     publisher with no links, so a disconnected graph would otherwise crash
     scenario setup after node directories are already provisioned, instead
     of failing at config time with a clear message.
+
+    Addressing capacity (MAX_LINK_SUBNET_ID / MAX_HOST_INDEX) is likewise
+    required: ExplicitLinksTopo assigns subnet = link_index + 1 and
+    AddressingScheme.host_ip encodes host_idx as "host_idx + 1" in the 4th
+    octet, so a topology with too many links or too high a host index
+    passes every check above yet raises ValueError inside host_ip/
+    link_network mid-setup -- the same "fail at config time, not mid-setup"
+    reasoning as the connectivity check, just for a different crash site
+    (2026-10-22 review fix: a 24-host complete graph, 276 links, and a
+    255-host line, host index 254, both used to validate clean and then blow
+    up in addressing).
     """
     if "links" not in config:
         return
@@ -979,6 +1010,13 @@ def _validate_links(errors, config):
     if not isinstance(links, list):
         errors.append("links must be a list")
         return
+
+    if len(links) > MAX_LINK_SUBNET_ID:
+        errors.append(
+            f"links must contain at most {MAX_LINK_SUBNET_ID} entries "
+            f"(got {len(links)}); each link uses one addressing subnet and "
+            f"the scheme has {MAX_LINK_SUBNET_ID} available"
+        )
 
     host_count = config.get("hosts")
     host_count_known = _is_int(host_count)
@@ -998,13 +1036,24 @@ def _validate_links(errors, config):
         else:
             host_a, host_b = entry
             out_of_range = False
-            if host_count_known:
-                for n in (host_a, host_b):
-                    if n < 0 or n >= host_count:
-                        errors.append(
-                            f"{prefix} contains out-of-range host index {n}"
-                        )
-                        out_of_range = True
+            for n in (host_a, host_b):
+                if host_count_known and (n < 0 or n >= host_count):
+                    errors.append(
+                        f"{prefix} contains out-of-range host index {n}"
+                    )
+                    out_of_range = True
+                elif n > MAX_HOST_INDEX:
+                    # host_count alone can't catch this: a host index can be
+                    # in-range for a large `hosts` value yet still overflow
+                    # AddressingScheme.host_ip's 4th octet (host_idx + 1,
+                    # capped at 254), independent of how many hosts the
+                    # config declares.
+                    errors.append(
+                        f"{prefix} contains host index {n} which exceeds "
+                        f"the addressing scheme's maximum host index "
+                        f"({MAX_HOST_INDEX})"
+                    )
+                    out_of_range = True
             if not out_of_range:
                 valid_pairs.append((host_a, host_b))
 

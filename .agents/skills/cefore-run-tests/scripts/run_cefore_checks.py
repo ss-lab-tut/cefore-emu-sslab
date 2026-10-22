@@ -27,6 +27,7 @@ SMOKE_CONFIGS = (
     "min_event_pubsub",
     "min_failure",
     "min_event_link",
+    "min_explicit_line",
     "min_monitoring",
     "min_ccninfo",
     "min_compute",
@@ -305,6 +306,35 @@ def build_smoke_cases() -> list[SmokeCase]:
             },
         ),
         SmokeCase(
+            # 2026-10-22 review fix: unlike min_event_link (whose down/up
+            # pair is off the get path by construction), this is a 3-host
+            # line where link_down [1, 2] cuts the ONLY path from h0 to h2.
+            # No "all_success": True here on purpose -- the whole point is
+            # that the "during" get must fail. Each phase uses content never
+            # requested before the cut (get_outcomes below), so neither the
+            # failure nor the post-restore success can be explained away by
+            # a pre-cut cache; see the config's own comment for the design.
+            "min_explicit_line",
+            config_relpath="config/examples/min_explicit_line.yaml",
+            expect={
+                "min_rows": 1,
+                "require_op_types": ("put", "get"),
+                "require_event_types": ("link_down", "link_up"),
+                "all_events_success": True,
+                # Every put must succeed -- otherwise a failed "during" put
+                # would make its get fail for an unrelated reason (no
+                # content was ever published, not "the link was down") and
+                # get_outcomes' during=False would pass for the wrong
+                # reason.
+                "op_factors": {"put": {"success": True}},
+                "get_outcomes": {
+                    "ccnx:/test/explicitline/before": True,
+                    "ccnx:/test/explicitline/during": False,
+                    "ccnx:/test/explicitline/after": True,
+                },
+            },
+        ),
+        SmokeCase(
             "min_monitoring",
             config_relpath="config/examples/min_monitoring.yaml",
             expect={
@@ -412,6 +442,11 @@ def validate_results(
     - ``all_events_success``: every event record must have truthy ``success``.
     - ``event_outcomes``: per-event_type required ``outcome`` value; every
       event record of that type must carry exactly that tri-state outcome.
+    - ``get_outcomes``: per-uri required ``success`` value for ``op_type ==
+      "get"`` rows -- unlike ``all_success``, this lets a case assert that
+      ONE uri's get must fail (e.g. during a link outage) while others must
+      succeed, instead of only being able to require success across every
+      row. At least one matching row must exist for each uri.
     - ``monitor_json``: a monitor.json with at least ``min_entries`` entries
       must exist under the case output directory.
     - ``summarizer_min_rows``: ceforeemu-log module-form stdout must produce at
@@ -452,6 +487,19 @@ def validate_results(
                         )
                 elif not row.get(key):
                     fail(f"{op_type} row missing {key}")
+    for uri, want_success in expect.get("get_outcomes", {}).items():
+        matching = [
+            r for r in data if r.get("op_type") == "get" and r.get("uri") == uri
+        ]
+        if not matching:
+            fail(f"expected at least 1 get result for uri={uri!r}")
+        for row in matching:
+            val = row.get("success")
+            if not (isinstance(val, bool) and val is want_success):
+                fail(
+                    f"get row for uri={uri!r} has success={val!r} "
+                    f"(type {type(val).__name__}), expected exactly {want_success!r}"
+                )
     event_rows = [r for r in data if r.get("op_type") == "event"]
     for event_type in expect.get("require_event_types", ()):
         if not any(r.get("event_type") == event_type for r in event_rows):

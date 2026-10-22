@@ -8,15 +8,38 @@
 #
 # h0-h1-h2 の直線なので、h0→h2 の get 経路は必ず h1 を経由する。そのため
 # min_event_link.yaml (seed=42 の乱択メッシュで h1-h2 は get 経路に関係しない)
-# とは違い、ここでの link_down [1, 2] は get 経路そのものを切る。この設定は
-# 切断中に get せず、down/up の前後だけで get して両方成功することを確かめる。
+# とは違い、ここでの link_down [1, 2] は get 経路そのものを切る。
+#
+# 2026-10-22 review fix: 以前はこの切断を down/up の前後の get 成功だけで確認
+# していたが、それだと link_down/link_up が何もしない no-op でも (a) 復旧後の
+# get が切断前のキャッシュから返る、(b) 切断中に一度も get しない、の2点で
+# すり抜けてしまう。そのため URI を3本に分け、各フェーズで「切断前に一度も
+# 取得していない新規コンテンツ」を使うことで、キャッシュでは説明できない
+# 成功/失敗だけを要求する:
+#   before: 切断前に put+get する。経路がそもそも動くことの前提確認 (ok 期待)
+#   during: 切断前に put (ローカル登録のみ、ネットワーク不要) し、切断中に
+#           初めて get する。h1 はこの URI を一度も中継していないので、
+#           失敗は「h1 のキャッシュから返った」では説明できない (ng 期待)
+#   after:  復旧後に put (切断中/切断前には存在しない新規コンテンツ) し、
+#           復旧後に get する。成功は「どこかの事前キャッシュ」では説明
+#           できず、復旧した h1-h2 リンクを実際に通ったことの証拠になる
+#           (ok 期待)
+#
+# during の get (at: 10) と link_up (at: 22) の間を 12 秒空けているのは、
+# cefgetfile が一度も Data を受け取れないまま自力で諦めるまでの時間の実測が
+# 無いため (Cefore のツール文書にある「最後に Data を受けてから 2 秒」は
+# 最初の 1 個を受け取った後の話で、0 個のケースの保証ではない)。ここで詰め
+# すぎると、during 用の get プロセスがまだ再送中のうちに link_up が先に
+# 起きてしまい、取得自体は復旧後に成功する「別の理由」で during: False が壊れる
+# (feature の失敗ではなく、タイミングの事故)。duration (32) は最後の get
+# (at: 28) から 4 秒の余裕を min_event_link と同じ比率で確保している。
 hosts: 3
 seed: 42
 k: 2
 num: 9917
 output_dir: "logs/verify"
 no_cli: true
-duration: 18
+duration: 32
 results_json: "results.json"
 publisher_host: 2
 
@@ -28,21 +51,39 @@ events:
   - at: 0
     type: put
     host: 2
-    uri: "ccnx:/test/explicitline"
+    uri: "ccnx:/test/explicitline/before"
     file: "./sample-putfile"
     expiry: 3000
     cache_time: 3000
   - at: 4
     type: get
     host: 0
-    uri: "ccnx:/test/explicitline"
+    uri: "ccnx:/test/explicitline/before"
+  - at: 6
+    type: put
+    host: 2
+    uri: "ccnx:/test/explicitline/during"
+    file: "./sample-putfile"
+    expiry: 3000
+    cache_time: 3000
   - at: 8
     type: link_down
     nodes: [1, 2]
   - at: 10
-    type: link_up
-    nodes: [1, 2]
-  - at: 14
     type: get
     host: 0
-    uri: "ccnx:/test/explicitline"
+    uri: "ccnx:/test/explicitline/during"
+  - at: 22
+    type: link_up
+    nodes: [1, 2]
+  - at: 24
+    type: put
+    host: 2
+    uri: "ccnx:/test/explicitline/after"
+    file: "./sample-putfile"
+    expiry: 3000
+    cache_time: 3000
+  - at: 28
+    type: get
+    host: 0
+    uri: "ccnx:/test/explicitline/after"

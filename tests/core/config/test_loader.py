@@ -1,6 +1,7 @@
 """Tests for src.core.config.loader."""
 
 import argparse
+import itertools
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -1801,6 +1802,83 @@ def test_validate_bridges_switch_range_checked_when_switch_count_known():
     )
 
 
+def test_validate_bridges_switch_bound_uses_links_length_not_switches_default():
+    """2026-10-22 review fix: with explicit `links` set, `switches` has no
+    effect on the real topology (ExplicitLinksTopo always creates exactly
+    len(links) switches), but the config merger still fills `switches` with
+    its argparse default of 10. Before this fix, an 11-link topology (which
+    creates s0..s10) rejected a bridge targeting the real switch s10,
+    because the bound compared against the unrelated default of 10 instead
+    of len(links) == 11. `switches: 10` is included explicitly (not left
+    absent) so this reproduces the actual bug: with `switches` absent the
+    old coarse-bound branch never activated at all, and the test would have
+    passed vacuously against the pre-fix code too.
+    """
+    links = [[i, i + 1] for i in range(11)]  # 11 links -> s0..s10, hosts 0..11
+    errors = validate_config(
+        {
+            "hosts": 12,
+            "switches": 10,
+            "links": links,
+            "bridges": [
+                {
+                    "switch": 10,
+                    "root_ip": "10.0.0.1/24",
+                    "local_routes": "192.168.0.0/16",
+                }
+            ],
+        }
+    )
+    assert errors == []
+
+    errors = validate_config(
+        {
+            "hosts": 12,
+            "switches": 10,
+            "links": links,
+            "bridges": [
+                {
+                    "switch": 11,
+                    "root_ip": "10.0.0.1/24",
+                    "local_routes": "192.168.0.0/16",
+                }
+            ],
+        }
+    )
+    assert errors == [
+        "bridges[0].switch is out-of-range: 11 (links creates 11 switches)"
+    ]
+
+
+def test_validate_merged_args_links_bridge_targets_switch_from_links_length():
+    """Merged-config regression guard for the same fix, through the real
+    bootstrap_scenario -> validate_merged_args path: `switches` reaches
+    validate_config at its argparse default of 10 on every ordinary run
+    (see test_validate_merged_args_links_with_all_mesh_knobs_at_default_is_
+    valid above), so this is the exact shape a real disaster config
+    produces post-merge. A bridge targeting s10 on an 11-link topology must
+    validate cleanly."""
+    links = [[i, i + 1] for i in range(11)]
+    args = SimpleNamespace(
+        hosts=12,
+        links=links,
+        switches=10,
+        node_per_switch=2,
+        host_degree_min=1,
+        host_degree_max=2,
+        switch_use_all=False,
+        bridges=[
+            {
+                "switch": 10,
+                "root_ip": "10.0.0.1/24",
+                "local_routes": "192.168.0.0/16",
+            }
+        ],
+    )
+
+    assert validate_merged_args(args) == []
+
+
 # ── ccninfo option validation (events) ──
 
 
@@ -2459,6 +2537,53 @@ def test_validate_links_connectivity_not_checked_when_entries_malformed():
     # graph it implies is unclear while an entry is still invalid.
     errors = validate_config({"hosts": 4, "links": [[0, 1], ["x", 3]]})
     assert errors == ["links[1] must be a list of 2 host indices"]
+
+
+# ── links addressing-capacity bounds (2026-10-22 review fix) ──
+#
+# AddressingScheme.host_ip encodes subnet_id in the 3rd octet (base + id,
+# base always 0 for a /16) and host_idx + 1 in the 4th octet. Neither bound
+# is visible from host-index-range/connectivity validation alone, so a
+# config can pass every check above and then raise ValueError inside
+# host_ip/link_network mid-setup. These pin the two exact review scenarios.
+
+
+def test_validate_links_rejects_too_many_links():
+    # Exact regression for the review finding: a 24-host complete graph is
+    # shape/range/connectivity-valid (every pair is a real edge among hosts
+    # 0..23, and a complete graph is trivially connected) but produces
+    # C(24, 2) = 276 links, each claiming its own addressing subnet -- one
+    # more than AddressingScheme.host_ip's 3rd octet has room for.
+    links = [list(pair) for pair in itertools.combinations(range(24), 2)]
+    assert len(links) == 276
+    errors = validate_config({"hosts": 24, "links": links})
+    assert errors == [
+        "links must contain at most 255 entries (got 276); each link uses "
+        "one addressing subnet and the scheme has 255 available"
+    ]
+
+
+def test_validate_links_rejects_host_index_beyond_addressing_max():
+    # Exact regression for the review finding: a 255-host line
+    # ([0,1],[1,2],...,[253,254]) is shape/range/connectivity-valid relative
+    # to `hosts`, but host index 254 overflows host_ip's 4th octet
+    # (host_idx + 1 must stay <= 254).
+    links = [[i, i + 1] for i in range(254)]
+    errors = validate_config({"hosts": 255, "links": links})
+    assert errors == [
+        "links[253] contains host index 254 which exceeds the addressing "
+        "scheme's maximum host index (253)"
+    ]
+
+
+def test_validate_links_at_addressing_capacity_boundary_is_valid():
+    # The boundary itself must stay accepted: exactly 255 links (one more
+    # than a spanning line needs) and a maximum host index of exactly 253
+    # are both still in range.
+    links = [[i, i + 1] for i in range(253)]  # spanning line, hosts 0..253
+    links += [[0, 2], [0, 3]]  # 2 extra edges -- 255 total, still connected
+    assert len(links) == 255
+    assert validate_config({"hosts": 254, "links": links}) == []
 
 
 @pytest.mark.parametrize(

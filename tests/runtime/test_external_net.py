@@ -182,6 +182,41 @@ def test_connect_main_rejects_malformed_debug_section(monkeypatch, tmp_path, cap
     assert "config error: debug.artifacts must be a list\n" in capsys.readouterr().err
 
 
+def test_connect_main_rejects_explicit_links(monkeypatch, tmp_path, capsys):
+    """2026-10-22 review fix: ticket 03 scoped the explicit `links` topology
+    override to disaster. connect shares ConfigDrivenMeshScenario's
+    build_topology mechanically, but its bridge/k-centers cache-placement
+    path has no test coverage for an explicit-link topology, so a connect
+    config setting `links` must fail loudly here instead of being silently
+    accepted (src/cli/bootstrap.py's blocks=("connect",) check)."""
+    config_path = _write_config(
+        tmp_path,
+        "hosts: 3\nswitches: 6\nlinks:\n  - [0, 1]\n  - [1, 2]\n",
+    )
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "ceforeemu-connect",
+            "--config",
+            str(config_path),
+            "--output-dir",
+            str(tmp_path / "out"),
+            "--no-script-log",
+        ],
+    )
+
+    with pytest.raises(SystemExit) as exc_info:
+        external_net.main()
+
+    assert exc_info.value.code == 1
+    assert (
+        "config error: links is not supported by the connect scenario "
+        "(ceforeemu-connect); it is scoped to the disaster scenario only\n"
+        in capsys.readouterr().err
+    )
+
+
 def test_connect_main_cli_override_can_make_invalid_config_valid(monkeypatch, tmp_path):
     record = _run_connect_main(
         monkeypatch,

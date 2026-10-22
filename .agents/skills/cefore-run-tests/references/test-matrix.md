@@ -121,6 +121,31 @@
   - every `op_type == "get"` row has `has_completed_log == true` and
     `has_output_file == true`
 
+### `min_explicit_line`
+
+- File: `config/examples/min_explicit_line.yaml`
+- 明示トポロジ (`links: [[0,1],[1,2]]`) による 3 ホスト直線。`link_down`/
+  `link_up [1, 2]` は h0→h2 の唯一の経路そのものを切る (min_event_link の
+  h1-h2 とは違い get 経路に乗る)。before/during/after という3つの URI に
+  分け、各フェーズで切断前に一度も取得していない新規コンテンツを使うことで、
+  「事前キャッシュから返った」では説明できない成功/失敗だけを要求する。
+- Expected `results.json`: put + get rows (3 pairs) + link_down/link_up
+  event rows
+- Required checks:
+  - every event record (`link_down`/`link_up`) has `success == true`
+  - every `op_type == "put"` row has `success == true` (failed なら後続の
+    get が「経路ではなく put 自体の失敗」で ok/ng になり、以下の
+    get_outcomes が別の理由で成立してしまう)
+  - `ccnx:/test/explicitline/before` get row has `success == true`
+    (切断前: 経路が動くことの前提確認)
+  - `ccnx:/test/explicitline/during` get row has `success == false`
+    (切断中に初めて要求する URI なので、失敗がキャッシュでは説明できない)
+  - `ccnx:/test/explicitline/after` get row has `success == true`
+    (復旧後に初めて put/get する URI なので、成功が事前キャッシュでは説明
+    できず、復旧したリンクを実際に通ったことの証拠になる)
+  - NOT gated by a blanket `all_success` (the `during` row is expected to
+    fail by design)
+
 ### `min_monitoring`
 
 - File: `config/examples/min_monitoring.yaml`

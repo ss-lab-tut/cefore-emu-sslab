@@ -72,6 +72,21 @@ def bootstrap_scenario(
     cli_parser = _build_cli_precedence_parser(blocks)
     merge_cli_and_config(args, config_data, cli_parser)
     errors = validate_merged_args(args)
+    # 2026-10-22 review fix (ticket 03): the explicit `links` topology
+    # override is scoped to disaster only. ConnectScenario shares
+    # ConfigDrivenMeshScenario.build_topology (so passing links through
+    # would work mechanically), but its bridge/k-centers cache-placement
+    # path and the smoke/test matrix have no coverage for an explicit-link
+    # topology -- a connect config setting `links` must fail loudly here
+    # instead of having it silently accepted and then ignored or exercised
+    # untested. `blocks` is how the two entry points already tell this
+    # function apart (disaster: ("common", "mesh", "disaster"); connect:
+    # ("connect",)), so no new scenario-identity concept is needed.
+    if "connect" in blocks and config_data.get("links") is not None:
+        errors.append(
+            "links is not supported by the connect scenario "
+            "(ceforeemu-connect); it is scoped to the disaster scenario only"
+        )
     # special_config_merge entries bypass ordinary config_option_keys() so raw
     # validation owns them. That keeps unfinished blocks like
     # forwarding_config: null visible instead of disappearing during merge.

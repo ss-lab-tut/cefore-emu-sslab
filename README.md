@@ -261,8 +261,10 @@ routing:
 ```
 
 **Explicit topology (`links`):**
-Config-only (no CLI flag); available to `disaster` (and `connect`, which
-shares the same topology-build code). Fixes the exact mesh instead of the
+Config-only (no CLI flag); `disaster` only. `connect` shares the same
+topology-build code mechanically, but its config rejects a `links` key
+outright -- connect's bridge/k-centers cache-placement path has no test
+coverage for an explicit-link topology. Fixes the exact mesh instead of the
 seeded random MeshTopo build; omitting it keeps the random-mesh behavior
 byte-identical to before this option existed.
 ```yaml
@@ -274,13 +276,17 @@ Each pair is a 0-based host index. One switch is created per pair, so a
 `link_down`/`link_up` event (`nodes: [a, b]`) always addresses exactly that
 pair. `links` must describe a connected graph spanning every host
 `0..hosts-1` (indices in range, no self-links, no duplicate pairs, no
-disconnected host), or config validation rejects it with the specific
-problem. `switches`, `node_per_switch`, `host_degree_min`,
+disconnected host, at most 255 links, no host index above 253 -- the
+addressing scheme's one-`/24`-per-link, `host_idx + 1`-as-4th-octet layout
+has no more room than that), or config validation rejects it with the
+specific problem. `switches`, `node_per_switch`, `host_degree_min`,
 `host_degree_max`, and `switch_use_all` only control the random mesh build;
 a non-default value for any of them alongside `links` is rejected as a
-config error rather than silently ignored (leave them unset/default). See
-`config/examples/min_explicit_line.yaml` for a 3-host line with a
-`link_down`/`link_up` cycle.
+config error rather than silently ignored (leave them unset/default). A
+`bridges[i].switch` index is checked against `len(links)` instead of
+`switches` once `links` is set, since `links` is what actually determines
+the switch count. See `config/examples/min_explicit_line.yaml` for a
+3-host line with a `link_down`/`link_up` cycle.
 
 **Forwarding configuration (`forwarding_config`):**
 Config-only (no CLI flag); valid in `disaster` and `connect` blocks.

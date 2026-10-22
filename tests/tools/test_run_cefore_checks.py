@@ -39,6 +39,11 @@ def _event_row(event_type, outcome=None, success=False):
     return row
 
 
+def _get_row(uri, success):
+    """One results.json get-content record for the given uri."""
+    return {"op_type": "get", "uri": uri, "success": success}
+
+
 def test_event_outcomes_zero_matching_rows_fails():
     """2026-07-16 audit fix: an outcome expectation implies the event
     happened; zero matching rows must fail, not pass vacuously."""
@@ -68,5 +73,61 @@ def test_event_outcomes_matching_outcome_passes():
         "case",
         [_event_row("compute_call", outcome="skipped-no-result")],
         {"event_outcomes": {"compute_call": "skipped-no-result"}},
+        Path("."),
+    )
+
+
+# ── get_outcomes (ticket 03 review fix: per-uri success, not a blanket
+# all_success) ──
+
+
+def test_get_outcomes_zero_matching_rows_fails():
+    """A get_outcomes expectation implies that uri was actually fetched;
+    zero matching rows must fail, not pass vacuously."""
+    with pytest.raises(RuntimeError, match="at least 1 get result"):
+        checker.validate_results(
+            "case",
+            [_get_row("ccnx:/other", True)],
+            {"get_outcomes": {"ccnx:/test/during": False}},
+            Path("."),
+        )
+
+
+def test_get_outcomes_unexpected_success_fails():
+    """A get that was expected to fail (e.g. during a link outage) but
+    actually succeeded must fail the expectation -- this is the case a
+    blanket all_success could never express."""
+    with pytest.raises(RuntimeError, match="expected exactly False"):
+        checker.validate_results(
+            "case",
+            [_get_row("ccnx:/test/during", True)],
+            {"get_outcomes": {"ccnx:/test/during": False}},
+            Path("."),
+        )
+
+
+def test_get_outcomes_unexpected_failure_fails():
+    """A get that was expected to succeed (e.g. after restoration) but
+    actually failed must fail the expectation."""
+    with pytest.raises(RuntimeError, match="expected exactly True"):
+        checker.validate_results(
+            "case",
+            [_get_row("ccnx:/test/after", False)],
+            {"get_outcomes": {"ccnx:/test/after": True}},
+            Path("."),
+        )
+
+
+def test_get_outcomes_matching_success_passes():
+    """The expectation passes when every matching row's success matches."""
+    checker.validate_results(
+        "case",
+        [_get_row("ccnx:/test/before", True), _get_row("ccnx:/test/during", False)],
+        {
+            "get_outcomes": {
+                "ccnx:/test/before": True,
+                "ccnx:/test/during": False,
+            }
+        },
         Path("."),
     )
