@@ -172,6 +172,101 @@ def test_get_outcomes_matching_success_passes():
     )
 
 
+# ── fib_dump (FIB section scraped from a real cefstatus dump) ──
+#
+# Synthetic dumps below follow the real four-section cefstatus layout
+# (FIB(App) : / FIB : <count> / PIT(App) : / PIT :), confirmed against a
+# live capture under debug/fib/fib_h1.txt from a min_prefix_routes smoke
+# run: a "FIB : <count>" header, then per entry a two-space-indented
+# "  <uri>" line followed by a four-space-indented "    Faces : ..." line,
+# up to the next top-level header.
+
+
+def _fib_dump_text(entries, trailing_app_pit_line="  Entry is empty"):
+    """Build a synthetic cefstatus FIB dump matching the real layout.
+
+    ``entries`` is an iterable of (prefix, faces_text) pairs rendered under
+    the ``FIB : <count>`` header. ``trailing_app_pit_line`` is the line
+    placed right after the ``PIT(App) :`` header -- the real dump always
+    has ``  Entry is empty`` there, but a test can swap in a line that
+    mimics a FIB entry's two-space indent to prove it is never read as one.
+    """
+    lines = ["FIB(App) :", "  Entry is empty", f"FIB : {len(entries)}"]
+    for prefix, faces in entries:
+        lines.append(f"  {prefix}")
+        lines.append(f"    Faces : {faces}")
+    lines += ["PIT(App) :", trailing_app_pit_line, "PIT :", "  Entry is empty"]
+    return "\n".join(lines) + "\n"
+
+
+def _write_fib_dump(run_dir: Path, host_label: str, text: str) -> None:
+    """Write one host's FIB dump where run_single_smoke's cefstatus capture
+    would (debug/fib/fib_<host>.txt), found by validate_results via rglob."""
+    fib_dir = run_dir / "debug" / "fib"
+    fib_dir.mkdir(parents=True, exist_ok=True)
+    (fib_dir / f"fib_{host_label}.txt").write_text(text)
+
+
+def test_fib_dump_require_missing_prefix_fails(tmp_path):
+    """A `require` prefix absent from the host's FIB section must fail by
+    name -- fib_dump exists to pin which route got installed, not just that
+    some FIB section is present.
+    """
+    text = _fib_dump_text([("ccnx:/test/putget", "34 (-s-) RtCost=0 ")])
+    _write_fib_dump(tmp_path, "h0", text)
+
+    with pytest.raises(RuntimeError) as exc_info:
+        checker.validate_results(
+            "case",
+            [],
+            {"fib_dump": {"require": {"h0": ["ccnx:/test/to-h2"]}}},
+            tmp_path,
+        )
+    assert str(exc_info.value) == (
+        "case: fib_h0.txt FIB section is missing prefix 'ccnx:/test/to-h2'"
+    )
+
+
+def test_fib_dump_forbid_present_prefix_fails(tmp_path):
+    """2026-10-22 fix: an inverted `forbid` check (treating "present" as
+    passing) survived the suite with zero unit coverage of this branch --
+    only a live smoke run against real host data would have caught it. A
+    `forbid` prefix found in the host's FIB section must fail -- e.g. a
+    prefix_routes target must never carry a route back to itself.
+    """
+    text = _fib_dump_text([("ccnx:/test/to-h2", "34 (-s-) RtCost=0 ")])
+    _write_fib_dump(tmp_path, "h2", text)
+
+    with pytest.raises(RuntimeError) as exc_info:
+        checker.validate_results(
+            "case",
+            [],
+            {"fib_dump": {"forbid": {"h2": ["ccnx:/test/to-h2"]}}},
+            tmp_path,
+        )
+    assert str(exc_info.value) == (
+        "case: fib_h2.txt FIB section unexpectedly has prefix "
+        "'ccnx:/test/to-h2' (a route announcement must not route to itself)"
+    )
+
+
+def test_fib_dump_pit_app_indented_line_not_read_as_prefix():
+    """2026-10-22 fix: removing the `break` on the PIT(App) : header
+    survived the suite -- nothing exercised a line past that header, so a
+    parser that kept scanning would still pass. A line under PIT(App) :
+    can share a FIB entry's two-space indent (FIB(App) : uses the same
+    indent too, per _fib_section_prefixes' docstring); this pins that the
+    parser stops at the PIT(App) : header and never reads past it, rather
+    than merely happening to produce the right set for dumps that only
+    ever say "Entry is empty" there.
+    """
+    text = _fib_dump_text(
+        [("ccnx:/test/to-h2", "34 (-s-) RtCost=0 ")],
+        trailing_app_pit_line="  ccnx:/test/trap",
+    )
+    assert checker._fib_section_prefixes(text) == {"ccnx:/test/to-h2"}
+
+
 # ── validate_host_app_markers ──
 #
 # Exact-match assertions per project convention (docs/runbooks/mutation-
