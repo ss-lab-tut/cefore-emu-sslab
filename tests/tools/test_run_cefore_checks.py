@@ -351,3 +351,150 @@ def test_host_app_markers_matching_t0_passes(tmp_path):
     _write_marker(tmp_path, 2, "h2 1700000000000")
 
     checker.validate_host_app_markers("min_host_apps", tmp_path, (0, 1, 2))
+
+
+# ── validate_host_app_restart_markers ──
+#
+# Exact-match assertions per project convention (docs/runbooks/mutation-
+# testing.md): substring/regex asserts let mutants through, so these compare
+# the full raised message, not a `match=` pattern.
+
+
+def _write_restart_marker(run_dir: Path, idx: int, *lines: str) -> None:
+    """Write one host's multi-life host_app_marker file, one line per life,
+    as a min_host_app_restart.yaml-style command ("echo ... >>") would."""
+    marker_dir = run_dir / "debug" / "node_dirs" / f"h{idx}"
+    marker_dir.mkdir(parents=True, exist_ok=True)
+    (marker_dir / "host_app_marker").write_text("\n".join(lines) + "\n")
+
+
+def test_restart_markers_missing_file_fails(tmp_path):
+    """A host that never wrote its marker must fail by name, not vacuously."""
+    _write_restart_marker(tmp_path, 0, "h0 1700000000000 100")
+    # h1's marker is never written.
+
+    with pytest.raises(RuntimeError) as exc_info:
+        checker.validate_host_app_restart_markers(
+            "min_host_app_restart", tmp_path, {0: 1, 1: 2}
+        )
+
+    assert str(exc_info.value) == (
+        "min_host_app_restart: host_app_marker missing for h1"
+    )
+
+
+def test_restart_markers_wrong_line_count_fails(tmp_path):
+    """The restarted host's marker must have exactly 2 lines, not 1."""
+    _write_restart_marker(tmp_path, 1, "h1 1700000000000 100")
+
+    with pytest.raises(RuntimeError) as exc_info:
+        checker.validate_host_app_restart_markers(
+            "min_host_app_restart", tmp_path, {1: 2}
+        )
+
+    assert str(exc_info.value) == (
+        "min_host_app_restart: h1 host_app_marker has 1 line(s), expected 2"
+    )
+
+
+def test_restart_markers_wrong_token_count_fails(tmp_path):
+    """Each line must be exactly 3 whitespace-separated tokens."""
+    _write_restart_marker(tmp_path, 0, "h0 1700000000000")
+
+    with pytest.raises(RuntimeError) as exc_info:
+        checker.validate_host_app_restart_markers(
+            "min_host_app_restart", tmp_path, {0: 1}
+        )
+
+    assert str(exc_info.value) == (
+        "min_host_app_restart: h0 host_app_marker line "
+        "'h0 1700000000000' is not 'hN <ms> <pid>'"
+    )
+
+
+def test_restart_markers_wrong_node_name_fails(tmp_path):
+    """h1's marker holds h0's name -- the mix-up this check exists to catch."""
+    _write_restart_marker(tmp_path, 1, "h0 1700000000000 100")
+
+    with pytest.raises(RuntimeError) as exc_info:
+        checker.validate_host_app_restart_markers(
+            "min_host_app_restart", tmp_path, {1: 1}
+        )
+
+    assert str(exc_info.value) == (
+        "min_host_app_restart: h1 host_app_marker node is 'h0', expected 'h1'"
+    )
+
+
+def test_restart_markers_non_numeric_t0_fails(tmp_path):
+    """The first token after the node name must be the numeric t0_ms."""
+    _write_restart_marker(tmp_path, 0, "h0 not-a-number 100")
+
+    with pytest.raises(RuntimeError) as exc_info:
+        checker.validate_host_app_restart_markers(
+            "min_host_app_restart", tmp_path, {0: 1}
+        )
+
+    assert str(exc_info.value) == (
+        "min_host_app_restart: h0 host_app_marker t0 'not-a-number' is not numeric"
+    )
+
+
+def test_restart_markers_non_numeric_pid_fails(tmp_path):
+    """The third token on each line must be the numeric pid."""
+    _write_restart_marker(tmp_path, 0, "h0 1700000000000 not-a-pid")
+
+    with pytest.raises(RuntimeError) as exc_info:
+        checker.validate_host_app_restart_markers(
+            "min_host_app_restart", tmp_path, {0: 1}
+        )
+
+    assert str(exc_info.value) == (
+        "min_host_app_restart: h0 host_app_marker pid 'not-a-pid' is not numeric"
+    )
+
+
+def test_restart_markers_duplicate_pid_across_lives_fails(tmp_path):
+    """Two lives sharing one pid means no second process was ever started."""
+    _write_restart_marker(
+        tmp_path, 1, "h1 1700000000000 100", "h1 1700000000000 100"
+    )
+
+    with pytest.raises(RuntimeError) as exc_info:
+        checker.validate_host_app_restart_markers(
+            "min_host_app_restart", tmp_path, {1: 2}
+        )
+
+    assert str(exc_info.value) == (
+        "min_host_app_restart: h1 host_app_marker pids are not all distinct: "
+        "['100']"
+    )
+
+
+def test_restart_markers_mismatched_t0_fails(tmp_path):
+    """Differing t0_ms across hosts means they did not share one origin."""
+    _write_restart_marker(tmp_path, 0, "h0 1700000000000 100")
+    _write_restart_marker(tmp_path, 1, "h1 1700000000111 200")
+
+    with pytest.raises(RuntimeError) as exc_info:
+        checker.validate_host_app_restart_markers(
+            "min_host_app_restart", tmp_path, {0: 1, 1: 1}
+        )
+
+    assert str(exc_info.value) == (
+        "min_host_app_restart: host_app_marker t0 values differ: "
+        "['1700000000000', '1700000000111']"
+    )
+
+
+def test_restart_markers_matching_case_passes(tmp_path):
+    """h1 restarted once (2 lives, distinct pids); h0/h2 never restarted."""
+    _write_restart_marker(tmp_path, 0, "h0 1700000000000 100")
+    _write_restart_marker(
+        tmp_path, 1, "h1 1700000000000 200", "h1 1700000000000 201"
+    )
+    _write_restart_marker(tmp_path, 2, "h2 1700000000000 300")
+
+    checker.validate_host_app_restart_markers(
+        "min_host_app_restart", tmp_path, {0: 1, 1: 2, 2: 1}
+    )
