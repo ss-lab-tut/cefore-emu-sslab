@@ -40,7 +40,7 @@ agmsg の基礎操作（send/inbox/join の構文）は `/agmsg` スキルに委
 | エージェント名 | タイプ | 責務 |
 |---|---|---|
 | **claude-main** | claude-code (リード) | 統括・ユーザー窓口・最終判断 |
-| **codex-main** | codex (アドバイザー) | 探索 / 実装 / レビューを `task=` で切り替える**単一コンテキスト**（gpt-5.6-sol / reasoning high 想定だが、これは運用者設定であって spawn は強制しない） |
+| **codex-main** | codex (アドバイザー) | 探索 / 実装 / レビューを `task=` で切り替える**単一コンテキスト**（gpt-6.1-sol / reasoning high（軽い確認なら medium）想定だが、これは運用者設定であって spawn は強制しない） |
 | **opencode** | opencode | **独立**第二レビュー（2026-07-26 から外部レビュアーとして運用） |
 | **hermes** | hermes | 探索寄り（ハーネス側の長期記憶が強み）。**手動運用** — 自動配送なし |
 | **gemini-main** | antigravity | 軽実装・GUI の整備。**現状未配線**（送っても届かない） |
