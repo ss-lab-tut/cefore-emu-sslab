@@ -182,7 +182,7 @@ events:
 
 Supported event types: `link_down`, `link_up`, `fib_add`, `fib_del`,
 `fib_enable`, `bw_set`, `compute_call`, `put`, `get`, `pubsub_sub`,
-`pubsub_pub`, `ccninfo`.
+`pubsub_pub`, `ccninfo`, `host_app_restart`.
 
 For a disaster `put` event, omitted `expiry` and `cache_time` are both sent
 as `3000` to preserve the pre-events disaster behavior. Pub/sub publication
@@ -354,6 +354,32 @@ Placeholders, expanded in `argv`/`env`/`cwd`/`log`:
 | `{t0_ms}` | Epoch ms taken at the same instant the scheduler treats as `at: 0`, so a host app's own relative-time math lines up with scheduled events |
 
 See `config/examples/min_host_apps.yaml` for a runnable example.
+
+**Restarting a host app (`host_app_restart` event):**
+```yaml
+events:
+  - {at: 30, type: host_app_restart, host: 2, downtime_s: 5}
+```
+A scheduled event (next to `link_down`/`link_up`, not a `host_apps:` field)
+that stops and then restarts every `host_apps:` process configured for one
+host -- the generic primitive for scripting "an application on host N
+crashes/restarts at time t" from YAML. `host` is required; `downtime_s`
+(the gap between stop and restart) is optional, finite, and defaults to 0.
+Config validation rejects a `host` with no `host_apps:` entry covering it.
+This is unrelated to the periodic host-down/host-up flap under
+`failure_scenarios` (or legacy `down_interval`/`down_duration`): that
+mechanism only toggles link state and never touches `host_apps:`
+processes, which is exactly the gap `host_app_restart` fills.
+The restarted process gets the exact `argv`/`cwd`/env and `{t0_ms}` its
+first life was launched with (never re-expanded, never re-captured); only
+its log path differs, with a `.lifeN` suffix (`N` >= 2) so a restarted
+life's log cannot truncate the previous life's output. The scheduler
+thread blocks for the full `downtime_s`, so any other event scheduled to
+fire during that window runs late by that amount -- the same cost any
+slow handler imposes on ReCefore's single-threaded `EventScheduler`.
+The `results.json` record is a plain success/failure event row, the same
+shape as `link_down`/`link_up` (no tri-state `outcome`). See
+`config/examples/min_host_app_restart.yaml` for a runnable example.
 
 See `config/examples/example.yaml` for the complete reference with all parameters.
 
