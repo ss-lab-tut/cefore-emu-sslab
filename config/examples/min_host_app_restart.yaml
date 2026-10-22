@@ -1,11 +1,14 @@
 # 最小検証用: host_app_restart (host_apps プロセスの停止→再起動) の確認
 # Usage: sudo .venv/bin/python3 -m src disaster --config config/examples/min_host_app_restart.yaml
 #
-# h1 の host_apps プロセスだけを t=2s で止め、downtime_s=2s 後に同じ
+# h1 の host_apps プロセスだけを t=4s で止め、downtime_s=2s 後に同じ
 # argv/cwd (同じ t0_ms, 再キャプチャしない) で再起動する
 # (HostAppFleet.restart_host)。各ライフは exec で sleep に置き換わる前に
 # 1回だけ "{node} {t0_ms} $$" を {node_dir}/host_app_marker に追記する
 # (">>"): h1 だけ2回再起動され、h0/h2 は一度も再起動されない。
+# at: 4 は余裕を持たせた値 (2026-10-22: host_app_fleet.start_all() の
+# Mininet popen 3本 + echo がまだ実行される前に restart_host の SIGTERM が
+# 届くと、h1 のマーカーが1行目を失って checker の "expected 2" で落ちる)。
 #
 # host_app_restart は non-put イベントなので autotest (no_cli + results_json)
 # の eval フェーズで実行される (disaster.py _run_autotest_experiment: type
@@ -30,7 +33,7 @@ k: 1
 num: 9919
 output_dir: "logs/verify"
 no_cli: true
-duration: 10
+duration: 12
 results_json: "results.json"
 
 debug:
@@ -45,7 +48,7 @@ host_apps:
     argv: ["sh", "-c", "echo {node} {t0_ms} $$ >> {node_dir}/host_app_marker; exec sleep 1000"]
 
 events:
-  - at: 2
+  - at: 4
     type: host_app_restart
     host: 1
     downtime_s: 2

@@ -412,6 +412,23 @@ class TestRestartHost:
 
         assert elapsed >= 0.15
 
+    def test_warns_before_restart_when_the_old_process_already_exited(self):
+        """_stop_launches' "already exited" warning uses restart_host's own
+        context word ("before restart"), not stop_all's ("before
+        shutdown") -- a mutant that drops the `context` kwarg would still
+        pass every other test here since none of them inspect the log."""
+        fake = FakeCommandRunner()
+        fake.script_wait(returncode=1)
+        fleet = _fleet(fake, specs=[{"hosts": [0], "argv": ["noop"]}])
+        fleet.start_all()
+
+        with patch.object(host_apps_mod, "info") as mock_info:
+            fleet.restart_host(0, downtime_s=0)
+
+        mock_info.assert_called_once_with(
+            "[host-apps] warning: h0 exited rc=1 before restart\n"
+        )
+
     def test_stop_failure_raises_and_no_new_process_is_started(self):
         """A failed stop must not be swallowed into a "restarted anyway"
         false success, and must not risk a second process on top of a
