@@ -10,6 +10,7 @@ might implement -- see CONTEXT.md (Daemon lifecycle: HostAppFleet).
 """
 
 import os
+import threading
 import time
 
 from mininet.log import info
@@ -75,6 +76,24 @@ def _placeholder_context(idx, node_dir, cefore_conf_dir, t0_ms):
     }
 
 
+def _life_log(log, life):
+    """Pick the log path for one host_apps process's Nth life.
+
+    2026-10-22: CommandRunner.start() opens log_path with "wb" (truncate,
+    see command_runner.py), so restarting a host_apps process onto the same
+    log path would erase whatever the previous life already wrote there.
+    life 1 (start_all's only life) returns ``log`` unchanged -- that is what
+    keeps start_all's own behavior byte-identical to before restart_host
+    existed. life >= 2 (a restart) gets a ".lifeN" suffix instead, so each
+    life's CommandRunner.start() truncates a path nothing else has written
+    to, rather than needing CommandRunner itself to grow an append mode.
+    argv/env/cwd are never touched by this -- only the log path.
+    """
+    if log is None or life <= 1:
+        return log
+    return f"{log}.life{life}"
+
+
 class HostAppFleet:
     """Start and stop the ``host_apps:`` processes of one experiment.
 
@@ -112,35 +131,61 @@ class HostAppFleet:
         self._cefore_conf_dirs = cefore_conf_dirs
         self._t0_ms = t0_ms
         self._runner = runner or MininetCommandRunner(net)
-        self._handles = []
+        # Each entry is {"idx", "argv", "cwd", "log", "life", "handle"}: the
+        # exact CommandRunner.start() call that produced "handle", recorded
+        # so restart_host() can replay argv/cwd verbatim instead of
+        # re-expanding the spec a second time (see restart_host).
+        self._launches = []
+        # Guards _launches against stop_all() (shutdown) and restart_host()
+        # (scheduler thread) running concurrently -- see restart_host for
+        # the race this closes: a restart whose downtime_s sleep overlaps
+        # shutdown must not start a process after stop_all() has already
+        # swept the fleet.
+        self._lock = threading.Lock()
+        self._stopping = threading.Event()
+
+    def _expand_launch(self, spec, idx):
+        """Expand one host_apps spec's argv/env/cwd/log for host idx.
+
+        Pure expansion, no CommandRunner call -- start_all() and
+        restart_host()'s first life both go through this so the two can
+        never compute argv/env/cwd differently.
+        """
+        ctx = _placeholder_context(
+            idx, self._node_dirs[idx], self._cefore_conf_dirs[idx], self._t0_ms
+        )
+        argv = [_expand(arg, ctx) for arg in spec["argv"]]
+        env = spec.get("env") or {}
+        if env:
+            env = {key: _expand(value, ctx) for key, value in env.items()}
+            argv = _env_argv_prefix(env) + argv
+        cwd = spec.get("cwd")
+        if cwd is not None:
+            cwd = _expand(cwd, ctx)
+        log = spec.get("log")
+        if log is not None:
+            log = _expand(log, ctx)
+        return argv, cwd, log
 
     def start_all(self):
         """Launch every configured host app on its resolved hosts, in order."""
         for spec in self._specs:
             for idx in _resolve_hosts(spec["hosts"], self._host_count):
-                node = f"h{idx}"
-                ctx = _placeholder_context(
-                    idx,
-                    self._node_dirs[idx],
-                    self._cefore_conf_dirs[idx],
-                    self._t0_ms,
+                argv, cwd, log = self._expand_launch(spec, idx)
+                handle = self._runner.start(f"h{idx}", argv, log_path=log, cwd=cwd)
+                self._launches.append(
+                    {"idx": idx, "argv": argv, "cwd": cwd, "log": log, "life": 1, "handle": handle}
                 )
-                argv = [_expand(arg, ctx) for arg in spec["argv"]]
-                env = spec.get("env") or {}
-                if env:
-                    env = {key: _expand(value, ctx) for key, value in env.items()}
-                    argv = _env_argv_prefix(env) + argv
-                cwd = spec.get("cwd")
-                if cwd is not None:
-                    cwd = _expand(cwd, ctx)
-                log = spec.get("log")
-                if log is not None:
-                    log = _expand(log, ctx)
-                handle = self._runner.start(node, argv, log_path=log, cwd=cwd)
-                self._handles.append(handle)
 
-    def stop_all(self):
-        """Stop every started host app independently; aggregate failures.
+    def _stop_launches(self, launches, context="shutdown"):
+        """Stop each of ``launches`` independently; aggregate failures.
+
+        Shared by stop_all() (every launch, at scenario shutdown) and
+        restart_host() (one host's launches, before its restart) so the
+        per-handle reclaim logic -- and its "already exited" warning --
+        exists exactly once. ``context`` only changes that warning's final
+        word ("shutdown" / "restart"); stop_all()'s own tests pin the
+        "shutdown" wording byte-for-byte, so it stays the default.
 
         ``wait(deadline=time.monotonic())`` is the codebase's established
         "reclaim a started handle now" idiom -- ContentOperationRunner.stop()
@@ -162,17 +207,93 @@ class HostAppFleet:
         process never actually ran.
         """
         failures = []
-        for handle in self._handles:
+        for launch in launches:
+            handle = launch["handle"]
             try:
                 result = self._runner.wait(handle, deadline=time.monotonic())
                 if not result.timed_out and not result.cancelled:
                     info(
                         f"[host-apps] warning: {handle.node} exited "
-                        f"rc={result.returncode} before shutdown\n"
+                        f"rc={result.returncode} before {context}\n"
                     )
             except BaseException as exc:
                 failures.append((f"stop_host_app {handle.node}", exc))
         return failures
+
+    def stop_all(self):
+        """Stop every started host app independently; aggregate failures.
+
+        Sets ``_stopping`` first: a restart_host() call whose downtime_s
+        wait is interrupted by this (see restart_host) must see it set and
+        skip starting a new process, or shutdown could race a restart and
+        leave an orphan nothing ever stops.
+        """
+        with self._lock:
+            self._stopping.set()
+            launches = list(self._launches)
+        return self._stop_launches(launches)
+
+    def restart_host(self, idx, downtime_s=0):
+        """Stop, wait ``downtime_s``, then restart host ``idx``'s host_apps.
+
+        The scheduler's host_app_restart event handler calls this. Every
+        launch currently tracked for ``idx`` is stopped through the same
+        _stop_launches() path stop_all() uses (SIGTERM, 2s grace, SIGKILL);
+        a stop failure is raised rather than swallowed, since starting a
+        new process on top of a host we could not confirm stopped would
+        risk two processes racing the same log path.
+
+        The restarted life replays the ORIGINAL _expand_launch() result
+        (argv/cwd verbatim, from the launch record -- never re-expanded),
+        with the same t0_ms the fleet was built with (never re-captured),
+        so it is "the same process" by every placeholder-visible fact
+        except the log path, which _life_log() suffixes (see its
+        docstring) so the new life cannot truncate the old life's output.
+
+        Shutdown race: the wait below is an Event.wait, not time.sleep, so
+        a concurrent stop_all() (which sets _stopping) wakes it immediately
+        instead of leaving it to sleep out the full downtime_s past the
+        point where shutdown already swept the fleet. The _stopping check
+        is repeated under the lock right before starting the new process,
+        closing the remaining window between the wait returning (by
+        timeout) and this method resuming. Either way shutdown wins: no
+        process is started after stop_all() has run, so stop_all() never
+        misses one -- which is exactly the orphan-process failure mode a
+        plain, uninterruptible time.sleep() here would risk.
+        Returns False (no restart performed) when shutdown won the race,
+        True otherwise; callers that want a scheduler-recordable outcome
+        should treat False as a failed event, same as returning False from
+        any other scheduler handler.
+        """
+        with self._lock:
+            mine = [launch for launch in self._launches if launch["idx"] == idx]
+            self._launches = [launch for launch in self._launches if launch["idx"] != idx]
+
+        failures = self._stop_launches(mine, context="restart")
+        if failures:
+            raise failures[0][1]
+
+        if self._stopping.wait(downtime_s):
+            return False
+
+        with self._lock:
+            if self._stopping.is_set():
+                return False
+            node = f"h{idx}"
+            restarted = []
+            for launch in mine:
+                life = launch["life"] + 1
+                # launch["log"] is always the ORIGINAL (life 1) expanded log
+                # -- never the suffixed one a previous restart used -- so
+                # life 3's suffix is computed from the same base as life
+                # 2's, not stacked on top of it ("h0.log.life3", never
+                # "h0.log.life2.life3"). Only "life"/"handle" change below;
+                # "log" is deliberately carried forward unmodified.
+                log = _life_log(launch["log"], life)
+                handle = self._runner.start(node, launch["argv"], log_path=log, cwd=launch["cwd"])
+                restarted.append({**launch, "life": life, "handle": handle})
+            self._launches.extend(restarted)
+        return True
 
 
 def build_host_app_fleet(net, host_count, host_apps_config, t0_ms, *, runner=None):

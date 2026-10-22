@@ -1,6 +1,8 @@
 """Behavior tests for the HostAppFleet lifecycle seam (host_apps: config)."""
 
 import os
+import threading
+import time
 
 from unittest.mock import patch
 
@@ -304,3 +306,196 @@ class TestBuildHostAppFleet:
 
         assert fleet._specs == specs
         assert fleet._t0_ms == 999
+
+
+# ── restart_host ──
+# The host_app_restart scheduler event's seam: stop, wait downtime_s, then
+# start the exact same argv/cwd again (only the log path changes -- see
+# _life_log).
+
+
+class TestRestartHost:
+    """restart_host(): stop the named host's launches, wait downtime_s,
+    then start a new life with the same argv/cwd (only the log changes)."""
+
+    def test_stops_old_handle_and_starts_a_new_one_with_the_same_argv_and_cwd(self):
+        """The restarted life's argv/cwd must be byte-identical to the
+        first life's -- only the handle (new process) and log differ."""
+        fake = FakeCommandRunner()
+        fleet = _fleet(
+            fake,
+            specs=[
+                {"hosts": [1], "argv": ["./agent", "{t0_ms}"], "cwd": "{node_dir}"}
+            ],
+        )
+        fleet.start_all()
+        first = fake.starts[0]
+
+        assert fleet.restart_host(1, downtime_s=0) is True
+
+        assert [h.node for h in fake.waits] == ["h1"]
+        assert fake.waits[0] is first
+        assert len(fake.starts) == 2
+        second = fake.starts[1]
+        assert second.node == "h1"
+        assert second.argv == first.argv
+        assert second.cwd == first.cwd
+
+    def test_restart_without_a_log_leaves_log_path_none(self):
+        """No log: configured means _life_log has nothing to suffix."""
+        fake = FakeCommandRunner()
+        fleet = _fleet(fake, specs=[{"hosts": [0], "argv": ["./agent"]}])
+        fleet.start_all()
+
+        fleet.restart_host(0, downtime_s=0)
+
+        assert fake.starts[1].log_path is None
+
+    def test_restart_suffixes_the_log_path_with_life_2(self):
+        """A restarted life's log must not reuse the first life's exact
+        path, or CommandRunner.start()'s "wb" open would truncate it."""
+        fake = FakeCommandRunner()
+        fleet = _fleet(
+            fake,
+            specs=[
+                {"hosts": [0], "argv": ["./agent"], "log": "{node_dir}/{node}.log"}
+            ],
+        )
+        fleet.start_all()
+        assert fake.starts[0].log_path == "/x/h0/h0.log"
+
+        fleet.restart_host(0, downtime_s=0)
+
+        assert fake.starts[1].log_path == "/x/h0/h0.log.life2"
+
+    def test_second_restart_suffixes_with_life_3(self):
+        """life 3's suffix must be computed from the ORIGINAL log, not
+        stacked onto life 2's already-suffixed one (".life3", never
+        ".life2.life3")."""
+        fake = FakeCommandRunner()
+        fleet = _fleet(
+            fake,
+            specs=[
+                {"hosts": [0], "argv": ["./agent"], "log": "{node_dir}/{node}.log"}
+            ],
+        )
+        fleet.start_all()
+        fleet.restart_host(0, downtime_s=0)
+
+        fleet.restart_host(0, downtime_s=0)
+
+        assert fake.starts[2].log_path == "/x/h0/h0.log.life3"
+
+    def test_restart_only_touches_the_named_host(self):
+        """restart_host(1) must not disturb h0's tracked launch at all."""
+        fake = FakeCommandRunner()
+        fleet = _fleet(fake, specs=[{"hosts": [0, 1], "argv": ["noop"]}])
+        fleet.start_all()
+
+        fleet.restart_host(1, downtime_s=0)
+
+        # h0's original launch is untouched: stop_all() must still reach it.
+        assert [h.node for h in fake.waits] == ["h1"]
+        assert fleet.stop_all() == []
+        assert [h.node for h in fake.waits] == ["h1", "h0", "h1"]
+
+    def test_downtime_s_is_actually_waited(self):
+        """restart_host() must not start the new life immediately; it
+        waits downtime_s between stop and start."""
+        fake = FakeCommandRunner()
+        fleet = _fleet(fake, specs=[{"hosts": [0], "argv": ["noop"]}])
+        fleet.start_all()
+
+        start = time.monotonic()
+        fleet.restart_host(0, downtime_s=0.2)
+        elapsed = time.monotonic() - start
+
+        assert elapsed >= 0.15
+
+    def test_stop_failure_raises_and_no_new_process_is_started(self):
+        """A failed stop must not be swallowed into a "restarted anyway"
+        false success, and must not risk a second process on top of a
+        host we could not confirm stopped."""
+        fake = FakeCommandRunner()
+        boom = RuntimeError("host vanished")
+
+        def on_wait(handle):
+            raise boom
+
+        fake.on_wait = on_wait
+        fleet = _fleet(fake, specs=[{"hosts": [0], "argv": ["noop"]}])
+        fleet.start_all()
+
+        try:
+            fleet.restart_host(0, downtime_s=0)
+            raised = None
+        except RuntimeError as exc:
+            raised = exc
+
+        assert raised is boom
+        assert len(fake.starts) == 1
+
+
+# ── shutdown race: a restart racing scenario shutdown must not leave an
+# orphan process ──
+
+
+class TestRestartShutdownRace:
+    """A restart racing scenario shutdown must not leave an orphan process:
+    whichever of stop_all()/restart_host() runs first, shutdown wins and no
+    process is ever started after stop_all() has already swept the fleet."""
+
+    def test_stop_all_first_means_a_later_restart_is_a_noop(self):
+        """stop_all() already swept the fleet; a restart_host() call that
+        starts after it must not start an orphan nothing will ever stop."""
+        fake = FakeCommandRunner()
+        fleet = _fleet(fake, specs=[{"hosts": [0], "argv": ["noop"]}])
+        fleet.start_all()
+
+        assert fleet.stop_all() == []
+        assert fleet.restart_host(0, downtime_s=0) is False
+        assert len(fake.starts) == 1
+
+    def test_stop_all_during_the_downtime_wait_interrupts_it_and_skips_the_restart(
+        self,
+    ):
+        """A restart whose downtime_s wait is still in progress must notice
+        a concurrent stop_all(), not sleep out the full duration and start
+        a process after shutdown already swept the fleet."""
+        fake = FakeCommandRunner()
+        fleet = _fleet(fake, specs=[{"hosts": [0], "argv": ["noop"]}])
+        fleet.start_all()
+
+        results = []
+        thread = threading.Thread(
+            target=lambda: results.append(fleet.restart_host(0, downtime_s=5))
+        )
+        start = time.monotonic()
+        thread.start()
+        time.sleep(0.1)  # let the thread enter the downtime_s wait
+
+        fleet.stop_all()
+        thread.join(timeout=2)
+        elapsed = time.monotonic() - start
+
+        assert not thread.is_alive()
+        assert elapsed < 2  # interrupted, not the full 5s downtime_s
+        assert results == [False]
+        assert len(fake.starts) == 1  # no second life was ever started
+
+    def test_stop_all_after_a_completed_restart_stops_the_restarted_process(self):
+        """The ordinary case: restart_host() finishes well before shutdown.
+        stop_all() must still reclaim the new (restarted) handle -- the
+        orphan-process failure mode this seam exists to prevent -- not
+        just the handles that existed before the restart."""
+        fake = FakeCommandRunner()
+        fleet = _fleet(fake, specs=[{"hosts": [0], "argv": ["noop"]}])
+        fleet.start_all()
+
+        assert fleet.restart_host(0, downtime_s=0) is True
+        restarted_handle = fake.starts[1]
+
+        failures = fleet.stop_all()
+
+        assert failures == []
+        assert restarted_handle in fake.waits
