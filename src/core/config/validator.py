@@ -2,6 +2,7 @@
 
 import ipaddress
 import math
+import re
 from dataclasses import dataclass
 from typing import Any, Callable
 
@@ -936,6 +937,15 @@ def _validate_bridges(errors, config):
 # See CONTEXT.md Daemon lifecycle: HostAppFleet.
 _HOST_APP_KEYS = frozenset({"hosts", "argv", "cwd", "env", "log"})
 
+# 2026-10-22 fix: an env key is prepended to argv as "env KEY=VALUE ..."
+# (see host_apps.py _env_argv_prefix). GNU env parses a leading '-' in that
+# first token as one of its own options (e.g. "env -X=1 ..." tries to parse
+# "-X=1" as a flag instead of an assignment), not as an error, so a bad key
+# does not fail loudly -- it silently drops the assignment and runs the
+# command without it. Restricting keys to POSIX shell names rules this out
+# structurally: a POSIX name can never start with '-' or a digit.
+_POSIX_ENV_KEY = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
+
 
 def _validate_host_apps(errors, config):
     """Validate host_apps: entries (see CONTEXT.md: HostAppFleet)."""
@@ -960,7 +970,8 @@ def _validate_host_apps(errors, config):
             )
 
         # Tracks whether this entry's log file (if any) is shared by more
-        # than one host, so the {node} requirement below can be judged.
+        # than one host, so the per-host-placeholder requirement below can
+        # be judged.
         multi_host = False
         if "hosts" not in entry:
             errors.append(f"{prefix} missing required field 'hosts'")
@@ -997,13 +1008,21 @@ def _validate_host_apps(errors, config):
             log = entry["log"]
             if not isinstance(log, str):
                 errors.append(f"{prefix}.log must be a string")
-            elif multi_host and "{node}" not in log:
+            elif multi_host and not any(
+                placeholder in log
+                for placeholder in ("{node}", "{node_dir}", "{cefore_conf_dir}")
+            ):
                 # CommandRunner.start() opens log_path with "wb" (truncate);
-                # every host sharing this entry would overwrite the same
-                # file without {node} to tell them apart.
+                # every host sharing this entry would overwrite the same file
+                # unless the path varies per host. {node_dir} and
+                # {cefore_conf_dir} vary per host exactly like {node} does
+                # (see host_apps.py _placeholder_context), so any one of the
+                # three is sufficient -- {t0_ms} is deliberately excluded
+                # here since it is the same value for every host in one
+                # experiment and so cannot disambiguate them.
                 errors.append(
-                    f"{prefix}.log must contain {{node}} when hosts is "
-                    "'all' or more than one host"
+                    f"{prefix}.log must contain one of {{node}}, {{node_dir}}, "
+                    "{cefore_conf_dir} when hosts is 'all' or more than one host"
                 )
 
         if "env" in entry:
@@ -1015,14 +1034,13 @@ def _validate_host_apps(errors, config):
                     f"{prefix}.env must be a dict of string keys to string values"
                 )
             else:
-                # Keys become the "K" half of an "env K=V ..." argv prefix
-                # (see host_apps.py _env_argv_prefix); a key containing '='
-                # would corrupt that encoding.
-                bad_keys = sorted(k for k in env if not k or "=" in k)
+                # See _POSIX_ENV_KEY above for why a key must be a POSIX
+                # name, not merely non-empty and '='-free.
+                bad_keys = sorted(k for k in env if not _POSIX_ENV_KEY.fullmatch(k))
                 if bad_keys:
                     errors.append(
                         f"{prefix}.env has invalid keys: {', '.join(bad_keys)} "
-                        "(keys must be non-empty and must not contain '=')"
+                        "(keys must match [A-Za-z_][A-Za-z0-9_]*)"
                     )
 
 
