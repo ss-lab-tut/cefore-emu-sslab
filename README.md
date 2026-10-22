@@ -260,6 +260,28 @@ routing:
   strategy: "dijkstra"     # dijkstra / shortest_path / ecmp
 ```
 
+**Explicit topology (`links`):**
+Config-only (no CLI flag); available to `disaster` (and `connect`, which
+shares the same topology-build code). Fixes the exact mesh instead of the
+seeded random MeshTopo build; omitting it keeps the random-mesh behavior
+byte-identical to before this option existed.
+```yaml
+links:
+  - [0, 1]
+  - [1, 2]
+```
+Each pair is a 0-based host index. One switch is created per pair, so a
+`link_down`/`link_up` event (`nodes: [a, b]`) always addresses exactly that
+pair. `links` must describe a connected graph spanning every host
+`0..hosts-1` (indices in range, no self-links, no duplicate pairs, no
+disconnected host), or config validation rejects it with the specific
+problem. `switches`, `node_per_switch`, `host_degree_min`,
+`host_degree_max`, and `switch_use_all` only control the random mesh build;
+a non-default value for any of them alongside `links` is rejected as a
+config error rather than silently ignored (leave them unset/default). See
+`config/examples/min_explicit_line.yaml` for a 3-host line with a
+`link_down`/`link_up` cycle.
+
 **Forwarding configuration (`forwarding_config`):**
 Config-only (no CLI flag); valid in `disaster` and `connect` blocks.
 ```yaml

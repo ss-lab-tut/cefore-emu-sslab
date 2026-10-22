@@ -81,6 +81,11 @@ class ConfigDrivenMeshScenario(BaseScenario):
             switch_use_all=args.switch_use_all,
             rng=self.rng,
             publisher_ids=frozenset(self.publisher_ids),
+            # Ticket 03: disaster (and connect, which shares this base)
+            # accept an explicit `links` config list; absent, getattr's
+            # default keeps MeshBuildSpec.links=None and the random MeshTopo
+            # path runs exactly as before.
+            links=getattr(args, "links", None),
         )
         result = build_mesh_scenario(spec)
         self.generated_node_dirs = result.node_dirs

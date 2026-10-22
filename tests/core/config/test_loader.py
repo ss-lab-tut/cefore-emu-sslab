@@ -557,6 +557,7 @@ def test_config_option_keys_preserves_current_order_and_excludes_special_merge()
         "ext",
         "bridges",
         "failure_scenarios",
+        "links",
         "events",
         "monitoring",
         "routing",
@@ -2340,3 +2341,186 @@ def test_restore_cannot_turn_an_event_into_a_content_event_or_compute_call(repea
     assert errors == [
         "events[0].repeat.restore.type must not be a content event type or compute_call"
     ]
+
+
+# ── links (ticket 03: explicit mesh topology) ──
+
+
+def test_validate_links_absent_is_valid():
+    # The feature's core promise: omitting `links` must not add any error --
+    # the byte-identical-when-absent contract lives at the topology layer
+    # (build_mesh_scenario), but validation must not gate it either.
+    assert validate_config({"hosts": 3}) == []
+
+
+def test_validate_links_three_host_line_is_valid():
+    assert validate_config({"hosts": 3, "links": [[0, 1], [1, 2]]}) == []
+
+
+def test_validate_links_accepts_reversed_pair_order():
+    # [2, 1] describes the same edge as [1, 2]; only the duplicate check
+    # (below) treats pair order as equivalent, construction itself does not
+    # need the caller to pre-sort.
+    assert validate_config({"hosts": 3, "links": [[0, 1], [2, 1]]}) == []
+
+
+def test_validate_links_not_a_list():
+    errors = validate_config({"hosts": 3, "links": {"a": 1}})
+    assert errors == ["links must be a list"]
+
+
+def test_validate_links_entry_not_a_pair():
+    errors = validate_config({"hosts": 3, "links": [[0, 1, 2]]})
+    assert errors == ["links[0] must be a list of 2 host indices"]
+
+
+def test_validate_links_entry_not_a_list():
+    errors = validate_config({"hosts": 3, "links": [0, 1]})
+    assert errors == [
+        "links[0] must be a list of 2 host indices",
+        "links[1] must be a list of 2 host indices",
+    ]
+
+
+def test_validate_links_entry_non_integer_elements():
+    errors = validate_config({"hosts": 3, "links": [["a", "b"]]})
+    assert errors == ["links[0] must be a list of 2 host indices"]
+
+
+def test_validate_links_entry_bool_elements_rejected():
+    # bool is an int subclass in Python; _is_int excludes it explicitly, the
+    # same way every other index field in this validator does.
+    errors = validate_config({"hosts": 3, "links": [[True, 1]]})
+    assert errors == ["links[0] must be a list of 2 host indices"]
+
+
+def test_validate_links_self_link_rejected():
+    errors = validate_config({"hosts": 3, "links": [[1, 1], [1, 2]]})
+    assert errors == ["links[0] connects host 1 to itself"]
+
+
+def test_validate_links_out_of_range_host_index():
+    errors = validate_config({"hosts": 3, "links": [[0, 5]]})
+    assert errors == ["links[0] contains out-of-range host index 5"]
+
+
+def test_validate_links_both_endpoints_out_of_range_reports_both():
+    errors = validate_config({"hosts": 3, "links": [[5, 6]]})
+    assert errors == [
+        "links[0] contains out-of-range host index 5",
+        "links[0] contains out-of-range host index 6",
+    ]
+
+
+def test_validate_links_negative_host_index_is_out_of_range():
+    errors = validate_config({"hosts": 3, "links": [[-1, 1]]})
+    assert errors == ["links[0] contains out-of-range host index -1"]
+
+
+def test_validate_links_range_not_checked_without_known_host_count():
+    # hosts missing/invalid: range can't be judged, so only shape/self-link
+    # rules apply -- the same "skip range, keep the rest" behavior
+    # _validate_link_event uses for link_down/link_up.
+    assert validate_config({"links": [[0, 5]]}) == []
+
+
+def test_validate_links_duplicate_pair_rejected():
+    errors = validate_config({"hosts": 3, "links": [[0, 1], [1, 2], [1, 0]]})
+    assert errors == ["links contains duplicate link [0, 1]"]
+
+
+def test_validate_links_duplicate_detection_is_order_independent():
+    # [1, 0] and [0, 1] name the same edge; the message always reports the
+    # sorted pair regardless of which order the duplicate used.
+    errors = validate_config({"hosts": 3, "links": [[1, 0], [0, 1], [1, 2]]})
+    assert errors == ["links contains duplicate link [0, 1]"]
+
+
+def test_validate_links_disconnected_graph_rejected():
+    errors = validate_config({"hosts": 4, "links": [[0, 1], [2, 3]]})
+    assert errors == [
+        "links must connect all hosts into a single connected component"
+    ]
+
+
+def test_validate_links_host_with_no_link_is_disconnected():
+    # A host absent from every pair is, by construction, unreachable --
+    # caught by the same single-component check rather than a separate
+    # "every host must appear" rule.
+    errors = validate_config({"hosts": 3, "links": [[0, 1]]})
+    assert errors == [
+        "links must connect all hosts into a single connected component"
+    ]
+
+
+def test_validate_links_connectivity_not_checked_when_entries_malformed():
+    # A malformed entry already has its own error; piling a connectivity
+    # verdict for the same links list on top would only be noise, since the
+    # graph it implies is unclear while an entry is still invalid.
+    errors = validate_config({"hosts": 4, "links": [[0, 1], ["x", 3]]})
+    assert errors == ["links[1] must be a list of 2 host indices"]
+
+
+@pytest.mark.parametrize(
+    ("key", "value"),
+    [
+        ("switches", 99),
+        ("node_per_switch", 3),
+        ("host_degree_min", 2),
+        ("host_degree_max", 3),
+        ("switch_use_all", True),
+    ],
+)
+def test_validate_links_rejects_non_default_mesh_randomization_option(key, value):
+    # These knobs only mean something to MeshTopo's random build; a
+    # non-default value alongside `links` is very likely a leftover from a
+    # config that used to request the random mesh.
+    errors = validate_config(
+        {"hosts": 3, "links": [[0, 1], [1, 2]], key: value}
+    )
+    assert errors == [
+        f"links cannot be combined with a non-default {key} "
+        "(mesh-randomization options have no effect once links is set)"
+    ]
+
+
+@pytest.mark.parametrize(
+    ("key", "value"),
+    [
+        ("switches", 10),
+        ("node_per_switch", 2),
+        ("host_degree_min", 1),
+        ("host_degree_max", 2),
+        ("switch_use_all", False),
+    ],
+)
+def test_validate_links_accepts_default_mesh_randomization_option(key, value):
+    # Mirrors the real bootstrap flow: validate_merged_args always includes
+    # these keys (argparse gives each a real default), so an unset option
+    # reaching validate_config at its default value must not be rejected.
+    errors = validate_config(
+        {"hosts": 3, "links": [[0, 1], [1, 2]], key: value}
+    )
+    assert errors == []
+
+
+def test_validate_merged_args_links_with_all_mesh_knobs_at_default_is_valid():
+    # The scenario the parametrized default-value test above checks one key
+    # at a time: in the real CLI flow (bootstrap_scenario ->
+    # validate_merged_args) all five mesh-randomization keys are present on
+    # the merged args SIMULTANEOUSLY, each at its argparse default, because
+    # every one of them has a real (non-None) default (see
+    # cli/args._add_args_for_block). A presence-only contradiction check
+    # (`"switches" in config`) would reject `links` on every ordinary run;
+    # this pins that it does not.
+    args = SimpleNamespace(
+        hosts=3,
+        links=[[0, 1], [1, 2]],
+        switches=10,
+        node_per_switch=2,
+        host_degree_min=1,
+        host_degree_max=2,
+        switch_use_all=False,
+    )
+
+    assert validate_merged_args(args) == []

@@ -448,6 +448,7 @@ OPTION_SPECS = {
     "failure_scenarios": OptionSpec(
         "failure_scenarios", "structured", cli_allowed=False
     ),
+    "links": OptionSpec("links", "structured", cli_allowed=False),
     "events": OptionSpec("events", "structured", cli_allowed=False),
     "monitoring": OptionSpec("monitoring", "structured", cli_allowed=False),
     "routing": OptionSpec("routing", "structured", cli_allowed=False),
@@ -928,6 +929,121 @@ def _validate_bridges(errors, config):
                     errors.append(f"bridges[{idx}].nat must be a boolean")
                 if "nat_out" in bridge and not isinstance(bridge["nat_out"], str):
                     errors.append(f"bridges[{idx}].nat_out must be a string")
+
+
+# Mesh-randomization knobs that MeshTopo.build consumes (see runtime/topo.py)
+# and that ExplicitLinksTopo never reads. Once `links` fixes the topology
+# explicitly, a non-default value for one of these can only be a leftover
+# from a config that used to request the random mesh -- silently ignoring it
+# would hide that mistake, so it is rejected instead. "Non-default" is
+# checked against OPTION_SPECS[key].default rather than mere presence: in the
+# real CLI flow (bootstrap_scenario -> validate_merged_args) every one of
+# these keys is always present on the merged args (argparse gives each a real
+# default), so a presence-only check would reject `links` on every ordinary
+# run. Comparing against the default is what distinguishes "the author
+# touched this knob" from "argparse/merge filled in its default" in both that
+# merged-args dict and a raw config dict handed straight to validate_config().
+_MESH_RANDOMIZATION_KEYS = (
+    "switches",
+    "node_per_switch",
+    "host_degree_min",
+    "host_degree_max",
+    "switch_use_all",
+)
+
+
+def _validate_links(errors, config):
+    """Validate the optional explicit ``links`` topology override.
+
+    ``links: [[host_a, host_b], ...]`` lets a disaster (or connect) config
+    fix the exact mesh instead of the seeded random MeshTopo build (see
+    ConfigDrivenMeshScenario.build_topology / runtime.scenario_setup.
+    build_mesh_scenario / runtime.topo.ExplicitLinksTopo). Every downstream
+    consumer -- FIB computation, addressing, cache placement, link_down/
+    link_up, the topology PNG -- reads mesh_links through TopologyModel and
+    assumes every declared host is reachable, so this is the one place that
+    checks shape, host-index range, self-links, duplicates, and single-
+    component connectivity before any of that code ever sees the list;
+    ExplicitLinksTopo itself does not re-validate.
+
+    Connectivity is required, not merely "every host appears in some link":
+    AddressingScheme.canonical_host_ip raises ValueError for a host attached
+    to no link, and TopologyModel.peer_of raises RuntimeError for a
+    publisher with no links, so a disconnected graph would otherwise crash
+    scenario setup after node directories are already provisioned, instead
+    of failing at config time with a clear message.
+    """
+    if "links" not in config:
+        return
+    links = config["links"]
+    if not isinstance(links, list):
+        errors.append("links must be a list")
+        return
+
+    host_count = config.get("hosts")
+    host_count_known = _is_int(host_count)
+
+    # Pairs that passed shape/range/self-link checks, in input order
+    # (duplicates included -- a duplicate is reported but still a valid edge
+    # for the connectivity check below).
+    valid_pairs: list[tuple[int, int]] = []
+    for idx, entry in enumerate(links):
+        prefix = f"links[{idx}]"
+        if not isinstance(entry, list) or len(entry) != 2:
+            errors.append(f"{prefix} must be a list of 2 host indices")
+        elif not all(_is_int(n) for n in entry):
+            errors.append(f"{prefix} must be a list of 2 host indices")
+        elif entry[0] == entry[1]:
+            errors.append(f"{prefix} connects host {entry[0]} to itself")
+        else:
+            host_a, host_b = entry
+            out_of_range = False
+            if host_count_known:
+                for n in (host_a, host_b):
+                    if n < 0 or n >= host_count:
+                        errors.append(
+                            f"{prefix} contains out-of-range host index {n}"
+                        )
+                        out_of_range = True
+            if not out_of_range:
+                valid_pairs.append((host_a, host_b))
+
+    seen_pairs = set()
+    for host_a, host_b in valid_pairs:
+        pair = tuple(sorted((host_a, host_b)))
+        if pair in seen_pairs:
+            errors.append(f"links contains duplicate link [{pair[0]}, {pair[1]}]")
+        else:
+            seen_pairs.add(pair)
+
+    for key in _MESH_RANDOMIZATION_KEYS:
+        if key in config and config[key] != OPTION_SPECS[key].default:
+            errors.append(
+                f"links cannot be combined with a non-default {key} "
+                "(mesh-randomization options have no effect once links is set)"
+            )
+
+    # Connectivity only means something once every entry was individually
+    # well-formed; a malformed entry has already been reported above, and
+    # judging the graph it would have produced adds noise, not information.
+    entries_well_formed = len(valid_pairs) == len(links)
+    if entries_well_formed and host_count_known and host_count > 0:
+        graph: dict[int, set[int]] = {i: set() for i in range(host_count)}
+        for host_a, host_b in valid_pairs:
+            graph[host_a].add(host_b)
+            graph[host_b].add(host_a)
+        visited = {0}
+        stack = [0]
+        while stack:
+            node = stack.pop()
+            for neighbor in graph[node]:
+                if neighbor not in visited:
+                    visited.add(neighbor)
+                    stack.append(neighbor)
+        if len(visited) != host_count:
+            errors.append(
+                "links must connect all hosts into a single connected component"
+            )
 
 
 def _validate_put_options(errors, prefix, event):
@@ -1621,6 +1737,8 @@ def validate_config(config: dict[str, Any]) -> list[str]:
     _validate_failure_scenarios(errors, config)
 
     _validate_bridges(errors, config)
+
+    _validate_links(errors, config)
 
     if "warmup_gets" in config:
         wg = config["warmup_gets"]

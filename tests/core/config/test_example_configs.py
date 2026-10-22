@@ -61,6 +61,7 @@ _EXPECTED_EXAMPLES = _SMOKE_EXAMPLES | frozenset(
         "example.json",
         "example.yaml",
         "flexible_cache.yaml",
+        "min_explicit_line.yaml",
     }
 )
 

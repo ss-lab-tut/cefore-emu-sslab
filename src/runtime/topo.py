@@ -212,3 +212,59 @@ class MeshTopo(Topo):
                     "host_eth": host_eth,
                 }
             )
+
+
+class ExplicitLinksTopo(Topo):
+    """Topology built from caller-supplied host-index pairs, not the RNG mesh.
+
+    Ticket 03 (ReCefore explicit links): a disaster config may pass
+    ``links: [[a, b], ...]`` to fix the exact topology instead of letting
+    MeshTopo draw one from the seed. Each pair gets its own switch connecting
+    exactly those two hosts. This is the same shape MeshTopo already emits
+    when a switch happens to end up with only two hosts (see
+    ``core.topology.Link``/``TopologyModel``), so every downstream consumer
+    (FIB computation, addressing, cache placement, ``link_down``/``link_up``,
+    the topology PNG) reads an ordinary ``mesh_links`` list and needs no new
+    branch. One switch per pair also keeps link_down/link_up unambiguous:
+    ``runtime.links.set_link_state`` calls ``net.configLinkStatus(host,
+    switch, state)`` for each endpoint, and a switch mediating only that one
+    pair cannot affect any other link.
+
+    Construction trusts its input: ``core.config.validator._validate_links``
+    is the single place that checks shape, host-index range, self-links,
+    duplicates, and that ``links`` connects every host in ``range(hosts)``
+    into one component before this class is ever asked to build. No RNG is
+    touched here, which is what keeps the no-``links`` MeshTopo path
+    byte-identical to before this feature existed -- the seeded golden
+    mesh_links snapshots in tests/runtime/test_topo.py never consumed any
+    rng differently.
+    """
+
+    def build(self, hosts, links, **_kwargs):
+        host_nodes = [self.addHost(f"h{idx}") for idx in range(hosts)]
+
+        self.mesh_links = []
+        # Per-host call counter: mirrors MeshTopo's host_ports bookkeeping so
+        # host_eth[host] always equals that host's Nth addLink() call, which
+        # is the interface index net_config.apply_ip_addr's "h{idx}-eth{n}"
+        # naming depends on (Mininet numbers each node's ports in addLink
+        # call order starting at 0).
+        host_ports = [0] * hosts
+
+        for idx, pair in enumerate(links):
+            switch_name = f"s{idx}"
+            switch_node = self.addSwitch(switch_name)
+            hosts_for_switch = sorted(pair)
+            host_eth = {}
+            for host_idx in hosts_for_switch:
+                host_eth[host_idx] = host_ports[host_idx]
+                host_ports[host_idx] += 1
+                self.addLink(host_nodes[host_idx], switch_node)
+            self.mesh_links.append(
+                {
+                    "subnet": idx + 1,
+                    "switch": switch_name,
+                    "hosts": hosts_for_switch,
+                    "host_eth": host_eth,
+                }
+            )

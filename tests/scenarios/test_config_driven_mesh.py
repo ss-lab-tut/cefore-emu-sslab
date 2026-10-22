@@ -151,9 +151,36 @@ def test_build_topology_passes_args_to_mesh_build_spec(tmp_path):
     assert spec.switch_use_all is False
     assert spec.rng is rng
     assert spec.publisher_ids == frozenset({0, 2})
+    assert spec.links is None
     assert scenario.generated_node_dirs == [tmp_path / f"h{i}" for i in range(3)]
     assert scenario.topo is fake_topo
     assert result is fake_topo
+
+
+def test_build_topology_passes_links_to_mesh_build_spec(tmp_path):
+    # Ticket 03: args.links (set only via disaster's config `links:` key,
+    # never a CLI flag) must reach MeshBuildSpec unchanged so
+    # build_mesh_scenario can pick ExplicitLinksTopo over the random mesh.
+    scenario = ConcreteScenario(
+        _base_args(links=[[0, 1], [1, 2]]), run_dir=tmp_path
+    )
+    scenario.rng = None
+    scenario.publisher_ids = set()
+
+    with patch(
+        "src.scenarios.config_driven_mesh.build_mesh_scenario"
+    ) as mock_build:
+        fake_topo = MagicMock()
+        fake_topo.mesh_links = []
+        mock_build.return_value = MagicMock(
+            node_dirs=[tmp_path / "h0", tmp_path / "h1", tmp_path / "h2"],
+            topo=fake_topo,
+        )
+
+        scenario.build_topology()
+
+    spec = mock_build.call_args[0][0]
+    assert spec.links == [[0, 1], [1, 2]]
 
 
 # --- Seam 3: create_mininet ---
