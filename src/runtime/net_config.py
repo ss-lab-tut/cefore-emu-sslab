@@ -127,6 +127,7 @@ def apply_fib(
     k_paths,
     strategy="dijkstra",
     uri_publishers=None,
+    prefix_routes=None,
     scheme=None,
     runner=None,
 ):
@@ -138,6 +139,12 @@ def apply_fib(
         k_paths: Number of best next hops per destination.
         strategy: Routing strategy name (dijkstra, shortest_path, ecmp).
         uri_publishers: Optional dict mapping URI prefix to publisher host ID.
+        prefix_routes: Optional dict mapping a ccnx:/ prefix to a host index
+            -- a static route announcement independent of uri_publishers
+            (see core.fib.compute_fib_for_uris). Routed into the same
+            returned list as every other FIB entry so that host_up FIB
+            restore (which replays entries by source host) carries these
+            too.
         scheme: AddressingScheme for IP generation (defaults to 192.168.0.0/16).
         runner: Optional CommandRunner (defaults to a Mininet-backed one).
 
@@ -146,7 +153,9 @@ def apply_fib(
         by apply_fib_routes.
     """
     strat = get_routing_strategy(strategy)
-    routes = strat.compute_routes(mesh_links, k_paths, uri_publishers, scheme=scheme)
+    routes = strat.compute_routes(
+        mesh_links, k_paths, uri_publishers, scheme=scheme, prefix_routes=prefix_routes
+    )
     apply_fib_routes(net, routes, runner=runner)
     return routes
 

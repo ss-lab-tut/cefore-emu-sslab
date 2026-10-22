@@ -141,3 +141,27 @@ class TestApplyFib:
         assert routes
         assert len(fake.runs) == len(routes)
         assert all(run["argv"][0] == "cefroute" for run in fake.runs)
+
+    def test_prefix_routes_are_merged_into_the_returned_and_applied_routes(self):
+        """prefix_routes must ride in the same returned list as every other
+        route (not applied through a side channel): that list becomes
+        SetupResult.fib_routes -> DisasterScenario._fib_routes, which
+        host_up FIB restore replays by source host -- a route left out of
+        this list would never be restored after that host's own flap."""
+        fake = FakeCommandRunner()
+        routes = apply_fib(
+            None,
+            MESH,
+            k_paths=1,
+            runner=fake,
+            prefix_routes={"ccnx:/test/to2": 2},
+        )
+        actual = {(r.source, r.prefix, r.next_hop, r.next_hop_ip) for r in routes}
+        assert actual == {
+            (0, "ccnx:/test/to2", 1, "192.168.1.2"),
+            (1, "ccnx:/test/to2", 2, "192.168.2.3"),
+        }
+        # one-directional: host 2 (the named host) is never a route source
+        assert 2 not in {r.source for r in routes if r.prefix == "ccnx:/test/to2"}
+        # every applied route (prefix_routes included) went through the runner
+        assert len(fake.runs) == len(routes)

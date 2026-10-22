@@ -177,6 +177,115 @@ def test_configure_passes_forwarding_config_to_setup(tmp_path):
     assert spec.forwarding_config is forwarding_config
 
 
+def test_configure_passes_prefix_routes_to_setup_independent_of_publishers(tmp_path):
+    """prefix_routes must reach ScenarioSetupSpec.fib_prefix_routes even
+    when there is no put/pubsub_pub event (self.uri_publishers empty), and
+    must leave self.uri_publishers / self.publisher_ids untouched -- those
+    feed content_ops' publisher_host fallback and cache placement's
+    exclude_publishers, which prefix_routes has nothing to do with."""
+    prefix_routes = {"ccnx:/test/a": 2, "ccnx:/test/b": 0}
+    scenario = DisasterScenario(
+        _make_args(
+            hosts=3,
+            k=1,
+            topo_png=None,
+            topo_layout="spring",
+            cache_config=None,
+            cache_count=0,
+            down_count=0,
+            bw=[],
+            ext=[],
+            cefnetd_timeout=10,
+            prefix_routes=prefix_routes,
+        ),
+        run_dir=tmp_path,
+    )
+    scenario.topo = SimpleNamespace(mesh_links=[])
+    assert scenario.uri_publishers == {}
+    assert scenario.publisher_ids == set()
+
+    with patch("src.scenarios.disaster.setup_scenario") as setup:
+        scenario.configure(MagicMock())
+
+    spec = setup.call_args.args[1]
+    assert spec.fib_prefix_routes == prefix_routes
+    assert spec.fib_uri_publishers is None
+    assert scenario.uri_publishers == {}
+    assert scenario.publisher_ids == set()
+
+
+def test_configure_merges_prefix_routes_alongside_a_real_publisher(tmp_path):
+    """With a put event present too, fib_prefix_routes and
+    fib_uri_publishers stay two independent spec fields -- the scenario
+    never folds prefix_routes into self.uri_publishers."""
+    prefix_routes = {"ccnx:/test/a": 2}
+    events = [
+        {
+            "at": 1,
+            "type": "put",
+            "host": 1,
+            "uri": "ccnx:/test/pub",
+            "file": "./sample-putfile",
+        },
+    ]
+    scenario = DisasterScenario(
+        _make_args(
+            hosts=3,
+            k=1,
+            topo_png=None,
+            topo_layout="spring",
+            cache_config=None,
+            cache_count=0,
+            down_count=0,
+            bw=[],
+            ext=[],
+            cefnetd_timeout=10,
+            events=events,
+            prefix_routes=prefix_routes,
+        ),
+        run_dir=tmp_path,
+    )
+    scenario.topo = SimpleNamespace(mesh_links=[])
+    assert scenario.uri_publishers == {"ccnx:/test/pub": 1}
+
+    with patch("src.scenarios.disaster.setup_scenario") as setup:
+        scenario.configure(MagicMock())
+
+    spec = setup.call_args.args[1]
+    assert spec.fib_prefix_routes == prefix_routes
+    assert spec.fib_uri_publishers == {"ccnx:/test/pub": 1}
+    assert scenario.uri_publishers == {"ccnx:/test/pub": 1}
+
+
+def test_configure_prefix_routes_absent_defaults_to_none(tmp_path):
+    """Pin: a config without prefix_routes produces the same
+    ScenarioSetupSpec.fib_prefix_routes (None) as before this field
+    existed -- "must not change existing output when prefix_routes is
+    absent", at the scenario level."""
+    scenario = DisasterScenario(
+        _make_args(
+            hosts=3,
+            k=1,
+            topo_png=None,
+            topo_layout="spring",
+            cache_config=None,
+            cache_count=0,
+            down_count=0,
+            bw=[],
+            ext=[],
+            cefnetd_timeout=10,
+        ),
+        run_dir=tmp_path,
+    )
+    scenario.topo = SimpleNamespace(mesh_links=[])
+
+    with patch("src.scenarios.disaster.setup_scenario") as setup:
+        scenario.configure(MagicMock())
+
+    spec = setup.call_args.args[1]
+    assert spec.fib_prefix_routes is None
+
+
 @patch("src.scenarios.disaster.periodic_host_flap")
 def test_default_down_values_skip_legacy_failure_manager(mock_flap, tmp_path):
     scenario = DisasterScenario(
