@@ -267,6 +267,23 @@ class HostAppFleet:
         put-back: its process is already confirmed gone, so there is
         nothing left to retry.
 
+        2026-10-22 fix (review finding): the removal, the stop attempts,
+        and that put-back all happen inside ONE ``_lock`` acquisition now,
+        not across separate ones. Releasing the lock between "remove mine"
+        and "stop it" let stop_all() run in that gap: it would snapshot
+        _launches with ``mine`` already missing, find nothing of this
+        host's to stop, and return -- and if the restart's own stop then
+        raised, ``mine`` was put back only AFTER stop_all() had already
+        finished, so shutdown never got a second chance to reclaim the
+        still-running original process (an orphan nothing then stops).
+        Holding the lock across the whole phase instead makes stop_all()
+        BLOCK (for at most each launch's own stop grace period) until this
+        phase has either confirmed every stop or restored the ones that
+        failed, so stop_all()'s snapshot is always accurate. The same
+        acquisition also rechecks ``_stopping`` up front: if shutdown has
+        already run by the time this call reaches the lock, there is
+        nothing to stop and nothing to start.
+
         The restarted life replays the ORIGINAL _expand_launch() result
         (argv/cwd verbatim, from the launch record -- never re-expanded),
         with the same t0_ms the fleet was built with (never re-captured),
@@ -290,8 +307,29 @@ class HostAppFleet:
         any other scheduler handler.
         """
         with self._lock:
+            if self._stopping.is_set():
+                # 2026-10-22: shutdown already swept the fleet before this
+                # call even reached the lock (e.g. stop_all() ran first and
+                # already waited on, or will never see, this host's
+                # launches) -- nothing left to stop and nothing to start.
+                return False
             mine = [launch for launch in self._launches if launch["idx"] == idx]
             self._launches = [launch for launch in self._launches if launch["idx"] != idx]
+
+            failures = []
+            unstopped = []
+            for launch in mine:
+                failure = self._stop_one_launch(launch, context="restart")
+                if failure is not None:
+                    failures.append(failure)
+                    unstopped.append(launch)
+            # See the fix note above the docstring: put back exactly the
+            # launches whose stop could not be confirmed, so stop_all() at
+            # shutdown still sees them and can retry -- done inside this
+            # SAME lock acquisition as the stop attempts above (not a
+            # second one), so stop_all() can never run in between and miss
+            # them.
+            self._launches.extend(unstopped)
 
         if not mine:
             # 2026-10-22: config validation requires a host_app_restart's
@@ -304,20 +342,7 @@ class HostAppFleet:
             # shutdown-race case below already uses.
             return False
 
-        failures = []
-        unstopped = []
-        for launch in mine:
-            failure = self._stop_one_launch(launch, context="restart")
-            if failure is not None:
-                failures.append(failure)
-                unstopped.append(launch)
-
         if failures:
-            # See the fix note above the docstring: put back exactly the
-            # launches whose stop could not be confirmed, so stop_all() at
-            # shutdown still sees them and can retry.
-            with self._lock:
-                self._launches.extend(unstopped)
             raise failures[0][1]
 
         if self._stopping.wait(downtime_s):

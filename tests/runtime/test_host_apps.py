@@ -570,21 +570,38 @@ class TestRestartShutdownRace:
     ):
         """A restart whose downtime_s wait is still in progress must notice
         a concurrent stop_all(), not sleep out the full duration and start
-        a process after shutdown already swept the fleet."""
+        a process after shutdown already swept the fleet.
+
+        2026-10-22: this used to synchronize with the restart thread via a
+        blind ``time.sleep(0.1)`` ("probably long enough to have entered
+        the wait by now"), which is exactly the kind of race a slow CI box
+        can flake on. Wrapping ``fleet._stopping.wait`` to signal an Event
+        right before calling through to the real wait gives a
+        deterministic "the thread is now blocked in the downtime_s wait"
+        handshake instead.
+        """
         fake = FakeCommandRunner()
         fleet = _fleet(fake, specs=[{"hosts": [0], "argv": ["noop"]}])
         fleet.start_all()
+
+        entered_wait = threading.Event()
+        real_wait = fleet._stopping.wait
+
+        def wait_and_signal(timeout=None):
+            entered_wait.set()
+            return real_wait(timeout)
 
         results = []
         thread = threading.Thread(
             target=lambda: results.append(fleet.restart_host(0, downtime_s=5))
         )
         start = time.monotonic()
-        thread.start()
-        time.sleep(0.1)  # let the thread enter the downtime_s wait
+        with patch.object(fleet._stopping, "wait", side_effect=wait_and_signal):
+            thread.start()
+            assert entered_wait.wait(5)  # thread is now in the downtime_s wait
 
-        fleet.stop_all()
-        thread.join(timeout=2)
+            fleet.stop_all()
+            thread.join(timeout=2)
         elapsed = time.monotonic() - start
 
         assert not thread.is_alive()
@@ -608,3 +625,104 @@ class TestRestartShutdownRace:
 
         assert failures == []
         assert restarted_handle in fake.waits
+
+    def test_post_wait_stopping_recheck_prevents_a_late_start_after_shutdown(self):
+        """2026-10-22 test (mutation gap, review finding): a mutant that
+        drops the ``self._stopping.is_set()`` recheck right before
+        starting the new life (the second ``with self._lock`` block)
+        survived the existing suite. Every other race test here lets
+        stop_all() arrive WHILE ``_stopping.wait()`` is still blocked, so
+        ``wait()`` itself returns True and the EARLIER check (``if
+        self._stopping.wait(downtime_s): return False``) already catches
+        it -- that check alone cannot prove the later recheck is load
+        -bearing. This drives the other ordering instead: stop_all() runs
+        and finishes to completion DURING the call standing in for
+        ``_stopping.wait()``, which then reports a genuine timeout (False)
+        -- so only the post-wait recheck can still catch that shutdown
+        already happened, by the time this method is about to start a new
+        process."""
+        fake = FakeCommandRunner()
+        fleet = _fleet(fake, specs=[{"hosts": [0], "argv": ["noop"]}])
+        fleet.start_all()
+
+        def fake_wait(downtime_s):
+            # Stand in for the downtime_s wait timing out normally, but
+            # have shutdown land and finish inside that same window.
+            fleet.stop_all()
+            return False
+
+        with patch.object(fleet._stopping, "wait", side_effect=fake_wait):
+            result = fleet.restart_host(0, downtime_s=0)
+
+        assert result is False
+        assert len(fake.starts) == 1  # no second life started after shutdown
+
+    def test_restart_stop_phase_blocks_stop_all_until_confirmed_or_restored(self):
+        """2026-10-22 fix (review finding): restart_host() used to remove
+        ``mine`` from _launches, release the lock, and only THEN attempt
+        its stop. A stop_all() that ran in that released-lock window
+        snapshotted _launches without ``mine``, stopped nothing for this
+        host, and returned -- so when the restart's own stop then raised,
+        the still-running original process was put back only after
+        shutdown had already finished, and nothing would ever stop it
+        (an orphan).
+
+        This reproduces that handshake directly: the restart's first stop
+        attempt blocks inside ``on_wait`` until released, then raises.
+        While it is blocked, stop_all() is started on another thread --
+        with the fix, it must stay blocked on ``_lock`` (not race ahead
+        with a stale snapshot) until the stop attempt is released and the
+        failed launch is put back. Once both threads finish, stop_all()'s
+        own retry must reach the SAME original handle a second time."""
+        fake = FakeCommandRunner()
+        fleet = _fleet(fake, specs=[{"hosts": [0], "argv": ["noop"]}])
+        fleet.start_all()
+        original_handle = fake.starts[0]
+
+        entered = threading.Event()
+        release = threading.Event()
+
+        def on_wait(handle):
+            # Only the restart's own stop attempt blocks and then fails;
+            # stop_all()'s later retry on the same handle must fall
+            # through normally (entered is already set by then).
+            if not entered.is_set():
+                entered.set()
+                release.wait(5)
+                raise RuntimeError("stop failed")
+
+        fake.on_wait = on_wait
+
+        restart_result = []
+
+        def run_restart():
+            try:
+                restart_result.append(fleet.restart_host(0, downtime_s=0))
+            except RuntimeError as exc:
+                restart_result.append(exc)
+
+        restart_thread = threading.Thread(target=run_restart)
+        restart_thread.start()
+        assert entered.wait(5)  # restart's stop attempt is now blocked
+
+        shutdown_result = []
+        shutdown_thread = threading.Thread(
+            target=lambda: shutdown_result.append(fleet.stop_all())
+        )
+        shutdown_thread.start()
+        # The fix holds _lock across the whole stop phase, so stop_all()
+        # must still be blocked acquiring it, not already finished with a
+        # stale (missing-this-launch) snapshot.
+        shutdown_thread.join(timeout=0.5)
+        assert shutdown_thread.is_alive()
+
+        release.set()
+        restart_thread.join(5)
+        shutdown_thread.join(5)
+
+        assert isinstance(restart_result[0], RuntimeError)
+        # stop_all()'s retry on the put-back launch succeeds (on_wait no
+        # longer raises the second time), so it reports no failure of its
+        # own -- the restart's own raise is what the caller sees.
+        assert shutdown_result[0] == []
+        assert fake.waits.count(original_handle) == 2
