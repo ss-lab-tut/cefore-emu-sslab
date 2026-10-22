@@ -96,7 +96,7 @@ def compute_fib(mesh_links, k_paths, scheme=None):
     return routes
 
 
-def compute_fib_for_uris(mesh_links, k_paths, uri_publishers, scheme=None):
+def compute_fib_for_uris(mesh_links, k_paths, uri_publishers, scheme=None, prefix_routes=None):
     """Compute FIB routes for multiple URIs with their respective publishers.
 
     Routes are bidirectional: non-publishers → publisher (for RI/TD) and
@@ -107,6 +107,9 @@ def compute_fib_for_uris(mesh_links, k_paths, uri_publishers, scheme=None):
         k_paths: Number of shortest paths per destination.
         uri_publishers: Dict mapping URI prefix to publisher host ID.
         scheme: AddressingScheme for IP generation (defaults to 192.168.0.0/16).
+        prefix_routes: Optional dict mapping a ccnx:/ prefix to a host index,
+            for a static route announcement with no publisher behind it (see
+            the prefix_routes pass below for why it only gets one direction).
 
     Returns:
         List of Route objects.
@@ -162,6 +165,17 @@ def compute_fib_for_uris(mesh_links, k_paths, uri_publishers, scheme=None):
                 continue
             _add_routes(publisher, dest, uri_prefix)
 
+    # prefix_routes: a static prefix→host route announcement, not a
+    # publisher. There is no content operation behind it that will ever
+    # originate a Reflexive-Forwarding Interest back toward consumers, so
+    # unlike uri_publishers above it gets only one direction: every host
+    # OTHER than the named one gets a route toward it.
+    for uri_prefix, dest in (prefix_routes or {}).items():
+        for src in range(host_num):
+            if src == dest:
+                continue
+            _add_routes(src, dest, uri_prefix)
+
     return routes
 
 
@@ -179,6 +193,7 @@ class RoutingStrategy(ABC):
         k_paths,
         uri_publishers=None,
         scheme=None,
+        prefix_routes=None,
     ) -> list[Route]:
         """Compute FIB routes.
 
@@ -188,6 +203,10 @@ class RoutingStrategy(ABC):
             uri_publishers: Optional dict mapping URI prefix to publisher host ID.
                 If None, default prefixes (ccnx:/test/exampleN) are used.
             scheme: AddressingScheme for IP generation (defaults to 192.168.0.0/16).
+            prefix_routes: Optional dict mapping a ccnx:/ prefix to a host
+                index, for routes independent of uri_publishers (see
+                compute_fib_for_uris). Falling back to the default prefixes
+                happens only when both this and uri_publishers are empty.
 
         Returns:
             List of Route objects.
@@ -198,25 +217,29 @@ class RoutingStrategy(ABC):
 class DijkstraStrategy(RoutingStrategy):
     """Default: per-source Dijkstra with k best next hops."""
 
-    def compute_routes(self, mesh_links, k_paths, uri_publishers=None, scheme=None):
-        if uri_publishers:
-            return compute_fib_for_uris(mesh_links, k_paths, uri_publishers, scheme=scheme)
+    def compute_routes(self, mesh_links, k_paths, uri_publishers=None, scheme=None, prefix_routes=None):
+        if uri_publishers or prefix_routes:
+            return compute_fib_for_uris(
+                mesh_links, k_paths, uri_publishers or {}, scheme=scheme, prefix_routes=prefix_routes
+            )
         return compute_fib(mesh_links, k_paths, scheme=scheme)
 
 
 class ShortestPathOnlyStrategy(RoutingStrategy):
     """Single shortest path per destination (k=1 fixed)."""
 
-    def compute_routes(self, mesh_links, k_paths, uri_publishers=None, scheme=None):
-        if uri_publishers:
-            return compute_fib_for_uris(mesh_links, 1, uri_publishers, scheme=scheme)
+    def compute_routes(self, mesh_links, k_paths, uri_publishers=None, scheme=None, prefix_routes=None):
+        if uri_publishers or prefix_routes:
+            return compute_fib_for_uris(
+                mesh_links, 1, uri_publishers or {}, scheme=scheme, prefix_routes=prefix_routes
+            )
         return compute_fib(mesh_links, 1, scheme=scheme)
 
 
 class EqualCostMultiPathStrategy(RoutingStrategy):
     """ECMP: all equal-cost next hops, k_paths is ignored."""
 
-    def compute_routes(self, mesh_links, k_paths, uri_publishers=None, scheme=None):
+    def compute_routes(self, mesh_links, k_paths, uri_publishers=None, scheme=None, prefix_routes=None):
         if scheme is None:
             scheme = AddressingScheme()
         host_num, graph, link_subnets = build_graph_and_subnets(mesh_links)
@@ -246,8 +269,8 @@ class EqualCostMultiPathStrategy(RoutingStrategy):
                 seen.add(key)
                 routes.append(Route(src, prefix, neighbor, next_hop_ip))
 
-        if uri_publishers:
-            destinations = list(uri_publishers.items())
+        if uri_publishers or prefix_routes:
+            destinations = list((uri_publishers or {}).items())
         else:
             destinations = [
                 (f"ccnx:/test/example{d + 1}", d) for d in range(host_num)
@@ -265,6 +288,14 @@ class EqualCostMultiPathStrategy(RoutingStrategy):
                     if dest == publisher:
                         continue
                     _add_ecmp(publisher, dest, prefix)
+
+        # prefix_routes: Pass 1 only, same reasoning as compute_fib_for_uris'
+        # prefix_routes pass -- no publisher behind it, so no Pass 2.
+        for prefix, dest in (prefix_routes or {}).items():
+            for src in range(host_num):
+                if src == dest:
+                    continue
+                _add_ecmp(src, dest, prefix)
 
         return routes
 
