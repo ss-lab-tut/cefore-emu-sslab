@@ -131,8 +131,8 @@ class HostAppFleet:
         self._cefore_conf_dirs = cefore_conf_dirs
         self._t0_ms = t0_ms
         self._runner = runner or MininetCommandRunner(net)
-        # 2026-10-23 fix (review finding): every entry's life-1 (canonical)
-        # log path, reserved once here for the fleet's ENTIRE lifetime --
+        # 2026-10-23 fix (review finding): every entry's life-1 log path,
+        # reserved once here for the fleet's ENTIRE lifetime --
         # never recomputed later. restart_host() checks a would-be
         # life-N (N>=2) log against this fixed set before doing anything
         # else. Without it, two valid same-host entries with distinct
@@ -144,12 +144,21 @@ class HostAppFleet:
         # up front (not from _launches, which only ever holds what is
         # CURRENTLY tracked) so the reservation covers every entry
         # regardless of start/restart/stop ordering.
+        # 2026-10-23 fix (review finding): reserved as os.path.realpath(),
+        # not the raw expanded string. Two host_apps entries can name the
+        # SAME file with different spellings (a redundant "./", "..",
+        # a symlink) -- raw string comparison misses that collision
+        # entirely, since the strings never compare equal even though
+        # CommandRunner.start()'s "wb" open would truncate the same inode
+        # either way. realpath() normalizes both sides onto one canonical
+        # form before they are ever compared (see restart_host's matching
+        # realpath() call), without requiring the path to already exist.
         reserved_logs = set()
         for spec in self._specs:
             for idx in _resolve_hosts(spec["hosts"], self._host_count):
                 _, _, log = self._expand_launch(spec, idx)
                 if log is not None:
-                    reserved_logs.add(log)
+                    reserved_logs.add(os.path.realpath(log))
         self._reserved_logs = frozenset(reserved_logs)
         # Each entry is {"idx", "argv", "cwd", "log", "life", "handle"}: the
         # exact CommandRunner.start() call that produced "handle", recorded
@@ -320,6 +329,9 @@ class HostAppFleet:
         second app's own life-1 path). This is checked against
         ``_reserved_logs`` (see __init__) up front, before the
         removal/stop loop below, and raises instead of proceeding.
+        The check compares ``os.path.realpath()`` of both sides, not the
+        raw strings, so two different spellings of the same file ("a.log"
+        vs "./a.log") still collide (see __init__'s matching comment).
 
         Raises:
             ValueError: the next life's log path collides with another
@@ -359,7 +371,13 @@ class HostAppFleet:
             # than stopping it and then having nowhere safe to restart it.
             for launch in mine:
                 collide = _life_log(launch["log"], launch["life"] + 1)
-                if collide is not None and collide in self._reserved_logs:
+                # 2026-10-23 fix (review finding): compare realpath(collide)
+                # against the realpath'd _reserved_logs set (see __init__),
+                # not the raw string -- `collide` itself stays the raw,
+                # unresolved path in the message below and is never used
+                # to launch anything (launching still goes through
+                # launch["log"]/life at L415, verbatim).
+                if collide is not None and os.path.realpath(collide) in self._reserved_logs:
                     raise ValueError(
                         f"host_apps restart for h{idx} would write its "
                         f"next life's log to {collide!r}, which collides "

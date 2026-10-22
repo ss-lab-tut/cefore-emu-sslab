@@ -596,6 +596,55 @@ class TestRestartLogCollision:
         assert fake.waits == []
         assert [h.log_path for h in fake.starts] == [a_log, b_log]
 
+    def test_restart_colliding_with_a_differently_spelled_sibling_path_is_rejected(
+        self,
+    ):
+        """2026-10-23 fix (review finding): the collision check used to
+        compare raw strings. Entry A's log is "/x/h0/a.log"; entry B's log
+        is spelled "/x/h0/./a.log.life2" (a redundant "./" a human or a
+        templated config could easily produce) -- the exact same file on
+        disk as the literal "/x/h0/a.log.life2" that restarting A to life
+        2 computes, but a DIFFERENT string. A raw ``collide in
+        self._reserved_logs`` membership test misses this (the two
+        spellings never compare equal as strings) and lets the restart
+        proceed to truncate B's still-live log; comparing
+        ``os.path.realpath()`` of both sides catches it because realpath
+        normalizes away the "./" on both, without needing either path to
+        exist on disk."""
+        a_log = "/x/h0/a.log"
+        b_log = "/x/h0/./a.log.life2"
+        fake = FakeCommandRunner()
+        fleet = _fleet(
+            fake,
+            specs=[
+                {"hosts": [0], "argv": ["./agent-a"], "log": a_log},
+                {"hosts": [0], "argv": ["./agent-b"], "log": b_log},
+            ],
+        )
+        fleet.start_all()
+        assert [h.log_path for h in fake.starts] == [a_log, b_log]
+
+        try:
+            fleet.restart_host(0, downtime_s=0)
+            raised = None
+        except ValueError as exc:
+            raised = exc
+
+        assert raised is not None
+        # The message reports the RAW computed collide path ("a.log.life2",
+        # no "./") -- the realpath normalization is only an internal
+        # comparison detail, never surfaced to the caller.
+        assert str(raised) == (
+            "host_apps restart for h0 would write its next life's log to "
+            "'/x/h0/a.log.life2', which collides with another host_apps "
+            "entry's reserved log path"
+        )
+        # Rejected before either side effect: neither app was stopped,
+        # and no third process (which would have reused the colliding
+        # path, under either spelling) started.
+        assert fake.waits == []
+        assert [h.log_path for h in fake.starts] == [a_log, b_log]
+
     def test_restart_with_no_sibling_collision_is_unaffected(self):
         """Control: a restart whose next life's log does not match any
         OTHER entry's reserved log must still proceed normally -- proves
