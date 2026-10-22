@@ -5,7 +5,7 @@ import os
 from unittest.mock import patch
 
 import src.runtime.host_apps as host_apps_mod
-from src.runtime.command_runner import FakeCommandRunner
+from src.runtime.command_runner import CommandResult, FakeCommandRunner
 from src.runtime.host_apps import HostAppFleet, build_host_app_fleet
 
 
@@ -218,6 +218,70 @@ class TestStopAll:
         fake = FakeCommandRunner()
         fleet = _fleet(fake)
         assert fleet.stop_all() == []
+
+    def test_warns_when_a_host_app_already_exited_before_shutdown(self):
+        # A scripted wait() result with timed_out=False/cancelled=False is
+        # CommandRunner's contract for "the process had already finished on
+        # its own" (see command_runner.py's "observe natural exit first").
+        fake = FakeCommandRunner()
+        fake.script_wait(returncode=1)
+        fleet = _fleet(fake, specs=[{"hosts": [1], "argv": ["noop"]}])
+        fleet.start_all()
+
+        with patch.object(host_apps_mod, "info") as mock_info:
+            fleet.stop_all()
+
+        mock_info.assert_called_once_with(
+            "[host-apps] warning: h1 exited rc=1 before shutdown\n"
+        )
+
+    def test_no_warning_when_a_host_app_was_still_running_at_shutdown(self):
+        # timed_out=True is wait()'s contract for "the deadline fired and we
+        # had to terminate a still-running process" -- the expected case for
+        # a long-running host app, which must not warn.
+        fake = FakeCommandRunner()
+        fake.script_wait(returncode=-15, timed_out=True)
+        fleet = _fleet(fake, specs=[{"hosts": [0], "argv": ["noop"]}])
+        fleet.start_all()
+
+        with patch.object(host_apps_mod, "info") as mock_info:
+            fleet.stop_all()
+
+        mock_info.assert_not_called()
+
+    def test_no_warning_when_a_host_app_wait_was_cancelled(self):
+        fake = FakeCommandRunner()
+        fake.script_wait(returncode=-15, cancelled=True)
+        fleet = _fleet(fake, specs=[{"hosts": [0], "argv": ["noop"]}])
+        fleet.start_all()
+
+        with patch.object(host_apps_mod, "info") as mock_info:
+            fleet.stop_all()
+
+        mock_info.assert_not_called()
+
+    def test_one_stop_failure_still_lets_other_handles_warn(self):
+        # The warning check for a surviving handle must not be skipped just
+        # because a different handle's wait() raised.
+        fake = FakeCommandRunner()
+        boom = RuntimeError("host vanished")
+
+        def on_wait(handle):
+            if handle.node == "h0":
+                raise boom
+            handle.result = CommandResult(returncode=1)
+
+        fake.on_wait = on_wait
+        fleet = _fleet(fake, specs=[{"hosts": [0, 1], "argv": ["noop"]}])
+        fleet.start_all()
+
+        with patch.object(host_apps_mod, "info") as mock_info:
+            failures = fleet.stop_all()
+
+        assert failures == [("stop_host_app h0", boom)]
+        mock_info.assert_called_once_with(
+            "[host-apps] warning: h1 exited rc=1 before shutdown\n"
+        )
 
 
 # ── build_host_app_fleet ──

@@ -12,6 +12,8 @@ might implement -- see CONTEXT.md (Daemon lifecycle: HostAppFleet).
 import os
 import time
 
+from mininet.log import info
+
 from .command_runner import MininetCommandRunner
 
 # The four placeholders a host_apps entry may use in argv/env/cwd/log.
@@ -148,11 +150,26 @@ class HostAppFleet:
         to SIGKILL after its own grace period), closes the redirected log
         file, and reaps it; a bare terminate() call does neither of the
         last two.
+
+        A host app is expected to still be running at this point (it is a
+        long-running process by contract), so CommandRunner.wait() observes
+        natural exit first (see command_runner.py) and only reports
+        ``timed_out``/``cancelled`` False when the process had already
+        finished on its own before this call ever reached it. 2026-10-22
+        fix: without this check, a host app that crashed right after
+        start_all() (missing binary, bad args, ...) stopped silently --
+        stop_all() still "succeeded" and nothing in script.log said the
+        process never actually ran.
         """
         failures = []
         for handle in self._handles:
             try:
-                self._runner.wait(handle, deadline=time.monotonic())
+                result = self._runner.wait(handle, deadline=time.monotonic())
+                if not result.timed_out and not result.cancelled:
+                    info(
+                        f"[host-apps] warning: {handle.node} exited "
+                        f"rc={result.returncode} before shutdown\n"
+                    )
             except BaseException as exc:
                 failures.append((f"stop_host_app {handle.node}", exc))
         return failures
