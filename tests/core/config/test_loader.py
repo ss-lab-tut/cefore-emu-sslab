@@ -2925,6 +2925,17 @@ def test_validate_prefix_routes_key_missing_ccnx_prefix():
     ]
 
 
+def test_validate_prefix_routes_bare_root_key_rejected():
+    """2026-10-22 fix: "ccnx:/" passed startswith("ccnx:/") and was
+    accepted, but it names every prefix in the namespace, not one usable
+    route target -- must be rejected like any other malformed key.
+    """
+    errors = validate_config({"hosts": 3, "prefix_routes": {"ccnx:/": 2}})
+    assert errors == [
+        "prefix_routes key 'ccnx:/' must be a non-empty ccnx:/ URI string"
+    ]
+
+
 def test_validate_prefix_routes_value_not_an_integer():
     errors = validate_config({"hosts": 3, "prefix_routes": {"ccnx:/test/a": "h2"}})
     assert errors == ["prefix_routes['ccnx:/test/a'] must be an integer host index"]
@@ -2941,6 +2952,19 @@ def test_validate_prefix_routes_out_of_range_host_index():
     errors = validate_config({"hosts": 3, "prefix_routes": {"ccnx:/test/a": 5}})
     assert errors == [
         "prefix_routes['ccnx:/test/a'] contains out-of-range host index 5"
+    ]
+
+
+def test_validate_prefix_routes_out_of_range_at_hosts_boundary():
+    """2026-10-22 fix: a `>= host_count` -> `> host_count` mutant survived
+    the suite because the existing out-of-range test uses idx 5, which
+    stays green under either operator. idx == host_count is the boundary
+    that distinguishes them: valid indices are 0..host_count-1, so 3 with
+    hosts=3 must already be out of range.
+    """
+    errors = validate_config({"hosts": 3, "prefix_routes": {"ccnx:/test/a": 3}})
+    assert errors == [
+        "prefix_routes['ccnx:/test/a'] contains out-of-range host index 3"
     ]
 
 

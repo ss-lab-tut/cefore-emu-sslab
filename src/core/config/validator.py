@@ -1138,7 +1138,16 @@ def _validate_prefix_routes(errors, config):
     host_count_known = _is_int(host_count)
 
     for prefix, host_idx in prefix_routes.items():
-        if not isinstance(prefix, str) or not prefix.startswith("ccnx:/"):
+        # 2026-10-22 fix: the bare root "ccnx:/" passed startswith("ccnx:/")
+        # and was accepted, but it names every prefix in the namespace, not
+        # one -- compute_fib_for_uris' prefix_routes pass needs a specific
+        # prefix to route toward, so the bare root is not a usable value
+        # here (unlike ccninfo's uri argument, where the root is valid).
+        if (
+            not isinstance(prefix, str)
+            or not prefix.startswith("ccnx:/")
+            or prefix == "ccnx:/"
+        ):
             errors.append(
                 f"prefix_routes key {prefix!r} must be a non-empty ccnx:/ URI string"
             )
