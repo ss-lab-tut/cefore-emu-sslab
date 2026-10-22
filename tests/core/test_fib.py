@@ -177,8 +177,7 @@ def test_shortest_path_strategy_bidirectional(sample_mesh_links):
 
 # ── prefix_routes: static route announcement, no publisher behind it ──
 #
-# A 3-host line (h0-h1-h2), the same shape as the ticket's acceptance
-# criteria: links [[0, 1], [1, 2]]. Unlike sample_mesh_links (triangle,
+# A 3-host line (h0-h1-h2): links [[0, 1], [1, 2]]. Unlike sample_mesh_links (triangle,
 # every pair directly connected), a line forces a real multi-hop path for
 # the (0, 2) pair, which is what distinguishes "every other host routes
 # toward the named one" (prefix_routes, one direction) from "publisher
