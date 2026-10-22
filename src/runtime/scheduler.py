@@ -92,6 +92,28 @@ def _handle_compute_call(net, event, mesh_links, ctx):
     return EventOutcome(success=True, outcome="ok", detail=detail)
 
 
+def _handle_host_app_restart(net, event, mesh_links, ctx):
+    """Handle a host_app_restart event: stop then restart one host's
+    host_apps processes (see runtime.host_apps.HostAppFleet.restart_host).
+
+    Returns a bool, like link_down/link_up, so the EventRecord this
+    produces has exactly their shape -- no outcome/detail keys -- rather
+    than the tri-state EventOutcome shape compute_call uses. restart_host()
+    itself blocks the scheduler thread for ``downtime_s`` (its stop-then-
+    sleep-then-start is synchronous); a later event scheduled during that
+    window fires late by that amount, same as any other slow handler would
+    delay the single-threaded EventScheduler (see README).
+    """
+    fleet = ctx.get("host_app_fleet")
+    if fleet is None:
+        info(
+            "[scheduler] no host_app_fleet in context; cannot run "
+            "host_app_restart\n"
+        )
+        return False
+    return fleet.restart_host(event["host"], event.get("downtime_s", 0))
+
+
 def _handle_content_op(op_type):
     """Return a scheduler handler that delegates to the ContentOperationRunner."""
 
@@ -132,6 +154,7 @@ _EVENT_HANDLERS = {
     "pubsub_sub": _handle_content_op("pubsub_sub"),
     "pubsub_pub": _handle_content_op("pubsub_pub"),
     "ccninfo": _handle_content_op("ccninfo"),
+    "host_app_restart": _handle_host_app_restart,
 }
 
 # Same-time priority (lower value fires first; pubsub_sub before pubsub_pub,
@@ -156,6 +179,7 @@ class EventScheduler:
         - fib_enable: requires ``host``, ``prefix``, ``next_hop``
         - bw_set: requires ``nodes: [a, b]``, ``bandwidth``
         - compute_call: requires ``host``, ``endpoint``
+        - host_app_restart: requires ``host``; optional ``downtime_s`` (default 0)
 
     Events may include a ``repeat`` dict for periodic execution:
         - interval: seconds between repetitions
@@ -174,10 +198,15 @@ class EventScheduler:
         content_runner=None,
         start_time=None,
         sink=None,
+        host_app_fleet=None,
     ):
         self.net = net
         self.mesh_links = mesh_links
-        self._context = {"run_dir": run_dir, "content_runner": content_runner}
+        self._context = {
+            "run_dir": run_dir,
+            "content_runner": content_runner,
+            "host_app_fleet": host_app_fleet,
+        }
         self._sink = sink
         self._stop_event = threading.Event()
         self._thread = None
@@ -254,15 +283,23 @@ class EventScheduler:
                 info(f"[scheduler] unknown event type: {event_type}\n")
                 continue
 
-            elapsed = time.monotonic() - self._start_time
-            late_by = elapsed - at_sec
+            # 2026-10-22 fix: capture the fire time HERE, before the
+            # handler runs -- not after it returns. host_app_restart blocks
+            # this thread for stop + downtime_s + start (seconds); a
+            # reviewer found that resampling time.monotonic() after the
+            # handler returned attributed that blocking time to the
+            # event's actual_at instead of its real fire time. fire_at is
+            # passed into _record_event_outcome() below rather than let it
+            # resample.
+            fire_at = time.monotonic() - self._start_time
+            late_by = fire_at - at_sec
             if self._shared_start_time and late_by > 0.05:
                 info(
                     f"[warning] scheduler event {event_type} scheduled at "
-                    f"t={at_sec:.1f}s executed at t={elapsed:.1f}s "
+                    f"t={at_sec:.1f}s executed at t={fire_at:.1f}s "
                     f"({late_by:.1f}s late)\n"
                 )
-            info(f"[scheduler] t={elapsed:.1f}s  {event_type} {event}\n")
+            info(f"[scheduler] t={fire_at:.1f}s  {event_type} {event}\n")
             success = True
             error = None
             outcome = None
@@ -288,17 +325,31 @@ class EventScheduler:
                 break
 
             self._record_event_outcome(
-                event, event_type, at_sec, success, error, outcome, detail
+                event, event_type, at_sec, fire_at, success, error, outcome, detail
             )
             self._handle_repeat(event, at_sec)
 
     def _record_event_outcome(
-        self, event, event_type, at_sec, success, error, outcome=None, detail=None
+        self,
+        event,
+        event_type,
+        at_sec,
+        actual_at,
+        success,
+        error,
+        outcome=None,
+        detail=None,
     ):
-        """Emit an outcome record for a non-content event into the ResultsSink."""
+        """Emit an outcome record for a non-content event into the ResultsSink.
+
+        ``actual_at`` is the fire time the caller (_run()) sampled right
+        before invoking the handler -- this method must not resample
+        time.monotonic() itself, or a handler that blocks (e.g.
+        host_app_restart's stop + downtime_s + start) would have its own
+        blocking duration misattributed to the event's fire time.
+        """
         if self._sink is None or event_type in _CONTENT_EVENT_TYPES:
             return
-        actual_at = time.monotonic() - self._start_time
         self._sink.record_event(
             event_type,
             success=success,

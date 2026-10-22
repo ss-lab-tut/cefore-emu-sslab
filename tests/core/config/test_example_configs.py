@@ -27,7 +27,7 @@ EXAMPLE_FILES = sorted(
 )
 
 # glob が静かに空振りすると個別テストが 0 件収集で green になってしまうので、
-# discovery 自体を検証対象にする。smoke が使う min_*.yaml 16 本は、消えたら
+# discovery 自体を検証対象にする。smoke が使う min_*.yaml 17 本は、消えたら
 # cefore-run-tests の証拠構成が壊れるため存在を明示的に固定する。
 _SMOKE_EXAMPLES = frozenset(
     {
@@ -39,6 +39,7 @@ _SMOKE_EXAMPLES = frozenset(
         "min_event_putget.yaml",
         "min_explicit_line.yaml",
         "min_failure.yaml",
+        "min_host_app_restart.yaml",
         "min_host_apps.yaml",
         "min_mixed.yaml",
         "min_monitoring.yaml",
@@ -51,7 +52,7 @@ _SMOKE_EXAMPLES = frozenset(
 )
 
 
-# 期待 inventory は意図的に完全固定 (2026-08-01 review fix: 非空 + smoke 13 本
+# 期待 inventory は意図的に完全固定 (2026-08-01 review fix: 非空 + smoke 17 本
 # だけの assert では example.json や非-smoke example の消失が素通りだった)。
 # example の追加/削除は必ずこの manifest の更新を伴う = 意図的な変更であること
 # を強制する。

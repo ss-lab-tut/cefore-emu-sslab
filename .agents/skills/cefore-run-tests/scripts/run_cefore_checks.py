@@ -33,6 +33,7 @@ SMOKE_CONFIGS = (
     "min_ccninfo",
     "min_compute",
     "min_host_apps",
+    "min_host_app_restart",
     "connect",
 )
 
@@ -449,6 +450,31 @@ def build_smoke_cases() -> list[SmokeCase]:
                 "host_app_markers": {"hosts": (0, 1, 2)},
             },
         ),
+        SmokeCase(
+            # host_app_restart: stops and restarts ONE host's host_apps
+            # process mid-experiment (ReCefore's generic "an application on
+            # host N crashes/restarts at time t" primitive). It writes no
+            # content, so results.json carries only the restart event's own
+            # outcome row -- the host_app_restart_markers check below is
+            # what actually proves HostAppFleet.restart_host started a
+            # second, distinct process rather than being a no-op.
+            #
+            # 2026-10-22: host_app_restart_logs exercises _life_log()'s
+            # ".lifeN" suffixing (host_apps.py) against a REAL
+            # CommandRunner.start() log redirection -- the config's
+            # host_apps entry now also carries log: "{node_dir}/{node}.log"
+            # (see min_host_app_restart.yaml) so this had unit coverage
+            # only, never live, before.
+            "min_host_app_restart",
+            config_relpath="config/examples/min_host_app_restart.yaml",
+            expect={
+                "min_rows": 1,
+                "require_event_types": ("host_app_restart",),
+                "all_events_success": True,
+                "host_app_restart_markers": {"lines": {0: 1, 1: 2, 2: 1}},
+                "host_app_restart_logs": {"lives": {0: 1, 1: 2, 2: 1}},
+            },
+        ),
         SmokeCase("connect", kind="connect"),
     ]
 
@@ -543,6 +569,12 @@ def validate_results(
       ``validate_host_app_markers`` (data-independent: it checks files on
       disk, not ``results.json``, so it works even when ``expect["empty"]``
       has already short-circuited the rest of this function).
+    - ``host_app_restart_markers``: same dispatch pattern as
+      ``host_app_markers``, to ``validate_host_app_restart_markers`` (also
+      file-based, not ``results.json``-based).
+    - ``host_app_restart_logs``: same dispatch pattern, to
+      ``validate_host_app_restart_logs`` (also file-based; requires the
+      case's host_apps entry to carry a ``log:`` key).
     """
 
     def fail(msg: str) -> None:
@@ -718,6 +750,99 @@ def validate_host_app_markers(case_name: str, run_dir: Path, hosts: tuple[int, .
         t0_values.add(t0)
     if len(t0_values) != 1:
         fail(f"host_app_marker t0 values differ across hosts: {sorted(t0_values)}")
+
+
+def validate_host_app_restart_markers(
+    case_name: str, run_dir: Path, expected_lines: dict[int, int]
+) -> None:
+    """Validate a min_host_app_restart-style config's host_app_marker files.
+
+    Unlike validate_host_app_markers' single-life "hN <ms>" marker, this
+    config's host_apps command *appends* ("echo ... >>") one
+    "h{idx} <t0_ms> <pid>" line per life to the same
+    <run_dir>/debug/node_dirs/h{idx}/host_app_marker path. ``expected_lines``
+    names, per host index, exactly how many lives that host must show (1 for
+    a host never restarted, 2 for one restarted once, ...). Line COUNT is
+    this smoke's proof that HostAppFleet.restart_host() actually started a
+    brand-new process rather than being a no-op that left the single
+    first-life line alone. Every line's t0_ms must match across every host
+    and every life -- the same "shared scheduler origin, never re-captured"
+    assertion validate_host_app_markers makes, extended across lives. A host
+    with more than one life must show that many DISTINCT pids: the only
+    direct evidence that a later life is a different OS process, not a
+    second echo from the same still-running shell.
+    """
+
+    def fail(msg: str) -> None:
+        raise RuntimeError(f"{case_name}: {msg}")
+
+    t0_values: set[str] = set()
+    for idx, expected in sorted(expected_lines.items()):
+        marker_path = run_dir / "debug" / "node_dirs" / f"h{idx}" / "host_app_marker"
+        if not marker_path.is_file():
+            fail(f"host_app_marker missing for h{idx}")
+        lines = marker_path.read_text(encoding="utf-8").splitlines()
+        if len(lines) != expected:
+            fail(
+                f"h{idx} host_app_marker has {len(lines)} line(s), "
+                f"expected {expected}"
+            )
+        pids: set[str] = set()
+        for line in lines:
+            tokens = line.split()
+            if len(tokens) != 3:
+                fail(f"h{idx} host_app_marker line {line!r} is not 'hN <ms> <pid>'")
+            node, t0, pid = tokens
+            if node != f"h{idx}":
+                fail(f"h{idx} host_app_marker node is {node!r}, expected 'h{idx}'")
+            if not t0.isdigit():
+                fail(f"h{idx} host_app_marker t0 {t0!r} is not numeric")
+            if not pid.isdigit():
+                fail(f"h{idx} host_app_marker pid {pid!r} is not numeric")
+            t0_values.add(t0)
+            pids.add(pid)
+        if len(pids) != len(lines):
+            fail(f"h{idx} host_app_marker pids are not all distinct: {sorted(pids)}")
+    if len(t0_values) != 1:
+        fail(f"host_app_marker t0 values differ: {sorted(t0_values)}")
+
+
+def validate_host_app_restart_logs(
+    case_name: str, run_dir: Path, expected_lives: dict[int, int]
+) -> None:
+    """Validate a min_host_app_restart-style config's per-life log files.
+
+    validate_host_app_restart_markers proves the marker file's line count
+    and distinct pids -- but only ever against the FakeCommandRunner in
+    unit tests, never against a real CommandRunner.start() log
+    redirection. This proves _life_log()'s ".lifeN" suffixing (host_apps.py)
+    live: with the config's host_apps entry carrying a ``log:
+    "{node_dir}/{node}.log"`` key, life 1 writes the bare "<node>.log" and
+    each life N >= 2 writes a SEPARATE "<node>.log.lifeN" -- never
+    truncating an earlier life's file (that is what CommandRunner.start()'s
+    "wb" open would do if a later life reused an earlier life's exact
+    path). ``expected_lives`` is the same {host_idx: life_count} mapping
+    validate_host_app_restart_markers takes: a host with life_count 1 must
+    show only its first-life log; one with life_count N must show every
+    log from life 1 through life N, and must NOT show a life-(N+1) log --
+    proof the restart count matches exactly, not merely "at least".
+    """
+
+    def fail(msg: str) -> None:
+        """Abort this check with ``msg``, tagged with the case name."""
+        raise RuntimeError(f"{case_name}: {msg}")
+
+    for idx, lives in sorted(expected_lives.items()):
+        node = f"h{idx}"
+        node_dir = run_dir / "debug" / "node_dirs" / node
+        for life in range(1, lives + 1):
+            log_name = f"{node}.log" if life == 1 else f"{node}.log.life{life}"
+            if not (node_dir / log_name).is_file():
+                fail(f"{node} life {life} log missing: {log_name}")
+        next_life = lives + 1
+        extra_name = f"{node}.log.life{next_life}"
+        if (node_dir / extra_name).is_file():
+            fail(f"{node} has an unexpected life {next_life} log: {extra_name}")
 
 
 def validate_summarizer_stdout(
@@ -914,6 +1039,16 @@ def run_single_smoke(
         if host_app_markers is not None:
             validate_host_app_markers(
                 case.name, results_path.parent, host_app_markers["hosts"]
+            )
+        host_app_restart_markers = (case.expect or {}).get("host_app_restart_markers")
+        if host_app_restart_markers is not None:
+            validate_host_app_restart_markers(
+                case.name, results_path.parent, host_app_restart_markers["lines"]
+            )
+        host_app_restart_logs = (case.expect or {}).get("host_app_restart_logs")
+        if host_app_restart_logs is not None:
+            validate_host_app_restart_logs(
+                case.name, results_path.parent, host_app_restart_logs["lives"]
             )
         print(f"[OK] {case.name}: {results_path}")
         return case_output_dir

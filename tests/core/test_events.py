@@ -25,7 +25,7 @@ def test_canonical_order_matches_loader_error_message_order():
     assert event_types() == (
         "link_down", "link_up", "fib_add", "fib_del", "fib_enable",
         "bw_set", "compute_call", "put", "get", "pubsub_pub", "pubsub_sub",
-        "ccninfo",
+        "ccninfo", "host_app_restart",
     )
 
 
@@ -47,6 +47,7 @@ def test_required_fields_pin_the_contract_including_file_drift():
         "pubsub_pub": ("host", "uri", "file"),
         "pubsub_sub": ("host", "uri"),
         "ccninfo": ("host", "uri"),
+        "host_app_restart": ("host",),
     }
 
 

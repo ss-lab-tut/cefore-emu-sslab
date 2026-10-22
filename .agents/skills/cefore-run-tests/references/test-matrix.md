@@ -220,6 +220,33 @@
   - each marker's content is exactly `"hN <t0_ms>"`, with its own node name (catches a mix-up where every host wrote to the same file)
   - all three markers carry the identical `<t0_ms>` value (the regression this case guards: host apps must receive the same t0 the scheduler's `"at: 0"` origin uses, not each reading its own clock)
 
+### `min_host_app_restart`
+
+- File: `config/examples/min_host_app_restart.yaml`
+- A 3-host line (`links`), one `host_apps` entry covering every host
+  (`sh -c "echo {node} {t0_ms} $$ >> {node_dir}/host_app_marker; exec sleep 1000"`),
+  and one `host_app_restart` event (`host: 1, downtime_s: 2`) that stops and
+  restarts only h1's process. `host_app_restart` is a non-`put` event, so it
+  runs in autotest's eval phase, same as `link_down`/`link_up`.
+- Expected `results.json`: one `host_app_restart` event record with
+  `success == true` (the content-free rows, like `min_host_apps`).
+- Required checks:
+  - at least 1 `host_app_restart` event record, and every event record
+    (there is only the one) has `success == true`
+  - `debug/node_dirs/h{0,1,2}/host_app_marker` (via `debug.artifacts:
+    node_dirs`): h1 has exactly 2 lines (one per life), h0/h2 exactly 1
+    (never restarted)
+  - every line's node name and `t0_ms` match `hN`/the shared origin, same
+    as `min_host_apps`
+  - h1's two lines carry two DIFFERENT pids (the only direct evidence that
+    `HostAppFleet.restart_host()` started a second OS process, rather than
+    being a no-op that left the first life's single line alone)
+  - the host_apps entry also carries `log: "{node_dir}/{node}.log"`, and
+    `debug/node_dirs/h{0,1,2}/` must show: h1 both `h1.log` (life 1) and
+    `h1.log.life2` (life 2), h0/h2 only their own `hN.log` (never a
+    `.life2`) -- live proof of `_life_log()`'s per-life suffixing
+    (host_apps.py), which was previously unit-tested only
+
 ### `connect`
 
 - Path: ConnectScenario via `ceforeemu-connect` (no config file). The helper runs

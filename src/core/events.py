@@ -63,6 +63,16 @@ EVENT_SCHEMA: dict[str, EventSpec] = {
     "pubsub_pub":   EventSpec(("host", "uri", "file"), is_content=True, is_publication=True, priority=2, publication_uri_field="uri"),
     "pubsub_sub":   EventSpec(("host", "uri"), is_content=True, priority=0),
     "ccninfo":      EventSpec(("host", "uri"), is_content=True),
+    # 2026-10-22: generic "stop then restart this host's host_apps processes"
+    # event, for scripting "an application on host N crashes/restarts at
+    # time t" from YAML. Appended last
+    # rather than placed near link_down/host-lifecycle types so every
+    # existing type keeps its position in the canonical order (loader's
+    # "must be one of: ..." message and EVENT_SCHEMA-derived literal tests
+    # both depend on that order never shuffling for unrelated additions).
+    # Not content, not a publisher, default priority: it carries no FIB/
+    # publication metadata and has no same-timestamp ordering need.
+    "host_app_restart": EventSpec(("host",)),
 }
 
 

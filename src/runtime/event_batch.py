@@ -34,6 +34,10 @@ class EventBatchSpec:
     command_runner: Any = None
     scheduler_label: str = "event scheduling"
     runner_label: str = "content operations"
+    # Forwarded to EventScheduler so a host_app_restart event in this batch
+    # can reach HostAppFleet.restart_host(); None (the default) is fine for
+    # a batch that cannot contain one, e.g. disaster's put-only seed batch.
+    host_app_fleet: Any = None
 
 
 @dataclass(frozen=True)
@@ -124,6 +128,7 @@ def run_event_batch(net, spec: EventBatchSpec) -> EventBatchResult:
             content_runner=content_runner,
             start_time=spec.start_time,
             sink=spec.sink,
+            host_app_fleet=spec.host_app_fleet,
         )
 
     if spec.wait_timeout is None:

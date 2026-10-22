@@ -1279,6 +1279,30 @@ def _validate_host_apps(errors, config):
                     )
 
 
+def _host_apps_covers_host(host_apps, host_idx) -> bool:
+    """True if some host_apps: entry's ``hosts`` selector includes host_idx.
+
+    Mirrors host_apps.py's _resolve_hosts semantics ("all" or a literal
+    list of integers) without importing runtime from core (see
+    core/events.py's layering note) -- it only needs to answer the same
+    "all, or is it in the list" question, not actually resolve a host list.
+    A malformed host_apps (not a list, or an entry with a non-"all",
+    non-list hosts value) is reported by _validate_host_apps already, so
+    this treats it as "covers nothing" rather than raising.
+    """
+    if not isinstance(host_apps, list):
+        return False
+    for entry in host_apps:
+        if not isinstance(entry, dict):
+            continue
+        hosts = entry.get("hosts")
+        if hosts == "all":
+            return True
+        if isinstance(hosts, list) and host_idx in hosts:
+            return True
+    return False
+
+
 def _validate_put_options(errors, prefix, event):
     _validate_number_option(errors, prefix, event, "rate", minimum=0.001)
     for field in ("expiry", "cache_time"):
@@ -1441,6 +1465,7 @@ class _EventCheckContext:
     host_count: Any
     no_cli: Any
     results_json: Any
+    host_apps: Any
 
 
 def _validate_required_fields(
@@ -1738,6 +1763,53 @@ def _validate_get_event(
     return errors
 
 
+def _validate_host_app_restart_event(
+    event: dict, prefix: str, ctx: _EventCheckContext
+) -> list[str]:
+    """Validate host_app_restart: host selector, downtime_s, host_apps coverage.
+
+    ``host`` is required (schema) and must name an existing host_apps: entry
+    -- a host_app_restart with no configured host app would be a scheduler
+    event that can never do anything (HostAppFleet.restart_host has nothing
+    to stop/start), so that is rejected here rather than becoming a silent
+    runtime no-op. ``host`` range (0..hosts-1) is NOT re-checked here: the
+    generic _validate_host_range call in _validate_events already covers it
+    for every typed event, same as every other per-type validator.
+
+    2026-10-22: downtime_s must be finite, not merely >= 0 -- the handler's
+    wait is a plain Event.wait(downtime_s); `_is_number(inf)` is True and
+    `inf < 0` is False, so without this check an `.inf` downtime_s would
+    pass _validate_number_option's bound check and then park the scheduler
+    thread forever (same failure class monitoring.interval's isfinite guard
+    exists to prevent).
+    """
+    errors = _validate_required_fields(
+        event, prefix, EVENT_SCHEMA["host_app_restart"].required_fields
+    )
+    errors.extend(_validate_host_integer(event, prefix))
+    if "downtime_s" in event:
+        value = event["downtime_s"]
+        try:
+            is_finite = _is_number(value) and math.isfinite(value)
+        except OverflowError:
+            is_finite = False
+        if not is_finite:
+            errors.append(f"{prefix}.downtime_s must be a finite number")
+        else:
+            _validate_number_option(errors, prefix, event, "downtime_s")
+    if (
+        "host" in event
+        and _is_int(event["host"])
+        and not _host_apps_covers_host(ctx.host_apps, event["host"])
+    ):
+        errors.append(
+            f"{prefix}.host has no host_apps entry covering it "
+            "(host_app_restart requires a host_apps: entry whose hosts "
+            "includes this host)"
+        )
+    return errors
+
+
 # Dispatch table keyed by EventSchema type name. Drift between EventSchema and
 # the validator is caught at import (same pattern as content_ops' _HANDLERS):
 # a new event type must either get a validator or be mapped to a shared one
@@ -1755,6 +1827,7 @@ _EVENT_VALIDATORS: dict[str, Callable[[dict, str, _EventCheckContext], list[str]
     "pubsub_pub": _validate_publication_event,
     "pubsub_sub": _validate_get_event,
     "ccninfo": _validate_ccninfo_event,
+    "host_app_restart": _validate_host_app_restart_event,
 }
 
 assert set(_EVENT_VALIDATORS) == set(event_types())
@@ -1840,6 +1913,7 @@ def _validate_events(errors, config):
                 host_count=host_count,
                 no_cli=config.get("no_cli"),
                 results_json=config.get("results_json"),
+                host_apps=config.get("host_apps"),
             )
             for idx, event in enumerate(config["events"]):
                 if not isinstance(event, dict):

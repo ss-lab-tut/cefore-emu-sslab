@@ -314,6 +314,146 @@ class TestComputeCallOutcomeMapping:
         }
 
 
+class TestHostAppRestartHandler:
+    """host_app_restart delegates to HostAppFleet.restart_host() and must
+    produce the same EventRecord shape as link_down/link_up -- a plain
+    success bool, no outcome/detail keys (unlike compute_call's tri-state).
+    """
+
+    def test_delegates_to_fleet_restart_host_with_host_and_downtime_s(self):
+        """The handler is a thin forward to ctx["host_app_fleet"].restart_host()."""
+        sink = RecordingSink()
+        net = _make_net()
+        fleet = MagicMock()
+        fleet.restart_host.return_value = True
+        event = {
+            "at": 0.0,
+            "type": "host_app_restart",
+            "host": 1,
+            "downtime_s": 3,
+        }
+        sched = EventScheduler(net, [event], sink=sink, host_app_fleet=fleet)
+        sched.start()
+        sched.wait_all(timeout=3)
+
+        fleet.restart_host.assert_called_once_with(1, 3)
+        rec = sink.records[0]
+        assert rec["success"] is True
+        assert rec["event_type"] == "host_app_restart"
+        assert "outcome" not in rec
+        assert "detail" not in rec
+
+    def test_downtime_s_defaults_to_zero_when_omitted(self):
+        """downtime_s is optional in the event schema; the handler's
+        default must match (event.get("downtime_s", 0))."""
+        net = _make_net()
+        fleet = MagicMock()
+        fleet.restart_host.return_value = True
+        event = {"at": 0.0, "type": "host_app_restart", "host": 0}
+        sched = EventScheduler(net, [event], host_app_fleet=fleet)
+        sched.start()
+        sched.wait_all(timeout=3)
+
+        fleet.restart_host.assert_called_once_with(0, 0)
+
+    def test_fleet_returning_false_records_failure(self):
+        """restart_host() returns False when shutdown won the race (see
+        HostAppFleet.restart_host); that must be recorded as a failed event,
+        not silently treated as success."""
+        sink = RecordingSink()
+        net = _make_net()
+        fleet = MagicMock()
+        fleet.restart_host.return_value = False
+        event = {"at": 0.0, "type": "host_app_restart", "host": 0}
+        sched = EventScheduler(net, [event], sink=sink, host_app_fleet=fleet)
+        sched.start()
+        sched.wait_all(timeout=3)
+
+        rec = sink.records[0]
+        assert rec["success"] is False
+        assert rec["error"] == "handler reported failure"
+
+    def test_fleet_raising_records_the_exception_message(self):
+        """restart_host() raising (e.g. a stop failure) is caught by the
+        scheduler's own generic exception handling, same as any handler."""
+        sink = RecordingSink()
+        net = _make_net()
+        fleet = MagicMock()
+        fleet.restart_host.side_effect = RuntimeError("stop_host_app h0 vanished")
+        event = {"at": 0.0, "type": "host_app_restart", "host": 0}
+        sched = EventScheduler(net, [event], sink=sink, host_app_fleet=fleet)
+        sched.start()
+        sched.wait_all(timeout=3)
+
+        rec = sink.records[0]
+        assert rec["success"] is False
+        assert rec["error"] == "stop_host_app h0 vanished"
+
+    def test_no_fleet_in_context_records_failure_without_crashing(self):
+        """connect/mesh/linear construct an EventScheduler with no
+        host_app_fleet; a host_app_restart event there must fail cleanly,
+        not raise."""
+        sink = RecordingSink()
+        net = _make_net()
+        event = {"at": 0.0, "type": "host_app_restart", "host": 0}
+        sched = EventScheduler(net, [event], sink=sink)
+        sched.start()
+        sched.wait_all(timeout=3)
+
+        rec = sink.records[0]
+        assert rec["success"] is False
+
+    def test_actual_at_is_sampled_before_a_blocking_handler_not_after(self):
+        """2026-10-22 fix (review finding): host_app_restart's handler
+        blocks the scheduler thread for stop + downtime_s + start (several
+        real seconds). actual_at must record WHEN the event fired -- right
+        before the handler was invoked -- not resample time.monotonic()
+        after the handler returns, or that blocking time would be added
+        on top of the real fire time.
+
+        time.monotonic() is scripted (not the real clock) so the test
+        fails loudly, with the wrong number, if the implementation ever
+        goes back to resampling: _run() needs exactly two calls per event
+        under the fix (the pre-dispatch delay check, then the fire-time
+        capture used below); a third call would consume the trap value
+        1009.0 and the assertion below would see 9.0, not 4.0.
+        """
+        sink = RecordingSink()
+        net = _make_net()
+
+        def blocking_handler(net, ev, ml, ctx):
+            # Stands in for restart_host()'s real stop+downtime_s+start
+            # block. A short real sleep is enough to prove "time passed
+            # during the handler" without slowing the test down; the
+            # scripted monotonic() sequence below, not the wall clock, is
+            # what the assertion actually checks.
+            time.sleep(0.05)
+            return True
+
+        # [call 1 (delay check): 1004.0 -> elapsed=4.0, delay=at_sec-elapsed=0,
+        #  so _run() dispatches immediately instead of really waiting 4s;
+        #  call 2 (fire_at capture): 1004.0 -> fire_at=4.0, the correct
+        #  actual_at; call 3 (trap, must never be consumed): 1009.0 -- the
+        #  wrong, post-handler-blocking value a resampling bug would record]
+        monotonic_values = iter([1004.0, 1004.0, 1009.0])
+        with patch.dict(
+            "src.runtime.scheduler._EVENT_HANDLERS", {"test": blocking_handler}
+        ), patch(
+            "src.runtime.scheduler.time.monotonic",
+            side_effect=lambda: next(monotonic_values),
+        ):
+            sched = EventScheduler(
+                net,
+                [{"at": 4.0, "type": "test"}],
+                sink=sink,
+                start_time=1000.0,
+            )
+            sched.start()
+            sched.wait_all(timeout=3)
+
+        assert sink.records[0]["actual_at"] == 4.0
+
+
 class TestEventOutcomeRecords:
     """Non-content events emit outcome records into the results sink (K)."""
 
