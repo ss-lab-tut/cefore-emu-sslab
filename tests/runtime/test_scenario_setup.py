@@ -604,9 +604,7 @@ def test_build_mesh_scenario_links_none_uses_meshtopo_unchanged(tmp_path, monkey
 def test_build_mesh_scenario_links_builds_explicit_links_topo(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
 
-    result = build_mesh_scenario(
-        _mesh_spec(seed=42, links=[[0, 1], [1, 2]])
-    )
+    result = build_mesh_scenario(_mesh_spec(seed=42, links=[[0, 1], [1, 2]]))
 
     assert type(result.topo) is ExplicitLinksTopo
     assert result.topo.mesh_links == [
