@@ -616,6 +616,40 @@ class TestRestartLogCollision:
 # orphan process ──
 
 
+class _LockAcquireProbe:
+    """Test double standing in for a real ``threading.Lock``: forwards
+    acquire()/release() to the wrapped lock, but signals an Event the
+    instant acquire() is CALLED -- before it may block waiting for the
+    real lock -- so a test can prove a thread actually attempted to take
+    the lock, rather than merely inferring it from elapsed wall-clock
+    time (which cannot tell "genuinely blocked on the lock" apart from
+    "the OS just hasn't scheduled this thread yet").
+
+    ``threading.Lock`` instances do not support arbitrary attribute
+    assignment, so this wraps one as a drop-in substitute for
+    HostAppFleet._lock, which production code only ever uses through
+    acquire()/release()/__enter__/__exit__ (``with self._lock:``).
+    """
+
+    def __init__(self, real_lock, on_acquire):
+        self._real_lock = real_lock
+        self._on_acquire = on_acquire
+
+    def acquire(self, *args, **kwargs):
+        self._on_acquire()
+        return self._real_lock.acquire(*args, **kwargs)
+
+    def release(self):
+        self._real_lock.release()
+
+    def __enter__(self):
+        self.acquire()
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.release()
+
+
 class TestRestartShutdownRace:
     """A restart racing scenario shutdown must not leave an orphan process:
     whichever of stop_all()/restart_host() runs first, shutdown wins and no
@@ -655,6 +689,10 @@ class TestRestartShutdownRace:
         real_wait = fleet._stopping.wait
 
         def wait_and_signal(timeout=None):
+            """Stand-in for fleet._stopping.wait(): signal entered_wait
+            right before delegating to the real wait, so the test can
+            block until the restart thread has genuinely reached (not
+            merely is about to reach) the downtime_s wait."""
             entered_wait.set()
             return real_wait(timeout)
 
@@ -713,8 +751,10 @@ class TestRestartShutdownRace:
         fleet.start_all()
 
         def fake_wait(downtime_s):
-            # Stand in for the downtime_s wait timing out normally, but
-            # have shutdown land and finish inside that same window.
+            """Stand in for fleet._stopping.wait(): report a genuine
+            timeout (False), but have shutdown land and finish INSIDE
+            that same window, so only the post-wait recheck (not the
+            earlier wait() return value) can still catch it."""
             fleet.stop_all()
             return False
 
@@ -740,7 +780,19 @@ class TestRestartShutdownRace:
         with the fix, it must stay blocked on ``_lock`` (not race ahead
         with a stale snapshot) until the stop attempt is released and the
         failed launch is put back. Once both threads finish, stop_all()'s
-        own retry must reach the SAME original handle a second time."""
+        own retry must reach the SAME original handle a second time.
+
+        2026-10-23 fix (review finding): proving "stop_all() is still
+        blocked" used to rely on ``shutdown_thread.join(timeout=0.5)``
+        returning False -- but a thread that simply has not been
+        scheduled by the OS yet also reports ``is_alive() is True``,
+        which the reverted (unlocked) implementation would eventually
+        satisfy too if the join raced ahead of the scheduler. Wrapping
+        the real lock in ``_LockAcquireProbe`` and waiting on an Event it
+        sets replaces that guess with proof that stop_all() actually
+        called ``_lock.acquire()`` (and is therefore genuinely blocked
+        inside it, since restart_thread still holds the real lock) before
+        the ``is_alive()`` assertion runs."""
         fake = FakeCommandRunner()
         fleet = _fleet(fake, specs=[{"hosts": [0], "argv": ["noop"]}])
         fleet.start_all()
@@ -750,9 +802,10 @@ class TestRestartShutdownRace:
         release = threading.Event()
 
         def on_wait(handle):
-            # Only the restart's own stop attempt blocks and then fails;
-            # stop_all()'s later retry on the same handle must fall
-            # through normally (entered is already set by then).
+            """Block the restart's OWN first stop attempt until
+            released, then fail it. stop_all()'s later retry on the
+            same handle must fall through normally -- ``entered`` is
+            already set by then, so this branch is skipped."""
             if not entered.is_set():
                 entered.set()
                 release.wait(5)
@@ -763,6 +816,9 @@ class TestRestartShutdownRace:
         restart_result = []
 
         def run_restart():
+            """Run restart_host() on its own thread and capture
+            whatever it raises, so the main thread can assert on the
+            outcome once both threads have finished."""
             try:
                 restart_result.append(fleet.restart_host(0, downtime_s=0))
             except RuntimeError as exc:
@@ -770,17 +826,28 @@ class TestRestartShutdownRace:
 
         restart_thread = threading.Thread(target=run_restart)
         restart_thread.start()
-        assert entered.wait(5)  # restart's stop attempt is now blocked
+        assert entered.wait(5)  # restart's stop attempt is now blocked,
+        # and -- per restart_host's fix -- is holding _lock the whole
+        # time it stays blocked here.
+
+        # Swap in the probe around the SAME real lock restart_thread is
+        # already holding. This reassignment is safe even though
+        # restart_thread is mid-``with self._lock:``: that statement
+        # evaluated ``self._lock`` once at entry and will call __exit__
+        # on the object it captured then, unaffected by this swap.
+        acquire_attempted = threading.Event()
+        fleet._lock = _LockAcquireProbe(fleet._lock, acquire_attempted.set)
 
         shutdown_result = []
         shutdown_thread = threading.Thread(
             target=lambda: shutdown_result.append(fleet.stop_all())
         )
         shutdown_thread.start()
-        # The fix holds _lock across the whole stop phase, so stop_all()
-        # must still be blocked acquiring it, not already finished with a
-        # stale (missing-this-launch) snapshot.
-        shutdown_thread.join(timeout=0.5)
+        # Proof, not a timing guess: stop_all() has genuinely called
+        # _lock.acquire() -- and is therefore now blocked inside it,
+        # since restart_thread still holds the real lock -- before this
+        # assertion runs.
+        assert acquire_attempted.wait(5)
         assert shutdown_thread.is_alive()
 
         release.set()

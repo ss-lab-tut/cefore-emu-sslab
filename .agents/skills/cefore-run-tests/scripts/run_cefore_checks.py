@@ -829,6 +829,7 @@ def validate_host_app_restart_logs(
     """
 
     def fail(msg: str) -> None:
+        """Abort this check with ``msg``, tagged with the case name."""
         raise RuntimeError(f"{case_name}: {msg}")
 
     for idx, lives in sorted(expected_lives.items()):
