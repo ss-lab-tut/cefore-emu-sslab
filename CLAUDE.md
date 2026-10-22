@@ -66,7 +66,7 @@ After modifying `[project.scripts]`, run `uv pip install -e .` to register new e
 
 ## MCP Tool Settings
 
-When using Codex MCP, specify model `gpt-5.6-sol` (reasoning high, summaries auto).
+When using Codex MCP, specify model `gpt-6.1-sol` (reasoning high; medium is enough for light read-only checks; summaries auto).
 
 ## Agent skills
 
