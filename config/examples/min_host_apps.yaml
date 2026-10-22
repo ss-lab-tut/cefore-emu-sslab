@@ -1,0 +1,30 @@
+# 最小検証用: host_apps (ホストごとの長寿命プロセス) の起動/停止順序の確認
+# Usage: sudo .venv/bin/python3 -m src disaster --config config/examples/min_host_apps.yaml
+#
+# 各ホストで host_apps のプロセスが cefnetd/csmgrd 起動後に立ち上がり、
+# {node}/{node_dir}/{cefore_conf_dir}/{t0_ms} を展開して
+# hN/host_app_marker に書き込む (exec で sleep に置き換わるので、
+# shutdown_runtime_resources の SIGTERM は sh ではなく sleep 自身に届く)。
+# shutdown_runtime_resources は teardown (cefnetd/csmgrd 停止) の前に
+# このプロセスを止める。
+#
+# cleanup_all が生成した hN/ を削除するため、debug.artifacts: node_dirs で
+# teardown 後も hN/ の中身を
+# logs/verify/ex9917_seed42/debug/node_dirs/hN/host_app_marker
+# として残す。
+hosts: 3
+switches: 3
+seed: 42
+k: 1
+num: 9917
+output_dir: "logs/verify"
+no_cli: true
+duration: 5
+results_json: "results.json"
+
+debug:
+  artifacts: ["node_dirs"]
+
+host_apps:
+  - hosts: [0, 1, 2]
+    argv: ["sh", "-c", "echo {node} {t0_ms} > {node_dir}/host_app_marker; exec sleep 1000"]

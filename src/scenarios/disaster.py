@@ -17,6 +17,7 @@ from ..core.paths import resolve_run_path
 from ..runtime.cache_strategy import KCentersStrategy, RandomCSModeStrategy
 from ..runtime.content_ops import ContentOperationRunner
 from ..runtime.event_batch import EventBatchSpec, run_event_batch
+from ..runtime.host_apps import build_host_app_fleet
 from ..runtime.monitoring import Monitor, derive_monitor_outcome, make_monitor_record
 from ..runtime.results_sink import ResultsSink
 from ..runtime.scenario_setup import (
@@ -75,6 +76,7 @@ class DisasterScenario(ConfigDrivenMeshScenario):
         self.monitor = None
         self.dashboard = None
         self.webui = None
+        self.host_app_fleet = None
         self._fib_routes: list[Any] = []
 
         self.results_path = _resolve_results_path(args, self.run_dir)
@@ -442,7 +444,26 @@ class DisasterScenario(ConfigDrivenMeshScenario):
         args = self.args
         use_cli = not getattr(args, "no_cli", False)
         events_config = getattr(args, "events", None) or []
+        # Single capture point for "time zero": the EventScheduler below
+        # takes this exact time.monotonic() reading as its "at: 0" origin
+        # (passed as EventBatchSpec.start_time), and host_apps' {t0_ms}
+        # placeholder is the time.time() reading taken on the very next
+        # line -- so both describe the same instant instead of two
+        # independently-chosen "now"s. See CONTEXT.md Daemon lifecycle:
+        # HostAppFleet.
         origin = time.monotonic()
+        t0_ms = int(time.time() * 1000)
+
+        host_apps_config = getattr(args, "host_apps", None) or []
+        if host_apps_config:
+            # host_apps start here, after configure() has returned -- by
+            # then cefnetd/csmgrd are already up (setup_scenario ran
+            # daemon_fleet.wait_ready() with readiness_policy="raise"
+            # before configure() could return).
+            self.host_app_fleet = build_host_app_fleet(
+                net, args.hosts, host_apps_config, t0_ms
+            )
+            self.host_app_fleet.start_all()
 
         if not events_config:
             info("[warning] no events configured; no content operations will run\n")
@@ -475,6 +496,10 @@ class DisasterScenario(ConfigDrivenMeshScenario):
         shutdown do not abort cleanup.
         """
         cleanup_failures: list[tuple[str, BaseException]] = []
+
+        if self.host_app_fleet is not None:
+            # Must finish before teardown() stops cefnetd/csmgrd below.
+            cleanup_failures.extend(self.host_app_fleet.stop_all())
 
         if self.monitor is not None:
             try:
