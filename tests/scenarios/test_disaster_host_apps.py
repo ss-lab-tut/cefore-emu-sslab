@@ -134,54 +134,54 @@ class TestHostAppsT0SharesSchedulerOrigin:
 class TestHostAppFleetPassedToEventBatch:
     """A host_app_restart event's handler reads ctx["host_app_fleet"]; that
     context key only exists if DisasterScenario forwards self.host_app_fleet
-    on EventBatchSpec (run_event_batch -> EventScheduler's context)."""
+    on EventBatchSpec (run_event_batch -> EventScheduler's context).
+
+    2026-10-22 fix: these call _run_normal_experiment()/
+    _run_autotest_experiment() directly -- the two methods that actually
+    build EventBatchSpec -- instead of the full run_experiment() run loop.
+    A reviewer pointed out that CLAUDE.md reserves the Mininet-live
+    disaster run loop for smoke testing (min_host_app_restart.yaml), not
+    unit tests; going through run_experiment() here was also needless
+    indirection, since neither method under test touches
+    build_host_app_fleet()/start_all() or the t0_ms/origin capture that
+    run_experiment() itself owns -- scenario.host_app_fleet is set directly
+    instead.
+    """
 
     def test_normal_experiment_forwards_the_fleet(self, tmp_path):
         """The interactive (non-autotest) single-batch path forwards it."""
-        host_apps_config = [{"hosts": [0], "argv": ["noop"]}]
-        scenario = _scenario_runnable_without_mininet(
-            _make_args(
-                host_apps=host_apps_config,
-                events=[{"at": 5, "type": "host_app_restart", "host": 0}],
-            ),
-            tmp_path,
-        )
-        captured_specs = []
+        scenario = _scenario_runnable_without_mininet(_make_args(), tmp_path)
         fake_fleet = MagicMock()
+        scenario.host_app_fleet = fake_fleet
+        captured_specs = []
+        events_config = [{"at": 5, "type": "host_app_restart", "host": 0}]
 
         with patch(
             "src.scenarios.disaster.run_event_batch",
             side_effect=_stub_run_event_batch(captured_specs),
-        ), patch(
-            "src.scenarios.disaster.build_host_app_fleet", return_value=fake_fleet
         ):
-            scenario.run_experiment(MagicMock())
+            scenario._run_normal_experiment(
+                MagicMock(), events_config, origin=0.0, use_cli=False
+            )
 
         assert captured_specs[0].host_app_fleet is fake_fleet
 
     def test_autotest_eval_batch_forwards_the_fleet(self, tmp_path):
         """The autotest eval batch (where a non-put event like
         host_app_restart actually fires) forwards it too."""
-        host_apps_config = [{"hosts": [0], "argv": ["noop"]}]
-        scenario = _scenario_runnable_without_mininet(
-            _make_args(
-                host_apps=host_apps_config,
-                no_cli=True,
-                results_json="results.json",
-                events=[{"at": 5, "type": "host_app_restart", "host": 0}],
-            ),
-            tmp_path,
-        )
-        captured_specs = []
+        scenario = _scenario_runnable_without_mininet(_make_args(), tmp_path)
         fake_fleet = MagicMock()
+        scenario.host_app_fleet = fake_fleet
+        captured_specs = []
+        events_config = [{"at": 5, "type": "host_app_restart", "host": 0}]
 
         with patch(
             "src.scenarios.disaster.run_event_batch",
             side_effect=_stub_run_event_batch(captured_specs),
-        ), patch(
-            "src.scenarios.disaster.build_host_app_fleet", return_value=fake_fleet
         ):
-            scenario.run_experiment(MagicMock())
+            scenario._run_autotest_experiment(
+                MagicMock(), events_config, origin=0.0, use_cli=False
+            )
 
         # eval is the only batch run_event_batch sees here: the event is
         # not type "put", so it never enters the seed batch.
