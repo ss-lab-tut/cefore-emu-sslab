@@ -52,7 +52,7 @@ _SMOKE_EXAMPLES = frozenset(
 )
 
 
-# 期待 inventory は意図的に完全固定 (2026-08-01 review fix: 非空 + smoke 13 本
+# 期待 inventory は意図的に完全固定 (2026-08-01 review fix: 非空 + smoke 17 本
 # だけの assert では example.json や非-smoke example の消失が素通りだった)。
 # example の追加/削除は必ずこの manifest の更新を伴う = 意図的な変更であること
 # を強制する。
