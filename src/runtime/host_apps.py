@@ -376,7 +376,8 @@ class HostAppFleet:
                 # not the raw string -- `collide` itself stays the raw,
                 # unresolved path in the message below and is never used
                 # to launch anything (launching still goes through
-                # launch["log"]/life at L415, verbatim).
+                # launch["log"] in the start loop under the second lock
+                # acquisition below, verbatim).
                 if collide is not None and os.path.realpath(collide) in self._reserved_logs:
                     raise ValueError(
                         f"host_apps restart for h{idx} would write its "

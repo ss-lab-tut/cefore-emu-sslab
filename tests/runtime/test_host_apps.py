@@ -851,9 +851,12 @@ class TestRestartShutdownRace:
 
         2026-10-23 fix (review finding): ``acquire_attempted`` alone still
         only proves the CALL happened, not that it is still stuck inside
-        it by the time the test checks -- ``is_alive()`` could in
-        principle stay true for a finished-but-not-yet-reaped thread just
-        as easily as for one genuinely blocked. Two direct ``.locked()``
+        it by the time the test checks -- on reverted code the call
+        returns instantly (nothing holds the lock by then), and
+        ``is_alive()`` cannot tell that apart from "genuinely blocked":
+        it stays true just as well for a thread that acquired the lock
+        trivially and is still running the rest of stop_all() to
+        completion. Two direct ``.locked()``
         checks on the real lock (right after ``entered.wait()``, and
         again right after ``acquire_attempted.wait()``) replace that
         inference with the lock's own state, which is what the
@@ -902,8 +905,8 @@ class TestRestartShutdownRace:
         # whether stop_all()'s thread still looks "alive" -- that
         # inference depends on the OS having not yet scheduled stop_all()
         # far enough to finish, which is exactly the kind of scheduling
-        # luck this suite otherwise avoids (see the class docstring's
-        # 2026-10-23 note above). Captured before the probe swap below
+        # luck this suite otherwise avoids (see this test's own
+        # docstring above). Captured before the probe swap below
         # because ``_LockAcquireProbe`` does not implement ``locked()``.
         # If the lock-scope fix were reverted (restart_thread releasing
         # _lock before calling _stop_one_launch instead of across the
