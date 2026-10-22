@@ -373,6 +373,7 @@ class DisasterScenario(ConfigDrivenMeshScenario):
                 phase="event",
                 start_time=origin,
                 wait_timeout=None,
+                host_app_fleet=self.host_app_fleet,
             ),
         )
         self.content_runner = result.content_runner
@@ -440,6 +441,7 @@ class DisasterScenario(ConfigDrivenMeshScenario):
                 phase="eval",
                 start_time=origin,
                 wait_timeout=None,
+                host_app_fleet=self.host_app_fleet,
             ),
         )
         self.content_runner = result.content_runner

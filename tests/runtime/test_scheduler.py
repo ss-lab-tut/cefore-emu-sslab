@@ -314,6 +314,96 @@ class TestComputeCallOutcomeMapping:
         }
 
 
+class TestHostAppRestartHandler:
+    """host_app_restart delegates to HostAppFleet.restart_host() and must
+    produce the same EventRecord shape as link_down/link_up -- a plain
+    success bool, no outcome/detail keys (unlike compute_call's tri-state).
+    """
+
+    def test_delegates_to_fleet_restart_host_with_host_and_downtime_s(self):
+        """The handler is a thin forward to ctx["host_app_fleet"].restart_host()."""
+        sink = RecordingSink()
+        net = _make_net()
+        fleet = MagicMock()
+        fleet.restart_host.return_value = True
+        event = {
+            "at": 0.0,
+            "type": "host_app_restart",
+            "host": 1,
+            "downtime_s": 3,
+        }
+        sched = EventScheduler(net, [event], sink=sink, host_app_fleet=fleet)
+        sched.start()
+        sched.wait_all(timeout=3)
+
+        fleet.restart_host.assert_called_once_with(1, 3)
+        rec = sink.records[0]
+        assert rec["success"] is True
+        assert rec["event_type"] == "host_app_restart"
+        assert "outcome" not in rec
+        assert "detail" not in rec
+
+    def test_downtime_s_defaults_to_zero_when_omitted(self):
+        """downtime_s is optional in the event schema; the handler's
+        default must match (event.get("downtime_s", 0))."""
+        net = _make_net()
+        fleet = MagicMock()
+        fleet.restart_host.return_value = True
+        event = {"at": 0.0, "type": "host_app_restart", "host": 0}
+        sched = EventScheduler(net, [event], host_app_fleet=fleet)
+        sched.start()
+        sched.wait_all(timeout=3)
+
+        fleet.restart_host.assert_called_once_with(0, 0)
+
+    def test_fleet_returning_false_records_failure(self):
+        """restart_host() returns False when shutdown won the race (see
+        HostAppFleet.restart_host); that must be recorded as a failed event,
+        not silently treated as success."""
+        sink = RecordingSink()
+        net = _make_net()
+        fleet = MagicMock()
+        fleet.restart_host.return_value = False
+        event = {"at": 0.0, "type": "host_app_restart", "host": 0}
+        sched = EventScheduler(net, [event], sink=sink, host_app_fleet=fleet)
+        sched.start()
+        sched.wait_all(timeout=3)
+
+        rec = sink.records[0]
+        assert rec["success"] is False
+        assert rec["error"] == "handler reported failure"
+
+    def test_fleet_raising_records_the_exception_message(self):
+        """restart_host() raising (e.g. a stop failure) is caught by the
+        scheduler's own generic exception handling, same as any handler."""
+        sink = RecordingSink()
+        net = _make_net()
+        fleet = MagicMock()
+        fleet.restart_host.side_effect = RuntimeError("stop_host_app h0 vanished")
+        event = {"at": 0.0, "type": "host_app_restart", "host": 0}
+        sched = EventScheduler(net, [event], sink=sink, host_app_fleet=fleet)
+        sched.start()
+        sched.wait_all(timeout=3)
+
+        rec = sink.records[0]
+        assert rec["success"] is False
+        assert rec["error"] == "stop_host_app h0 vanished"
+
+    def test_no_fleet_in_context_records_failure_without_crashing(self):
+        """connect/mesh/linear construct an EventScheduler with no
+        host_app_fleet; a host_app_restart event there must fail cleanly,
+        not raise."""
+        sink = RecordingSink()
+        net = _make_net()
+        event = {"at": 0.0, "type": "host_app_restart", "host": 0}
+        sched = EventScheduler(net, [event], sink=sink)
+        sched.start()
+        sched.wait_all(timeout=3)
+
+        rec = sink.records[0]
+        assert rec["success"] is False
+
+
 class TestEventOutcomeRecords:
     """Non-content events emit outcome records into the results sink (K)."""
 

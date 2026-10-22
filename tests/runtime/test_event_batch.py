@@ -248,6 +248,38 @@ def test_pub_lifetime_by_uri_is_derived_from_pubsub_pub_events(tmp_path):
         result.content_runner.stop()
 
 
+def test_host_app_fleet_passes_through_to_scheduler_context(tmp_path):
+    """A host_app_restart event's handler reads ctx["host_app_fleet"]; the
+    seam must forward EventBatchSpec.host_app_fleet into that context."""
+    fleet = MagicMock()
+    result = run_event_batch(
+        MagicMock(),
+        _spec(
+            tmp_path,
+            [{"at": 0.0, "type": "host_app_restart", "host": 0}],
+            host_app_fleet=fleet,
+        ),
+    )
+
+    try:
+        assert result.event_scheduler._context["host_app_fleet"] is fleet
+    finally:
+        result.event_scheduler.stop()
+
+
+def test_host_app_fleet_defaults_to_none(tmp_path):
+    """A batch built without host_app_fleet (e.g. connect's) must not force
+    EventScheduler's context to carry anything but None for that key."""
+    result = run_event_batch(
+        MagicMock(), _spec(tmp_path, [_delayed_link_event()])
+    )
+
+    try:
+        assert result.event_scheduler._context["host_app_fleet"] is None
+    finally:
+        result.event_scheduler.stop()
+
+
 def test_phase_and_start_time_pass_through_to_collaborators(tmp_path):
     origin = time.monotonic()
     result = run_event_batch(

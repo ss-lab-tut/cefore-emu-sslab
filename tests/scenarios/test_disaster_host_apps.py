@@ -131,6 +131,63 @@ class TestHostAppsT0SharesSchedulerOrigin:
         assert t0_ms_arg == 1700000000500
 
 
+class TestHostAppFleetPassedToEventBatch:
+    """A host_app_restart event's handler reads ctx["host_app_fleet"]; that
+    context key only exists if DisasterScenario forwards self.host_app_fleet
+    on EventBatchSpec (run_event_batch -> EventScheduler's context)."""
+
+    def test_normal_experiment_forwards_the_fleet(self, tmp_path):
+        """The interactive (non-autotest) single-batch path forwards it."""
+        host_apps_config = [{"hosts": [0], "argv": ["noop"]}]
+        scenario = _scenario_runnable_without_mininet(
+            _make_args(
+                host_apps=host_apps_config,
+                events=[{"at": 5, "type": "host_app_restart", "host": 0}],
+            ),
+            tmp_path,
+        )
+        captured_specs = []
+        fake_fleet = MagicMock()
+
+        with patch(
+            "src.scenarios.disaster.run_event_batch",
+            side_effect=_stub_run_event_batch(captured_specs),
+        ), patch(
+            "src.scenarios.disaster.build_host_app_fleet", return_value=fake_fleet
+        ):
+            scenario.run_experiment(MagicMock())
+
+        assert captured_specs[0].host_app_fleet is fake_fleet
+
+    def test_autotest_eval_batch_forwards_the_fleet(self, tmp_path):
+        """The autotest eval batch (where a non-put event like
+        host_app_restart actually fires) forwards it too."""
+        host_apps_config = [{"hosts": [0], "argv": ["noop"]}]
+        scenario = _scenario_runnable_without_mininet(
+            _make_args(
+                host_apps=host_apps_config,
+                no_cli=True,
+                results_json="results.json",
+                events=[{"at": 5, "type": "host_app_restart", "host": 0}],
+            ),
+            tmp_path,
+        )
+        captured_specs = []
+        fake_fleet = MagicMock()
+
+        with patch(
+            "src.scenarios.disaster.run_event_batch",
+            side_effect=_stub_run_event_batch(captured_specs),
+        ), patch(
+            "src.scenarios.disaster.build_host_app_fleet", return_value=fake_fleet
+        ):
+            scenario.run_experiment(MagicMock())
+
+        # eval is the only batch run_event_batch sees here: the event is
+        # not type "put", so it never enters the seed batch.
+        assert captured_specs[0].host_app_fleet is fake_fleet
+
+
 class TestHostAppsStopBeforeTeardown:
     def _run_execute_with_stubbed_lifecycle(self, scenario, call_order, net=None):
         net = net or MagicMock()

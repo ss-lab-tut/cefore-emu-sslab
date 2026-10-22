@@ -92,6 +92,28 @@ def _handle_compute_call(net, event, mesh_links, ctx):
     return EventOutcome(success=True, outcome="ok", detail=detail)
 
 
+def _handle_host_app_restart(net, event, mesh_links, ctx):
+    """Handle a host_app_restart event: stop then restart one host's
+    host_apps processes (see runtime.host_apps.HostAppFleet.restart_host).
+
+    Returns a bool, like link_down/link_up, so the EventRecord this
+    produces has exactly their shape -- no outcome/detail keys -- rather
+    than the tri-state EventOutcome shape compute_call uses. restart_host()
+    itself blocks the scheduler thread for ``downtime_s`` (its stop-then-
+    sleep-then-start is synchronous); a later event scheduled during that
+    window fires late by that amount, same as any other slow handler would
+    delay the single-threaded EventScheduler (see README).
+    """
+    fleet = ctx.get("host_app_fleet")
+    if fleet is None:
+        info(
+            "[scheduler] no host_app_fleet in context; cannot run "
+            "host_app_restart\n"
+        )
+        return False
+    return fleet.restart_host(event["host"], event.get("downtime_s", 0))
+
+
 def _handle_content_op(op_type):
     """Return a scheduler handler that delegates to the ContentOperationRunner."""
 
@@ -132,6 +154,7 @@ _EVENT_HANDLERS = {
     "pubsub_sub": _handle_content_op("pubsub_sub"),
     "pubsub_pub": _handle_content_op("pubsub_pub"),
     "ccninfo": _handle_content_op("ccninfo"),
+    "host_app_restart": _handle_host_app_restart,
 }
 
 # Same-time priority (lower value fires first; pubsub_sub before pubsub_pub,
@@ -156,6 +179,7 @@ class EventScheduler:
         - fib_enable: requires ``host``, ``prefix``, ``next_hop``
         - bw_set: requires ``nodes: [a, b]``, ``bandwidth``
         - compute_call: requires ``host``, ``endpoint``
+        - host_app_restart: requires ``host``; optional ``downtime_s`` (default 0)
 
     Events may include a ``repeat`` dict for periodic execution:
         - interval: seconds between repetitions
@@ -174,10 +198,15 @@ class EventScheduler:
         content_runner=None,
         start_time=None,
         sink=None,
+        host_app_fleet=None,
     ):
         self.net = net
         self.mesh_links = mesh_links
-        self._context = {"run_dir": run_dir, "content_runner": content_runner}
+        self._context = {
+            "run_dir": run_dir,
+            "content_runner": content_runner,
+            "host_app_fleet": host_app_fleet,
+        }
         self._sink = sink
         self._stop_event = threading.Event()
         self._thread = None
