@@ -270,6 +270,7 @@ def test_validate_host_apps_env_non_string_value():
 
 
 def test_validate_host_apps_env_key_with_equals():
+    """A key containing '=' is not a POSIX name and must be rejected."""
     errors = validate_config(
         {"host_apps": [{"hosts": [0], "argv": ["noop"], "env": {"K=V": "1"}}]}
     )
@@ -280,8 +281,8 @@ def test_validate_host_apps_env_key_with_equals():
 
 
 def test_validate_host_apps_env_key_starts_with_dash():
-    # 2026-10-22: "env -X=1 ..." is parsed by GNU env as an option, not an
-    # assignment -- a leading '-' must be rejected here, before argv.
+    """2026-10-22: "env -X=1 ..." is parsed by GNU env as an option, not an
+    assignment -- a leading '-' must be rejected here, before argv."""
     errors = validate_config(
         {"host_apps": [{"hosts": [0], "argv": ["noop"], "env": {"-X": "1"}}]}
     )
@@ -292,6 +293,7 @@ def test_validate_host_apps_env_key_starts_with_dash():
 
 
 def test_validate_host_apps_env_key_starts_with_digit():
+    """A POSIX name cannot start with a digit."""
     errors = validate_config(
         {"host_apps": [{"hosts": [0], "argv": ["noop"], "env": {"1X": "1"}}]}
     )
@@ -302,6 +304,7 @@ def test_validate_host_apps_env_key_starts_with_digit():
 
 
 def test_validate_host_apps_env_key_with_internal_dash():
+    """A dash anywhere in the key, not just leading, is still not POSIX."""
     errors = validate_config(
         {"host_apps": [{"hosts": [0], "argv": ["noop"], "env": {"A-B": "1"}}]}
     )
@@ -312,6 +315,7 @@ def test_validate_host_apps_env_key_with_internal_dash():
 
 
 def test_validate_host_apps_env_key_empty():
+    """An empty key was already rejected before the POSIX-name check; still is."""
     errors = validate_config(
         {"host_apps": [{"hosts": [0], "argv": ["noop"], "env": {"": "1"}}]}
     )
@@ -322,6 +326,7 @@ def test_validate_host_apps_env_key_empty():
 
 
 def test_validate_host_apps_log_requires_a_per_host_placeholder_for_multiple_hosts():
+    """A bare log path shared by several hosts has nothing to disambiguate them."""
     errors = validate_config(
         {"host_apps": [{"hosts": [0, 1], "argv": ["noop"], "log": "app.log"}]}
     )
@@ -332,6 +337,7 @@ def test_validate_host_apps_log_requires_a_per_host_placeholder_for_multiple_hos
 
 
 def test_validate_host_apps_log_requires_a_per_host_placeholder_for_all():
+    """Same requirement as the multi-host-list case, for hosts: "all"."""
     errors = validate_config(
         {"host_apps": [{"hosts": "all", "argv": ["noop"], "log": "app.log"}]}
     )
@@ -342,9 +348,9 @@ def test_validate_host_apps_log_requires_a_per_host_placeholder_for_all():
 
 
 def test_validate_host_apps_log_t0_ms_placeholder_alone_is_still_rejected():
-    # {t0_ms} is the same value for every host in one experiment, so unlike
-    # {node}/{node_dir}/{cefore_conf_dir} it cannot disambiguate a shared
-    # multi-host log path -- it must not satisfy this requirement.
+    """{t0_ms} is the same value for every host in one experiment, so unlike
+    {node}/{node_dir}/{cefore_conf_dir} it cannot disambiguate a shared
+    multi-host log path -- it must not satisfy this requirement."""
     errors = validate_config(
         {"host_apps": [{"hosts": [0, 1], "argv": ["noop"], "log": "{t0_ms}/app.log"}]}
     )
@@ -355,6 +361,7 @@ def test_validate_host_apps_log_t0_ms_placeholder_alone_is_still_rejected():
 
 
 def test_validate_host_apps_log_node_dir_placeholder_satisfies_multiple_hosts():
+    """{node_dir} alone (no {node}) is accepted: it also varies per host."""
     errors = validate_config(
         {
             "host_apps": [
@@ -366,6 +373,7 @@ def test_validate_host_apps_log_node_dir_placeholder_satisfies_multiple_hosts():
 
 
 def test_validate_host_apps_log_cefore_conf_dir_placeholder_satisfies_all_hosts():
+    """{cefore_conf_dir} alone also satisfies the per-host requirement."""
     errors = validate_config(
         {
             "host_apps": [
@@ -377,6 +385,7 @@ def test_validate_host_apps_log_cefore_conf_dir_placeholder_satisfies_all_hosts(
 
 
 def test_validate_host_apps_log_single_host_does_not_require_a_placeholder():
+    """A single host never shares its log path, so no placeholder is required."""
     errors = validate_config(
         {"host_apps": [{"hosts": [0], "argv": ["noop"], "log": "app.log"}]}
     )

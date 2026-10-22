@@ -432,6 +432,11 @@ def validate_results(
       must exist under the case output directory.
     - ``summarizer_min_rows``: ceforeemu-log module-form stdout must produce at
       least this many canonical-parse CSV rows.
+    - ``host_app_markers``: not checked here -- like ``summarizer_min_rows``,
+      it is read directly by ``run_single_smoke`` and dispatched to
+      ``validate_host_app_markers`` (data-independent: it checks files on
+      disk, not ``results.json``, so it works even when ``expect["empty"]``
+      has already short-circuited the rest of this function).
     """
 
     def fail(msg: str) -> None:

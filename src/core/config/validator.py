@@ -939,11 +939,13 @@ _HOST_APP_KEYS = frozenset({"hosts", "argv", "cwd", "env", "log"})
 
 # 2026-10-22 fix: an env key is prepended to argv as "env KEY=VALUE ..."
 # (see host_apps.py _env_argv_prefix). GNU env parses a leading '-' in that
-# first token as one of its own options (e.g. "env -X=1 ..." tries to parse
-# "-X=1" as a flag instead of an assignment), not as an error, so a bad key
-# does not fail loudly -- it silently drops the assignment and runs the
-# command without it. Restricting keys to POSIX shell names rules this out
-# structurally: a POSIX name can never start with '-' or a digit.
+# first token as one of its own options -- confirmed: "env -X=1 true" exits
+# 125 with "env: invalid option -- 'X'" instead of running anything -- so a
+# bad key fails at the worst possible time: inside the host's netns, as
+# env's own cryptic error, with no indication that a host_apps.env key is
+# the actual cause. Restricting keys to POSIX shell names rules this out
+# structurally (a POSIX name can never start with '-' or a digit) and turns
+# that runtime failure into a validation error naming the exact bad key.
 _POSIX_ENV_KEY = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
 
 

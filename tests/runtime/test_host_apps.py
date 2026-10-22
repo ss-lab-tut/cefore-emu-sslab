@@ -220,9 +220,9 @@ class TestStopAll:
         assert fleet.stop_all() == []
 
     def test_warns_when_a_host_app_already_exited_before_shutdown(self):
-        # A scripted wait() result with timed_out=False/cancelled=False is
-        # CommandRunner's contract for "the process had already finished on
-        # its own" (see command_runner.py's "observe natural exit first").
+        """A scripted wait() result with timed_out=False/cancelled=False is
+        CommandRunner's contract for "the process had already finished on
+        its own" (see command_runner.py's "observe natural exit first")."""
         fake = FakeCommandRunner()
         fake.script_wait(returncode=1)
         fleet = _fleet(fake, specs=[{"hosts": [1], "argv": ["noop"]}])
@@ -236,9 +236,9 @@ class TestStopAll:
         )
 
     def test_no_warning_when_a_host_app_was_still_running_at_shutdown(self):
-        # timed_out=True is wait()'s contract for "the deadline fired and we
-        # had to terminate a still-running process" -- the expected case for
-        # a long-running host app, which must not warn.
+        """timed_out=True is wait()'s contract for "the deadline fired and we
+        had to terminate a still-running process" -- the expected case for
+        a long-running host app, which must not warn."""
         fake = FakeCommandRunner()
         fake.script_wait(returncode=-15, timed_out=True)
         fleet = _fleet(fake, specs=[{"hosts": [0], "argv": ["noop"]}])
@@ -250,6 +250,7 @@ class TestStopAll:
         mock_info.assert_not_called()
 
     def test_no_warning_when_a_host_app_wait_was_cancelled(self):
+        """A cancelled wait is also not "already exited" and must not warn."""
         fake = FakeCommandRunner()
         fake.script_wait(returncode=-15, cancelled=True)
         fleet = _fleet(fake, specs=[{"hosts": [0], "argv": ["noop"]}])
@@ -261,8 +262,8 @@ class TestStopAll:
         mock_info.assert_not_called()
 
     def test_one_stop_failure_still_lets_other_handles_warn(self):
-        # The warning check for a surviving handle must not be skipped just
-        # because a different handle's wait() raised.
+        """The warning check for a surviving handle must not be skipped just
+        because a different handle's wait() raised."""
         fake = FakeCommandRunner()
         boom = RuntimeError("host vanished")
 
