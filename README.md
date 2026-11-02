@@ -1,4 +1,11 @@
-# CeforeEmu (by sslab)
+# ReCefore (by sslab)
+
+[![CI](https://github.com/ss-lab-tut/cefore-emu-sslab/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ss-lab-tut/cefore-emu-sslab/actions/workflows/ci.yml)
+[![License](https://img.shields.io/github/license/ss-lab-tut/cefore-emu-sslab)](LICENSE)
+[![Release](https://img.shields.io/github/v/release/ss-lab-tut/cefore-emu-sslab)](https://github.com/ss-lab-tut/cefore-emu-sslab/releases/latest)
+[![Python](https://img.shields.io/python/required-version-toml?tomlFilePath=https://raw.githubusercontent.com/ss-lab-tut/cefore-emu-sslab/main/pyproject.toml)](pyproject.toml)
+[![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
+[![mypy](https://img.shields.io/badge/types-mypy-blue)](https://mypy-lang.org/)
 
 [README.md(ja)](./README_ja.md)
 
@@ -46,7 +53,9 @@
 
 ## Overview
 
-CeforeEmu is a network emulator based on Mininet for testing Cefore (Content-Centric Networking framework) deployments on Ubuntu 22.04. It creates virtual network topologies with virtual hosts running Cefore daemons (*cefnetd*) to simulate content distribution scenarios.
+ReCefore is a network emulator based on Mininet for testing Cefore (Content-Centric Networking framework) deployments on Ubuntu 22.04. It creates virtual network topologies with virtual hosts running Cefore daemons (*cefnetd*) to simulate content distribution scenarios.
+
+> **Naming:** ReCefore is the tool's name, but the code has not been renamed yet. The repository (`cefore-emu-sslab`), the package (`cefore-emu`), and the commands (`ceforeemu`, `ceforeemu-log`, `ceforeemu-connect`) keep their current names, so use them exactly as written below.
 
 Three topology types are available via a unified CLI:
 
@@ -55,7 +64,8 @@ Three topology types are available via a unified CLI:
 | `linear` | Linear topology (consumer-router-publisher chain) |
 | `mesh` | Random mesh topology with multi-path FIB |
 | `disaster` | Mesh with periodic host failures, bandwidth control, and external interface support |
-| `connect` | External network mesh with physical Cefore device connectivity |
+
+A fourth topology, an external network mesh with physical Cefore device connectivity, is not a subcommand: it has its own `ceforeemu-connect` entry point.
 
 ## Prerequisites
 
@@ -63,7 +73,7 @@ Three topology types are available via a unified CLI:
 - Mininet version 2.3.0 ([https://mininet.org/](https://mininet.org/))
 - Python >= 3.12
 - curl (required for `compute_call` events)
-- uv (required for python package management)
+- uv (required for Python package management)
 
 ```bash
 uv sync   # Install dependencies
@@ -71,17 +81,19 @@ uv sync   # Install dependencies
 
 **Python dependencies** (managed via `pyproject.toml`):
 
-- `mininet>=2.3.0`
+- `flask>=3.1.3` (WebUI live dashboard)
+- `mininet>=2.3.0.dev6`
 - `networkx>=3.6.1` (topology algorithms and PNG output)
 - `matplotlib>=3.10.8` (PNG output)
 - `pyyaml>=6.0` (YAML configuration support)
+- `scipy>=1.17.1`
 
 After modifying `[project.scripts]` in `pyproject.toml`, run `uv pip install -e .` to register new CLI entry points.
 
 ## Quick Start
 
 ```bash
-# Linear topology (3 nodes by default)
+# Linear topology (5 hosts by default)
 sudo .venv/bin/python3 -m src linear
 
 # Linear topology with 7 hosts
@@ -162,8 +174,8 @@ Key options:
 | `--down-exclude` | Comma-separated host IDs to exclude |
 | `--cache-count` | Number of cache nodes (0 = down-count + 1) |
 | `--bw nodeA,nodeB,mbps` | Set link bandwidth (repeatable) |
-| `--ext host,ifname,ip[,mtu]` | Attach external interface; ip required in CIDR form (repeatable) |
-| `--bridge switch,root_ip,local_routes[,ext,gw]` | Root namespace bridge (repeatable) |
+| `--ext host,ifname,ip[,mtu]` | Attach external interface; ip required in CIDR form (DHCP unsupported, repeatable) |
+| `--bridge switch,root_ip,local_routes[,ext_routes,gateway]` | Root namespace bridge (repeatable) |
 | `--config` | JSON/YAML configuration file |
 | `--no-cli` | Non-interactive mode |
 | `--duration` | Evaluation duration in seconds (with `--no-cli`) |
@@ -219,13 +231,14 @@ For a disaster `put` event, omitted `expiry` and `cache_time` are both sent as `
 
 | Option | Details |
 |---|---|
-| `endpoint` | HTTP request |
+| `host` | Index of the host issuing the request; required |
+| `endpoint` | HTTP request URL; required |
 | `method` | GET/POST, default GET |
 | `payload` | optional string |
 | `headers` | optional str→str dict |
 | `timeout` | seconds — default 30, bounding curl and the command deadline |
-| `output_file` | under the run dir |
-| `publish_uri` | → cefputfile; requires `output_file` |
+| `output_file` | Where to save the response, under the run dir |
+| `publish_uri` | Republishes the saved response into the ICN via cefputfile; requires `output_file` |
 | `pub_opts` | takes the put-style cefputfile options, and unknown keys are rejected |
 | `publish_timeout` | The cefputfile run has its own deadline: positive number, default 120s; publishing speed is governed by `rate`, not the HTTP timeout |
 
@@ -285,7 +298,7 @@ cache_config:
 
 ### Failure Scenarios (failure_scenarios)
 
-Supersedes legacy `down_interval`/`down_duration`/etc when present.
+Supersedes legacy `down_interval`/`down_duration`/etc. when present.
 
 ```yaml
 failure_scenarios:
@@ -366,8 +379,8 @@ host_apps:
     log: "{node_dir}/{node}.log"             # optional
 ```
 
-- `env`: `CommandRunner.start` has no env kwarg, so this becomes an `env K=V ...` argv prefix
-- `log`: must contain `{node}` when hosts is "all" or more than one host, or every host truncates the same file
+- `env`: `CommandRunner.start` has no env kwarg, so this becomes an `env K=V ...` argv prefix.
+- `log`: must contain one of `{node}`, `{node_dir}`, or `{cefore_conf_dir}` when `hosts` is `"all"` or more than one host, or every host truncates the same file.
 
 Placeholders, expanded in `argv`/`env`/`cwd`/`log`:
 
@@ -391,7 +404,7 @@ events:
 - `host` is required; `downtime_s` (the gap between stop and restart) is optional, finite, and defaults to 0.
 - Config validation rejects a `host` with no `host_apps:` entry covering it.
 - This is unrelated to the periodic host-down/host-up flap under `failure_scenarios` (or legacy `down_interval`/`down_duration`): that mechanism only toggles link state and never touches `host_apps:` processes, which is exactly the gap `host_app_restart` fills.
-- The restarted process gets the exact `argv`/`cwd`/env and `{t0_ms}` its first life was launched with (never re-expanded, never re-captured); only its log path differs, with a `.lifeN` suffix (`N` >= 2) so a restarted life's log cannot truncate the previous life's output.
+- The restarted process gets the exact `argv`/`cwd`/`env` and `{t0_ms}` its first life was launched with (never re-expanded, never re-captured); only its log path differs, with a `.lifeN` suffix (`N` >= 2) so a restarted life's log cannot truncate the previous life's output.
 - The scheduler thread blocks for the full `downtime_s`, so any other event scheduled to fire during that window runs late by that amount — the same cost any slow handler imposes on ReCefore's single-threaded `EventScheduler`.
 - The `results.json` record is a plain success/failure event row, the same shape as `link_down`/`link_up` (no tri-state `outcome`).
 - See `config/examples/min_host_app_restart.yaml` for a runnable example.
@@ -424,21 +437,23 @@ See `config/examples/example.yaml` for full details.
 
 ## Log Output Directory
 
-When `num` is specified (config or `--num`), logs are organized into a dedicated directory:
+Logs are organized into a dedicated directory under `--output-dir` (default: `logs`), named `ex{num}_seed{seed}` when `num` is specified (config or `--num`) and `seed{seed}` otherwise:
 
 ```text
 logs/ex{num}_seed{seed}/
 ├── script.log              # Script execution log
-├── topology.png            # Topology diagram
+├── ex{num}_seed{seed}_h{hosts}.png  # Topology diagram
 ├── meta.json               # Configuration snapshot
+├── cefnetd_<port>_<sockid>.log  # cefnetd logs collected from /tmp
+├── csmgrd_<port>_<sockid>.log   # csmgrd logs collected from /tmp
 ├── cefputfile_*.log        # cefputfile logs
 ├── cefgetfile_*.log        # cefgetfile logs
-├── recvfile_*              # Received files
+├── *recvfile_*             # Received files
 └── results.json            # Get results (with --results-json)
 ```
 
 ```bash
-# Enable log directory output
+# Name the log directory after the experiment number
 sudo .venv/bin/python3 -m src disaster --num 1 --hosts 10 --switches 15 --seed 42
 
 # Custom output directory
@@ -450,14 +465,15 @@ sudo .venv/bin/python3 -m src disaster --config config.yaml --timestamp
 
 ## Runtime Artifacts
 
-After running scripts, the following files appear in the working directory (or under `logs/ex{num}_seed{seed}/` when `num` is set). Daemon logs are collected only when a run directory is explicitly selected; current-directory runs leave the `/tmp` daemon logs uncollected.
+After running scripts, the following files appear in the run directory. Passing `--output-dir ""` without `num` runs in the current directory instead, which leaves the `/tmp` daemon logs uncollected.
 
 - `cefnetd_<port>_<sockid>.log` — Forwarding daemon logs collected from `/tmp`
 - `csmgrd_<port>_<sockid>.log` — Cache manager logs collected from `/tmp`
-- `cefputfile-log` / `cefputfile_*.log` — Publisher operation logs
-- `cefgetfile-log` / `cefgetfile_*.log` — Consumer operation logs
-- `recvfile_at_h0` / `recvfile_at_hN` — Retrieved content files
-- `ex-seed*.png` — Topology visualization images (when `--topo-png` used)
+- `cefputfile_*.log` — Publisher operation logs
+- `cefgetfile_*.log` — Consumer operation logs
+- `recvfile_at_h0` / `recvfile_at_hN` — Retrieved content files (linear, mesh)
+- `{phase}_recvfile_h{host}_{label}` — Retrieved content files (event-driven runs)
+- `ex{num}_seed{seed}_h{hosts}.png` — Topology visualization image from mesh, disaster, and connect runs (`seed{seed}_h{hosts}.png` without `num`; `--topo-png` overrides the path)
 
 ## Autotest (Non-Interactive)
 
@@ -543,7 +559,7 @@ Columns are schema-defined per command in `src/log/schema.py` (`COMMAND_SCHEMAS`
 - `cefsubfile` carries the same metric set as `cefgetfile`.
 - `cefpubfile` carries the put-side config metrics plus two presence markers (`trigger_interest_sent`/`trigger_data_received`, from the "Send Trigger Interest." / "Receive Trigger Data, finish application." log lines).
 
-Unknown `Key = Value` lines not covered by the schema are still parsed and appended after the schema columns, with a stderr warning.
+For `cefpubfile` and `cefsubfile`, unknown `Key = Value` lines not covered by the schema are still parsed and appended after the schema columns, with a stderr warning.
 
 ## Architecture
 
@@ -560,13 +576,13 @@ All topology scripts follow a common pattern:
 
 ### Node Roles
 
-| Role | Hosts | CS_MODE | Description |
-|------|-------|---------|-------------|
+| Role | Hosts | Template CS_MODE | Description |
+|------|-------|------------------|-------------|
 | Consumer | h0 (first) | 0 | Requests content via `cefgetfile` |
 | Router | odd-numbered | 2 | Forwards interests/content, runs `csmgrd` |
-| Publisher | last host | 0 | Stores and serves content via `cefputfile` |
+| Publisher | last host | 1 | Stores and serves content via `cefputfile` |
 
-For topologies with >3 hosts, additional host directories are generated dynamically from templates and cleaned up after script completion.
+The table shows the common case; `assign_roles()` (`src/core/roles.py`) has the exact rules. `apply_cache_node_settings()` (`src/runtime/template.py`) then overrides the template value: cache nodes are forced to `CS_MODE=2`, non-cache publishers to `CS_MODE=1`, and any other non-cache node whose template says 2 drops to `CS_MODE=0`.
 
 ### Host Configuration Templates
 
@@ -576,7 +592,7 @@ Templates are located in `config/templates/`:
 - `h1/` — Router template (CS_MODE=2, external cache manager)
 - `h2/` — Publisher template (CS_MODE=1, local cache mode)
 
-For topologies with >3 hosts, additional directories (h3, h4, ...) are generated dynamically by copying templates and cleaned up after script completion via `cleanup_node_dirs()`.
+Host directories (h0, h1, ...) are generated dynamically by copying templates and cleaned up after script completion via `cleanup_node_dirs()`.
 
 **Configuration files per host:**
 
@@ -600,8 +616,8 @@ For topologies with >3 hosts, additional directories (h3, h4, ...) are generated
 - Linear: Forward all interests toward publisher (next hop in line)
 - Mesh: Uses per-source Dijkstra for efficient multipath routing
   - `dijkstra_all()`: Computes shortest distances from a source to all destinations (`src/core/graph.py`)
-  - `shortest_path()`: Dijkstra's algorithm with edge/node banning support (constrained pathfinding)
-  - `k_shortest_paths()`: Yen's algorithm for k alternate paths
+  - `shortest_path()` (`src/core/graph.py`): Dijkstra's algorithm with edge/node banning support (constrained pathfinding)
+  - `k_shortest_paths()` (`src/core/graph.py`): Yen's algorithm for k alternate paths
   - `compute_fib()`: Computes FIB entries for all destinations with default URI pattern `ccnx:/test/exampleN`
   - `compute_fib_for_uris()`: Computes FIB entries for specific URI-to-publisher mappings (publication events)
   - `apply_fib()`: Applies computed FIB entries to live Mininet hosts via `cefroute add` (`src/runtime/net_config.py`)
@@ -622,76 +638,32 @@ For topologies with >3 hosts, additional directories (h3, h4, ...) are generated
 **Status/Info Commands:**
 
 - `run_csmgrstatus()`: Query cache manager status via csmgrstatus
-- `cefroute_del()`: Delete a FIB entry via `cefroute del`
-- `cefroute_enable()`: Enable a FIB entry via `cefroute enable`
+- `cefroute_del()` (`src/runtime/net_config.py`): Delete a FIB entry via `cefroute del`
+- `cefroute_enable()` (`src/runtime/net_config.py`): Enable a FIB entry via `cefroute enable`
 
 ## Project Structure
 
 ```text
-cefore-emu/
-├── src/                           # Main source code
-│   ├── __init__.py
-│   ├── __main__.py                # python -m src entry point
-│   ├── cli/                       # CLI interface
-│   │   ├── main.py                # Subcommand dispatcher
-│   │   └── args.py                # Argument parser definitions
-│   ├── core/                      # Core logic and algorithms
-│   │   ├── config/                # Configuration utilities
-│   │   │   ├── loader.py          # JSON/YAML config loader
-│   │   │   └── validator.py       # Config validation
-│   │   ├── artifacts.py           # Artifact naming (dir / PNG / log names, build+parse)
-│   │   ├── fib.py                 # FIB route computation
-│   │   ├── flap_state.py          # Host flap state tracking
-│   │   ├── graph.py               # Graph algorithms (Dijkstra, k-center)
-│   │   ├── paths.py               # Output path resolution
-│   │   ├── roles.py               # Node role assignment
-│   │   └── tee.py                 # Tee stdout/stderr to file
-│   ├── log/                       # Log parsing and CSV summarization
-│   │   ├── parser.py              # Log text → dict parser
-│   │   ├── plotter.py             # Log data plotting
-│   │   ├── summarizer.py          # Directory walk + CSV output
-│   │   └── cli.py                 # argparse CLI
-│   ├── runtime/                   # Runtime operations
-│   │   ├── bandwidth.py           # Link bandwidth control
-│   │   ├── bridge_args.py         # Bridge CLI argument parsing
-│   │   ├── bridge_external.py     # External NIC bridge attachment
-│   │   ├── bridge_root.py         # Root namespace bridge orchestration
-│   │   ├── cache_manager.py       # Cache manager operations
-│   │   ├── cef_argv.py            # Cefore command argv builder
-│   │   ├── cefore.py              # Cefore daemon start/stop/wait
-│   │   ├── cleanup.py             # Cleanup utilities
-│   │   ├── command_runner.py      # CommandRunner seam (host command execution)
-│   │   ├── content_ops.py         # Content operations (put/get/pub/sub)
-│   │   ├── external_net.py        # External network mesh scenario
-│   │   ├── failure_manager.py     # Host failure simulation
-│   │   ├── links.py               # Link state control (up/down)
-│   │   ├── monitoring.py          # Periodic status collection
-│   │   ├── net_config.py          # IP address & FIB application
-│   │   ├── result_detect.py       # Result/success detection
-│   │   ├── scheduler.py           # Timed event scheduler
-│   │   ├── template.py            # Host directory template management
-│   │   ├── topo.py                # Mininet Topo subclass (MeshTopo)
-│   │   └── viz.py                 # Topology visualization & PNG output
-│   └── scenarios/                 # Scenario implementations
-│       ├── base.py                # Shared scenario utilities
-│       ├── connect.py             # External network connectivity scenario
-│       ├── linear.py              # Linear topology scenario
-│       ├── mesh.py                # Mesh topology scenario
-│       └── disaster.py            # Mesh with disaster simulation
-│
-├── config/                        # Configuration
-│   ├── templates/                 # Host templates (h0, h1, h2)
-│   └── examples/                  # Example configurations (YAML/JSON)
+cefore-emu-sslab/
+├── src/                 # Main source code (python -m src entry point)
+│   ├── cli/             # CLI interface and argument parsing
+│   ├── core/            # Core logic and algorithms
+│   │   └── config/      # JSON/YAML config loading and validation
+│   ├── log/             # Log parsing and CSV summarization
+│   ├── runtime/         # Runtime operations on live hosts and daemons
+│   ├── scenarios/       # Scenario implementations (linear, mesh, disaster, connect)
+│   └── webui/           # WebUI live dashboard
+├── config/
+│   ├── templates/       # Host templates (h0, h1, h2)
+│   └── examples/        # Example configurations (YAML/JSON)
 ├── tools/
-│   ├── autotest/                  # Batch experiment runner
-│   │   ├── run.py                 # Batch runner script
-│   │   └── analyze.py             # Result analysis
-│   └── workshop/                  # Workshop campaign runner, plots, report
-│
-├── sample-putfile                 # Test data (root exception)
-├── buffer.sh                      # UDP buffer configuration (root exception)
-├── pyproject.toml                 # Package configuration
-└── CLAUDE.md                      # Development guidance
+│   ├── autotest/        # Batch experiment runner and result analysis
+│   └── workshop/        # Workshop campaign runner, plots, report
+├── tests/               # Test suite
+├── docs/                # ADRs, runbooks, known Cefore behaviors
+├── sample-putfile       # Test data
+├── buffer.sh            # UDP buffer configuration
+└── pyproject.toml       # Package configuration
 ```
 
 ## Common Modifications
