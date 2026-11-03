@@ -417,8 +417,8 @@ Mininet ホストを `--ext` や `bridges` で外部の物理 Cefore 機器に�
 
 | アドレス帯 | 推奨度 | 理由 |
 |-----------|--------|------|
-| `100.64.0.0/16` | 第一推奨 | RFC 6598 Shared Address Space (CGNAT) — 一般 LAN で使われることがほぼなく、衝突リスクが最も低い |
-| `172.20.0.0/16` | 代替 | RFC 1918 Class B プライベート — 192.168.x.x より衝突リスクは低いが、大規模企業 LAN で使われる場合あり |
+| `100.64.0.0/16` | 第一推奨 | RFC 6598 Shared Address Space (CGNAT): 一般 LAN で使われることがほぼなく、衝突リスクが最も低い |
+| `172.20.0.0/16` | 代替 | RFC 1918 Class B プライベート: 192.168.x.x より衝突リスクは低いが、大規模企業 LAN で使われる場合あり |
 
 > **注意:** `network_cidr` は `/16` のみ指定可能です。CGNAT 全体の `100.64.0.0/10` ではなく `100.64.0.0/16` を指定してください。
 
@@ -442,7 +442,7 @@ ip route add 100.64.0.0/16 via <ブリッジのルートNS側IP>
 ```text
 logs/ex{num}_seed{seed}/
 ├── script.log              # スクリプト実行ログ
-├── ex{num}_seed{seed}_h{hosts}.png  # トポロジ図
+├── ex{num}_seed{seed}_h{hosts}.png  # トポロジ図（ランタイム成果物を参照）
 ├── meta.json               # 設定スナップショット
 ├── cefnetd_<port>_<sockid>.log  # /tmp から収集された cefnetd ログ
 ├── csmgrd_<port>_<sockid>.log   # /tmp から収集された csmgrd ログ
@@ -467,13 +467,13 @@ sudo .venv/bin/python3 -m src disaster --config config.yaml --timestamp
 
 スクリプトを実行すると、実行ディレクトリに次のファイルができます。`num` なしで `--output-dir ""` を指定するとカレントディレクトリで実行され、その場合 `/tmp` のデーモンログは収集されません。
 
-- `cefnetd_<port>_<sockid>.log` — `/tmp` から収集された転送デーモンのログ
-- `csmgrd_<port>_<sockid>.log` — `/tmp` から収集されたキャッシュマネージャのログ
-- `cefputfile_*.log` — パブリッシャの操作ログ
-- `cefgetfile_*.log` — コンシューマの操作ログ
-- `recvfile_at_h0` / `recvfile_at_hN` — 取得したコンテンツファイル（linear、mesh）
-- `{phase}_recvfile_h{host}_{label}` — 取得したコンテンツファイル（イベント駆動の実行）
-- `ex{num}_seed{seed}_h{hosts}.png` — mesh、disaster、connect の実行で作られるトポロジの可視化画像（`num` なしでは `seed{seed}_h{hosts}.png`。`--topo-png` でパスを変更できます）
+- `cefnetd_<port>_<sockid>.log`: `/tmp` から収集された転送デーモンのログ
+- `csmgrd_<port>_<sockid>.log`: `/tmp` から収集されたキャッシュマネージャのログ
+- `cefputfile_*.log`: パブリッシャの操作ログ
+- `cefgetfile_*.log`: コンシューマの操作ログ
+- `recvfile_at_h0` / `recvfile_at_hN`: 取得したコンテンツファイル（linear、mesh）
+- `{phase}_recvfile_h{host}_{label}`: 取得したコンテンツファイル（イベント駆動の実行）
+- `ex{num}_seed{seed}_h{hosts}.png`: トポロジの可視化画像。`disaster` と `connect` は既定で出力します（`num` なしでは `seed{seed}_h{hosts}.png`）。`mesh` は `--topo-png` を指定したときだけ出力し、`linear` は出力しません。`--topo-png` で指定できるのは名前で、出力先は常に実行ディレクトリの下です。
 
 ## 自動テスト (非対話モード)
 
@@ -567,12 +567,12 @@ ceforeemu-log logs/ex1_seed42/ --stdout | head -20
 
 トポロジスクリプトはいずれも共通のパターンに沿っています：
 
-1. **トポロジ定義** — Mininet の Topo サブクラスがネットワーク構造を定義します
-2. **IP アドレス割り当て** — 各リンクに /24 サブネット（192.168.X.Y）を割り当てます
-3. **Cefore デーモンの起動** — csmgrd（キャッシュマネージャ）と cefnetd（転送デーモン）を起動します
-4. **FIB 設定** — `cefroute add` で転送ルールを設定します
-5. **コンテンツ操作** — パブリッシャが `cefputfile` を、コンシューマが `cefgetfile` を実行します
-6. **クリーンアップ** — デーモンを停止し、一時的なホストディレクトリを削除します
+1. **トポロジ定義**: Mininet の Topo サブクラスがネットワーク構造を定義します
+2. **IP アドレス割り当て**: 各リンクに /24 サブネット（192.168.X.Y）を割り当てます
+3. **Cefore デーモンの起動**: csmgrd（キャッシュマネージャ）と cefnetd（転送デーモン）を起動します
+4. **FIB 設定**: `cefroute add` で転送ルールを設定します
+5. **コンテンツ操作**: パブリッシャが `cefputfile` を、コンシューマが `cefgetfile` を実行します
+6. **クリーンアップ**: デーモンを停止し、一時的なホストディレクトリを削除します
 
 ### ノードロール
 
@@ -582,27 +582,31 @@ ceforeemu-log logs/ex1_seed42/ --stdout | head -20
 | ルータ | 奇数番号 | 2 | Interest/コンテンツを転送し、`csmgrd` を実行します |
 | パブリッシャ | 最後のホスト | 1 | `cefputfile` でコンテンツを保存・配信します |
 
-この表は一般的な場合を示したもので、厳密なルールは `assign_roles()`（`src/core/roles.py`）にあります。そのうえで `apply_cache_node_settings()`（`src/runtime/template.py`）がテンプレートの値を上書きします。キャッシュノードは `CS_MODE=2` に、キャッシュノードでないパブリッシャは `CS_MODE=1` に強制され、それ以外のキャッシュノードでないノードはテンプレートが 2 なら `CS_MODE=0` に下がります。
+この表は一般的な場合を示したもので、厳密なルールは `assign_roles()`（`src/core/roles.py`）にあります。テンプレートの値がどう扱われるかは、シナリオとキャッシュ戦略によって変わります。
+
+- `linear` と `mesh` はテンプレートの値をそのまま使います。
+- `disaster`（`cache_config.strategy` が `random` 以外）と `connect` は `apply_cache_node_settings()`（`src/runtime/template.py`）を使います。キャッシュノードは `CS_MODE=2` に、キャッシュノードでないパブリッシャは `CS_MODE=1` に強制され、それ以外のキャッシュノードでないノードはテンプレートが 2 なら `CS_MODE=0` に下がります。
+- `cache_config.strategy: random` の `disaster` は、代わりに `assign_random_cs_modes()`（`src/core/roles.py`）を使います。パブリッシャの `CS_MODE` は 1 か 2、それ以外のホストは 0、1、2 のいずれかになります。
 
 ### ホスト設定テンプレート
 
 テンプレートは `config/templates/` にあります：
 
-- `h0/` — コンシューマのテンプレート（CS_MODE=0、キャッシュなし）
-- `h1/` — ルータのテンプレート（CS_MODE=2、外部キャッシュマネージャ）
-- `h2/` — パブリッシャのテンプレート（CS_MODE=1、ローカルキャッシュモード）
+- `h0/`: コンシューマのテンプレート（CS_MODE=0、キャッシュなし）
+- `h1/`: ルータのテンプレート（CS_MODE=2、外部キャッシュマネージャ）
+- `h2/`: パブリッシャのテンプレート（CS_MODE=1、ローカルキャッシュモード）
 
 各ホストのディレクトリ（h0, h1, ...）はテンプレートのコピーで動的に生成され、スクリプト完了後に `cleanup_node_dirs()` で削除されます。
 
 **ホストごとの設定ファイル:**
 
-- `cefnetd.conf` — 転送デーモンの設定（LOCAL_SOCK_ID を含む）
-- `cefnetd.fib` — 静的な転送テーブル
-- `csmgrd.conf` — キャッシュマネージャの設定
-- `conpubd.conf` — パブリッシャデーモンの設定
-- `plugin.conf` — プラグインの設定
-- `cefnetd.key` — 鍵の設定
-- `default-private-key`, `default-public-key` — 暗号鍵（機密情報）
+- `cefnetd.conf`: 転送デーモンの設定（LOCAL_SOCK_ID を含む）
+- `cefnetd.fib`: 静的な転送テーブル
+- `csmgrd.conf`: キャッシュマネージャの設定
+- `conpubd.conf`: パブリッシャデーモンの設定
+- `plugin.conf`: プラグインの設定
+- `cefnetd.key`: 鍵の設定
+- `default-private-key`, `default-public-key`: 暗号鍵（機密情報）
 
 ### 主要な関数
 
