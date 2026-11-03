@@ -442,7 +442,7 @@ Logs are organized into a dedicated directory under `--output-dir` (default: `lo
 ```text
 logs/ex{num}_seed{seed}/
 ├── script.log              # Script execution log
-├── ex{num}_seed{seed}_h{hosts}.png  # Topology diagram
+├── ex{num}_seed{seed}_h{hosts}.png  # Topology diagram (see Runtime Artifacts)
 ├── meta.json               # Configuration snapshot
 ├── cefnetd_<port>_<sockid>.log  # cefnetd logs collected from /tmp
 ├── csmgrd_<port>_<sockid>.log   # csmgrd logs collected from /tmp
@@ -473,7 +473,7 @@ After running scripts, the following files appear in the run directory. Passing 
 - `cefgetfile_*.log` — Consumer operation logs
 - `recvfile_at_h0` / `recvfile_at_hN` — Retrieved content files (linear, mesh)
 - `{phase}_recvfile_h{host}_{label}` — Retrieved content files (event-driven runs)
-- `ex{num}_seed{seed}_h{hosts}.png` — Topology visualization image from mesh, disaster, and connect runs (`seed{seed}_h{hosts}.png` without `num`; `--topo-png` overrides the path)
+- `ex{num}_seed{seed}_h{hosts}.png` — Topology visualization image. `disaster` and `connect` write it by default (`seed{seed}_h{hosts}.png` without `num`), `mesh` writes one only with `--topo-png`, and `linear` writes none. `--topo-png` sets the name, always under the run directory.
 
 ## Autotest (Non-Interactive)
 
@@ -582,7 +582,11 @@ All topology scripts follow a common pattern:
 | Router | odd-numbered | 2 | Forwards interests/content, runs `csmgrd` |
 | Publisher | last host | 1 | Stores and serves content via `cefputfile` |
 
-The table shows the common case; `assign_roles()` (`src/core/roles.py`) has the exact rules. `apply_cache_node_settings()` (`src/runtime/template.py`) then overrides the template value: cache nodes are forced to `CS_MODE=2`, non-cache publishers to `CS_MODE=1`, and any other non-cache node whose template says 2 drops to `CS_MODE=0`.
+The table shows the common case; `assign_roles()` (`src/core/roles.py`) has the exact rules. What happens to the template value depends on the scenario and cache strategy:
+
+- `linear` and `mesh` keep the template value.
+- `disaster` (with `cache_config.strategy` other than `random`) and `connect` use `apply_cache_node_settings()` (`src/runtime/template.py`): cache nodes are forced to `CS_MODE=2`, non-cache publishers to `CS_MODE=1`, and any other non-cache node whose template says 2 drops to `CS_MODE=0`.
+- `disaster` with `cache_config.strategy: random` uses `assign_random_cs_modes()` (`src/core/roles.py`) instead: publishers get `CS_MODE` 1 or 2, and other hosts get 0, 1, or 2.
 
 ### Host Configuration Templates
 
