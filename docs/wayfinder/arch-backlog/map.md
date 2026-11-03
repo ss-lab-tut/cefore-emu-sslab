@@ -37,6 +37,7 @@
   → [20](tickets/20-deferred-ccninfo-monitoring-gaps.md) deferred
   → [21](tickets/21-recefore-rename-implementation.md)/[22](tickets/22-application-adapter-api.md) naming
   → [23](tickets/23-host-node-name-helper.md) host 番号 → ノード名変換の集約（着手条件付き。21/22 でノード識別子を見直すとき）
+- **2026-11-02 追加**: [27](tickets/27-split-readme-into-docs.md) README の説明を docs/ へ分割。PR #42 のマージ後に着手する。優先順は未定
 - R10 backlog (2026-07-09 review 完了) の経緯: feature/seam (= main, PR#13 マージ後)
   を対象に 8 subsystem 並列探索 + 候補ごと adversarial 検証を実施、21 raw 候補中
   20 生存。bug 級 B1・B2 は 2026-07-09 に解消済み。Strong S1 (run_cefstatus
